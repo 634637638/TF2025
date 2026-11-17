@@ -14,10 +14,10 @@ const mocks = vi.hoisted(() => ({ context: vi.fn(), quote: vi.fn(), submit: vi.f
 const permission = ref(true), exchangePermission = ref(true), goodsWrite = ref(true), giftPermission = ref(true)
 vi.mock('@/api/sales-checkout', () => ({ getGoodsReturnContext: mocks.context, quoteGoodsReturn: mocks.quote, submitGoodsReturn: mocks.submit,
   getGoodsExchangeContext: mocks.exchangeContext, quoteGoodsExchange: mocks.exchangeQuote, submitGoodsExchange: mocks.exchangeSubmit, getCheckoutGoods: mocks.options }))
-vi.mock('@/services/reference-options', () => ({ getCachedStores: mocks.stores, searchOperators: mocks.operators }))
+vi.mock('@/services/reference-options', () => ({ getStores: mocks.stores, searchOperators: mocks.operators }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => permission.value), canCreate: computed(() => goodsWrite.value),
-  hasPermission: (action: string) => permission.value && (module === 'query' && action === 'exchange' ? exchangePermission.value : module === 'accessories' && action === 'gift' ? giftPermission.value : module === 'accessories' && action === 'create' ? goodsWrite.value : true) }) }))
+  hasPermission: (action: string) => permission.value && (module === 'query' && ['goods-sell', 'goods-gift'].includes(action) ? false : module === 'query' && action === 'exchange' ? exchangePermission.value : module === 'accessories' && action === 'gift' ? giftPermission.value : module === 'accessories' && action === 'sell' ? goodsWrite.value : true) }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFieldVisible: (_module: string, field: string) => !mocks.hidden.has(field) } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: ref(false) }) }))
 
@@ -36,7 +36,7 @@ const Shell = { props: { modelValue: Boolean, beforeClose: Function }, emits: ['
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async (mode: 'return' | 'exchange' = 'return') => {
   const wrapper = mount(Dialog, { props: { modelValue: true, sale, mode }, global: { plugins: [ElementPlus],
-    components: { PaymentMethodSelect, PaymentChannelSelect }, stubs: { MobileDialog: Shell, SectionLoading: true }, directives: { permission: {}, 'infinite-scroll': {} } } })
+    components: { PaymentMethodSelect, PaymentChannelSelect }, stubs: { MobileDialog: Shell, SectionLoading: true }, directives: { permission: {} } } })
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
 type Wrapper = Awaited<ReturnType<typeof render>>
@@ -70,7 +70,7 @@ afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.r
 it('按原明细读取可退量，核验实物后试算；原净额、积分追回/补退和补款清楚展示', async () => {
   const wrapper = await render()
   expect(mocks.context).toHaveBeenCalledWith(10, 50, expect.any(AbortSignal))
-  expect(mocks.stores).toHaveBeenCalledWith(true)
+  expect(mocks.stores).toHaveBeenCalledWith({ strictScope: true })
   expect(wrapper.text()).toContain('剩余可退')
   await button(wrapper, '核对退款').trigger('click'); await flushPromises()
   expect(mocks.quote).not.toHaveBeenCalled(); expect(mocks.warning).toHaveBeenCalledOnce()

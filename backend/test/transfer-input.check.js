@@ -4,7 +4,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { parseTransferInput, prepareWholesalePrices } = require('../src/utils/transfer-input')
 
-const base = { phone_ids: [1], operator_id: 2, customer_name: '张三', customer_phone: '13800138000', sale_time: '2026-11-13 12:00:00' }
+const base = { actor: { id: 2, store_ids: [3] }, phone_ids: [1], operator_id: 2, customer_name: '张三', customer_phone: '13800138000', sale_time: '2026-11-13 12:00:00' }
 const invalidNumbers = ['12abc', '12元', '1e3', '0x10', '12\n', ' ', true, false, [], {}, NaN, Infinity]
 
 function loadService(t, { connection, points = async () => {} } = {}) {
@@ -77,7 +77,7 @@ test('批发混合价格保留部分成功，不处理非法明细；单台后�
       if (sql.includes('FROM customers WHERE id')) return [[{ name: '张三', phone: '13800138000' }]]
       if (sql.includes('FROM phones')) {
         events.push(['phone', values[0]])
-        return [[{ id: values[0], imei: '012345678901234', status: 'in_stock', purchase_cost: 1 }]]
+        return [[{ id: values[0], imei: '012345678901234', status: 'in_stock', store_id: 3, purchase_cost: 1 }]]
       }
       if (sql.includes('INSERT INTO sales')) return [{ insertId: saleId++ }]
       if (/SAVEPOINT/.test(sql)) events.push(sql)
@@ -98,3 +98,43 @@ test('批发混合价格保留部分成功，不处理非法明细；单台后�
   assert.equal(events.filter(event => event === 'ROLLBACK TO SAVEPOINT wholesale_phone').length, 1)
   assert.deepEqual(events.slice(-2), ['commit', 'release'])
 })
+
+for (const proxy of [false, true]) {
+  test(`${proxy ? '代供应商划拨' : '批发'}逐台核验锁定设备来源门店，允许授权范围内不同销售店，禁止外店及混批漏检`, async t => {
+    const writes = []
+    const locks = []
+    const connection = {
+      async beginTransaction() {}, async commit() {}, async rollback() {}, release() {},
+      async query(sql, params) {
+        if (sql.includes('FROM phones')) {
+          assert.match(sql, /FOR UPDATE/)
+          locks.push(params[0])
+          return [[{ id: params[0], imei: `isolated-${params[0]}`, status: 'in_stock', store_id: params[0] === 2 ? 2 : 1, supplier_id: 3, purchase_cost: 10 }]]
+        }
+        if (sql.includes('FROM customers')) return [[{ id: 1, name: '测试', phone: '13800138000' }]]
+        if (sql.includes('FROM suppliers')) return [[{ name: '供应商' }]]
+        if (sql.startsWith('UPDATE phones') || sql.includes('INSERT INTO sales')) writes.push({ sql, params })
+        return [{ insertId: 11, affectedRows: 1 }]
+      }
+    }
+    const service = loadService(t, { connection })
+    const submit = input => service[proxy ? 'proxyTransferForSupplier' : 'wholesaleToPeer'](input)
+    const input = { ...base, actor: { id: 2, store_ids: [1, 3] }, customer_id: 1, supplier_id: 3, store_id: 3, phone_ids: [1, 2],
+      phones: [{ phone_id: 1, wholesale_price: 20 }, { phone_id: 2, wholesale_price: 20 }] }
+    const result = await submit(input)
+    assert.equal(result.success_count, 1)
+    assert.deepEqual(locks, [1, 2])
+    assert.equal(result.failed_phones[0].phone_id, 2)
+    assert.match(result.failed_phones[0].error, /无权访问/)
+    assert.equal(result.failed_phones[0].imei, undefined)
+    assert.equal(writes.filter(({ sql }) => sql.includes('INSERT INTO sales')).length, 1)
+    for (const { sql, params } of writes.filter(({ sql }) => sql.startsWith('UPDATE phones'))) {
+      assert.equal(params.at(-1), 1, sql)
+    }
+    writes.length = 0
+    locks.length = 0
+    await assert.rejects(submit({ ...input, store_id: 2 }), { statusCode: 403 })
+    assert.deepEqual(writes, [])
+    assert.deepEqual(locks, [])
+  })
+}

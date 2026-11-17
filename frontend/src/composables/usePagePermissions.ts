@@ -4,6 +4,7 @@
  * 权限命名规则：canonical 模块名:操作
  */
 
+import { getPermissionActionMeta } from '@/config/permission-actions'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -75,28 +76,7 @@ export const usePagePermissions = (module: string) => {
 
   // 统一的无操作权限处理
   const handleNoPermission = (action: string) => {
-    const actionNames: Record<string, string> = {
-      create: '创建',
-      'return-to-stock': '退库',
-      exchange: '换货',
-      film: '贴膜服务',
-      wholesale: '调货',
-      'proxy-transfer': '划拨',
-      edit: '编辑',
-      delete: '删除',
-      export: '导出',
-      import: '导入',
-      approve: '审批',
-      arrival: '到账',
-      upload: '图片上传',
-      manage: '管理',
-      sync: '同步',
-      match: '匹配',
-      deliver: '交付',
-      cancel: '取消预定'
-    }
-
-    const actionName = actionNames[action] || action
+    const actionName = getPermissionActionMeta(action).name
 
     showElementWarning({
       message: `您没有${actionName}权限`,

@@ -1,5 +1,6 @@
 'use strict'
 
+const { withConnection } = require('../core/db/connection')
 const { getDatabase } = require('../config/database')
 
 class SubsidyUpdateRepository {
@@ -7,9 +8,24 @@ class SubsidyUpdateRepository {
     this.getDb = getDb
   }
 
+  async withTransaction(operation) {
+    return withConnection(this.getDb, async connection => {
+      await connection.beginTransaction()
+      try {
+        const result = await operation(new SubsidyUpdateRepository({ getDb: () => connection }))
+        if (result.status >= 400) await connection.rollback()
+        else await connection.commit()
+        return result
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
+  }
+
   async findExisting(id) {
     const [records] = await this.getDb().execute(
-      'SELECT ns.customer_id, ns.imei2, ns.subsidy_photos FROM national_subsidies ns WHERE ns.id = ?',
+      'SELECT ns.store_id, ns.customer_id, ns.imei2, ns.subsidy_photos FROM national_subsidies ns WHERE ns.id = ? FOR UPDATE',
       [id]
     )
     return records[0] || null

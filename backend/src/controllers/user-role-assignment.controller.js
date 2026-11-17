@@ -37,6 +37,7 @@ class UserRoleAssignmentController {
       }
       return res.json({ success: true, message: '用户角色分配成功' })
     } catch (error) {
+      if (error.statusCode === 403) return res.status(403).json({ success: false, message: error.message })
       if (error.code === 'INVALID_ROLE_LIST' || error.code === 'INVALID_ROLE_ID') {
         return res.status(400).json({ success: false, message: error.message })
       }

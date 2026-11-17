@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -18,6 +20,7 @@ test('subsidy update service returns 404 and rejects invalid price before updati
   const updates = []
   const service = new Service({
     repository: {
+      async withTransaction(operation) { return operation(this) },
       async findExisting(id) { return id === 'missing' ? null : { customer_id: 8, subsidy_photos: '[]' } },
       async updateCustomerIdCard(...args) { updates.push(['idcard', ...args]) },
       async updateSubsidy(...args) { updates.push(['subsidy', ...args]) }
@@ -25,11 +28,11 @@ test('subsidy update service returns 404 and rejects invalid price before updati
     logger: { warn() {} }
   })
 
-  assert.deepEqual(await service.update('missing', {}), {
+  assert.deepEqual(await service.update('missing', {}, scopedActor), {
     status: 404,
     body: { success: false, message: '国补记录不存在' }
   })
-  assert.deepEqual(await service.update('9', { customer_idcard: ' 123 ', sale_price: '' }), {
+  assert.deepEqual(await service.update('9', { customer_idcard: ' 123 ', sale_price: '' }, scopedActor), {
     status: 400,
     body: { success: false, message: '销售价格不能为空' }
   })
@@ -40,7 +43,8 @@ test('subsidy update service persists canonical fields, mirrors sale date and in
   const events = []
   const service = new Service({
     repository: {
-      async findExisting() { return { customer_id: 8, subsidy_photos: '[]' } },
+      async withTransaction(operation) { return operation(this) },
+      async findExisting() { return { store_id: 1, customer_id: 8, subsidy_photos: '[]' } },
       async updateCustomer(...args) { events.push(['customer', ...args]) },
       async getStoreName(id) { return id === 3 ? '直营店' : null },
       async updateSubsidy(id, fields, values) { events.push(['subsidy', id, fields, values]) },
@@ -60,7 +64,7 @@ test('subsidy update service persists canonical fields, mirrors sale date and in
     store_id: 3,
     apply_time: '2026-11-01T12:00:00',
     has_different_handler: false
-  }), { status: 200, body: { success: true, message: '更新成功' } })
+  }, scopedActor), { status: 200, body: { success: true, message: '更新成功' } })
 
   const [, , fields, values] = events.find(event => event[0] === 'subsidy')
   assert.ok(fields.includes('sale_price = ?'))
@@ -80,13 +84,14 @@ test('国补编辑非法资料或店铺不产生客户、国补、文件和缓�
     { customer_phone: '138中00000000' }, { handler_phone: true },
     { handler_name: '张'.repeat(51) }, { customer_idcard: ['card'] },
     { sale_price: '0x10' }, { sale_price: '1e3' }, { sale_price: '1.234' },
-    { sale_price: '12元' }, { subsidy_amount: false }, { store_id: 999 }
+    { sale_price: '12元' }, { subsidy_amount: false }, { store_id: 9 }
   ]) {
     const events = []
     const mutation = async () => { events.push('write') }
     const service = new Service({
       repository: {
-        async findExisting() { return { customer_id: 8, subsidy_photos: '["subsidy/old/a.jpg"]' } },
+      async withTransaction(operation) { return operation(this) },
+        async findExisting() { return { store_id: 1, customer_id: 8, subsidy_photos: '["subsidy/old/a.jpg"]' } },
         async getStoreName() { return null },
         updateCustomer: mutation, updateCustomerIdCard: mutation, updateSubsidy: mutation,
         async getPhotoDirectoryNamingInput() { events.push('files'); return null }
@@ -94,7 +99,7 @@ test('国补编辑非法资料或店铺不产生客户、国补、文件和缓�
       invalidateCache() { events.push('cache') },
       fileSystem: { renameSync() { events.push('move') } }
     })
-    const result = await service.update('9', { customer_idcard: 'ID-CARD', customer_name: '张三', ...patch })
+    const result = await service.update('9', { customer_idcard: 'ID-CARD', customer_name: '张三', ...patch }, scopedActor)
     assert.equal(result.status, 400, JSON.stringify(patch))
     assert.deepEqual(events, [])
   }

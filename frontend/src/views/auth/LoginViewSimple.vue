@@ -51,7 +51,7 @@
         <el-button
           native-type="submit"
           type="primary"
-          class="login-button"
+          class="login-button tf-button--login-large"
           :disabled="loading || isLocked"
         >
           {{ loading ? '登录中...' : isLocked ? '账户已锁定' : '登录' }}

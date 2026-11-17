@@ -43,21 +43,18 @@ class AccessoryPurchaseRepository extends BaseRepository {
     return { where: `WHERE ${conditions.join(' AND ')}`, params }
   }
 
-  async list(scope, query) {
+  async list(scope, query, connection) {
     const { where, params } = this.conditions(scope, query)
-    // 列表、数量及汇总共用同一个只读事务快照，避免并发打款导致统计与列表不符。
-    return this.withConnection(async connection => {
-      await connection.beginTransaction()
-      try {
-        const [[summary]] = await connection.query(`SELECT COUNT(*) AS total,
+    // 服务层提供同一只读快照连接，汇总和明细不得另行租借。
+    const [[summary]] = await connection.query(`SELECT COUNT(*) AS total,
           COALESCE(SUM(si.quantity), 0) AS total_quantity,
           COALESCE(SUM(si.total_amount), 0) AS total_amount,
           COALESCE(SUM(CASE WHEN ${paid} THEN si.total_amount ELSE 0 END), 0) AS paid_amount,
           COALESCE(SUM(CASE WHEN ${paid} THEN 0 ELSE si.total_amount END), 0) AS unpaid_amount
           ${joins} ${where}`, params)
-        const [rows] = await connection.query(`SELECT si.id, si.batch_no, si.accessory_id, si.product_snapshot,
+    const [rows] = await connection.query(`SELECT si.id, si.batch_no, si.accessory_id, si.product_snapshot,
           si.supplier_id, s.name AS supplier_name, si.store_id, st.name AS store_name,
-          COALESCE(t.name, a.name) AS name, b.name AS brand_name, a.product_model,
+          COALESCE(t.name, a.name) AS name, b.name AS brand_name, IF(a.template_id IS NULL, a.product_model, t.product_model) AS product_model,
           c.name AS color_name, COALESCE(category.name, t.category, a.category) AS category,
           COALESCE(unit.name, t.unit, a.unit) AS unit, si.quantity, si.purchase_cost, si.total_amount,
           si.inventory_time, si.operator_name AS inventory_operator_name,
@@ -68,13 +65,10 @@ class AccessoryPurchaseRepository extends BaseRepository {
           CASE WHEN ${paid} THEN p.operator_name END AS payment_operator_name,
           CASE WHEN ${paid} THEN p.remarks END AS payment_remarks
           ${joins} ${where} ORDER BY si.inventory_time DESC, si.id DESC LIMIT ? OFFSET ?`,
-        [...params, query.page_size, (query.page - 1) * query.page_size])
-        await connection.commit()
-        const total = Number(summary.total)
-        return { rows, summary, pagination: { page: query.page, page_size: query.page_size,
-          total, total_pages: Math.ceil(total / query.page_size) } }
-      } catch (error) { await connection.rollback(); throw error }
-    })
+    [...params, query.page_size, (query.page - 1) * query.page_size])
+    const total = Number(summary.total)
+    return { rows, summary, pagination: { page: query.page, page_size: query.page_size,
+      total, total_pages: Math.ceil(total / query.page_size) } }
   }
 
   /** 供应商累计采购只读统计，沿用货款页的原整单授权，不按现存商品倒推。 */
@@ -100,7 +94,7 @@ class AccessoryPurchaseRepository extends BaseRepository {
     const { where, params } = this.conditions(scope)
     const [rows] = await connection.query(`SELECT si.id, si.accessory_id, si.batch_no, si.product_snapshot,
       si.supplier_id, s.name AS supplier_name, si.store_id, st.name AS store_name,
-      COALESCE(t.name, a.name) AS name, b.name AS brand_name, a.product_model,
+      COALESCE(t.name, a.name) AS name, b.name AS brand_name, IF(a.template_id IS NULL, a.product_model, t.product_model) AS product_model,
       c.name AS color_name, COALESCE(category.name, t.category, a.category) AS category,
       COALESCE(unit.name, t.unit, a.unit) AS unit, si.quantity, si.purchase_cost, si.total_amount,
       si.inventory_time, si.operator_name AS inventory_operator_name

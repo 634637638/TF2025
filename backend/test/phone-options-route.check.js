@@ -5,6 +5,23 @@ const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
 
+test('组合选项共享基础主档，但历史设备补充与门店选项按当前范围读取', async () => {
+  const PhoneOptionRepository = require('../src/repositories/phone-option.repository')
+  const calls = []
+  const repository = new PhoneOptionRepository({ async execute(sql, params) {
+    calls.push({ sql, params }); return [[]]
+  } })
+  await repository.getOptionRows({ allStores: false, storeIds: [2, 5] })
+  for (const call of calls.slice(0, 4)) assert.doesNotMatch(call.sql, /store_id IN/)
+  for (const call of calls.slice(4)) {
+    assert.deepEqual(call.params, [2, 5])
+    assert.equal((call.sql.match(/\?/g) || []).length, 2)
+  }
+  calls.length = 0
+  await repository.getOptionRows({ allStores: false, storeIds: [] })
+  for (const call of calls.slice(4)) assert.match(call.sql, /1 = 0/)
+})
+
 test('入库选项 service 保持正式选项和历史库存补充格式', async () => {
   const PhoneOptionService = require('../src/services/phone-option.service')
   const service = new PhoneOptionService({
@@ -100,9 +117,9 @@ test('入库选项 controller 保留数据库未连接和成功响应', async ()
   assert.deepEqual(response.body.data, expected)
 })
 
-test('入库选项 route 保留全局认证和 accessories 查看/创建权限', () => {
+test('入库选项 route 保留全局认证和 accessories 查看/档案新增/入库/编辑权限', () => {
   const routeSource = fs.readFileSync(path.join(root, 'src/routes/options.js'), 'utf8')
 
   assert.match(routeSource, /router\.use\(unifiedAuth\)/)
-  assert.match(routeSource, /router\.get\('\/phone-options',\s*requireAnyPermission\(\['accessories:view', 'accessories:create'\]\),\s*phoneOptionController\.getPhoneOptions\.bind\(phoneOptionController\)\)/)
+  assert.match(routeSource, /router\.get\('\/phone-options',\s*requireAnyPermission\(\['accessories:view', 'accessories:create', 'accessories:stock-in', 'accessories:edit'\]\),\s*phoneOptionController\.getPhoneOptions\.bind\(phoneOptionController\)\)/)
 })

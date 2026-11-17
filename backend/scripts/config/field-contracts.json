@@ -328,6 +328,8 @@
       "backend/src/controllers/accessory.controller.js",
       "backend/src/services/accessory.service.js",
       "backend/src/repositories/accessory.repository.js",
+      "backend/src/services/accessory-template-color.service.js",
+      "backend/src/repositories/accessory-template-color.repository.js",
       "backend/src/utils/accessory-batches.js",
       "backend/src/repositories/accessory-inventory.repository.js",
       "backend/src/services/accessory-inventory.service.js",
@@ -348,6 +350,8 @@
       "frontend/src/stores/accessory-stock-in.ts",
       "frontend/src/utils/accessory-stock-in.ts",
       "frontend/src/components/accessory-payload.ts",
+      "frontend/src/components/accessory-field-permissions.ts",
+      "frontend/src/types/accessory.ts",
       "frontend/src/views/accessories/AccessoriesView.vue",
       "frontend/src/views/query/page/QueryGoodsPanel.vue",
       "frontend/src/api/sales-receipt.ts",
@@ -2653,7 +2657,8 @@
     "accessories": {
       "canonical": [
         "film_only",
-        "film_enabled",
+        "film_model_id",
+        "free_film",
         "keyword",
         "mode",
         "page",
@@ -2713,7 +2718,7 @@
         "row_key",
         "source_status",
         "film_ready",
-        "film_enabled",
+        "free_film",
         "sale_no",
         "order_no",
         "linked_phone_invoice",
@@ -2726,6 +2731,7 @@
         "product_model",
         "model_brand_id",
         "model_brand_name",
+        "compatible_brand_names",
         "purchase_cost",
         "sale_price",
         "total_stock",
@@ -2770,7 +2776,8 @@
         "storeId",
         "startDate",
         "endDate",
-        "lowStockOnly"
+        "lowStockOnly",
+        "film_enabled"
       ]
     },
     "salary-records": {

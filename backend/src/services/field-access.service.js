@@ -4,8 +4,9 @@ const dataMaskingService = require('./data-masking.service')
 
 /** 字段权限的读取、递归脱敏及写入判定；业务域保留各自的字段映射。 */
 class FieldAccessService {
-  constructor({ moduleKey, responseKeys = {}, transform, masking = dataMaskingService, strict = false }) {
+  constructor({ moduleKey, responseKeys = {}, fieldScope, transform, masking = dataMaskingService, strict = true }) {
     this.moduleKey = moduleKey
+    this.fieldScope = fieldScope
     this.responseKeys = responseKeys
     this.transform = transform
     this.masking = masking
@@ -13,7 +14,7 @@ class FieldAccessService {
   }
 
   getPermissions(userId) {
-    return this.masking.getUserFieldPermissions(userId, this.moduleKey, { strict: this.strict })
+    return this.masking.getUserFieldPermissions(userId, this.moduleKey, { strict: this.strict, ...(this.fieldScope ? { fieldScope: this.fieldScope } : {}) })
   }
 
   maskPayload(value, permissions) {
@@ -34,10 +35,21 @@ class FieldAccessService {
 
   async getDeniedWrite(userId, body, fieldMap) {
     const permissions = await this.getPermissions(userId)
-    const hiddenFields = new Set(permissions.hiddenFields || [])
-    return Object.entries(fieldMap).find(([bodyField, fieldId]) => (
-      body?.[bodyField] !== undefined && hiddenFields.has(fieldId)
-    ))?.[1]
+    return this.findDeniedWrite(body, fieldMap, permissions)
+  }
+
+  findDeniedWrite(body, fieldMap, permissions) {
+    const denied = new Set([...(permissions.hiddenFields || []), ...(permissions.readonlyFields || [])])
+    const editable = permissions.editableFields === undefined ? null : new Set(permissions.editableFields)
+    return Object.entries(fieldMap).find(([bodyField, fieldId]) => {
+      let value = body
+      for (const key of bodyField.split('.')) {
+        // 整组清除或序列化对象同样属于子字段写入。
+        if (value === null || (value !== undefined && typeof value !== 'object')) break
+        value = value?.[key]
+      }
+      return value !== undefined && (denied.has(fieldId) || (editable && !editable.has(fieldId)))
+    })?.[1]
   }
 
   async isVisible(userId, fieldId) {

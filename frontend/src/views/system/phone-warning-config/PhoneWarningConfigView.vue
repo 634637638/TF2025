@@ -87,7 +87,6 @@
                     <el-button
                       v-if="canEditWarningConfig && showOperations"
                       type="primary"
-                      size="small"
                       plain
                       @click="openEditDialog(row)"
                     >
@@ -96,7 +95,6 @@
                     <el-button
                       v-if="canEditWarningConfig && showOperations"
                       type="danger"
-                      size="small"
                       plain
                       @click="handleDeleteGroup(row)"
                     >
@@ -272,7 +270,6 @@
                           <el-button
                             type="primary"
                             link
-                            size="small"
                             @click.stop="openEditDialog(child)"
                           >
                             编辑
@@ -280,7 +277,6 @@
                           <el-button
                             type="danger"
                             link
-                            size="small"
                             @click.stop="handleDelete(child)"
                           >
                             删除
@@ -419,7 +415,6 @@
                 <el-button
                   type="primary"
                   link
-                  size="small"
                   @click.stop="openEditDialog(row)"
                 >
                   编辑
@@ -427,7 +422,6 @@
                 <el-button
                   type="danger"
                   link
-                  size="small"
                   @click.stop="handleDeleteGroup(row)"
                 >
                   删除

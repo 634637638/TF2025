@@ -16,6 +16,8 @@ const { reconcileCustomerPointsForSale: defaultReconcileCustomerPointsForSale } 
 class InventoryController {
   constructor({
     service,
+    access,
+    fields,
     database = getDatabase,
     connected = isConnected,
     logger = log,
@@ -28,6 +30,8 @@ class InventoryController {
   } = {}) {
     this.logger = logger
     this.service = service || new InventoryService({
+      access,
+      fields,
       database,
       connected,
       logger,
@@ -46,8 +50,9 @@ class InventoryController {
 
   async list(req, res) {
     try {
-      return ApiResponse.success(res, await this.service.list(req.query))
+      return ApiResponse.success(res, await this.service.list(req.query, req.user))
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       this.logger.error('获取库存列表失败:', error)
       return ApiResponse.serverError(res, '获取库存列表失败', error)
     }
@@ -55,8 +60,9 @@ class InventoryController {
 
   async detail(req, res) {
     try {
-      return ApiResponse.success(res, await this.service.detail(req.params.id))
+      return ApiResponse.success(res, await this.service.detail(req.params.id, req.user))
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
       if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
       this.logger.error('获取商品详情失败:', error)
@@ -66,9 +72,10 @@ class InventoryController {
 
   async remove(req, res) {
     try {
-      const result = await this.service.remove(req.params.id)
+      const result = await this.service.remove(req.params.id, req.user)
       return ApiResponse.success(res, result, '商品删除成功')
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
       if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
       this.logger.error('删除库存商品失败:', error)
@@ -78,9 +85,10 @@ class InventoryController {
 
   async update(req, res) {
     try {
-      const result = await this.service.update(req.params.id, req.body)
+      const result = await this.service.update(req.params.id, req.body, req.user)
       return ApiResponse.success(res, result, '商品信息更新成功')
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
       if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
       this.logger.error('更新库存商品失败:', error)
@@ -93,6 +101,7 @@ class InventoryController {
       const result = await this.service.quickSale(req.body, req.user)
       return ApiResponse.success(res, '快速出库成功', result)
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       this.logger.error('快速出库失败:', { message: error?.message || '未知错误', stack: error?.stack })
       if (error.statusCode) return ApiResponse.error(res, error.message, error.statusCode)
       if (error instanceof Error && !error.code) return ApiResponse.badRequest(res, error.message || '快速出库失败')
@@ -102,17 +111,19 @@ class InventoryController {
 
   async overview(req, res) {
     try {
-      return ApiResponse.success(res, await this.service.overview(req.query))
+      return ApiResponse.success(res, await this.service.overview(req.query, req.user))
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       this.logger.error('获取库存统计失败:', error)
       return ApiResponse.serverError(res, '获取库存统计失败', error)
     }
   }
 
-  async stats(_req, res) {
+  async stats(req, res) {
     try {
-      return ApiResponse.success(res, await this.service.stats(), '获取统计数据成功')
+      return ApiResponse.success(res, await this.service.stats(req.user), '获取统计数据成功')
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       this.logger.error('获取库存统计数据失败:', error)
       return ApiResponse.serverError(res, '获取统计数据失败', error)
     }

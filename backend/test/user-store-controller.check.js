@@ -1,5 +1,47 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const UserStoreRepository = require('../src/repositories/user-store.repository')
+
+test('替换门店在单事务提交，插入失败恢复旧绑定，清空也先锁定用户', async () => {
+  for (const fail of [false, true]) {
+    const events = []
+    let bindings = [1], before
+    const connection = {
+      async beginTransaction() { before = [...bindings]; events.push('begin') },
+      async execute(sql, params) {
+        if (/SELECT id FROM users/.test(sql)) { events.push('user-lock'); return [[{ id: 9 }]] }
+        if (/SELECT id FROM stores/.test(sql)) return [[{ id: 2 }]]
+        if (/DELETE FROM user_stores/.test(sql)) { bindings = []; return [{ affectedRows: 1 }] }
+        if (/UPDATE user_stores/.test(sql)) return [{ affectedRows: 1 }]
+        if (/INSERT INTO user_stores/.test(sql)) {
+          if (fail) throw new Error('insert-failed')
+          assert.deepEqual(params, [9, 2, 1, 7])
+          bindings = [2]
+          return [{ affectedRows: 1 }]
+        }
+        throw new Error(`未模拟的SQL: ${sql}`)
+      },
+      async commit() { events.push('commit') },
+      async rollback() { bindings = before; events.push('rollback') },
+      release() { events.push('release') }
+    }
+    const repository = new UserStoreRepository({ database: () => ({ getConnection: async () => connection }) })
+    const operation = repository.assignStoresToUser(9, [2, '2'], 7, 1, true)
+    if (fail) {
+      await assert.rejects(operation, /insert-failed/)
+      assert.deepEqual(bindings, [1])
+      assert.deepEqual(events, ['begin', 'user-lock', 'rollback', 'release'])
+    } else {
+      await operation
+      assert.deepEqual(bindings, [2])
+      assert.deepEqual(events, ['begin', 'user-lock', 'commit', 'release'])
+      events.length = 0
+      await repository.removeAllUserStores(9)
+      assert.deepEqual(bindings, [])
+      assert.deepEqual(events, ['begin', 'user-lock', 'commit', 'release'])
+    }
+  }
+})
 
 const createResponse = () => ({
   status(code) {
@@ -12,7 +54,7 @@ const createResponse = () => ({
   }
 })
 
-test('用户门店 controller 保留替换绑定顺序、主门店参数和变更审计', async () => {
+test('用户门店 controller 原子替换绑定、主门店参数和变更审计', async () => {
   const UserStoreController = require('../src/controllers/user-store.controller')
   const calls = []
   const auditEntries = []
@@ -28,8 +70,8 @@ test('用户门店 controller 保留替换绑定顺序、主门店参数和变�
         state = []
         return { affectedRows: 1 }
       },
-      async assignStoresToUser(userId, storeIds, assignedBy, isPrimary) {
-        calls.push(['assign', userId, storeIds, assignedBy, isPrimary])
+      async assignStoresToUser(userId, storeIds, assignedBy, isPrimary, replaceExisting) {
+        calls.push(['assign', userId, storeIds, assignedBy, isPrimary, replaceExisting])
         state = [{ store_id: 2, store_name: '新门店', is_primary: isPrimary }]
         return { success: true, message: '已关联' }
       },
@@ -54,7 +96,7 @@ test('用户门店 controller 保留替换绑定顺序、主门店参数和变�
   const req = { user: { id: 7 }, body: { user_id: 9, store_ids: [2], is_primary: true, replace_existing: true } }
   const assignResponse = createResponse()
   await controller.assignStores(req, assignResponse)
-  assert.deepEqual(calls.slice(0, 4), ['get', 'remove-all', ['assign', 9, [2], 7, 1], 'get'].slice(0, 4))
+  assert.deepEqual(calls, ['get', ['assign', 9, [2], 7, 1, true], 'get'])
   assert.equal(assignResponse.body.data.message, '已关联')
   assert.equal(auditEntries.length, 1)
   assert.equal(auditEntries[0][1], 'assign')

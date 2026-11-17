@@ -1,6 +1,7 @@
 const log = require('../utils/log')
 const AttendanceService = require('../services/attendance.service')
 const ApiResponse = require('../utils/response')
+const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const { parseInput } = require('../middleware/validation')
 const {
   getAttendanceAccessScope,
@@ -33,6 +34,10 @@ function selectAttendanceWriteFields(body = {}) {
  * 考勤控制器
  */
 class AttendanceController {
+  constructor({ permissionCheck = hasUnifiedPermission } = {}) {
+    this.permissionCheck = permissionCheck
+  }
+
   async getAttendanceScope(userId) {
     return getAttendanceAccessScope(userId)
   }
@@ -133,8 +138,19 @@ class AttendanceController {
           : parseInput({ id: req.body.employee_id }, { id: { type: 'id', required: true, label: '员工ID' } }).id)
         : userId
 
+      if (Number(targetEmployeeId) !== Number(userId) && !await this.permissionCheck(req.user, 'attendance_attendanceview:create')) {
+        return ApiResponse.forbidden(res, '替其他员工新增考勤需要团队考勤新增权限')
+      }
+      if (req.body.employee_id !== undefined && Number(req.body.employee_id) !== Number(targetEmployeeId)) {
+        return ApiResponse.forbidden(res, '无权为其他员工创建考勤')
+      }
+      if (req.body.status !== undefined && !['pending', 'approved', 'rejected'].includes(req.body.status)) return ApiResponse.badRequest(res, '考勤状态无效')
+      if (req.body.status && req.body.status !== 'pending' && !await this.permissionCheck(req.user, 'attendance:approve')) {
+        return ApiResponse.forbidden(res, '直接通过考勤需要考勤审批权限')
+      }
       const payload = {
         ...selectAttendanceWriteFields(req.body),
+        status: req.body.status || 'pending',
         employee_id: targetEmployeeId
       }
 
@@ -153,6 +169,18 @@ class AttendanceController {
     try {
       const { id } = req.params
       const payload = selectAttendanceWriteFields(req.body)
+      const scope = await this.getAttendanceScope(req.user.id)
+      const current = await AttendanceService.getAttendanceRecordById(id)
+      if (!current) return ApiResponse.notFound(res, '考勤记录不存在')
+      if (!canAccessScopedTarget(scope, req.user.id, current.employee_id) ||
+        (payload.employee_id !== undefined && !canAccessScopedTarget(scope, req.user.id, payload.employee_id))) {
+        return ApiResponse.forbidden(res, '无权修改其他员工的考勤')
+      }
+      if (payload.status !== undefined && !['pending', 'approved', 'rejected'].includes(payload.status)) return ApiResponse.badRequest(res, '考勤状态无效')
+      if (payload.status !== undefined && !await this.permissionCheck(req.user, 'attendance:approve')) {
+        const current = await AttendanceService.getAttendanceRecordById(id)
+        if (current && payload.status !== current.status) return ApiResponse.forbidden(res, '改变审批状态需要考勤审批权限')
+      }
       const result = await AttendanceService.updateAttendanceRecord(id, payload, req.user.id)
       ApiResponse.success(res, '更新考勤记录成功', result, 200)
     } catch (error) {
@@ -167,6 +195,10 @@ class AttendanceController {
   async deleteAttendanceRecord(req, res) {
     try {
       const { id } = req.params
+      const scope = await this.getAttendanceScope(req.user.id)
+      const current = await AttendanceService.getAttendanceRecordById(id)
+      if (!current) return ApiResponse.notFound(res, '考勤记录不存在')
+      if (!canAccessScopedTarget(scope, req.user.id, current.employee_id)) return ApiResponse.forbidden(res, '无权删除其他员工的考勤')
       await AttendanceService.deleteAttendanceRecord(id, req.user.id)
       ApiResponse.success(res, '删除考勤记录成功', null, 200)
     } catch (error) {
@@ -199,6 +231,10 @@ class AttendanceController {
       const { status, approval_note } = req.body
       const approverId = req.user.id
 
+      const scope = await this.getAttendanceScope(req.user.id)
+      const current = await AttendanceService.getAttendanceRecordById(id)
+      if (!current) return ApiResponse.notFound(res, '考勤记录不存在')
+      if (!canAccessScopedTarget(scope, req.user.id, current.employee_id)) return ApiResponse.forbidden(res, '无权审批其他员工的考勤')
       const result = await AttendanceService.approveAttendanceRecord(id, approverId, status, approval_note)
       ApiResponse.success(res, '审批考勤记录成功', result, 200)
     } catch (error) {

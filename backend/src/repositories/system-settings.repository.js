@@ -103,6 +103,30 @@ class SystemSettingsRepository extends BaseRepository {
     }
   }
 
+  /** 锁定同一个 JSON 配置键后更新，避免多名管理员操作不同条目时互相覆盖。 */
+  async mutateJsonSetting(settingKey, initialValue, mutate) {
+    return this.withConnection(async connection => {
+      await connection.beginTransaction()
+      try {
+        await connection.execute(`
+          INSERT INTO settings (key_name, value, type) VALUES (?, ?, 'json')
+          ON DUPLICATE KEY UPDATE key_name = VALUES(key_name)
+        `, [settingKey, JSON.stringify(initialValue)])
+        const [rows] = await connection.execute('SELECT value FROM settings WHERE key_name = ? FOR UPDATE', [settingKey])
+        if (!rows[0]) throw new Error('配置写入后未找到对应记录')
+        const raw = rows[0].value
+        const value = typeof raw === 'string' ? JSON.parse(raw) : raw
+        const updated = mutate(value)
+        await connection.execute("UPDATE settings SET value = ?, type = 'json', updated_at = CURRENT_TIMESTAMP WHERE key_name = ?", [JSON.stringify(updated), settingKey])
+        await connection.commit()
+        return updated
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
+  }
+
   /**
    * 删除配置
    */

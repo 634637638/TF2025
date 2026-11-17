@@ -1,3 +1,4 @@
+const { resolveStoreScope } = require('../utils/store-scope')
 const PhoneOptionRepository = require('../repositories/phone-option.repository')
 
 class PhoneOptionService {
@@ -5,7 +6,7 @@ class PhoneOptionService {
     this.repository = repository
   }
 
-  async getPhoneOptions() {
+  async getPhoneOptions(actor) {
     const {
       colors,
       memories,
@@ -18,7 +19,7 @@ class PhoneOptionService {
       purchaseNumbers,
       conditions,
       stores
-    } = await this.repository.getOptionRows()
+    } = await this.repository.getOptionRows(resolveStoreScope(actor))
 
     const newConditions = [
       { value: 1, label: '全新' },

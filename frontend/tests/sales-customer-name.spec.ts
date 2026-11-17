@@ -1,10 +1,17 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useSalesCustomers } from '@/views/sales/useSalesCustomers'
 import type { BatchSaleFormData, SalesCheckoutFormData } from '@/views/sales/types'
 
-const api = vi.hoisted(() => ({ put: vi.fn() }))
+const customerRights = reactive({ create: true, edit: true })
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({
+  canCreate: computed(() => customerRights.create), canEdit: computed(() => customerRights.edit),
+  requirePermission: (action: 'create' | 'edit') => customerRights[action]
+}) }))
+beforeEach(() => { customerRights.create = customerRights.edit = true })
+
+const api = vi.hoisted(() => ({ put: vi.fn(), post: vi.fn() }))
 const notification = vi.hoisted(() => ({ prompt: vi.fn(), warning: vi.fn(), error: vi.fn() }))
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: api }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => notification }))
@@ -47,6 +54,35 @@ function editor(batch: boolean) {
 afterEach(() => vi.resetAllMocks())
 
 describe.each([false, true])('销售姓名保存，批量模式=%s', batch => {
+  it('仅销售权限不能改名或创建客户', async () => {
+    const view = editor(batch)
+    customerRights.edit = customerRights.create = false
+    view.form.customer_name = '新姓名'
+    view.editing.value = false
+    if (batch) view.enableBatchCustomerNameEdit()
+    else view.enableCustomerNameEdit()
+    expect(view.editing.value).toBe(false)
+    await view.save()
+    view.doubleTap()
+    expect(notification.prompt).not.toHaveBeenCalled()
+    if (batch) await view.createNewBatchCustomer()
+    else await view.createNewCustomer()
+    expect(api.put).not.toHaveBeenCalled()
+    expect(api.post).not.toHaveBeenCalled()
+  })
+
+  it('等待iOS姓名确认期间撤权，不能修改草稿或提交', async () => {
+    const view = editor(batch)
+    let confirm!: (value: { value: string }) => void
+    notification.prompt.mockReturnValue(new Promise(resolve => { confirm = resolve }))
+    view.doubleTap()
+    customerRights.edit = false
+    confirm({ value: '新姓名' })
+    await flushPromises()
+    expect(view.form.customer_name).toBe('旧姓名')
+    expect(api.put).not.toHaveBeenCalled()
+  })
+
   it('保存失败保留草稿和编辑状态，重试成功后退出编辑', async () => {
     const view = editor(batch)
     view.form.customer_name = '新姓名'

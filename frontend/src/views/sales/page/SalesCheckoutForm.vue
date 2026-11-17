@@ -1,8 +1,9 @@
 <template>
   <div class="sale-form-section">
     <h4>销售信息</h4>
-    <form
+    <el-form
       class="sale-form tf-form-layout"
+      :disabled="disabled"
       @submit.prevent="emit('submit')"
     >
       <div class="tf-form-row">
@@ -15,7 +16,7 @@
             <el-input
               v-model="saleForm.customer_phone"
               placeholder="请输入用户手机号"
-              :clearable="!preorderDelivery"
+              :clearable="!preorderDelivery && (!selectedCustomer || customerPermissions.canEdit.value)"
               :readonly="selectedCustomer !== null || preorderDelivery"
               :class="{ locked: selectedCustomer !== null || preorderDelivery }"
               @input="emit('customer-search', $event)"
@@ -46,7 +47,7 @@
             :editing="customerNameEditing"
             :creating="customerCreating"
             :locked="preorderDelivery"
-            :clearable="!preorderDelivery"
+            :clearable="!preorderDelivery && (!selectedCustomer || customerPermissions.canEdit.value)"
             @unlock="emit('enable-name-edit', $event)"
             @touchend="emit('name-touch-end', $event)"
             @input="emit('name-input', $event)"
@@ -66,8 +67,8 @@
           <el-input
             v-model="saleForm.customer_apple_id"
             placeholder="客户Apple ID（可选）"
-            :clearable="!preorderDelivery"
-            :readonly="preorderDelivery"
+            :clearable="!preorderDelivery && (!selectedCustomer || customerPermissions.canEdit.value)"
+            :readonly="preorderDelivery || (!!selectedCustomer && !customerPermissions.canEdit.value)"
             :class="{ locked: preorderDelivery }"
             @input="emit('apple-id-input', $event)"
           />
@@ -232,57 +233,36 @@
         />
       </div>
 
-      <div
-        v-if="profit !== null && canViewPrice"
-        class="profit-calculator"
-      >
-        <h5>利润计算</h5>
-        <div class="profit-rows">
-          <div class="profit-row">
-            <span class="profit-label">进价:</span>
-            <span class="profit-value">¥{{ formatAmount(saleForm.purchase_cost || selectedPhone?.purchase_cost || 0) }}</span>
-          </div>
-          <div class="profit-row">
-            <span class="profit-label">销售价:</span>
-            <span class="profit-value">¥{{ formatAmount(saleForm.sale_price) }}</span>
-          </div>
-          <div
-            class="profit-row total"
-            :class="profitClass"
-          >
-            <span class="profit-label">销售利润:</span>
-            <span class="profit-value">¥{{ formatAmount(profit) }}</span>
-          </div>
-          <div
-            class="profit-row margin"
-            :class="profitClass"
-          >
-            <span class="profit-label">利润率:</span>
-            <span class="profit-value">{{ profitMargin }}%</span>
-          </div>
-        </div>
-      </div>
-    </form>
+      <SalesProfitSummary
+        v-if="profitLines.length && canViewPrice"
+        :lines="profitLines"
+      />
+    </el-form>
   </div>
 </template>
 
 <script setup lang="ts">
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { hasPaymentChannelOptions, requiresTransactionNumber } from '@/constants/paymentMethods'
-import { formatAmount } from '@/utils/format'
+import SalesProfitSummary from './SalesProfitSummary.vue'
+import type { CheckoutGoodsDraft } from '@/types/sales-checkout'
 import type { Operator, Phone, Store } from '@/types'
-import type { SalesCheckoutFormData, SalesCustomer } from '../types'
+import type { SalesCheckoutFormData, SalesCustomer, SalesProfitLine } from '../types'
 
 interface CustomerNameInputInstance {
   input?: HTMLInputElement
   $el?: HTMLElement
 }
 
+const customerPermissions = usePagePermissions('customers')
+
 const props = defineProps<{
+  disabled?: boolean
   form: SalesCheckoutFormData
   selectedCustomer: SalesCustomer | null
   preorderDelivery: boolean
@@ -298,6 +278,7 @@ const props = defineProps<{
   profit: string | null
   profitMargin: string
   profitClass: string
+  additionalGoods?: CheckoutGoodsDraft[]
   canViewField: (_fieldName: string) => boolean
   canViewPrice: boolean
   isCurrentUser: (_operator: Operator) => boolean
@@ -328,6 +309,23 @@ const updatePrice = (field: 'purchase_cost' | 'sale_price', value: number | null
   saleForm[field] = String(value ?? '')
   emit('calculate-profit')
 }
+const profitLines = computed<SalesProfitLine[]>(() => {
+  const lines: SalesProfitLine[] = []
+  const salePrice = Number(saleForm.sale_price)
+  if (props.selectedPhone && Number.isFinite(salePrice) && salePrice > 0) {
+    const rawCost = saleForm.purchase_cost === '' ? props.selectedPhone.purchase_cost : Number(saleForm.purchase_cost)
+    lines.push({ key: `phone:${props.selectedPhone.id}`, type: 'phone', name: [props.selectedPhone.brand, props.selectedPhone.model, props.selectedPhone.memory].filter(Boolean).join(' · ') || `设备 #${props.selectedPhone.id}`, quantity: 1,
+      purchase_cost: Number.isFinite(Number(rawCost)) ? Number(rawCost) : null, sale_price: salePrice })
+  }
+  for (const row of props.additionalGoods || []) {
+    if (!row.option) continue
+    const rawCost = row.option.purchase_cost
+    lines.push({ key: `goods:${row.key}`, type: 'goods', name: [row.option.name, row.option.product_model, ...row.serial_numbers].filter(Boolean).join(' · '), quantity: row.quantity,
+      purchase_cost: rawCost === null || rawCost === undefined || !Number.isFinite(Number(rawCost)) ? null : Number(rawCost),
+      sale_price: row.sale_type === 'gift' ? 0 : Number(row.unit_price || 0), sale_type: row.sale_type })
+  }
+  return lines
+})
 const customerNameInputRef = ref<CustomerNameInputInstance | null>(null)
 const customerNameInput = computed(() => customerNameInputRef.value?.input || null)
 const showCustomerSearch = computed({

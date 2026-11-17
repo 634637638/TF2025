@@ -5,10 +5,10 @@ import { canViewAccessoryField } from '@/components/accessory-field-permissions'
 
 /** 原采购单与当前仓库各自授权，查看核对不授予任何退供或退款动作。 */
 export const useAccessoryPurchaseReturnPermissions = () => {
-  const { canView } = usePagePermissions('supplier-payments')
+  const { canView, hasPermission } = usePagePermissions('supplier-payments')
   const { canView: canViewStock } = usePagePermissions('accessories')
   const purchaseVisible = (field: string) => fieldPermissions.isFieldVisible('payments_supplierphonepaymentsview', field)
-  const canViewReturnContext = computed(() => canView.value && canViewStock.value &&
+  const canViewReturnContext = computed(() => canView.value && (canViewStock.value || hasPermission('return-check')) &&
     ['purchase.quantity', 'payment.supplier_name', 'payment.store_name', 'payment.purchase_cost', 'payment.payment_status'].every(purchaseVisible) &&
     canViewAccessoryField('distribution') && canViewAccessoryField('total_quantity'))
   const canQuoteReturn = computed(() => canViewReturnContext.value &&

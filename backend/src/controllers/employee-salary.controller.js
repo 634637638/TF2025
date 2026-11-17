@@ -19,6 +19,7 @@ class EmployeeSalaryController {
       const result = await this.service.getSalaryList(this.getUserId(req))
       return ApiResponse.success(res, result)
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       this.logger.error('获取员工列表失败:', error)
       return ApiResponse.serverError(res, '获取员工列表失败', error)
     }
@@ -29,6 +30,7 @@ class EmployeeSalaryController {
       const employees = await this.service.getCurrentSalaries(this.getUserId(req), req.query.date)
       return ApiResponse.success(res, { employees })
     } catch (error) {
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       this.logger.error('获取员工当前底薪失败:', error)
       return ApiResponse.serverError(res, '获取员工当前底薪失败', error)
     }

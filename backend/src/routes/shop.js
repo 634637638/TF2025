@@ -19,59 +19,20 @@ const { getUploadSubdir } = require('../utils/upload-paths')
 const shopService = new ShopService()
 const shopManagementController = new ShopManagementController({ service: shopService })
 
-const H5_CONFIG_VIEW_PERMISSIONS = ['h5-config:view', 'h5-admin:view']
-const H5_CONFIG_EDIT_PERMISSIONS = ['h5-config:edit', 'h5-admin:edit']
-const H5_BANNER_VIEW_PERMISSIONS = ['h5-banners:view', 'h5-admin:view']
-const H5_BANNER_CREATE_PERMISSIONS = ['h5-banners:create', 'h5-admin:create']
-const H5_BANNER_EDIT_PERMISSIONS = ['h5-banners:edit', 'h5-admin:edit']
-const H5_BANNER_DELETE_PERMISSIONS = ['h5-banners:delete', 'h5-admin:delete']
-const H5_TEMPLATE_VIEW_PERMISSIONS = [
-  'h5-templates:view',
-  'h5-admin:view',
-  'inventory:view',
-  'query:view'
-]
-const H5_TEMPLATE_CREATE_PERMISSIONS = [
-  'h5-templates:create',
-  'h5-admin:create',
-  'inventory:create',
-  'inventory:edit'
-]
-const H5_TEMPLATE_EDIT_PERMISSIONS = [
-  'h5-templates:edit',
-  'h5-admin:edit',
-  'inventory:edit'
-]
-const H5_TEMPLATE_DELETE_PERMISSIONS = [
-  'h5-templates:delete',
-  'h5-admin:delete',
-  'inventory:delete',
-  'inventory:edit'
-]
-const H5_SOLD_PRODUCTS_VIEW_PERMISSIONS = [
-  'h5-sold-products:view',
-  'h5-admin:view',
-  'h5-templates:view',
-  'inventory:view',
-  'query:view'
-]
-const H5_SOLD_PRODUCTS_DELETE_PERMISSIONS = [
-  'h5-sold-products:delete',
-  'h5-admin:delete',
-  'h5-templates:delete',
-  'inventory:delete',
-  'inventory:edit'
-]
-const H5_ORDER_VIEW_PERMISSIONS = [
-  'h5-orders:view',
-  'h5-admin:view',
-  'sales:view'
-]
-const H5_ORDER_EDIT_PERMISSIONS = [
-  'h5-orders:edit',
-  'h5-admin:edit',
-  'sales:edit'
-]
+const H5_CONFIG_VIEW_PERMISSIONS = ['h5-config:view']
+const H5_CONFIG_EDIT_PERMISSIONS = ['h5-config:edit']
+const H5_BANNER_VIEW_PERMISSIONS = ['h5-banners:view']
+const H5_BANNER_CREATE_PERMISSIONS = ['h5-banners:create']
+const H5_BANNER_EDIT_PERMISSIONS = ['h5-banners:edit']
+const H5_BANNER_DELETE_PERMISSIONS = ['h5-banners:delete']
+const H5_TEMPLATE_VIEW_PERMISSIONS = ['h5-templates:view']
+const H5_TEMPLATE_CREATE_PERMISSIONS = ['h5-templates:create']
+const H5_TEMPLATE_EDIT_PERMISSIONS = ['h5-templates:edit']
+const H5_TEMPLATE_DELETE_PERMISSIONS = ['h5-templates:delete']
+const H5_SOLD_PRODUCTS_VIEW_PERMISSIONS = ['h5-sold-products:view']
+const H5_SOLD_PRODUCTS_DELETE_PERMISSIONS = ['h5-sold-products:delete']
+const H5_ORDER_VIEW_PERMISSIONS = ['h5-orders:view']
+const H5_ORDER_EDIT_PERMISSIONS = ['h5-orders:edit']
 const H5_ASSET_EDIT_PERMISSIONS = [
   ...new Set([
     ...H5_CONFIG_EDIT_PERMISSIONS,

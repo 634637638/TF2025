@@ -14,7 +14,7 @@ class SubsidyPhotosRepository {
 
   async getPhotosForUpdate(connection, recordId) {
     const [records] = await connection.execute(
-      'SELECT subsidy_photos FROM national_subsidies WHERE id = ? FOR UPDATE',
+      'SELECT store_id, subsidy_photos FROM national_subsidies WHERE id = ? FOR UPDATE',
       [recordId]
     )
     return records[0] || null
@@ -37,10 +37,18 @@ class SubsidyPhotosRepository {
 
   async getPhotos(recordId) {
     const [records] = await this.getDb().execute(
-      'SELECT subsidy_photos FROM national_subsidies WHERE id = ?',
+      'SELECT store_id, subsidy_photos FROM national_subsidies WHERE id = ?',
       [recordId]
     )
-    return records.length ? records[0].subsidy_photos : null
+    return records[0] || null
+  }
+
+  async findPhotoReferences(relativePath) {
+    const [records] = await this.getDb().execute(
+      'SELECT store_id, subsidy_photos FROM national_subsidies WHERE subsidy_photos LIKE ?',
+      [`%${relativePath}%`]
+    )
+    return records
   }
 
   async hasPhotoReference(relativePath) {
@@ -51,16 +59,16 @@ class SubsidyPhotosRepository {
     return references.length > 0
   }
 
-  async findRecordForDelete(recordId) {
-    const [records] = await this.getDb().execute(
-      'SELECT id, subsidy_photos FROM national_subsidies WHERE id = ?',
+  async findRecordForDelete(recordId, executor = this.getDb()) {
+    const [records] = await executor.execute(
+      'SELECT id, store_id, subsidy_photos FROM national_subsidies WHERE id = ? FOR UPDATE',
       [recordId]
     )
     return records[0] || null
   }
 
-  async deleteRecord(recordId) {
-    const [result] = await this.getDb().execute(
+  async deleteRecord(recordId, executor = this.getDb()) {
+    const [result] = await executor.execute(
       'DELETE FROM national_subsidies WHERE id = ?',
       [recordId]
     )

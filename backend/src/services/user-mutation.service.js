@@ -1,5 +1,8 @@
 'use strict'
 
+const { hasUnifiedPermission, invalidateAuthProfiles } = require('../middleware/unified-auth')
+const SalaryTemplateService = require('./salary-template.service')
+const UserRoleAssignmentService = require('./user-role-assignment.service')
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
 const UserMutationRepository = require('../repositories/user-mutation.repository')
@@ -42,11 +45,15 @@ class UserMutationService {
   constructor({
     database = getDatabase,
     passwordHasher = (password, rounds) => require('bcryptjs').hash(password, rounds),
-    repository = new UserMutationRepository()
+    repository = new UserMutationRepository(),
+    permissionCheck = hasUnifiedPermission,
+    roleAssignment
   } = {}) {
     this.database = database
     this.passwordHasher = passwordHasher
     this.repository = repository
+    this.permissionCheck = permissionCheck
+    this.roleAssignment = roleAssignment || new UserRoleAssignmentService({ permissionCheck })
   }
 
   async resolveRequestedRoleIds(connection, body) {
@@ -74,22 +81,32 @@ class UserMutationService {
       throw invalidRoleRequest('角色ID列表包含无效值')
     }
 
-    if (normalizedRoleIds.length > 0) {
-      const [roles] = await this.repository.findRolesByIds(connection, normalizedRoleIds)
-      if (roles.length !== normalizedRoleIds.length) throw invalidRoleRequest('部分角色不存在')
-    }
-
     return normalizedRoleIds
+  }
+
+  async assertRoleRequest(body, actor) {
+    if (['role_ids', 'role_id', 'role'].some(field => Object.hasOwn(body, field))) {
+      await this.roleAssignment.assertCanAssign(actor)
+    }
+  }
+
+  async replaceRoles(connection, userId, roleIds, user) {
+    const result = await this.roleAssignment.assignInTransaction(connection, { userId, roleIds, user })
+    if (result.status !== 'updated') throw invalidRoleRequest(result.status === 'not_found' ? '用户不存在' : '部分角色不存在')
+    return result
   }
 
   selectPublicUser(connection, filters) {
     return this.repository.selectPublicUser(connection, filters)
   }
 
-  async create(body) {
+  async create(body, actor, requestContext) {
     if (!body?.username || !body?.password) throw invalidRoleRequest('用户名和密码不能为空')
     body = parseUserInput(body, true)
+    await SalaryTemplateService.assertEmployeeTemplateWrite(body, actor, this.permissionCheck)
+    await this.assertRoleRequest(body, actor)
     const pool = this.database()
+    let assignment
     const userId = await withConnection(pool, async connection => {
       try {
         const {
@@ -123,7 +140,7 @@ class UserMutationService {
           salary_template_id || null
         ])
 
-        await this.repository.replaceUserRoles(connection, result.insertId, roleIds)
+        if (roleIds !== null) assignment = await this.replaceRoles(connection, result.insertId, roleIds, { id: result.insertId, username })
         await connection.commit()
         return result.insertId
 
@@ -132,13 +149,19 @@ class UserMutationService {
         throw error
       }
     })
+    invalidateAuthProfiles([userId])
+    if (assignment) await this.roleAssignment.afterCommit(userId, assignment, requestContext || { user: actor })
     return { user: await this.repository.selectPublicUser(pool, { id: userId }) }
   }
 
-  async update(id, body) {
+  async update(id, body, actor, requestContext) {
     const userId = parseInput({ id }, { id: { type: 'id', required: true } }).id
     body = parseUserInput(body)
+    await SalaryTemplateService.assertEmployeeTemplateWrite(body, actor, this.permissionCheck)
+    await this.assertRoleRequest(body, actor)
+    await this.roleAssignment.assertAccountAccess(userId, actor)
     const pool = this.database()
+    let assignment
     const result = await withConnection(pool, async connection => {
       try {
         await connection.beginTransaction()
@@ -211,7 +234,7 @@ class UserMutationService {
           await this.repository.update(connection, updateFields, updateValues)
         }
 
-        await this.repository.replaceUserRoles(connection, userId, roleIds)
+        if (roleIds !== null) assignment = await this.replaceRoles(connection, userId, roleIds)
         await connection.commit()
         return { id: userId }
 
@@ -221,6 +244,8 @@ class UserMutationService {
       }
     })
     if (result.notFound) return result
+    invalidateAuthProfiles([userId])
+    if (assignment) await this.roleAssignment.afterCommit(userId, assignment, requestContext || { user: actor })
     return { user: await this.repository.selectPublicUser(pool, { id: result.id }) }
   }
 }

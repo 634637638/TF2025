@@ -5,7 +5,11 @@
   ],
   "actionOrder": [
     "view",
+    "goods-view",
+    "goods-sell",
+    "goods-gift",
     "create",
+    "stock-in",
     "sell",
     "gift",
     "transfer",
@@ -15,11 +19,15 @@
     "wholesale",
     "proxy-transfer",
     "edit",
+    "edit-history",
     "delete",
     "match",
     "deliver",
     "cancel",
     "approve",
+    "pay",
+    "return-check",
+    "goods-warning",
     "arrival",
     "upload",
     "manage",
@@ -27,10 +35,53 @@
     "import",
     "sync"
   ],
+  "actionLabels": {
+    "view": "查看",
+    "goods-view": "商品查询",
+    "goods-sell": "商品销售",
+    "goods-gift": "商品赠送",
+    "create": "新增",
+    "stock-in": "商品入库",
+    "sell": "销售出库",
+    "gift": "赠送",
+    "transfer": "库存划拨",
+    "return-to-stock": "退库",
+    "exchange": "换货",
+    "film": "贴膜",
+    "wholesale": "同行调货",
+    "proxy-transfer": "供应商代划拨",
+    "edit": "编辑",
+    "edit-history": "历史合同更正",
+    "delete": "删除",
+    "match": "匹配",
+    "deliver": "交付",
+    "cancel": "取消",
+    "approve": "审批",
+    "pay": "工资发放",
+    "return-check": "退供核对",
+    "goods-warning": "商品预警",
+    "arrival": "到账",
+    "upload": "上传",
+    "manage": "管理",
+    "export": "导出",
+    "import": "导入",
+    "sync": "同步",
+    "menu_view": "菜单显示",
+    "all": "所有权限",
+    "reject": "拒绝"
+  },
   "actionDefinitions": {
     "view": "查看页面和数据",
+    "goods-view": "查询商品交易、详情及单据，不开放商品管理页面",
+    "goods-sell": "在综合查询办理商品收费销售",
+    "goods-gift": "在综合查询办理商品赠送出库",
     "create": "新增业务数据",
+    "stock-in": "采购商品入库",
+    "pay": "确认工资发放",
+    "return-check": "核对原采购及试算退供，不提交退供或退款",
+    "goods-warning": "查看授权门店商品库存预警摘要",
     "edit": "修改已有数据",
+    "edit-history": "更正非进行中租赁合同，仍须同时拥有租赁编辑权限",
     "delete": "删除或清理数据",
     "approve": "审批待处理业务",
     "arrival": "确认业务到账",
@@ -62,10 +113,24 @@
     "system/page/SimpleAdminView.vue"
   ],
   "embeddedViewPermissions": {
-    "permissions/PermissionsView.vue": ["module-management:view"],
-    "system/SystemView.vue": ["return-goods:view"],
-    "attendance/AttendanceView.vue": ["attendance:view", "my-attendance:view"],
-    "salary/SalaryView.vue": ["salary-templates:view", "salary-records:view", "my-salary:view"],
+    "permissions/PermissionsView.vue": [
+      "module-management:view"
+    ],
+    "system/SystemView.vue": [
+      "return-goods:view"
+    ],
+    "data-optimization/DataOptimizationView.vue": [
+      "data-import:view"
+    ],
+    "attendance/AttendanceView.vue": [
+      "attendance:view",
+      "my-attendance:view"
+    ],
+    "salary/SalaryView.vue": [
+      "salary-templates:view",
+      "salary-records:view",
+      "my-salary:view"
+    ],
     "H5-admin/H5-adminView.vue": [
       "h5-templates:view",
       "h5-sold-products:view",
@@ -79,53 +144,617 @@
     "h5_admin_home_sectionsview": "h5_admin_homesectionsview"
   },
   "modules": {
-    "dashboard_dashboardview": ["view"],
-    "preorders_preordersview": ["view", "create", "edit", "delete", "match", "deliver", "cancel"],
-    "reminders_reminderview": ["view", "create", "edit", "delete", "manage"],
-    "shared_sharedview": ["view", "create", "edit", "delete", "manage"],
-    "guide_guidemanagementview": ["view", "create", "edit", "delete", "upload"],
-    "suppliers_suppliersview": ["view", "create", "edit", "delete", "export"],
-    "payments_supplierphonepaymentsview": ["view", "create", "edit", "delete", "approve", "export"],
-    "system_systemview": ["view", "edit", "delete"],
-    "standards_standardsauditview": ["view"],
-    "system_returngoods": ["view", "edit", "delete"],
-    "system_gitmanagement": ["view", "create", "edit", "delete"],
-    "backup_backupview": ["view", "create", "edit", "delete"],
-    "data_optimization_dataoptimizationview": ["view", "create", "edit", "delete"],
-    "menu_menumanagementview": ["view", "create", "edit", "delete", "export", "import"],
-    "sales_salesview": ["view", "create", "sell", "wholesale", "proxy-transfer", "edit", "delete", "export"],
-    "models_modelsview": ["view", "create", "edit", "delete"],
-    "colors_colorsview": ["view", "create", "edit", "delete"],
-    "memories_memoriesview": ["view", "create", "edit", "delete"],
-    "brands_brandsview": ["view", "create", "edit", "delete"],
-    "stores_storesview": ["view", "create", "edit", "delete", "export"],
-    "employees_employeesview": ["view", "create", "edit", "delete", "export"],
-    "customers_customersview": ["view", "create", "edit", "delete", "manage", "export"],
-    "accessories_accessoriesview": ["view", "create", "gift", "transfer", "edit", "delete"],
-    "accessories_accessorycatalogview": ["view", "create", "edit"],
-    "inventory_inventoryview": ["view", "create", "sell", "edit", "delete", "export"],
-    "query_queryview": ["view", "create", "return-to-stock", "exchange", "film", "edit", "delete", "export"],
-    "permissions_permissionsview": ["view", "create", "edit", "delete"],
-    "permissions_modulemanagementview": ["view", "create", "edit", "delete"],
-    "analytics_analyticsview": ["view", "export"],
-    "attendance_attendanceview": ["view", "create", "edit", "delete", "approve"],
-    "attendance_myattendanceview": ["view", "create"],
-    "salary_salaryview": ["view"],
-    "salary_mysalaryview": ["view"],
-    "salary_salaryrecordsview": ["view", "create", "edit", "delete", "approve"],
-    "salary_salarytemplatesview": ["view", "create", "edit", "delete"],
-    "subsidy_subsidyview": ["view", "create", "edit", "delete", "approve", "arrival", "upload", "export"],
-    "rentals_rentalsview": ["view", "create", "edit"],
-    "repairs_repairsview": ["view", "create", "edit", "delete"],
-    "price_list_pricelistview": ["view", "create", "edit", "delete", "export", "import", "sync"],
-    "price_list_synclogview": ["view", "delete"],
-    "marketing_marketingmanagementview": ["view", "create", "edit", "delete"],
-    "h5_admin_h5_adminview": ["view"],
-    "h5_admin_templatesview": ["view", "create", "edit", "delete"],
-    "h5_admin_soldproductsview": ["view", "delete"],
-    "h5_admin_configview": ["view", "edit"],
-    "h5_admin_homesectionsview": ["view", "create", "edit", "delete"],
-    "h5_admin_bannersview": ["view", "create", "edit", "delete"],
-    "h5_admin_ordersview": ["view", "edit"]
+    "dashboard_dashboardview": [
+      "view",
+      "goods-warning"
+    ],
+    "preorders_preordersview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "match",
+      "deliver",
+      "cancel"
+    ],
+    "reminders_reminderview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "manage"
+    ],
+    "shared_sharedview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "manage"
+    ],
+    "guide_guidemanagementview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "upload"
+    ],
+    "suppliers_suppliersview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "export"
+    ],
+    "payments_supplierphonepaymentsview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "approve",
+      "return-check",
+      "export"
+    ],
+    "system_systemview": [
+      "view",
+      "edit",
+      "delete"
+    ],
+    "standards_standardsauditview": [
+      "view"
+    ],
+    "system_returngoods": [
+      "view",
+      "edit",
+      "delete"
+    ],
+    "system_gitmanagement": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "backup_backupview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "data_optimization_dataimporttab": [
+      "view",
+      "delete",
+      "upload",
+      "import"
+    ],
+    "data_optimization_dataoptimizationview": [
+      "view",
+      "edit",
+      "delete"
+    ],
+    "menu_menumanagementview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "export",
+      "import"
+    ],
+    "sales_salesview": [
+      "view",
+      "create",
+      "sell",
+      "wholesale",
+      "proxy-transfer",
+      "edit",
+      "delete",
+      "export"
+    ],
+    "models_modelsview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "colors_colorsview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "memories_memoriesview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "brands_brandsview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "stores_storesview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "export"
+    ],
+    "employees_employeesview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "export"
+    ],
+    "customers_customersview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "manage",
+      "export"
+    ],
+    "accessories_accessoriesview": [
+      "view",
+      "create",
+      "stock-in",
+      "sell",
+      "gift",
+      "transfer",
+      "edit",
+      "delete"
+    ],
+    "accessories_accessorycatalogview": [
+      "view",
+      "create",
+      "edit"
+    ],
+    "inventory_inventoryview": [
+      "view",
+      "create",
+      "sell",
+      "edit",
+      "delete",
+      "export"
+    ],
+    "query_queryview": [
+      "view",
+      "goods-view",
+      "goods-sell",
+      "goods-gift",
+      "create",
+      "return-to-stock",
+      "exchange",
+      "film",
+      "edit",
+      "delete",
+      "export"
+    ],
+    "permissions_permissionsview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "permissions_modulemanagementview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "analytics_analyticsview": [
+      "view",
+      "export"
+    ],
+    "attendance_attendanceview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "approve"
+    ],
+    "attendance_myattendanceview": [
+      "view",
+      "create"
+    ],
+    "salary_salaryview": [
+      "view"
+    ],
+    "salary_mysalaryview": [
+      "view"
+    ],
+    "salary_salaryrecordsview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "approve",
+      "pay"
+    ],
+    "salary_salarytemplatesview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "subsidy_subsidyview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "approve",
+      "arrival",
+      "upload",
+      "export"
+    ],
+    "rentals_rentalsview": [
+      "view",
+      "create",
+      "edit",
+      "edit-history"
+    ],
+    "repairs_repairsview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "price_list_pricelistview": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "export",
+      "import",
+      "sync"
+    ],
+    "price_list_synclogview": [
+      "view",
+      "delete"
+    ],
+    "marketing_marketingmanagementview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "h5_admin_h5_adminview": [
+      "view"
+    ],
+    "h5_admin_templatesview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "h5_admin_soldproductsview": [
+      "view",
+      "delete"
+    ],
+    "h5_admin_configview": [
+      "view",
+      "edit"
+    ],
+    "h5_admin_homesectionsview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "h5_admin_bannersview": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "h5_admin_ordersview": [
+      "view",
+      "edit"
+    ]
+  },
+  "moduleMetadata": {
+    "dashboard_dashboardview": {
+      "name": "仪表盘",
+      "description": "查看系统首页统计和关键经营指标",
+      "category": "system",
+      "icon": "fas fa-tachometer-alt"
+    },
+    "preorders_preordersview": {
+      "name": "新品预定",
+      "description": "管理预定单、匹配库存、交付和取消操作",
+      "category": "business",
+      "icon": "fas fa-clipboard-check"
+    },
+    "reminders_reminderview": {
+      "name": "待办提醒",
+      "description": "创建周期待办、分配员工并查看完成和忽略记录",
+      "category": "system",
+      "icon": "fas fa-bell"
+    },
+    "shared_sharedview": {
+      "name": "经验分享",
+      "description": "记录和共享问题经验、公共文档及多媒体附件",
+      "category": "system",
+      "icon": "fas fa-lightbulb"
+    },
+    "guide_guidemanagementview": {
+      "name": "导航管理",
+      "description": "维护公开导航站公告、分类、网址和文件访问权限",
+      "category": "system",
+      "icon": "fas fa-compass"
+    },
+    "suppliers_suppliersview": {
+      "name": "供应商管理",
+      "description": "维护供应商档案、排序和导出数据",
+      "category": "business",
+      "icon": "fas fa-truck-loading"
+    },
+    "payments_supplierphonepaymentsview": {
+      "name": "供应商打款",
+      "description": "创建、审核和导出供应商打款记录",
+      "category": "business",
+      "icon": "fas fa-file-invoice-dollar"
+    },
+    "system_systemview": {
+      "name": "系统设置",
+      "description": "维护系统参数、业务配置和基础设置",
+      "category": "system",
+      "icon": "fas fa-cogs"
+    },
+    "standards_standardsauditview": {
+      "name": "规范与审计",
+      "description": "查看统一规范、公共实现入口和审计命令",
+      "category": "system",
+      "icon": "fas fa-clipboard-check"
+    },
+    "system_returngoods": {
+      "name": "退库管理",
+      "description": "查看、编辑和删除退库记录",
+      "category": "system",
+      "icon": "fas fa-undo-alt"
+    },
+    "system_gitmanagement": {
+      "name": "Git管理",
+      "description": "查看仓库状态和执行代码备份操作",
+      "category": "system",
+      "icon": "fas fa-code-branch"
+    },
+    "backup_backupview": {
+      "name": "备份管理",
+      "description": "查看、创建、下载和清理系统备份",
+      "category": "system",
+      "icon": "fas fa-database"
+    },
+    "data_optimization_dataoptimizationview": {
+      "name": "数据优化",
+      "description": "执行数据检查、清理和修复处理",
+      "category": "system",
+      "icon": "fas fa-tools"
+    },
+    "menu_menumanagementview": {
+      "name": "菜单管理",
+      "description": "维护菜单结构并支持导入导出",
+      "category": "system",
+      "icon": "fas fa-bars"
+    },
+    "sales_salesview": {
+      "name": "销售管理",
+      "description": "处理销售开单、记录维护、删除及导出操作",
+      "category": "business",
+      "icon": "fas fa-shopping-cart"
+    },
+    "models_modelsview": {
+      "name": "型号管理",
+      "description": "维护型号信息和排序配置",
+      "category": "business",
+      "icon": "fas fa-mobile-alt"
+    },
+    "colors_colorsview": {
+      "name": "颜色管理",
+      "description": "维护颜色字典和排序配置",
+      "category": "business",
+      "icon": "fas fa-palette"
+    },
+    "memories_memoriesview": {
+      "name": "内存管理",
+      "description": "维护内存规格和排序配置",
+      "category": "business",
+      "icon": "fas fa-memory"
+    },
+    "brands_brandsview": {
+      "name": "品牌管理",
+      "description": "维护品牌信息和排序配置",
+      "category": "business",
+      "icon": "fas fa-tags"
+    },
+    "stores_storesview": {
+      "name": "门店管理",
+      "description": "维护门店资料、排序配置并支持导出",
+      "category": "business",
+      "icon": "fas fa-store"
+    },
+    "employees_employeesview": {
+      "name": "员工管理",
+      "description": "维护员工档案、状态并支持导出",
+      "category": "business",
+      "icon": "fas fa-user-tie"
+    },
+    "data_optimization_dataimporttab": {
+      "name": "数据导入",
+      "description": "独立控制导入历史、上传分析、执行导入及删除历史",
+      "category": "system",
+      "icon": "fas fa-file-import"
+    },
+    "customers_customersview": {
+      "name": "客户管理",
+      "description": "维护客户资料、导出名单和管理会员等级",
+      "category": "business",
+      "icon": "fas fa-users"
+    },
+    "accessories_accessoriesview": {
+      "name": "配件管理",
+      "description": "维护配件库存和上下架记录",
+      "category": "business",
+      "icon": "fas fa-headphones"
+    },
+    "accessories_accessorycatalogview": {
+      "name": "配件设置",
+      "route_path": "/accessories/catalog",
+      "description": "维护配件商品类型、计量单位和总仓设置",
+      "category": "business",
+      "icon": "fas fa-sliders-h"
+    },
+    "inventory_inventoryview": {
+      "name": "库存管理",
+      "description": "维护库存状态并支持导出列表",
+      "category": "business",
+      "icon": "fas fa-warehouse"
+    },
+    "query_queryview": {
+      "name": "综合查询",
+      "description": "执行综合检索、批量处理和导出数据",
+      "category": "business",
+      "icon": "fas fa-search"
+    },
+    "permissions_permissionsview": {
+      "name": "权限管理",
+      "description": "维护角色、用户和页面权限配置",
+      "category": "system",
+      "icon": "fas fa-shield-alt"
+    },
+    "permissions_modulemanagementview": {
+      "name": "模块管理",
+      "description": "维护系统模块注册、状态和关联关系",
+      "category": "system",
+      "icon": "fas fa-layer-group"
+    },
+    "analytics_analyticsview": {
+      "name": "数据分析",
+      "description": "查看经营分析报表并导出统计数据",
+      "category": "business",
+      "icon": "fas fa-chart-line"
+    },
+    "attendance_attendanceview": {
+      "name": "考勤管理",
+      "description": "查看、审批和维护全员考勤记录",
+      "category": "business",
+      "icon": "fas fa-calendar-check"
+    },
+    "attendance_myattendanceview": {
+      "name": "我的考勤",
+      "description": "查看个人考勤，并提交自己的请假或加班申请",
+      "category": "business",
+      "icon": "fas fa-user-clock"
+    },
+    "salary_salaryview": {
+      "name": "工资管理",
+      "description": "进入工资管理页面；各业务 TAB 与动作分别授权",
+      "category": "business",
+      "icon": "fas fa-money-bill-wave"
+    },
+    "salary_mysalaryview": {
+      "name": "我的工资",
+      "description": "仅查看个人已发放工资记录",
+      "category": "business",
+      "icon": "fas fa-wallet"
+    },
+    "salary_salaryrecordsview": {
+      "name": "工资计算",
+      "description": "维护工资记录和发放结果",
+      "category": "business",
+      "icon": "fas fa-receipt"
+    },
+    "salary_salarytemplatesview": {
+      "name": "工资模板",
+      "description": "维护工资模板、提成和考勤费率",
+      "category": "business",
+      "icon": "fas fa-file-invoice-dollar"
+    },
+    "subsidy_subsidyview": {
+      "name": "国补管理",
+      "description": "创建、审批和维护国补申请记录",
+      "category": "business",
+      "icon": "fas fa-hand-holding-usd"
+    },
+    "rentals_rentalsview": {
+      "name": "租赁管理",
+      "description": "维护租赁订单和归还状态",
+      "category": "business",
+      "icon": "fas fa-key"
+    },
+    "repairs_repairsview": {
+      "name": "维修管理",
+      "description": "维护维修工单和状态流转",
+      "category": "business",
+      "icon": "fas fa-screwdriver-wrench"
+    },
+    "price_list_pricelistview": {
+      "name": "价目表",
+      "description": "维护报价配置、同步任务和历史记录",
+      "category": "business",
+      "icon": "fas fa-list-ol"
+    },
+    "price_list_synclogview": {
+      "name": "同步日志",
+      "description": "查看和清理价目表采集同步日志",
+      "category": "business",
+      "icon": "fas fa-clock-rotate-left"
+    },
+    "marketing_marketingmanagementview": {
+      "name": "营销管理",
+      "description": "维护营销文案词库和自动应景配置",
+      "category": "business",
+      "icon": "fas fa-bullhorn"
+    },
+    "h5_admin_h5_adminview": {
+      "name": "H5商城管理",
+      "description": "维护 H5 商城模板、配置和运营内容",
+      "category": "business",
+      "icon": "fas fa-mobile-screen-button"
+    },
+    "h5_admin_templatesview": {
+      "name": "商城模板",
+      "description": "维护 H5 商城母模板、子模板、媒体和排序",
+      "category": "business",
+      "icon": "fas fa-box-open"
+    },
+    "h5_admin_soldproductsview": {
+      "name": "已售商品",
+      "description": "查看已售商品图片并清理无效图片素材",
+      "category": "business",
+      "icon": "fas fa-check-circle"
+    },
+    "h5_admin_configview": {
+      "name": "商城配置",
+      "description": "维护店铺基础信息、收款码、地图和功能开关",
+      "category": "business",
+      "icon": "fas fa-sliders-h"
+    },
+    "h5_admin_homesectionsview": {
+      "name": "首页推荐",
+      "description": "维护首页推荐区域、推荐商品和排序配置",
+      "category": "business",
+      "icon": "fas fa-house"
+    },
+    "h5_admin_bannersview": {
+      "name": "轮播图管理",
+      "description": "维护轮播图素材、排序、状态和跳转配置",
+      "category": "business",
+      "icon": "fas fa-images"
+    },
+    "h5_admin_ordersview": {
+      "name": "商城订单",
+      "description": "查看 H5 商城订单并处理审核、发货、完成等操作",
+      "category": "business",
+      "icon": "fas fa-bag-shopping"
+    }
+  },
+  "actionAliases": {
+    "创建": "create",
+    "修改": "edit",
+    "read": "view",
+    "add": "create",
+    "update": "edit",
+    "remove": "delete"
   }
 }

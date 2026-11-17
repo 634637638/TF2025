@@ -64,11 +64,11 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  width: 100% !important;
+  width: var(--tf-form-inline-label-width, 100%) !important;
   max-width: none !important;
   height: auto !important;
   line-height: 1.45;
-  padding: 0 0 6px !important;
+  padding: var(--tf-form-inline-label-padding, 0 0 calc((var(--tf-space-1) + var(--tf-space-2)) / 2)) !important;
   margin: 0 !important;
   font-size: var(--tf-font-label) !important;
   text-align: left !important;
@@ -127,7 +127,7 @@
 // 响应式对话框宽度调整
 @media (max-width: 479px) {
   .mobile-dialog-sheet-panel :deep(.el-form-item__label) {
-    padding-bottom: 5px !important;
+    padding-bottom: var(--tf-form-inline-label-padding, calc(var(--tf-space-1) * 1.25)) !important;
     font-size: var(--tf-font-label) !important;
   }
 }

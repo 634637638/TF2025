@@ -417,6 +417,27 @@ body .mobile-dialog-sheet-close svg {
   }
 }
 
+.tf-record-details--inline {
+  gap: var(--tf-space-2);
+
+  .tf-record-details__field {
+    display: flex;
+    align-items: baseline;
+    gap: var(--tf-space-1);
+  }
+
+  dt {
+    flex-shrink: 0;
+    margin: 0;
+    font-size: var(--tf-font-caption);
+  }
+
+  dd {
+    min-width: 0;
+    font-size: var(--tf-font-table-body);
+  }
+}
+
 .tf-dialog-form {
   --tf-dialog-form-current-label-width: var(--tf-dialog-form-label-width);
 }
@@ -452,7 +473,7 @@ body .mobile-dialog-sheet-close svg {
 .tf-dialog-form--stacked .el-form-item__label {
   width: auto !important;
   height: auto;
-  padding: 0 0 6px !important;
+  padding: var(--tf-form-inline-label-padding, 0 0 calc((var(--tf-space-1) + var(--tf-space-2)) / 2)) !important;
   line-height: 20px;
 }
 
@@ -471,6 +492,29 @@ body .mobile-dialog-sheet-close svg {
   min-width: 0;
 }
 
+/* 明确要求标签与短控件同行时按需启用；不改变表单默认置顶布局。 */
+.tf-form-layout .el-form-item.el-form-item--label-top.tf-form-field--inline {
+  --tf-form-inline-label-width: auto;
+  --tf-form-grid-label-width: auto;
+  --tf-form-grid-label-padding: 0;
+  --tf-form-inline-label-padding: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  column-gap: var(--tf-space-2);
+
+  > .el-form-item__label {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  > .el-form-item__content {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+}
+
 .tf-form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -483,6 +527,30 @@ body .mobile-dialog-sheet-close svg {
 
 .tf-form-row > :is(.el-form-item, .form-group):only-child {
   grid-column: 1 / -1;
+}
+
+/* 按组件结构覆盖 Element Plus 各尺寸档位，不依赖强制优先级或样式加载顺序。 */
+.el-descriptions.tf-record-descriptions--compact .el-descriptions__body .el-descriptions__table .el-descriptions__cell {
+  font-size: var(--tf-font-table-body);
+  line-height: var(--tf-line-height-body);
+  overflow-wrap: anywhere;
+}
+
+.el-descriptions.tf-record-descriptions--compact .el-descriptions__body .el-descriptions__table.is-bordered .el-descriptions__cell {
+  padding: var(--tf-space-1) var(--tf-space-2);
+}
+
+.tf-record-descriptions--compact .el-descriptions__label:empty {
+  display: none;
+}
+
+.el-descriptions.tf-record-descriptions--compact .el-descriptions__body .el-descriptions__table:not(.is-bordered) .el-descriptions__cell {
+  padding: var(--tf-space-1) 0;
+}
+
+.tf-record-descriptions--compact .el-descriptions__label:not(.is-bordered-label) {
+  margin-right: var(--tf-space-1);
+  white-space: nowrap;
 }
 
 @media (max-width: 767px) {
@@ -657,7 +725,7 @@ body .mobile-dialog-sheet-close svg {
   }
 
   .tf-dialog-form--stacked .el-form-item__label {
-    padding-bottom: 4px !important;
+    padding-bottom: var(--tf-form-inline-label-padding, var(--tf-space-1)) !important;
   }
 }
 

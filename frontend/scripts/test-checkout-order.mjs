@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 隔离整单详情、客户商品历史、销售凭证、销售整页、快速出库、结算组件及手机/商品售后；仅内存样本，所有业务网络访问拒绝。
+// 隔离整单详情、客户商品历史、手机查询、销售凭证、销售整页、快速出库、结算组件及手机/商品售后；仅内存样本，所有业务网络访问拒绝。
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
@@ -9,21 +9,33 @@ import { createServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { salesCheckoutEntry, salesPageEntry, quickSaleEntry, createSalesCheckoutMocks, verifySalesCheckout, verifySalesPage, verifyQuickSale } from './lib/sales-checkout-browser-fixture.mjs'
 import { phoneReturnEntry, verifyPhoneReturn, goodsExchangeEntry, verifyGoodsExchange } from './lib/sales-aftersale-browser-fixture.mjs'
-import { queryGoodsEntry, verifyQueryGoods } from './lib/query-goods-browser-fixture.mjs'
+import { queryGoodsEntry, verifyQueryGoods, verifyQueryGoodsSale, verifyQueryPhone } from './lib/query-goods-browser-fixture.mjs'
 import { verifyCustomerGoodsHistory, verifyCustomerFilmHistory } from './lib/customer-record-browser-fixture.mjs'
+import { filmServiceEntry, verifyFilmService } from './lib/film-service-browser-fixture.mjs'
+import { purchaseReturnEntry, verifyPurchaseReturn } from './lib/accessory-purchase-return-browser-fixture.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const requireBackend = createRequire(resolve(root, '../backend/package.json'))
 const { default: puppeteer } = requireBackend('puppeteer')
 const temporary = await mkdtemp(join(tmpdir(), 'tf-checkout-order-'))
 const screenshots = process.env.CHECKOUT_SCREENSHOT_DIR ? resolve(process.env.CHECKOUT_SCREENSHOT_DIR) : null
+// 默认仍执行完整矩阵；布局修复可明确筛选视口/场景复验。
+const viewportArgument = process.argv.find(value => value.startsWith('--viewports='))?.split('=')[1]
+const viewportWidths = viewportArgument ? viewportArgument.split(',').map(Number) : [360, 390, 430, 768, 1440]
+assert.ok(viewportWidths.length > 0 && viewportWidths.length <= 10 && viewportWidths.every(width => Number.isSafeInteger(width) && width >= 320 && width <= 3840), '视口参数无效')
+const scenarioFilter = process.argv.find(value => value.startsWith('--scenario='))?.split('=')[1]
 const salesOnly = process.argv.includes('--sales-only')
 const salesPage = process.argv.includes('--sales-page-only')
 const quickSale = process.argv.includes('--quick-sale-only')
 const phoneReturn = process.argv.includes('--phone-return-only')
 const goodsExchange = process.argv.includes('--goods-exchange-only')
-const goodsPage = process.argv.includes('--goods-page-only')
-const salesMode = salesOnly || salesPage || quickSale || phoneReturn || goodsExchange || goodsPage
+const goodsSaleOnly = process.argv.includes('--goods-sale-only')
+const phoneQueryOnly = process.argv.includes('--phone-query-only')
+const goodsPage = process.argv.includes('--goods-page-only') || goodsSaleOnly || phoneQueryOnly
+const filmService = process.argv.includes('--film-service-only')
+const purchaseReturn = process.argv.includes('--purchase-return-only')
+const phoneDetailOnly = process.argv.includes('--phone-detail-only')
+const salesMode = purchaseReturn || salesOnly || salesPage || quickSale || phoneReturn || goodsExchange || goodsPage || filmService
 const entry = `
 import {createApp,h,ref,reactive} from 'vue';
 import ElementPlus from 'element-plus';
@@ -46,24 +58,32 @@ window.requests=[];window.fail=false;
 const item={id:201,item_type:'accessory',sale_no:'GOODS-ORIGINAL-LONG-000000001',linked_phone_sale_no:'PHONE-ORIGINAL-00000001',sale_type:'sale',
 name:'原单通用充电器长名称完整显示',brand_name:'配件品牌',product_model:'MWVW3CH',color_name:'白色',memory:null,imei:null,
 serial_numbers:['000SN1234567890'.repeat(4),'000SN0987654321'.repeat(4)],unit:'个',quantity:2,
-unit_price:10,gross_amount:20,total_amount:15,points_used:500,deduction_amount:5,points_awarded:0};
+unit_price:10,gross_amount:20,total_amount:15,points_used:500,deduction_amount:5,points_awarded:0,
+gift_return_unit_price:null,gift_return_total:null,gift_agreement_state:null};
 window.data={id:10,order_no:'SO-ORIGINAL-LONG-000000001',customer_name:'原客户',customer_phone:'13900000001',store_name:'一店',operator_name:'原销售员',
 sale_time:'2026-11-14 10:00:00',remarks:'整批公共备注'.repeat(20),total_amount:120,final_amount:115,paid_amount:115,deduction_amount:5,points_used:500,points_awarded:10,
 items:[{...item,id:101,item_type:'phone',sale_no:'PHONE-ORIGINAL-00000001',linked_phone_sale_no:null,name:'原手机型号',product_model:null,
 serial_numbers:['000PHONE'],imei:'012345678901234',memory:'128G',unit:'台',quantity:1,unit_price:100,gross_amount:100,total_amount:100,points_used:0,deduction_amount:0,points_awarded:10},
-item,{...item,id:202,name:'原赠膜',sale_type:'gift',serial_numbers:[],quantity:1,unit_price:0,gross_amount:0,total_amount:0,points_used:0,deduction_amount:0}]};
+item,{...item,id:202,name:'原赠膜',sale_type:'gift',serial_numbers:[],quantity:1,unit_price:0,gross_amount:0,total_amount:0,points_used:0,deduction_amount:0,
+gift_return_unit_price:12.34,gift_return_total:12.34,gift_agreement_state:'recorded'}]};
 const {default:Order}=await import('/src/components/query/CheckoutOrderDialog.vue');
 const {default:History}=await import('/src/views/customers/page/CustomerGoodsHistory.vue');
 const {default:Film}=await import('/src/components/query/FilmServiceDialog.vue');
 const {default:Receipt}=await import('/src/components/query/SalesReceipt.vue');
+const {default:PhoneDetail}=await import('/src/components/query/QueryDetailDialog.vue');
+const phoneDetailMode=location.pathname==='/phone-detail';
+window.phoneDetail=reactive({基本信息:{phone_id:11,brand:'手机品牌',model:'原手机型号',is_new:1,status:'已售',status_code:'sold'},
+客户信息:{},供应商信息:{},店铺信息:{},价格信息:{},时间信息:{},操作员信息:{},销售信息:{sale_id:81,has_checkout_order:false}});
 const historyMode=location.pathname==='/history';
 const filmMode=location.pathname==='/film';
 const receiptMode=location.pathname==='/receipt';
 window.receipt=reactive({number:'RECEIPT-1',status:'sold',items:[{phone_id:11,sale_id:81,brand:'苹果',model:'手机甲',color:'黑色',memory:'128G',
 imei:'012345678901234',serialNumber:'',salePrice:100.01,isNew:1}]});
 window.receiptGoods=[{id:51,name:'原单通用充电器长名称完整显示',brand_name:'配件品牌',product_model:'MWVW3CH',color_name:'白色',unit:'个',quantity:2,
-unit_price:20,total_price:35.02,sale_type:'sale',points_used:498,deduction_amount:4.98,serial_numbers:item.serial_numbers},
-{id:52,name:'原赠膜',brand_name:'膜品牌',product_model:'通用',color_name:'透明',unit:'张',quantity:1,unit_price:0,total_price:0,sale_type:'gift',points_used:0,deduction_amount:0,serial_numbers:[]}];
+unit_price:20,total_price:35.02,sale_type:'sale',points_used:498,deduction_amount:4.98,serial_numbers:item.serial_numbers,
+gift_return_unit_price:null,gift_return_total:null,gift_agreement_state:null},
+{id:52,name:'原赠膜',brand_name:'膜品牌',product_model:'通用',color_name:'透明',unit:'张',quantity:1,unit_price:0,total_price:0,sale_type:'gift',points_used:0,deduction_amount:0,serial_numbers:[],
+gift_return_unit_price:12.34,gift_return_total:12.34,gift_agreement_state:'recorded'}];
 window.goodsRows=Array.from({length:11},(_,index)=>({id:51+index,sale_no:'AS-LONG-0000000000000000'+index,order_no:'SO1',linked_phone_invoice:'PHONE1',
 sale_type:index%2?'gift':'sale',store_name:'原销售门店',name:index===10?'末页商品':'客户原商品长名称完整显示'+index,category:'充电头',brand_name:'原品牌',product_model:'MWVW3CH',color_name:'白',unit:'个',
 quantity:2,returned_quantity:2,remaining_quantity:0,unit_price:index%2?0:20,total_price:index%2?0:35,points_awarded:0,points_used:index%2?0:500,deduction_amount:index%2?0:5,
@@ -71,11 +91,11 @@ operator_name:'原销售员',sale_time:'2026-11-14 10:00:00',remarks:'原备注'
 window.filmRows=Array.from({length:21},(_,index)=>({id:index+1,order_id:index+1,order_no:'FILM-LONG-00000000'+index,quantity:2,
 store_id:2,store_name:'跨店服务门店长名称完整显示',operator_id:7,operator_name:'办理员',business_time:'2026-11-14 09:00:00',created_at:'2026-11-14 09:01:00',
 items:[{name:'跨店贴膜记录'+index,sale_type:'gift',quantity:2,total_amount:0}]}));
-window.mockRead=(url,config)=>{if(url.endsWith('/film-services')){const {page,page_size:size}=config.params;return {customer_id:9,eligible_for_free:true,service_count:21,film_quantity:42,
-data:window.filmRows.slice((page-1)*size,page*size),pagination:{page,page_size:size,total:21,total_pages:2,has_next:page<2,has_prev:page>1}}}
+window.mockRead=(url,config)=>{if(url.endsWith('/film-services')){const {page,page_size:size}=config.params;return {customer_id:9,eligible_for_free:false,service_count:21,free_count:21,paid_count:0,film_quantity:42,device_service_count:null,device_film_quantity:null,
+data:window.filmRows.slice((page-1)*size,page*size),pagination:{page,page_size:size,total:21,total_pages:Math.ceil(21/size),has_next:page*size<21,has_prev:page>1}}}
 if(url.endsWith('/accessories'))return structuredClone(url.includes('/82/')?[{...window.receiptGoods[1],id:53,name:'手机乙赠品'}]:window.receiptGoods);if(url.endsWith('/goods')){const {page,page_size:size}=config.params;return {data:window.goodsRows.slice((page-1)*size,page*size),pagination:{page,page_size:size,total:11,total_pages:Math.ceil(11/size),has_next:page<Math.ceil(11/size),has_prev:page>1}}}return structuredClone(window.data)};
 applyDeviceRootClass();const open=ref(true);window.reopen=()=>{open.value=true};
-const app=createApp({render:()=>filmMode?h(Film,{modelValue:open.value,'onUpdate:modelValue':value=>open.value=value,customer:{id:9,name:'原客户',phone:'13900000001'}}):receiptMode?h(Receipt,{visible:open.value,items:window.receipt.items,status:window.receipt.status,receiptNumber:window.receipt.number,
+const app=createApp({render:()=>phoneDetailMode?h(PhoneDetail,{modelValue:open.value,'onUpdate:modelValue':value=>open.value=value,detailItem:window.phoneDetail,canEdit:false,canDelete:false,canReturnToStock:false}):filmMode?h(Film,{modelValue:open.value,'onUpdate:modelValue':value=>open.value=value,customer:{id:9,name:'原客户',phone:'13900000001'}}):receiptMode?h(Receipt,{visible:open.value,items:window.receipt.items,status:window.receipt.status,receiptNumber:window.receipt.number,
 customerName:'原客户',customerPhone:'13900000001',storeName:'原销售店',salesOperator:'原销售员',saleDate:'2026-11-14 10:00:00',onClose:()=>open.value=false}):historyMode?h(MobileDialog,{modelValue:true,title:'客户详情',dialogClass:'crud-dialog-lg',showDefaultFooter:false},()=>h(History,{customerId:8,active:true})):
 h(Order,{modelValue:open.value,'onUpdate:modelValue':v=>open.value=v,saleId:51,source:'goods'})});
 app.use(createPinia());app.use(ElementPlus);app.component('MobileDialog',MobileDialog);app.component('RecordDescriptions',RecordDescriptions);app.component('RecordDetailDialog',RecordDetailDialog);
@@ -85,11 +105,16 @@ app.directive('tf-loading',vTFLoading);app.directive('table-double-tap',vTableDo
 `
 const mocks = new Map([
   [resolve(root, 'src/utils/unified-api.ts'), 'export const unifiedApi={get:async(url,config)=>{window.requests.push(url);await new Promise(r=>setTimeout(r,30));if(window.fail)throw Error(\'隔离读取失败\');return {success:true,data:window.mockRead(url,config)}}}'],
-  [resolve(root, 'src/composables/usePagePermissions.ts'), 'import {computed} from \'vue\';export const usePagePermissions=(module)=>({canView:computed(()=>window.access[module===\'accessories\'?\'goods\':module]),canCreate:computed(()=>window.access.create),hasPermission:action=>window.access[action]})'],
+  [resolve(root, 'src/composables/usePagePermissions.ts'), 'import {computed} from \'vue\';export const usePagePermissions=(module)=>({canView:computed(()=>window.access[module===\'accessories\'?\'goods\':module]),canCreate:computed(()=>window.access.create),hasPermission:action=>action===\'goods-view\'?window.access.goods:window.access[action]})'],
   [resolve(root, 'src/composables/useFieldPermissions.ts'), 'export const fieldPermissions={isFieldVisible:(module,field)=>!window.access[module===\'query_queryview\'?\'phoneHidden\':\'goodsHidden\'].includes(field),getHiddenFields:module=>window.access[module===\'query_queryview\'?\'phoneHidden\':\'goodsHidden\']}'],
   [resolve(root, 'src/stores/siteSettings.ts'), 'export const useSiteSettingsStore=()=>({settings:{siteName:\'隔离凭证\'}})']
 ])
 const salesMocks = createSalesCheckoutMocks(root)
+if (purchaseReturn) salesMocks.set(resolve(root, 'src/composables/useFieldPermissions.ts'), `
+  import {computed} from 'vue';
+  export const fieldPermissions={permissions:computed(()=>window.fixture.hidden),
+    isFieldVisible:(_module,field)=>!window.fixture.hidden.includes(field)};
+`)
 
 const clickButton = async (page, label) => {
   const button = await page.waitForSelector(`button ::-p-text(${label})`, { visible: true })
@@ -117,7 +142,7 @@ const readPrintedReceipt = async page => {
 }
 
 const verifyReceipt = async (page, temporary, errors) => {
-  const expected = ['原单通用充电器长名称完整显示', '原赠膜', '购买', '赠品', '498积分', '实收 ¥35.02', '3件配件', '135.03', '000SN1234567890'.repeat(4)]
+  const expected = ['原单通用充电器长名称完整显示', '原赠膜', '购买', '赠品', '原单约定 ¥12.34/件，合计 ¥12.34', '实际扣款以售后核对为准', '498积分', '实收 ¥35.02', '3件配件', '135.03', '000SN1234567890'.repeat(4)]
   await page.waitForFunction(() => {
     // 先完成真实主题过渡，再比较导出前后的颜色，避免把过渡中间值当作最终主题。
     getComputedStyle(document.querySelector('.table-number-badge')).backgroundColor
@@ -221,21 +246,24 @@ let server, browser
 try {
   if (screenshots) await mkdir(screenshots, { recursive: true })
   server = await createServer({ configFile: false, envFile: false, root, cacheDir: join(temporary, 'vite-cache'), logLevel: 'error',
-    optimizeDeps: { noDiscovery: true, include: ['vue', 'pinia', 'element-plus', 'dayjs', 'dayjs/plugin/customParseFormat', 'dayjs/plugin/timezone', 'dayjs/plugin/utc', 'dayjs/plugin/relativeTime', 'dayjs/locale/zh-cn'] },
-    resolve: { alias: { '@': resolve(root, 'src') } }, server: { host: '127.0.0.1', port: 0 },
+    optimizeDeps: { noDiscovery: true, include: ['vue', 'pinia', 'element-plus', 'lodash.debounce', 'lodash.throttle', 'aos', 'vuedraggable', 'dayjs', 'dayjs/plugin/customParseFormat', 'dayjs/plugin/timezone', 'dayjs/plugin/utc', 'dayjs/plugin/relativeTime', 'dayjs/locale/zh-cn'] },
+    // 隔离验收固定本轮已加载源码，避免其他开发会话的HMR在键鼠步骤中替换DOM。
+    resolve: { alias: { '@': resolve(root, 'src') } }, server: { host: '127.0.0.1', port: 0, hmr: false, watch: null },
     plugins: [{ name: 'isolated-checkout-order', enforce: 'pre',
       resolveId(id) { if (id === '/fixture.js') return '\0checkout-fixture' },
-      load(id) { if (id === '\0checkout-fixture') return goodsPage ? queryGoodsEntry : goodsExchange ? goodsExchangeEntry : phoneReturn ? phoneReturnEntry : quickSale ? quickSaleEntry : salesPage ? salesPageEntry : salesOnly ? salesCheckoutEntry : entry; return (salesMode ? salesMocks : mocks).get(id.split('?')[0]) },
+      load(id) { if (id === '\0checkout-fixture') return purchaseReturn ? purchaseReturnEntry : filmService ? filmServiceEntry : goodsPage ? queryGoodsEntry : goodsExchange ? goodsExchangeEntry : phoneReturn ? phoneReturnEntry : quickSale ? quickSaleEntry : salesPage ? salesPageEntry : salesOnly ? salesCheckoutEntry : entry; return (salesMode ? salesMocks : mocks).get(id.split('?')[0]) },
       configureServer(vite) { vite.middlewares.use((req, res, next) => {
-        if (['/', '/history', '/film', '/receipt'].includes(req.url.split('?')[0])) { res.setHeader('Content-Type', 'text/html'); res.end('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="app"></div><script type="module" src="/fixture.js"></script></body></html>') }
+        if (['/', '/history', '/film', '/receipt', '/phone-detail'].includes(req.url.split('?')[0])) { res.setHeader('Content-Type', 'text/html'); res.end('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="app"></div><script type="module" src="/fixture.js"></script></body></html>') }
         else next()
       }) }
     }, vue()] })
   await server.listen()
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`
   browser = await puppeteer.launch({ executablePath: process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, userDataDir: join(temporary, 'chrome') })
-  const modes = goodsPage ? ['goods-query'] : goodsExchange ? ['exchange-up', 'exchange-down', 'exchange-gift'] : phoneReturn ? ['phone-refund', 'phone-collection'] : quickSale ? ['quick'] : salesMode ? ['single', 'batch', 'goods'] : process.argv.includes('--customer-pages-only') ? ['history', 'film'] : process.argv.includes('--receipt-only') ? ['receipt'] : ['order', 'history', 'film', 'receipt']
-  for (const mode of modes) for (const width of [360, 390, 430, 768, 1440]) for (const dark of [false, true]) {
+  const modes = purchaseReturn ? ['purchase-return'] : filmService ? ['film-service'] : goodsPage ? phoneQueryOnly ? ['phone-query'] : goodsSaleOnly ? ['goods-sale'] : ['goods-query', 'goods-sale'] : goodsExchange ? ['exchange-up', 'exchange-down', 'exchange-gift'] : phoneReturn ? ['phone-refund', 'phone-collection'] : quickSale ? ['quick'] : salesPage ? ['single', 'batch'] : salesMode ? ['single', 'batch', 'goods'] : process.argv.includes('--customer-pages-only') ? ['history', 'film'] : process.argv.includes('--receipt-only') ? ['receipt'] : process.argv.includes('--documents-only') ? ['order', 'receipt'] : ['order', 'history', 'film', 'receipt']
+  const selectedModes = phoneDetailOnly ? ['phone-detail'] : scenarioFilter ? modes.filter(mode => mode === scenarioFilter) : modes
+  assert.ok(selectedModes.length, '没有匹配的验收场景')
+  for (const mode of selectedModes) for (const width of viewportWidths) for (const dark of [false, true]) {
     const history = mode === 'history', film = mode === 'film', receipt = mode === 'receipt'
     const page = await browser.newPage(), errors = [], blocked = []
     await page.setViewport({ width, height: 1000, hasTouch: (goodsPage || history) && width <= 1024 })
@@ -256,27 +284,52 @@ try {
       if (message.type() === 'error' && !/^\[\d{2}:\d{2}:\d{2}\] \[ERROR\] 核对销售凭证配件失败:: Error: 隔离读取失败$/.test(message.text())) errors.push(message.text())
     })
     const sample = history ? '客户原商品长名称完整显示0' : film ? '跨店贴膜记录0' : '原赠膜'
-    const capture = async () => {
+    const capture = async (stage = '') => {
       if (screenshots && (width === 390 && dark || width === 1440 && !dark)) {
         await page.waitForFunction(() => document.getAnimations().every(animation =>
           animation.playState !== 'running' || animation.effect.getComputedTiming().iterations === Infinity))
         // 弹窗正文独立滚动；只截当前视口，避免整页截图重置Chromium的仿真屏幕尺寸。
-        await page.screenshot({ path: join(screenshots, `${mode}-${width}-${dark ? 'dark' : 'light'}.png`), captureBeyondViewport: false })
+        await page.screenshot({ path: join(screenshots, `${mode}-${width}-${dark ? 'dark' : 'light'}${stage ? `-${stage}` : ''}.png`), captureBeyondViewport: false })
         assert.deepEqual(await page.evaluate(() => ({ viewport: innerWidth, screen: screen.width })),
           { viewport: width, screen: width }, '截图不得改变浏览器的响应式测试尺寸')
       }
     }
-    await page.goto(origin + (salesMode ? `/?scenario=${mode}` : receipt ? '/receipt' : history ? '/history' : film ? '/film' : '/'))
+    await page.goto(origin + (mode === 'phone-detail' ? '/phone-detail' : salesMode ? `/?scenario=${mode}` : receipt ? '/receipt' : history ? '/history' : film ? '/film' : '/'), { timeout: 60000 })
+      .catch(error => { throw new Error(`加载 ${mode}/${width}/${dark} 失败：${error.message}；浏览器错误：${errors.join(' | ')}`, { cause: error }) })
     assert.deepEqual(await page.evaluate(() => ({ viewport: innerWidth, screen: screen.width })),
       { viewport: width, screen: width }, '浏览器视口与仿真屏幕必须使用同一测试尺寸')
+    if (mode === 'phone-detail') {
+      await page.evaluate(dark => { document.documentElement.dataset.theme = dark ? 'dark' : 'light' }, dark)
+      await page.waitForFunction(() => document.body.textContent.includes('设备销售信息'))
+      assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === '整单明细')), false)
+      assert.deepEqual(await page.evaluate(() => window.requests), [])
+      await page.evaluate(() => { window.phoneDetail.销售信息.has_checkout_order = true })
+      await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === '整单明细'))
+      await clickButton(page, '整单明细')
+      await page.waitForFunction(() => document.body.textContent.includes('SO-ORIGINAL-LONG-000000001'))
+      assert.deepEqual(await page.evaluate(() => window.requests), ['/query/sales/81/order'])
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
+      await capture()
+      await page.evaluate(() => { window.phoneDetail.销售信息 = { sale_id: 82, has_checkout_order: false } })
+      await page.waitForFunction(() => !document.body.textContent.includes('SO-ORIGINAL-LONG-000000001'))
+      assert.deepEqual(await page.evaluate(() => window.requests), ['/query/sales/81/order'])
+      assert.deepEqual(errors, []); assert.deepEqual(blocked, [])
+      await metrics.detach(); await page.close()
+      console.log(`手机销售详情 ${width}px ${dark ? '暗' : '明'}：普通销售无整单请求、共同单按真实销售ID读取、切换清理通过`)
+      continue
+    }
     if (salesMode) {
       await page.evaluate(dark => { document.documentElement.classList.toggle('dark', dark); document.documentElement.dataset.theme = dark ? 'dark' : 'light' }, dark)
-      await (goodsPage ? verifyQueryGoods(page, capture) : goodsExchange ? verifyGoodsExchange(page, mode) : phoneReturn ? verifyPhoneReturn(page, mode) : quickSale ? verifyQuickSale(page) : salesPage ? verifySalesPage(page, mode) : verifySalesCheckout(page, mode)).catch(error => { throw new Error(`${mode}/${width}/${dark}: ${error.message}: ${errors.join(' | ')}`, { cause: error }) })
+      await (purchaseReturn ? verifyPurchaseReturn(page, capture) : filmService ? verifyFilmService(page, capture) : phoneQueryOnly ? verifyQueryPhone(page, capture) : goodsPage ? mode === 'goods-sale' ? verifyQueryGoodsSale(page, capture) : verifyQueryGoods(page, capture) : goodsExchange ? verifyGoodsExchange(page, mode) : phoneReturn ? verifyPhoneReturn(page, mode, capture) : quickSale ? verifyQuickSale(page, capture) : salesPage ? verifySalesPage(page, mode, capture) : verifySalesCheckout(page, mode, capture)).catch(error => { throw new Error(`${mode}/${width}/${dark}: ${error.message}: ${errors.join(' | ')}`, { cause: error }) })
       assert.deepEqual(errors, []); assert.deepEqual(blocked, [])
       await metrics?.detach()
       await page.close()
-      const actions = mode === 'goods' ? '顶部入口/客户检索/购买赠送/提交刷新/撤权' : '实际入口/草稿传递/取消保留/逐台关联/提交刷新/撤权'
-      console.log(goodsPage ? `商品查询 ${width}px ${dark ? '暗' : '明'}：检索/分页/筛选/原单与售后/失败重试/撤权及迟到响应通过` : goodsExchange ? `商品换货 ${mode} ${width}px ${dark ? '暗' : '明'}：原SN/新销售员/净差价/积分/未知冻结及重试/撤权通过` : phoneReturn ? `手机联合退货 ${mode} ${width}px ${dark ? '暗' : '明'}：原单/收费保留及退回/SN/赠品扣款/退款补款/未知冻结及重试通过` : quickSale ? `快速出库 ${width}px ${dark ? '暗' : '明'}：真实表单/客户姓名锁/取消保留/最新价格/购买赠送/单次合单提交通过` : salesPage ? `销售整页 ${mode} ${width}px ${dark ? '暗' : '明'}：${actions}通过` : `结算组件 ${mode} ${width}px ${dark ? '暗' : '明'}：真实检索/SN/赠送/关联/积分/防重重试/撤权通过`)
+      const actions = '实际入口/资料继承/公共宽度/取消保留/逐台关联/提交刷新/撤权'
+      if (phoneQueryOnly) {
+        console.log(`手机查询 ${width}px ${dark ? '暗' : '明'}：普通双击共用详情/贴膜关联/专用字段不叠加/零交易提交通过`)
+        continue
+      }
+      console.log(purchaseReturn ? `采购退供试算 ${width}px ${dark ? '暗' : '明'}：普通/SN、退款/留抵/冲应付、切换失效/迟到响应/失败重试/撤权通过（只读内存服务）` : filmService ? `贴膜办理 ${width}px ${dark ? '暗' : '明'}：跨店/取消/免费及收费/积分净额/原键重试/历史重读/撤权通过（内存服务）` : goodsPage ? `商品查询 ${mode} ${width}px ${dark ? '暗' : '明'}：检索/分页/筛选/原单与售后/失败重试/撤权及迟到响应通过` : goodsExchange ? `商品换货 ${mode} ${width}px ${dark ? '暗' : '明'}：原SN/新销售员/净差价/积分/未知冻结及重试/撤权通过` : phoneReturn ? `手机联合退货 ${mode} ${width}px ${dark ? '暗' : '明'}：原单/收费保留及退回/SN/赠品扣款/退款补款/未知冻结及重试通过` : quickSale ? `快速出库 ${width}px ${dark ? '暗' : '明'}：真实表单/客户继承/公共宽度/取消保留/最新价格/购买赠送/单次合单提交通过` : salesPage ? `销售整页 ${mode} ${width}px ${dark ? '暗' : '明'}：${actions}通过` : `结算组件 ${mode} ${width}px ${dark ? '暗' : '明'}：真实检索/SN/赠送/关联/积分/防重重试/撤权通过`)
       continue
     }
     await page.waitForFunction(value => document.body.textContent.includes(value), {}, sample).catch(error => { throw new Error(error.message + ': ' + errors.join(' | ')) })
@@ -305,7 +358,7 @@ try {
     })
     assert.equal(result.overflow, false, `页面横溢出 ${width}/${dark}`)
     assert.deepEqual(result.outside, [], `字段超界 ${width}/${dark}`)
-    for (const value of ['原手机型号', '原单通用充电器长名称完整显示', '原赠膜', '000SN1234567890'.repeat(4), '¥115']) assert.ok(result.text.includes(value), value)
+    for (const value of ['原手机型号', '原单通用充电器长名称完整显示', '原赠膜', '原单约定 ¥12.34/件，合计 ¥12.34', '实际扣款以售后核对为准', '000SN1234567890'.repeat(4), '¥115']) assert.ok(result.text.includes(value), value)
     await page.evaluate(() => { window.access.goods = false })
     await page.waitForFunction(() => !document.body.textContent.includes('原赠膜') && !document.body.textContent.includes('末页商品'))
     await page.evaluate(() => { window.fail = true; window.access.goods = true })

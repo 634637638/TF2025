@@ -68,10 +68,8 @@ td.table-loading-row__cell,
 
 .table-loading-row__cell :deep(.section-loading),
 .table-loading-row__block :deep(.section-loading) {
-  width: 100%;
   min-height: 0;
   padding: var(--tf-space-3) var(--tf-space-4);
-  box-sizing: border-box;
   border-radius: var(--tf-radius-card);
   border: 0;
   box-shadow: none;

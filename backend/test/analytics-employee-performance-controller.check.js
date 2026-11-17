@@ -15,7 +15,7 @@ const response = () => ({
 
 test('employee performance route keeps inherited salary permission and delegates to controller', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/analytics.js'), 'utf8')
-  assert.match(route, /router\.use\(\['\/employee-performance', '\/employees'\], requirePermission\('salary:view'\)\)/)
+  assert.match(route, /router\.use\(\['\/employee-performance', '\/employees'\], requirePermission\('salary-records:view'\)\)/)
   assert.match(route, /router\.get\('\/employee-performance', unifiedAuth, requireBusinessUser, analyticsEmployeePerformanceController\.getPerformance\.bind\(analyticsEmployeePerformanceController\)\)/)
 })
 

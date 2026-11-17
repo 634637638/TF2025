@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -40,10 +42,11 @@ test('rental device service retains schema setup, hidden-field search and pagina
     }
   })
 
-  const result = await service.listAvailable({ keyword: '  phone ', page: '2', page_size: '2' }, 9)
+  const result = await service.listAvailable({ keyword: '  phone ', page: '2', page_size: '2' }, 9, scopedActor)
   assert.deepEqual(calls[0], 'schema')
   assert.deepEqual(calls[1], ['permissions', 9, 'rentals_rentalsview'])
   assert.deepEqual(calls[2], {
+    scope: { allStores: false, requestedStoreId: null, storeIds: scopedActor.store_ids },
     keyword: 'phone',
     searchableFieldIds: ['device_info.serial_number', 'device_info.model', 'device_info.color', 'device_info.memory'],
     page: 2,
@@ -69,7 +72,7 @@ test('rental device service rejects search when every searchable field is hidden
     },
     repository: { async listAvailable() { repositoryCalls += 1; return [] } }
   })
-  assert.deepEqual(await service.listAvailable({ keyword: 'abc' }, 1), { forbidden: true })
+  assert.deepEqual(await service.listAvailable({ keyword: 'abc' }, 1, scopedActor), { forbidden: true })
   assert.equal(repositoryCalls, 0)
 })
 

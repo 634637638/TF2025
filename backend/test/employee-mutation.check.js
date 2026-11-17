@@ -37,7 +37,8 @@ test('employee mutation service validates create data, hashes password and assig
   const EmployeeMutationService = require('../src/services/employee-mutation.service')
   const calls = []
   const employee = { id: 12, username: 'lin', name: 'Lin' }
-  const service = new EmployeeMutationService({
+  const service = new EmployeeMutationService({ permissionCheck: async () => true,
+    roleAssignment: { async assertAccountAccess() {}, async assertCanAssign() {}, async assign({ userId, roleIds }) { for (const id of roleIds) calls.push(['assign', userId, id]); return { status: 'updated' } } },
     hashPassword: async (password, rounds) => {
       calls.push(['hash', password, rounds])
       return 'hashed-password'
@@ -74,11 +75,11 @@ test('employee mutation service validates create data, hashes password and assig
 
 test('employee mutation service keeps validation and duplicate errors as client errors', async () => {
   const EmployeeMutationService = require('../src/services/employee-mutation.service')
-  const service = new EmployeeMutationService({ repository: {} })
+  const service = new EmployeeMutationService({ permissionCheck: async () => true, repository: {} })
   await assert.rejects(service.createEmployee({}), error => error.code === 'VALIDATION' && error.message.includes('缺少必需字段'))
   await assert.rejects(service.createEmployee({ username: 'u', name: 'n', password: 'p', role_ids: [] }), error => error.code === 'VALIDATION' && error.message.includes('有效角色'))
 
-  const duplicateService = new EmployeeMutationService({ repository: {
+  const duplicateService = new EmployeeMutationService({ permissionCheck: async () => true, repository: {
     async getValidRoles(ids) { return ids.map(id => ({ id })) },
     async findByUsername() { return { id: 1 } }
   } })
@@ -88,7 +89,8 @@ test('employee mutation service keeps validation and duplicate errors as client 
 test('employee update retains allowed fields, role replacement and password hash signal', async () => {
   const EmployeeMutationService = require('../src/services/employee-mutation.service')
   const calls = []
-  const service = new EmployeeMutationService({
+  const service = new EmployeeMutationService({ permissionCheck: async () => true,
+    roleAssignment: { async assertAccountAccess() {}, async assertCanAssign() {}, async assign({ userId, roleIds }) { calls.push(['replaceRoles', userId, roleIds]); return { status: 'updated' } } },
     hashPassword: async password => `hash:${password}`,
     repository: {
       async getValidRoles(ids) { calls.push(['roles', ids]); return ids.map(id => ({ id })) },
@@ -112,7 +114,7 @@ test('employee update retains allowed fields, role replacement and password hash
 test('employee delete and status protect the current account and preserve result semantics', async () => {
   const EmployeeMutationService = require('../src/services/employee-mutation.service')
   const calls = []
-  const service = new EmployeeMutationService({ repository: {
+  const service = new EmployeeMutationService({ permissionCheck: async () => true, repository: {
     async findId(id) { calls.push(['exists', id]); return { id } },
     async deleteEmployee(id) { calls.push(['delete', id]) },
     async updateStatus(id, status) { calls.push(['status', id, status]) }

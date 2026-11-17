@@ -2,7 +2,7 @@
 
 ## 适用范围
 
-本规范适用于 Vue 3 后台页面中的顶层和内部标签导航。支付方式、单选分段控件、富文本工具栏等业务选择控件不属于页面 TAB，不使用本规范。
+本规范适用于 Vue 3 后台页面中的顶层和内部标签导航。支付方式、单选分段控件、富文本工具栏等业务选择控件不属于页面 TAB，不使用页面 TAB 的容器和导航行为。
 
 ## 唯一控制入口
 
@@ -39,6 +39,18 @@ Element Plus TAB：
 ```
 
 页面只负责 TAB 名称、图标、权限显隐、当前值和切换逻辑。
+
+## 状态选择器的共享视觉
+
+业务互斥选择仍使用原生语义控件（`el-radio-group`），但必须接入全局 `.tf-state-selector`；不能伪装成页面导航，也不使用 `.tf-page-tabs`。按钮式选项使用 `el-radio-button`，普通表单单选仍可使用 `el-radio`，两者都由同一个入口统一布局、字号、选中主色和禁用态；按钮式选项额外读取同一组 `--tf-tabs-*` / `--tf-tab-*` 令牌。不再使用裸 `el-radio-group`、`el-segmented` 或页面私有分段皮肤。该样式只规范外观，不改变单选值、权限或业务行为；页面不得另写按钮样式。
+
+```vue
+<el-radio-group v-model="state" class="tf-state-selector" aria-label="字段状态">
+  <el-radio-button value="hidden">隐藏</el-radio-button>
+  <el-radio-button value="readonly">只读</el-radio-button>
+  <el-radio-button value="editable">编辑</el-radio-button>
+</el-radio-group>
+```
 
 密集型分类导航使用公共修饰类：
 

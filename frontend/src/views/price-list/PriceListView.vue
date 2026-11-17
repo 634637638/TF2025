@@ -596,7 +596,6 @@
                   <div class="action-buttons">
                     <el-button
                       type="primary"
-                      size="small"
                       @click.stop="handleViewInventory(row)"
                     >
                       <i class="fas fa-eye" />
@@ -604,7 +603,6 @@
                     </el-button>
                     <el-button
                       type="success"
-                      size="small"
                       @click.stop="handleViewHistory(row)"
                     >
                       <i class="fas fa-history" />
@@ -613,7 +611,6 @@
                     <el-button
                       v-if="canEdit"
                       type="warning"
-                      size="small"
                       @click.stop="handleEdit(row)"
                     >
                       <i class="fas fa-edit" />
@@ -622,7 +619,6 @@
                     <el-button
                       v-if="canDelete"
                       type="danger"
-                      size="small"
                       @click.stop="handleDelete(row)"
                     >
                       <i class="fas fa-trash" />
@@ -1221,7 +1217,10 @@
               class="config-form tf-form-layout tf-form-grid"
             >
               <el-form-item label="来源类型">
-                <el-radio-group v-model="syncConfig.source_type">
+              <el-radio-group
+                v-model="syncConfig.source_type"
+                class="tf-state-selector"
+              >
                   <el-radio value="account">
                     登录账户
                   </el-radio>
@@ -1413,7 +1412,6 @@
                     <el-button
                       v-if="canEdit && !row.is_default"
                       type="success"
-                      size="small"
                       @click.stop="handleSetDefaultConfig(row.id)"
                     >
                       <i class="fas fa-check" />
@@ -1422,7 +1420,6 @@
                     <el-button
                       v-if="canEdit"
                       type="warning"
-                      size="small"
                       @click.stop="handleEditConfig(row)"
                     >
                       <i class="fas fa-edit" />
@@ -1431,7 +1428,6 @@
                     <el-button
                       v-if="canDelete && !row.is_default"
                       type="danger"
-                      size="small"
                       @click.stop="handleDeleteConfig(row.id)"
                     >
                       <i class="fas fa-trash" />
@@ -1506,7 +1502,6 @@
           <div class="history-actions">
             <el-button
               type="danger"
-              size="small"
               :disabled="priceHistory.length === 0"
               @click="handleClearHistory"
             >
@@ -1638,7 +1633,6 @@
                 <el-button
                   v-if="canDelete"
                   type="danger"
-                  size="small"
                   @click.stop="handleDeleteHistoryItem(row)"
                 >
                   <i class="fas fa-trash-alt" />
@@ -1680,7 +1674,6 @@
           <el-button
             v-if="canDelete"
             type="danger"
-            size="small"
             @click="handleBatchDeleteHistory"
           >
             <i class="fas fa-trash-alt" />
@@ -1812,6 +1805,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, onUnmounted, watch, computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
@@ -3691,6 +3685,12 @@ const historyDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'wholesale_price', label: '批发价', value: formatAmount(row.wholesale_price), visible: true },
     { key: 'change_reason', label: '更新方式', value: getChangeReasonLabel(row.change_reason || ''), visible: true }
   ]
+})
+
+usePageShortcuts('/price-list', {
+  'price-create': { open: handleCreate },
+  'price-source-settings': { open: openConfigDialog },
+  'price-markup-settings': { open: openMarkupConfigDialog }
 })
 </script>
 

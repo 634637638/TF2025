@@ -72,7 +72,7 @@
                 </div>
                 <el-radio-group
                   v-model="form.condition"
-                  class="condition-buttons tf-segment"
+                  class="condition-buttons tf-state-selector"
                 >
                   <el-radio-button label="new">
                     全新
@@ -290,7 +290,6 @@
               <el-button
                 v-if="shouldShowActionColumn(canViewField('system_info.operations'), [])"
                 circle
-                size="small"
                 plain
                 class="copy-button"
                 title="复制文案"

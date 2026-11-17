@@ -180,7 +180,6 @@
                   description="暂无内存规格数据"
                 >
                   <el-button
-                    size="small"
                     type="info"
                     @click="loadMemories()"
                   >
@@ -294,7 +293,6 @@
                       v-if="canEdit"
                       v-permission="'memories:edit'"
                       type="primary"
-                      size="small"
                       @click.stop="editMemory(row)"
                     >
                       <i class="fas fa-edit" /><span>编辑</span>
@@ -302,7 +300,6 @@
                       v-if="canDelete"
                       v-permission="'memories:delete'"
                       type="danger"
-                      size="small"
                       @click.stop="deleteMemory(row)"
                     >
                       <i class="fas fa-trash" /><span>删除</span>
@@ -404,6 +401,7 @@
             >
               <el-radio-group
                 v-model="formData.status"
+                class="tf-state-selector"
                 :disabled="!canEditField('status')"
               >
                 <el-radio :value="1">
@@ -443,6 +441,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import unifiedApi from '@/utils/unified-api'
@@ -504,11 +503,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('memories_memoriesview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('memories_memoriesview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
@@ -953,6 +948,10 @@ onMounted(() => {
   })
 })
 
+
+usePageShortcuts('/memories', {
+  'memory-create': { open: handleCreateMemory }
+})
 </script>
 
 <style scoped>

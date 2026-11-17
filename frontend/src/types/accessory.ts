@@ -1,19 +1,34 @@
+export interface AccessoryColorVariantInput {
+  color_id: number
+  barcode?: string | null
+}
+
+export interface AccessoryColorVariant extends AccessoryColorVariantInput {
+  accessory_id: number
+  color_name?: string | null
+}
+
 /** 配件商品模板与入库共享档案契约；适配手机型号通过多值关系关联。 */
 export interface AccessoryRecord {
   id: number
   /** 实际品牌库存商品的所属模板；模板本身为空。 */
   template_id?: number | null
+  /** 多颜色模板统一入口；采购仍绑定具体颜色对应的商品。 */
+  color_template_id?: number | null
+  color_variants?: AccessoryColorVariant[] | null
   name?: string
   barcode?: string
   category?: string
   category_id?: number | string | null
   product_model?: string | null
+  free_film?: number | null
   serial_tracking?: number | boolean | null
   brand_id?: number | string | null
   brand_name?: string
   model_id?: number | string | null
   model_ids?: number[] | string
   compatible_model_names?: string
+  compatible_brand_names?: string | null
   model_name?: string
   model_brand_id?: number | string | null
   model_brand_name?: string
@@ -149,6 +164,9 @@ export interface GoodsAftersaleRecord {
 }
 
 export interface AccessoryPayloadSource {
+  inventory_time?: string
+  free_film?: number
+  color_variants?: AccessoryColorVariantInput[]
   usage_type?: AccessoryUsageType
   barcode?: string
   accessory_id?: number | null
@@ -192,6 +210,14 @@ export interface AccessoryStockInInput extends AccessoryPayloadSource {
   request_key: string
 }
 
+/** 同模板逐色入库：各色独立批次，服务端同事务全部提交。 */
+export interface AccessoryColorStockInInput {
+  request_key: string
+  entries: Array<Omit<AccessoryStockInInput, 'request_key'>>
+}
+
+export type AccessoryStockInRequest = AccessoryStockInInput | AccessoryColorStockInInput
+
 /** 原采购回执，不将后来变化的模板或库存快照当作本次入库结果。 */
 export interface AccessoryStockInReceipt {
   stock_in_id: number | null
@@ -203,11 +229,49 @@ export interface AccessoryStockInReceipt {
   replayed: boolean
 }
 
+export interface AccessoryColorStockInReceipt {
+  batches: AccessoryStockInReceipt[]
+  replayed: boolean
+}
+
+/** 编辑对象为整笔原入库，purchase_id 是编辑动作所需的资源标识。 */
+export interface AccessoryStockCorrectionOption {
+  purchase_id: number
+  batch_no: string | null
+  name: string | null
+  supplier_name: string | null
+  store_name: string | null
+  quantity: number | string
+  purchase_cost: number | string
+  inventory_time: string | null
+}
+
+export interface AccessoryStockCorrectionContext {
+  purchase_id: number
+  batch_no: string | null
+  accessory: AccessoryRecord
+  supplier_id: number
+  supplier_name: string | null
+  store_id: number
+  store_name: string | null
+  total_quantity: number
+  purchase_cost: number
+  usage_type: AccessoryUsageType
+  serial_tracking: 0 | 1
+  serial_numbers: AccessorySerialInput[] | null
+  remarks: string | null
+  inventory_time: string | null
+  operator_name: string | null
+}
+
+export type AccessoryStockCorrectionInput = Pick<AccessoryStockInInput, 'request_key' | 'accessory_id' | 'brand_id' | 'product_model' |
+  'supplier_id' | 'store_id' | 'total_quantity' | 'purchase_cost' | 'usage_type' | 'serial_tracking' | 'serial_numbers' | 'remarks'>
+
 export interface AccessorySerialRecord {
   id: number
   accessory_id: number
   serial_number: string
-  status?: 'in_stock' | 'sold' | 'gifted' | null
+  status?: 'in_stock' | 'sold' | 'gifted' | 'voided' | null
   store_id?: number | string | null
   store_name?: string | null
   purchase_cost?: number | string | null
@@ -232,7 +296,6 @@ export interface AccessoryCatalogItem {
   status: number
   sort_order: number
   description?: string | null
-  film_enabled?: boolean | number | null
   created_at?: string | null
   updated_at?: string | null
 }
@@ -273,6 +336,26 @@ export interface AccessoryBatchStock {
   serial_tracking: number | null
   quantity: number | string
   source_status: 'purchase' | 'legacy' | 'untracked'
+}
+
+export interface AccessoryInventoryAdjustmentInput {
+  request_key: string
+  row_key: string
+  expected_quantity: number
+  counted_quantity: number
+  reason: string
+}
+
+export interface AccessoryInventoryAdjustmentResult {
+  adjustment_id: number | null
+  accessory_id: number
+  store_id: number
+  stock_in_id: number
+  previous_quantity: number | null
+  counted_quantity: number
+  delta: number
+  replayed: boolean
+  unchanged?: boolean
 }
 
 /** 库存划拨仅改变门店归属，保留采购和销售事实。 */
@@ -375,10 +458,19 @@ export interface AccessoryPurchaseReturnContext {
   serials: Pick<import('@/types').PaginatedResponse<Pick<AccessorySerialRecord, 'id' | 'serial_number' | 'store_id' | 'store_name'>>, 'data' | 'pagination'> | null
 }
 
-/** 仅试算原采购退供，不包含资金处理指令或客户端价格。 */
+export type AccessoryPurchaseReturnSettlementMode = 'reduce_payable' | 'supplier_refund' | 'supplier_credit'
+/** 资金归属预览，不代表应付已冲减、退款已到账或留抵已经生成。 */
+export interface AccessoryPurchaseReturnSettlement {
+  mode: AccessoryPurchaseReturnSettlementMode
+  payable_reduction: number
+  refund_amount: number
+  credit_amount: number
+}
+/** 仅试算原采购退供，资金方式可选，不接收客户端价格或金额。 */
 export interface AccessoryPurchaseReturnQuoteInput {
   batches: { row_key: string; quantity: number }[]
   serial_ids: number[]
+  settlement_mode?: AccessoryPurchaseReturnSettlementMode
 }
 export interface AccessoryPurchaseReturnQuote {
   purchase_id: number
@@ -388,6 +480,8 @@ export interface AccessoryPurchaseReturnQuote {
   payment_status: 'paid' | 'unpaid'
   latest_event_id: number
   preview_only: true
+  /** 未传资金方式的原价只读试算不返回资金归属。 */
+  settlement?: AccessoryPurchaseReturnSettlement
   data: (Pick<AccessoryBatchStock, 'row_key' | 'store_id' | 'store_name' | 'usage_type' | 'serial_tracking'> & {
     quantity: number
     serial_numbers: string[]

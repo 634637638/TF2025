@@ -72,10 +72,13 @@ const findId = (rows: Array<Record<string, unknown>>, field: ReferenceName, valu
  * 将编辑表单中的可读名称解析为数据库外键。
  * 编辑弹窗允许选择/输入名称，但 phones 更新接口只接受规范 *_id 字段。
  */
-export const resolvePhoneReferenceIds = async (
+export function resolvePhoneReferenceIds(values: PhoneReferenceValues, original?: Partial<PhoneReferenceValues>): Promise<PhoneReferenceResult>
+export function resolvePhoneReferenceIds(values: PhoneReferenceValues, original: Partial<PhoneReferenceValues>, fields: readonly ReferenceName[]): Promise<Partial<PhoneReferenceResult>>
+export async function resolvePhoneReferenceIds(
   values: PhoneReferenceValues,
-  original: Partial<PhoneReferenceValues> = {}
-): Promise<PhoneReferenceResult> => {
+  original: Partial<PhoneReferenceValues> = {},
+  fields: readonly ReferenceName[] = ['brand', 'model', 'color', 'memory']
+): Promise<Partial<PhoneReferenceResult>> {
   const brandUnchanged = sameName(values.brand, original.brand)
   const modelUnchanged = brandUnchanged && sameName(values.model, original.model)
   const colorUnchanged = sameName(values.color, original.color)
@@ -86,34 +89,35 @@ export const resolvePhoneReferenceIds = async (
   let colorId = colorUnchanged ? asPositiveId(values.color_id) : null
   let memoryId = memoryUnchanged ? asPositiveId(values.memory_id) : null
 
-  if (!brandId) {
+  const needsBrand = fields.includes('brand') || fields.includes('model')
+  if (needsBrand && !brandId) {
     const response = await searchBrands({ name: values.brand, status: 1 })
     brandId = findId(getRows(response), 'brand', values.brand)
   }
-  if (!brandId) throw new Error('请选择有效的品牌')
+  if (needsBrand && !brandId) throw new Error('请选择有效的品牌')
 
-  if (!modelId) {
-    const response = await getModels({ brandId, keyword: values.model, status: 1 })
+  if (fields.includes('model') && !modelId) {
+    const response = await getModels({ brandId: brandId ?? undefined, keyword: values.model, status: 1 })
     modelId = findId(getRows(response), 'model', values.model)
   }
-  if (!modelId) throw new Error('请选择有效的型号')
+  if (fields.includes('model') && !modelId) throw new Error('请选择有效的型号')
 
-  if (!colorId) {
+  if (fields.includes('color') && !colorId) {
     const response = await searchColors({ name: values.color, status: 1 })
     colorId = findId(getRows(response), 'color', values.color)
   }
-  if (!colorId) throw new Error('请选择有效的颜色')
+  if (fields.includes('color') && !colorId) throw new Error('请选择有效的颜色')
 
-  if (!memoryId) {
+  if (fields.includes('memory') && !memoryId) {
     const response = await searchMemories({ size: values.memory, status: 1 })
     memoryId = findId(getRows(response), 'memory', values.memory)
   }
-  if (!memoryId) throw new Error('请选择有效的内存')
+  if (fields.includes('memory') && !memoryId) throw new Error('请选择有效的内存')
 
   return {
-    brand_id: brandId,
-    model_id: modelId,
-    color_id: colorId,
-    memory_id: memoryId
+    ...(fields.includes('brand') && brandId ? { brand_id: brandId } : {}),
+    ...(fields.includes('model') && modelId ? { model_id: modelId } : {}),
+    ...(fields.includes('color') && colorId ? { color_id: colorId } : {}),
+    ...(fields.includes('memory') && memoryId ? { memory_id: memoryId } : {})
   }
 }

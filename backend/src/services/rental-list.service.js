@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
 const RentalListRepository = require('../repositories/rental-list.repository')
 const dataMaskingService = require('./data-masking.service')
 const { isBuyoutMode, addMonthsClamped } = require('../utils/rental-calculations')
@@ -19,7 +21,7 @@ class RentalListService {
     this.masking = masking
   }
 
-  async list(query, userId) {
+  async list(query, userId, actor) {
     const permissions = await this.masking.getUserFieldPermissions(userId, MODULE_KEY)
     const hiddenFields = new Set(permissions.hiddenFields || [])
     const page = Math.max(Number(query.page) || 1, 1)
@@ -38,6 +40,7 @@ class RentalListService {
     }
 
     const result = await this.repository.list({
+      scope: resolveStoreScope(actor, query.store_id),
       page,
       pageSize,
       keyword,

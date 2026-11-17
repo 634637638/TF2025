@@ -68,7 +68,7 @@ class QueryRepository extends BaseRepository {
   }
 
   async lockPhoneForDelete(connection, phoneId) {
-    const result = await connection.execute('SELECT store_id FROM phones WHERE id = ? FOR UPDATE', [phoneId])
+    const result = await connection.execute('SELECT store_id, status FROM phones WHERE id = ? FOR UPDATE', [phoneId])
     if (result[0][0]) result[0][0].checkout_order_id = await checkoutRepository.phoneOrder(connection, phoneId)
     return result
   }
@@ -399,6 +399,10 @@ class QueryRepository extends BaseRepository {
         c.phone as customer_phone,
         c.apple_id as customer_apple_id,
         latest_sale.id as sale_id,
+        EXISTS (SELECT 1 FROM sales_order_items checkout_item
+          JOIN sales_orders checkout_order ON checkout_order.id = checkout_item.order_id
+          WHERE checkout_item.sale_id = latest_sale.id AND checkout_item.item_type = 'phone'
+            AND checkout_order.request_key IS NOT NULL AND checkout_order.order_status = 'completed') AS has_checkout_order,
         latest_sale.sale_type,
         latest_sale.remarks as sale_remarks,
         COALESCE(salesperson_user.name, sale_op.name) as sale_operator_name,
@@ -711,48 +715,30 @@ class QueryRepository extends BaseRepository {
     const startDate = String(filters.start_date || '').trim()
     const endDate = String(filters.end_date || '').trim()
 
-    const whereConditions = []
-    const params = []
-    appendStoreScopeCondition(storeScope, 'p.store_id', whereConditions, params)
+    const legacyConditions = [], legacyParams = []
+    appendStoreScopeCondition(storeScope, 'p.store_id', legacyConditions, legacyParams)
+    const aftersaleConditions = ["a.operation_type = 'phone_return'"], aftersaleParams = []
+    // 原销售和接收门店均须授权，不能按设备后来所在门店判断历史权限。
+    appendStoreScopeCondition(storeScope, 'a.original_store_id', aftersaleConditions, aftersaleParams)
+    appendStoreScopeCondition(storeScope, 'a.store_id', aftersaleConditions, aftersaleParams)
+    const text = expression => `CONVERT(${expression} USING utf8mb4) COLLATE utf8mb4_unicode_ci`
+    const snapshotText = key => text(`NULLIF(JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.${key}')), 'null')`)
+    const displayModel = column => `CASE
+      WHEN LOWER(${column}) = 'iphone17pro' THEN 'iPhone 17 Pro'
+      WHEN LOWER(${column}) = 'iphone17promax' THEN 'iPhone 17 Pro Max'
+      WHEN LOWER(${column}) REGEXP '^ipad[0-9]' THEN CONCAT('iPad ', SUBSTRING(${column}, 5))
+      WHEN LOWER(${column}) REGEXP '^iphone[0-9]' THEN CONCAT('iPhone ', SUBSTRING(${column}, 7))
+      ELSE TRIM(${column}) END`
 
-    if (keyword) {
-      whereConditions.push(`(
-        CAST(srl.phone_id AS CHAR) LIKE ?
-        OR p.imei LIKE ?
-        OR p.serial_number LIKE ?
-        OR b.name LIKE ?
-        OR m.name LIKE ?
-        OR co.name LIKE ?
-        OR mem.size LIKE ?
-        OR c.name LIKE ?
-        OR u.name LIKE ?
-        OR srl.original_sale_operator_name LIKE ?
-        OR srl.remarks LIKE ?
-        OR srl.return_reason LIKE ?
-        OR srl.return_type LIKE ?
-        OR srl.handle_method LIKE ?
-        OR srl.refund_method LIKE ?
-        OR srl.refund_channel LIKE ?
-      )`)
-      const keywordPattern = `%${keyword}%`
-      params.push(...Array(16).fill(keywordPattern))
-    }
-
-    if (startDate) {
-      whereConditions.push('DATE(srl.reversal_date) >= ?')
-      params.push(startDate)
-    }
-
-    if (endDate) {
-      whereConditions.push('DATE(srl.reversal_date) <= ?')
-      params.push(endDate)
-    }
-
-    const whereClause = whereConditions.length > 0
-      ? `WHERE ${whereConditions.join(' AND ')}`
-      : ''
-
-    const baseFromSql = `
+    const sources = `
+      SELECT CAST(srl.id AS CHAR) AS id, 'legacy' AS record_source, srl.id AS source_id,
+        srl.phone_id, srl.original_sale_id, srl.original_sale_type, srl.original_customer_id,
+        srl.original_sale_operator_id, srl.original_sale_operator_name, srl.operator_id,
+        srl.reversal_date, srl.return_reason, srl.return_type, srl.handle_method,
+        srl.refund_amount, NULL AS collection_amount, srl.refund_method, srl.refund_channel,
+        srl.remarks, srl.created_at, p.imei, p.serial_number,
+        b.name AS brand, ${displayModel('m.name')} AS model, co.name AS color, mem.size AS memory,
+        c.name AS customer_name, c.phone AS customer_phone, u.name AS operator_name
       FROM sale_reversal_logs srl
       LEFT JOIN phones p ON srl.phone_id = p.id
       LEFT JOIN brands b ON p.brand_id = b.id
@@ -761,93 +747,96 @@ class QueryRepository extends BaseRepository {
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN customers c ON srl.original_customer_id = c.id
       LEFT JOIN users u ON srl.operator_id = u.id
-      ${whereClause}
+      ${legacyConditions.length ? `WHERE ${legacyConditions.join(' AND ')}` : ''}
+      UNION ALL
+      SELECT ${text("CONCAT('aftersale:', a.id, ':', i.id)")} AS id, ${text("'sales_aftersale'")} AS record_source, a.id AS source_id,
+        i.phone_id, i.sale_id AS original_sale_id, ${text('s.sale_type')} AS original_sale_type,
+        a.customer_id AS original_customer_id, s.operator_id AS original_sale_operator_id,
+        ${text('sale_user.name')} AS original_sale_operator_name, a.created_by AS operator_id,
+        a.business_time AS reversal_date,
+        ${text("NULLIF(JSON_UNQUOTE(JSON_EXTRACT(f.fact_snapshot, '$.return_reason')), 'null')")} AS return_reason,
+        ${text("COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(f.fact_snapshot, '$.return_type')), 'null'), '退货处理')")} AS return_type,
+        ${text("COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(f.fact_snapshot, '$.handle_method')), 'null'), '重新入库')")} AS handle_method,
+        a.refund_cents / 100 AS refund_amount, a.collection_cents / 100 AS collection_amount,
+        ${text('a.settlement_method')} AS refund_method, ${text('a.settlement_channel')} AS refund_channel,
+        ${text('a.remarks')} AS remarks, a.created_at, ${snapshotText('imei')} AS imei, ${snapshotText('serial_number')} AS serial_number,
+        ${snapshotText('brand_name')} AS brand, ${displayModel(snapshotText('model_name'))} AS model,
+        ${snapshotText('color_name')} AS color, ${snapshotText('memory_name')} AS memory,
+        ${text('o.customer_name')} AS customer_name, ${text('o.customer_phone')} AS customer_phone, ${text('u.name')} AS operator_name
+      FROM sales_aftersales a
+      JOIN sales_aftersale_items f ON f.aftersale_id = a.id
+      JOIN sales_order_items i ON i.id = f.original_item_id AND i.order_id = a.order_id AND i.item_type = 'phone'
+      JOIN sales_orders o ON o.id = a.order_id
+      JOIN sales s ON s.id = i.sale_id AND s.phone_id = i.phone_id
+      LEFT JOIN users u ON u.id = a.created_by
+      LEFT JOIN users sale_user ON sale_user.id = s.operator_id
+      WHERE ${aftersaleConditions.join(' AND ')}
     `
-
-    const query = `
-      SELECT
-        srl.id,
-        srl.phone_id,
-        srl.original_sale_id,
-        srl.original_sale_type,
-        srl.original_customer_id,
-        srl.original_sale_operator_id,
-        srl.original_sale_operator_name,
-        srl.operator_id,
-        srl.reversal_date,
-        srl.return_reason,
-        srl.return_type,
-        srl.handle_method,
-        srl.refund_amount,
-        srl.refund_method,
-        srl.refund_channel,
-        srl.remarks,
-        srl.created_at,
-        p.imei,
-        p.serial_number,
-        b.name AS brand,
-        CASE
-          WHEN m.name = 'iPad11' THEN 'iPad 11'
-          WHEN m.name = 'ipad11' THEN 'iPad 11'
-          WHEN m.name REGEXP '^iPad[0-9]' THEN CONCAT('iPad ', SUBSTRING(m.name, 6))
-          WHEN m.name REGEXP '^ipad[0-9]' THEN CONCAT('iPad ', SUBSTRING(m.name, 6))
-          WHEN m.name = 'iphone17' THEN 'iPhone 17'
-          WHEN m.name = 'iphone17pro' THEN 'iPhone 17 Pro'
-          WHEN m.name = 'iphone17promax' THEN 'iPhone 17 Pro Max'
-          WHEN m.name REGEXP '^iPhone[0-9]' THEN CONCAT('iPhone ', SUBSTRING(m.name, 7))
-          WHEN m.name REGEXP '^iphone[0-9]' THEN CONCAT('iPhone ', SUBSTRING(m.name, 7))
-          ELSE TRIM(m.name)
-        END AS model,
-        co.name AS color,
-        mem.size AS memory,
-        c.name AS customer_name,
-        c.phone AS customer_phone,
-        u.name AS operator_name
-      ${baseFromSql}
-      ORDER BY srl.reversal_date DESC, srl.id DESC
-      LIMIT ? OFFSET ?
-    `
-
-    const countSql = `
-      SELECT COUNT(*) AS total
-      ${baseFromSql}
-    `
-
-    const statsSql = `
-      SELECT
-        COUNT(*) AS total_records,
-        COUNT(DISTINCT srl.phone_id) AS total_phones,
-        COUNT(DISTINCT DATE(srl.reversal_date)) AS total_days
-      ${baseFromSql}
-    `
+    const conditions = [], params = [...legacyParams, ...aftersaleParams]
+    if (keyword) {
+      const columns = ['phone_id', 'imei', 'serial_number', 'brand', 'model', 'color', 'memory',
+        'customer_name', 'operator_name', 'original_sale_operator_name', 'remarks', 'return_reason',
+        'return_type', 'handle_method', 'refund_method', 'refund_channel']
+      conditions.push(`(${columns.map(column => `CAST(r.${column} AS CHAR) LIKE ?`).join(' OR ')})`)
+      params.push(...columns.map(() => `%${keyword}%`))
+    }
+    if (startDate) { conditions.push('DATE(r.reversal_date) >= ?'); params.push(startDate) }
+    if (endDate) { conditions.push('DATE(r.reversal_date) <= ?'); params.push(endDate) }
+    const baseFromSql = `FROM (${sources}) r ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}`
+    // 新凭据每次手机退货只产生一行，配件明细不能放大记录数或整单净额。
+    const fields = ['id', 'record_source', 'phone_id', 'original_sale_id', 'original_sale_type', 'original_customer_id',
+      'original_sale_operator_id', 'original_sale_operator_name', 'operator_id', 'reversal_date', 'return_reason', 'return_type',
+      'handle_method', 'refund_amount', 'collection_amount', 'refund_method', 'refund_channel', 'remarks', 'created_at',
+      'imei', 'serial_number', 'brand', 'model', 'color', 'memory', 'customer_name', 'customer_phone', 'operator_name']
+    const query = `SELECT ${fields.map(field => `r.${field}`).join(', ')} ${baseFromSql}
+      ORDER BY r.reversal_date DESC, r.record_source DESC, r.source_id DESC, r.id DESC LIMIT ? OFFSET ?`
+    const countSql = `SELECT COUNT(*) AS total ${baseFromSql}`
+    const statsSql = `SELECT COUNT(*) AS total_records, COUNT(DISTINCT r.phone_id) AS total_phones,
+      COUNT(DISTINCT DATE(r.reversal_date)) AS total_days ${baseFromSql}`
 
     try {
-      const db = this.getConnection()
-      const [rows] = await db.query(query, [...params, page_size, offset])
-      const [countRows] = await db.query(countSql, params)
-      const [statsRows] = await db.query(statsSql, params)
+      return await this.withConnection(async db => {
+        let started = false
+        try {
+          await db.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+          await db.beginTransaction()
+          started = true
+          const [rows] = await db.query(query, [...params, page_size, offset])
+          const [countRows] = await db.query(countSql, params)
+          const [statsRows] = await db.query(statsSql, params)
 
-      const total = parseInt(countRows?.[0]?.total, 10) || 0
-      const total_pages = total > 0 ? Math.ceil(total / page_size) : 0
-      const stats = statsRows?.[0] || {}
+          const total = parseInt(countRows?.[0]?.total, 10) || 0
+          const total_pages = total > 0 ? Math.ceil(total / page_size) : 0
+          const stats = statsRows?.[0] || {}
 
-      return {
-        data: rows,
-        pagination: {
-          page,
-          page_size,
-          total,
-          total_pages,
-          has_next: page < total_pages,
-          has_prev: page > 1
-        },
-        stats: {
-          total_records: parseInt(stats.total_records, 10) || 0,
-          total_phones: parseInt(stats.total_phones, 10) || 0,
-          total_days: parseInt(stats.total_days, 10) || 0
+          return {
+            data: rows.map(row => ({ ...row, id: row.record_source === 'legacy' ? Number(row.id) : row.id })),
+            pagination: {
+              page,
+              page_size,
+              total,
+              total_pages,
+              has_next: page < total_pages,
+              has_prev: page > 1
+            },
+            stats: {
+              total_records: parseInt(stats.total_records, 10) || 0,
+              total_phones: parseInt(stats.total_phones, 10) || 0,
+              total_days: parseInt(stats.total_days, 10) || 0
+            }
+          }
+        } finally {
+          if (!started) db.destroy()
+          else {
+            try { await db.rollback() }
+            catch (error) { db.destroy(); throw error }
+          }
         }
-      }
+      })
     } catch (error) {
+      if (['ER_NO_SUCH_TABLE', 'ER_BAD_FIELD_ERROR'].includes(error.code)) {
+        throw Object.assign(new Error('退库记录结构未就绪，请先核对售后数据库升级'), { statusCode: 409, code: 'CHECKOUT_RETURN_NOT_READY' })
+      }
       log.error('退库记录查询失败:', error)
       throw new Error('退库记录查询失败: ' + error.message)
     }

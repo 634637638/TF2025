@@ -80,6 +80,29 @@ function fixture(t) {
   return { db, calls, connection, database, insert }
 }
 
+test('综合查询整单入口仅标记当前销售的真实已完成共同单，普通销售不借用设备旧订单', async t => {
+  const f = fixture(t), repository = new QueryRepository()
+  repository.getConnection = () => f.database
+  const Service = require('../src/services/query.service')
+  const service = new Service()
+  service.queryRepository = repository
+  const read = async (phoneId, status = phoneId === 1 ? 'in_stock' : 'sold') =>
+    (await service.getComprehensiveQuery({ phone_id: phoneId, status }, null, [2])).data[0].sale_info
+  assert.deepEqual((await read(2)).has_checkout_order, false)
+  assert.equal((await read(1)).has_checkout_order, false)
+  f.insert('sales_orders', { id: 92, request_key: 'current', order_status: 'completed', store_id: 2, customer_id: 8 })
+  f.insert('sales_order_items', { id: 102, order_id: 92, phone_id: 2, sale_id: 22, item_type: 'phone' })
+  assert.deepEqual(await read(2), { sale_id: 22, has_checkout_order: true, sale_type: 'retail', payment_method: '-', payment_channel: '-', invoice_number: '-', sale_remarks: '-' })
+  f.db.exec("UPDATE sales_orders SET order_status = 'cancelled' WHERE id = 92")
+  assert.equal((await read(2)).has_checkout_order, false)
+  f.db.exec("UPDATE sales_orders SET order_status = 'completed', request_key = NULL WHERE id = 92")
+  assert.equal((await read(2)).has_checkout_order, false)
+  f.db.exec("UPDATE sales_orders SET request_key = 'current' WHERE id = 92; UPDATE sales_order_items SET item_type = 'accessory' WHERE id = 102")
+  assert.equal((await read(2)).has_checkout_order, false)
+  f.db.exec("UPDATE sales_order_items SET item_type = 'phone' WHERE id = 102; UPDATE sales SET status = 'cancelled' WHERE id = 22; UPDATE phones SET status = 'in_stock' WHERE id = 2")
+  assert.equal((await read(2, 'in_stock')).has_checkout_order, false)
+})
+
 test('有效销售兼容历史空状态及待完成，排除取消和未知值；别名不是 SQL 输入通道', t => {
   const f = fixture(t)
   for (const [index, status] of [null, 'pending', 'completed', 'cancelled', 'unknown'].entries()) {
@@ -124,7 +147,7 @@ test('最新销售取消后不复活更早的完成记录，返库查询、校�
   const subsidy = await new SubsidyPhoneSearchRepository({ getDb: () => f.database }).findRelatedData([2])
   assert.deepEqual(subsidy.latestSales, [])
   const service = new SalesAvailablePhonesService({ repository: new SalesAvailablePhonesRepository({ getDb: () => f.database }) })
-  const filters = await service.buildFilters({ sale_status: 'available' })
+  const filters = await service.buildFilters({ sale_status: 'available' }, { actor: { id: 80, store_ids: [1, 2] } })
   const rows = f.db.prepare(`SELECT p.id FROM phones p WHERE ${filters.whereConditions.join(' AND ')}`).all(...filters.queryParams)
   assert.ok(rows.some(row => row.id === 2))
 })
@@ -173,7 +196,7 @@ test('手机库存详情、维修检索和补贴检索统一排除旧客户，�
   const f = fixture(t), inventory = new PhoneInventoryQueryRepository(() => f.database)
   const detail = (await inventory.getPhoneDetails(1))[0]
   assert.equal(detail.customer_id, null); assert.equal(detail.sale_store_id, null)
-  const list = await inventory.listInventoryPhones({}, { page: 1, page_size: 20 })
+  const list = await inventory.listInventoryPhones({}, { page: 1, page_size: 20, scope: { allStores: false, storeIds: [1, 2] } })
   assert.equal(list.phones.find(row => row.id === 1).customer_id, null)
   const repairs = new RepairLookupRepository({ getDatabase: () => f.database })
   assert.equal((await repairs.searchDevices('PHONE1'))[0].customer_id, null)
@@ -240,13 +263,13 @@ test('销售候选可用性兼容历史 NULL，客户与人员筛选只读取当
   // 允许直接验证 WHERE 条件的行结果；不连接实际库存池或创建销售。
   for (const status of ['cancelled', null, 'pending', 'completed']) {
     f.db.prepare('UPDATE sales SET status = ? WHERE id = 11').run(status)
-    const filters = await service.buildFilters({ sale_status: 'available' })
+    const filters = await service.buildFilters({ sale_status: 'available' }, { actor: { id: 80, store_ids: [1, 2] } })
     const rows = f.db.prepare(`SELECT p.id FROM phones p WHERE ${filters.whereConditions.join(' AND ')}`).all(...filters.queryParams)
     assert.deepEqual(rows.map(row => row.id), status === 'cancelled' ? [1] : [])
   }
   f.db.exec("UPDATE sales SET status = 'cancelled' WHERE id = 11; UPDATE sales SET status = 'completed' WHERE id = 21; UPDATE phones SET status = 'in_stock' WHERE id = 2")
   for (const [customerId, operatorId, expected] of [[7, 70, []], [8, 80, [2]]]) {
-    const filters = await service.buildFilters({ customer_id: customerId, salesman_id: operatorId })
+    const filters = await service.buildFilters({ customer_id: customerId, salesman_id: operatorId }, { actor: { id: 80, store_ids: [1, 2] } })
     const rows = f.db.prepare(`SELECT p.id FROM phones p WHERE ${filters.whereConditions.join(' AND ')}`).all(...filters.queryParams)
     assert.deepEqual(rows.map(row => row.id), expected)
   }
@@ -290,4 +313,20 @@ test('H5 原销售历史保留取消记录和原成交价，不受设备返库�
   assert.deepEqual(result.data.map(row => [row.id, row.sale_price]).sort(), [[11, 1000], [21, 2000]])
   assert.equal(result.data.find(row => row.id === 11).sale_time, '2026-11-01 10:00:00')
   assert.equal(result.data.find(row => row.id === 21).sale_time, null)
+})
+
+test('旧手机列表、精确与模糊检索、时间线及库存统计均限定当前门店范围', async t => {
+  const f = fixture(t)
+  const phones = new PhoneInventoryQueryRepository(() => f.database)
+  const inventory = new InventoryRepository()
+  for (const storeId of [1, 2]) {
+    const scope = { allStores: false, storeIds: [storeId] }
+    assert.equal((await phones.listInventoryPhones({}, { page: 1, page_size: 20, scope })).total, storeId === 2 ? 2 : 0)
+    assert.equal((await phones.searchByIdentifier('PHONE2', scope)).exact?.id ?? null, storeId === 2 ? 2 : null)
+    const fuzzy = await phones.searchByIdentifier('PHONE', scope)
+    assert.equal(fuzzy.fuzzy.length, storeId === 2 ? 2 : 0)
+    assert.equal((await phones.getSoldTimeline(scope)).length, storeId === 2 ? 1 : 0)
+    assert.equal((await inventory.stats(f.connection, scope)).total, storeId === 2 ? 1 : 0)
+  }
+  assert.equal((await phones.listInventoryPhones({}, { page: 1, page_size: 20, scope: { allStores: false, storeIds: [] } })).total, 0)
 })

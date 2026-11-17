@@ -25,6 +25,13 @@ function getBeijingTimeString() {
   return formatBeijingDateTime(new Date())
 }
 
+/** 完整秒级北京时间；往返核对拒绝不存在的日期、溢出时分秒及尾随内容。 */
+function isBeijingDateTime(value) {
+  if (typeof value !== 'string' || value.length !== 19 || !DATETIME_RE.test(value) || Number(value.slice(0, 4)) < 1000) return false
+  const parsed = new Date(`${value.replace(' ', 'T')}+08:00`)
+  return Number.isFinite(parsed.getTime()) && formatBeijingDateTime(parsed) === value
+}
+
 // 时间点转北京时间日期；不依赖部署机器的时区，用于业务单号等日期键。
 function formatBeijingDate(input = new Date()) {
   const date = input instanceof Date ? input : new Date(input)
@@ -186,6 +193,7 @@ function normalizeDateTime(input, defaultToNow = true) {
 }
 
 module.exports = {
+  isBeijingDateTime,
   getBeijingTimeString,
   formatBeijingDate,
   getBeijingDayStart,

@@ -187,7 +187,6 @@
                   description="暂无员工数据"
                 >
                   <el-button
-                    size="small"
                     type="info"
                     @click="loadEmployees()"
                   >
@@ -331,7 +330,6 @@
                       v-if="canEdit"
                       v-permission="'employee:edit'"
                       type="primary"
-                      size="small"
                       :icon="Edit"
                       @click.stop="editEmployee(row)"
                     >
@@ -340,7 +338,6 @@
                       v-if="canEdit && isEmployeeActive(row.status)"
                       v-permission="'employee:edit'"
                       type="warning"
-                      size="small"
                       :icon="UserFilled"
                       @click.stop="toggleStatus(row)"
                     >
@@ -349,7 +346,6 @@
                       v-else-if="canEdit"
                       v-permission="'employee:edit'"
                       type="info"
-                      size="small"
                       :icon="CircleCheck"
                       @click.stop="toggleStatus(row)"
                     >
@@ -358,7 +354,6 @@
                       v-if="canDelete"
                       v-permission="'employee:delete'"
                       type="danger"
-                      size="small"
                       :icon="Delete"
                       @click.stop="deleteEmployee(row)"
                     >
@@ -524,7 +519,7 @@
             >
               <el-checkbox-group
                 v-model="employeeForm.role_ids"
-                :disabled="!canEditField('role_ids')"
+                :disabled="!canManageRoles || !canEditField('role_ids')"
               >
                 <template v-if="loadingRoles">
                   <div class="loading-roles">
@@ -558,6 +553,7 @@
             >
               <el-radio-group
                 v-model="employeeForm.status"
+                class="tf-state-selector"
                 :disabled="!canEditField('status')"
               >
                 <el-radio :value="1">
@@ -703,7 +699,6 @@
                 <div class="password-actions">
                   <el-button
                     type="warning"
-                    size="small"
                     :disabled="passwordResetting"
                     :loading="passwordResetting"
                     @click="resetToDefaultPassword"
@@ -718,14 +713,12 @@
                   </el-button>
                   <el-button
                     type="info"
-                    size="small"
                     :icon="RefreshRight"
                     @click="generateRandomPassword"
                   >
                     生成随机密码
                   </el-button>
                   <el-button
-                    size="small"
                     :icon="Close"
                     @click="clearPasswordFields"
                   >
@@ -836,9 +829,8 @@
                 角色列表
               </h4>
               <el-button
-                v-if="canCreate"
+                v-if="canManageRoles"
                 type="primary"
-                size="small"
                 :icon="Plus"
                 @click="openAddRoleModal"
               >
@@ -878,15 +870,13 @@
                         class="role-actions"
                       >
                         <el-button
-                          v-if="canEdit"
-                          size="small"
+                          v-if="canManageRoles"
                           type="primary"
                           :icon="Edit"
                           @click="editRole(role)"
                         />
                         <el-button
-                          v-if="canDelete"
-                          size="small"
+                          v-if="canManageRoles"
                           type="danger"
                           :disabled="role.user_count > 0"
                           :title="role.user_count > 0 ? '该角色仍有用户使用，无法删除' : '删除角色'"
@@ -916,11 +906,11 @@
           title="角色详情"
           :record="roleDetailRow"
           :fields="roleDetailFields"
-          :has-actions="canEdit || canDelete"
+          :has-actions="canManageRoles"
         >
           <template #actions="{ row }">
             <el-button
-              v-if="canEdit"
+              v-if="canManageRoles"
               v-permission="'employees:edit'"
               type="primary"
               @click.stop="runRoleDetailAction(editRole)"
@@ -928,7 +918,7 @@
               编辑
             </el-button>
             <el-button
-              v-if="canDelete"
+              v-if="canManageRoles"
               v-permission="'employees:delete'"
               type="danger"
               :disabled="row.user_count > 0"
@@ -1027,6 +1017,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted } from 'vue'
@@ -1076,6 +1067,7 @@ const router = useRouter()
 // 使用统一的 composable
 const { success, error, warning, info: _info, handleApiError, confirm: _confirm } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport } = usePagePermissions('employees')
+const canManageRoles = computed(() => authStore.isAdmin)
 const { refreshing, refresh } = useRefreshData()
 const authStore = useAuthStore()
 const { init: initFieldPermissions } = fieldPermissions
@@ -1134,11 +1126,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('employees_employeesview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('employees_employeesview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showSearchKeyword = computed(() => {
@@ -1444,7 +1432,7 @@ const saveEmployee = async () => {
   }
 
   // 验证至少选择了一个角色
-  if ((canViewField('role') || canViewField('role_ids')) && employeeForm.value.role_ids && employeeForm.value.role_ids.length === 0) {
+  if (canManageRoles.value && (canViewField('role') || canViewField('role_ids')) && employeeForm.value.role_ids && employeeForm.value.role_ids.length === 0) {
     error('请至少选择一个角色')
     return
   }
@@ -1456,7 +1444,7 @@ const saveEmployee = async () => {
       name: employeeForm.value.name,
       phone: employeeForm.value.phone || undefined,
       email: employeeForm.value.email || undefined,
-      role_ids: employeeForm.value.role_ids,
+      ...(canManageRoles.value ? { role_ids: employeeForm.value.role_ids } : {}),
       status: employeeForm.value.status,
       hire_date: employeeForm.value.hire_date || undefined
     }
@@ -1743,7 +1731,7 @@ const getRoleBadgeClass = (employee: Employee) => {
 
 // 缓存键
 const CACHE_KEYS = {
-  roles: '/permissions/roles'
+  roles: '/employees/roles'
 }
 
 const loadRoles = async () => {
@@ -1751,7 +1739,7 @@ const loadRoles = async () => {
   try {
     // 使用API获取角色列表（使用缓存）
     const response = await useCachedRequest(CACHE_KEYS.roles, () =>
-      unifiedApi.get('/permissions/roles'), DEFAULT_CACHE_TTL.STATIC)
+      unifiedApi.get('/employees/roles'), DEFAULT_CACHE_TTL.STATIC)
     if (response && response.success && response.data) {
       roles.value = response.data.roles || []
     } else {
@@ -1767,7 +1755,7 @@ const loadRoles = async () => {
 
 
 const editRole = (role: Role) => {
-  if (!canEdit.value) {
+  if (!canManageRoles.value) {
     error('权限不足：您没有编辑角色的权限')
     return
   }
@@ -1783,12 +1771,12 @@ const editRole = (role: Role) => {
 const saveRole = async () => {
   if (savingRole.value) return
 
-  if (showAddRoleModal.value && !canCreate.value) {
+  if (showAddRoleModal.value && !canManageRoles.value) {
     error('权限不足：您没有新增角色的权限')
     return
   }
 
-  if (showEditRoleModal.value && !canEdit.value) {
+  if (showEditRoleModal.value && !canManageRoles.value) {
     error('权限不足：您没有编辑角色的权限')
     return
   }
@@ -1838,7 +1826,7 @@ const saveRole = async () => {
 }
 
 const deleteRole = async (role: Role) => {
-  if (!canDelete.value) {
+  if (!canManageRoles.value) {
     error('权限不足：您没有删除角色的权限')
     return
   }
@@ -1874,7 +1862,7 @@ const deleteRole = async (role: Role) => {
 }
 
 const openAddRoleModal = () => {
-  if (!canCreate.value) {
+  if (!canManageRoles.value) {
     error('权限不足：您没有新增角色的权限')
     return
   }
@@ -1943,6 +1931,10 @@ onMounted(async () => {
   await initFieldPermissions()
   loadEmployees()
   loadRoles()
+})
+
+usePageShortcuts('/employees', {
+  'employee-create': { open: openAddEmployee }
 })
 </script>
 

@@ -10,7 +10,7 @@ const integer = (value, min = 0, max = MAX_POINTS) => Number.isSafeInteger(value
 const reject = (message, code = 'POINTS_LEDGER_INVALID', statusCode = 409) => {
   throw Object.assign(new Error(message), { statusCode, code })
 }
-const validSource = source => ['phone_sale', 'checkout_item'].includes(source.sourceType) && integer(source.sourceId, 1, Number.MAX_SAFE_INTEGER)
+const validSource = source => ['phone_sale', 'checkout_item', 'opening_balance', 'manual_adjustment'].includes(source.sourceType) && integer(source.sourceId, 1, Number.MAX_SAFE_INTEGER)
 const allocatedByCredit = state => {
   const totals = new Map()
   for (const row of state.allocations.values()) {
@@ -67,6 +67,33 @@ class CustomerPointsLedgerService {
     return { customer_id: customerId, available_points: state.tracked, balance: state.balance,
       credit_cutoff_id: state.sources.at(-1)?.id || 0,
       ...(allocated ? { source_limits: state.sources.map(row => ({ id: row.id, available: row.available, allocated: allocated.get(row.id) || 0 })) } : {}) }
+  }
+
+  async adjustManual(executor, { customerId, delta, entryId, details = {} }) {
+    if (!integer(customerId, 1) || !Number.isSafeInteger(delta) || !delta || !integer(entryId, 1, Number.MAX_SAFE_INTEGER)) reject('积分调整参数无效', 'POINTS_LEDGER_INVALID', 400)
+    if (!await this.ready(executor)) reject('积分来源账尚未迁移，不能登记人工积分调整', 'POINTS_LEDGER_NOT_READY')
+    const state = await this.state(executor, customerId)
+    const after = state.balance + delta
+    if (!integer(after)) reject('积分余额不足或超出上限', 'POINTS_LEDGER_MISMATCH', 400)
+    if (delta > 0) {
+      await this.repository.setBalance(executor, customerId, state.balance, after)
+      const ledgerEntryId = await this.repository.append(executor, { customer_id: customerId, entry_type: 'award', source_type: 'manual_adjustment',
+        source_id: entryId, points: delta, balance_after: after, source_snapshot: details })
+      return { balance_after: after, entry_id: ledgerEntryId }
+    }
+    let remaining = -delta
+    const credits = state.sources.filter(row => row.available > 0)
+    if (remaining > credits.reduce((sum, row) => sum + row.available, 0)) reject('积分余额不足，不能扣减已消费积分', 'POINTS_AVAILABLE_INSUFFICIENT', 400)
+    await this.repository.setBalance(executor, customerId, state.balance, after)
+    const debitId = await this.repository.append(executor, { customer_id: customerId, entry_type: 'revoke', source_type: 'manual_adjustment',
+      source_id: entryId, points: delta, balance_after: after, source_snapshot: details })
+    for (const credit of credits) {
+      const points = Math.min(remaining, credit.available)
+      if (points) await this.repository.allocate(executor, { debit_entry_id: debitId, credit_entry_id: credit.id, points })
+      remaining -= points
+      if (!remaining) break
+    }
+    return { balance_after: after, entry_id: debitId }
   }
 
   /** 返回false仅表示两张账表均未安装，供未启用抵扣的旧累计流程分阶段升级。 */
@@ -163,7 +190,7 @@ class CustomerPointsLedgerService {
     return this.recordAftersale(executor, 'redemption_return', { ...input, sourceType: 'checkout_item', sourceId: input.itemId })
   }
 
-  async recordAftersale(executor, operation, { customerId, points, sourceType, sourceId, requestKey } = {}) {
+  async recordAftersale(executor, operation, { customerId, points, sourceType, sourceId, requestKey, details = {} } = {}) {
     if (!integer(customerId, 1) || !integer(points, 1) || !validSource({ sourceType, sourceId }) ||
       typeof requestKey !== 'string' || !/^[A-Za-z0-9:_-]{8,100}$/.test(requestKey)) reject('积分售后参数无效', 'POINTS_LEDGER_INVALID', 400)
     if (!await this.ready(executor) || !await this.tableExists('customer_points_aftersales', executor)) reject('积分售后账尚未迁移，不能办理', 'POINTS_AFTERSALE_NOT_READY')
@@ -187,6 +214,7 @@ class CustomerPointsLedgerService {
     if (plan.balance_delta) await this.repository.setBalance(executor, customerId, state.balance, balanceAfter)
     const row = { ...plan, request_key: requestKey, request_hash: hash, customer_id: customerId, operation_type: operation,
       source_type: sourceType, source_id: sourceId, points, balance_after: balanceAfter }
+    row.allocation_snapshot = { ...row.allocation_snapshot, ...details }
     row.id = await this.repository.appendAftersale(executor, row)
     return result(row)
   }

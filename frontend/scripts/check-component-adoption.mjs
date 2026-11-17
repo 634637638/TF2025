@@ -30,6 +30,9 @@ let elementButtonFiles = 0
 for (const file of walk(sourceRoot)) {
   const source = fs.readFileSync(file, 'utf8')
   const fileName = relative(file)
+  if (/\bv-infinite-scroll\b/.test(source)) {
+    findings.push(`${fileName} 使用已弃用的 v-infinite-scroll；下拉分页复用 useSelectLoadMore 和 Select 内置滚动事件`)
+  }
   const nativeCount = (source.match(/<button\b/gi) || []).length
   const elementCount = (source.match(/<el-button\b/gi) || []).length
 
@@ -51,7 +54,7 @@ for (const file of walk(sourceRoot)) {
 
   for (const scanner of source.matchAll(/<OptimizedScanner\b[^>]*>/g)) {
     if (!hasValidScannerContext(scanner[0])) {
-      findings.push(`${fileName} 手机扫码器必须绑定 phone 品牌上下文；配件SN须显式指定 serial-profile="accessory" 与 scan-type="serial"`)
+      findings.push(`${fileName} 手机扫码器必须绑定 phone 品牌上下文；配件SN/商品编码须显式指定 serial-profile="accessory"/"product" 与 scan-type="serial"`)
     }
   }
 }

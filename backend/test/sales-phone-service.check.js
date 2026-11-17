@@ -5,8 +5,10 @@ const assert = require('node:assert/strict')
 const SalesPhoneService = require('../src/services/sales-phone.service')
 const paymentOptions = require('../src/config/payment-methods.json')
 const InventoryService = require('../src/services/inventory.service')
+const CustomerMutationAccessService = require('../src/services/customer-mutation-access.service')
+const { requirePermission } = require('../src/middleware/unified-auth')
 
-function fixture({ failAt, cost = '80.00' } = {}) {
+function fixture({ failAt, cost = '80.00', sourceStores = {} } = {}) {
   const events = []
   const initial = () => ({ sales: [], payments: [], points: [], sold: [], customers: [] })
   let state = initial(), snapshot, failure = failAt
@@ -22,11 +24,11 @@ function fixture({ failAt, cost = '80.00' } = {}) {
       try { return await operation(connection) }
       finally { events.push('release') }
     },
-    async findCustomerByPhone(executor) { check(executor); return { id: 9 } },
+    async findCustomerByPhone(executor) { check(executor); return { id: 9, name: '测试客户' } },
     async updateCustomer(executor, values) { check(executor); state.customers.push(values) },
     async findPhonesForSale(executor, ids) {
       check(executor)
-      return ids.filter(id => [12, 13].includes(id)).map(id => ({ id, status: state.sold.includes(id) ? 'sold' : 'in_stock',
+      return ids.filter(id => [12, 13].includes(id)).map(id => ({ id, store_id: sourceStores[id] || 1, status: state.sold.includes(id) ? 'sold' : 'in_stock',
         purchase_cost: cost, is_new: id === 12 ? 1 : 0, is_preordered: 0, supplier_id: 4, remarks: 'existing' }))
     },
     async findDuplicateSales(executor) { check(executor); return [] },
@@ -44,6 +46,11 @@ function fixture({ failAt, cost = '80.00' } = {}) {
     }
   }
   const service = new SalesPhoneService({
+    customerAccess: new CustomerMutationAccessService({ permissionCheck: async (user, permission) => {
+      let allowed = false
+      await requirePermission(permission)({ user }, { status() { return this }, json() { return this } }, () => { allowed = true })
+      return allowed
+    } }),
     repository, normalizeDate: value => value === 'invalid' ? null : value || '2026-11-13 12:00:00',
     prepareInvoiceTransaction: async executor => check(executor),
     generateInvoice: async (type, executor) => { check(executor); assert.equal(type, 'retail'); return `INV-${state.sales.length + 1}` },
@@ -57,12 +64,41 @@ function fixture({ failAt, cost = '80.00' } = {}) {
   return { service, events, state: () => state, retry() { failure = null }, initial }
 }
 
-const request = {
+const request = { store_id: 1,
   phone_id: 12, sale_price: 100, sale_time: '2026-11-13 12:00:00',
   customer_info: { name: '测试客户', phone: '13800138000' }, payment_info: { payment_method: 'cash' }
 }
 const batch = { ...request, phones: [{ phone_id: 12, sale_price: '100.10' }, { phone_id: '13', sale_price: '200.20' }] }
-const sell = (f, body = request) => f.service.sell({ body, userId: 7 })
+const sell = (f, body = request) => f.service.sell({ body, userId: 7, actor: { id: 7, store_ids: [1] } })
+
+test('手机来源与销售门店可不同，但两者必须授权；批量夹带越界设备整单回滚', async () => {
+  const allowed = fixture()
+  const result = await allowed.service.sell({ body: { ...request, store_id: 2 }, userId: 7,
+    actor: { id: 7, store_ids: [1, 2] } })
+  assert.equal(result.status, 200)
+  assert.equal(allowed.state().sales[0].storeId, 2)
+
+  for (const [body, actor, sourceStores] of [
+    [{ ...request, store_id: 2 }, { id: 7, store_ids: [1] }, {}],
+    [request, { id: 7, store_ids: [] }, {}],
+    [batch, { id: 7, store_ids: [1] }, { 13: 2 }]
+  ]) {
+    const denied = fixture({ sourceStores })
+    const response = await denied.service.sell({ body, actor, userId: 7 })
+    assert.equal(response.status, 403)
+    assert.deepEqual(denied.state(), denied.initial())
+    assert.ok(denied.events.includes('rollback'))
+    assert.ok(!denied.events.includes('commit'))
+  }
+})
+
+test('仅销售权限可关联已有客户；夹带改名整单403并回滚，不产生出库收款或积分', async () => {
+  const f = fixture()
+  const result = await f.service.sell({ body: { ...request, customer_info: { ...request.customer_info, name: '夹带改名' } }, userId: 7, actor: { id: 7, store_ids: [1], permissions: ['sales:sell'] } })
+  assert.equal(result.status, 403)
+  assert.deepEqual(f.state(), f.initial())
+  assert.deepEqual(f.events, ['begin', 'rollback', 'release'])
+})
 
 test('单台销售同事务提交真实销售ID收款与积分，全程保持外键检查', async () => {
   const f = fixture(), result = await sell(f)
@@ -71,8 +107,9 @@ test('单台销售同事务提交真实销售ID收款与积分，全程保持外
   assert.equal(result.body.data.payment_id, 31)
   assert.deepEqual(result.body.data.payment_ids, [31])
   assert.equal(result.body.data.points_earned, 2)
+  assert.equal(f.state().points[0].description, '购买手机（自动生成）')
   assert.equal(f.state().payments[0].orderId, 21)
-  assert.equal(f.state().customers[0].appleId, null)
+  assert.deepEqual(f.state().customers, [])
   assert.deepEqual(f.events, ['begin', 'commit', 'release'])
 })
 
@@ -202,7 +239,7 @@ test('公共配置新增渠道后，销售及快速出库无需修改白名单',
   const body = { brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, supplier_id: 5, store_id: 6,
     imei: '123456789012345', serial_number: 'TEST-SN', sale_operator_id: 7, sale_price: 100, purchase_cost: 80,
     customer_phone: '13800138000', payment_method: 'mobile', payment_channel: 'test_channel' }
-  await assert.rejects(service.quickSale(body, { id: 7 }), error => error === reached)
-  await assert.rejects(service.quickSale({ ...body, payment_channel: 'unknown' }, { id: 7 }), /请选择有效的支付渠道/)
-  await assert.rejects(service.quickSale({ ...body, payment_method: 'cash' }, { id: 7 }), /请选择有效的支付渠道/)
+  await assert.rejects(service.quickSale(body, { id: 7, store_ids: [6] }), error => error === reached)
+  await assert.rejects(service.quickSale({ ...body, payment_channel: 'unknown' }, { id: 7, store_ids: [6] }), /请选择有效的支付渠道/)
+  await assert.rejects(service.quickSale({ ...body, payment_method: 'cash' }, { id: 7, store_ids: [6] }), /请选择有效的支付渠道/)
 })

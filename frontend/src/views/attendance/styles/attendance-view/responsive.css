@@ -91,17 +91,6 @@
     justify-content: center;
   }
 
-  .attendance-detail-descriptions :deep(.el-descriptions__label) {
-    width: 88px;
-    font-size: var(--tf-type-scale-12);
-  }
-
-  .attendance-detail-descriptions :deep(.el-descriptions__content) {
-    font-size: var(--tf-type-scale-13);
-    line-height: 1.45;
-    word-break: break-word;
-  }
-
   .attendance-date-range-grid {
     gap: 10px;
   }
@@ -156,8 +145,4 @@
     gap: 8px;
   }
 
-  .attendance-detail-descriptions :deep(.el-descriptions__label),
-  .attendance-detail-descriptions :deep(.el-descriptions__content) {
-    font-size: var(--tf-type-scale-12);
-  }
 }

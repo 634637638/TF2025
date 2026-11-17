@@ -2,9 +2,16 @@
 
 const { getDatabase } = require('../config/database')
 
-class PermissionModuleMappingRepository {
+const PermissionMenuRepository = require('./permission-menu.repository')
+
+class PermissionModuleMappingRepository extends PermissionMenuRepository {
   constructor({ database = getDatabase } = {}) {
+    super()
     this.database = database
+  }
+
+  async listMenuOrder(database = this.database()) {
+    return super.listMenuOrder(database)
   }
 
   async list({ supportsModuleIsActive }) {

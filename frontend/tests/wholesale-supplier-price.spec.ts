@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
-import { defineComponent, h } from 'vue'
+import { computed, defineComponent, h } from 'vue'
 import WholesaleModal from '@/components/WholesaleModal.vue'
 import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import {
@@ -13,6 +13,10 @@ import {
 } from '@/components/wholesale/helpers'
 import type { CollectedPriceItem, WholesalePhone } from '@/components/wholesale/types'
 
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({
+  canCreate: computed(() => true), canEdit: computed(() => true), requirePermission: () => true
+}) }))
+
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), suppliers: vi.fn(), warning: vi.fn() }))
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: { get: mocks.get, post: mocks.post } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { name: '测试销售员' } }) }))
@@ -21,7 +25,7 @@ vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({
 }) }))
 vi.mock('@/services/reference-options', () => ({
   getCachedSuppliers: mocks.suppliers,
-  getCachedStores: vi.fn().mockResolvedValue({ success: true, data: [] }),
+  getStores: vi.fn().mockResolvedValue({ success: true, data: [] }),
   searchOperators: vi.fn().mockResolvedValue({ success: true, data: [] })
 }))
 

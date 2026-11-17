@@ -52,7 +52,12 @@ test('非法JSON、JSON空值/数组及错误字符串快照均拒绝', () => {
 
 test('采购列表服务先投影原资料再脱敏，内部原始JSON不透传，即使读取全字段也不能绕过隐藏字段', async () => {
   const record = { id: 31, ...identity, product_snapshot: createPurchaseSnapshot(source(), identity) }
-  const service = new Service({ repository: { async list() { return { rows: [record], summary: { total: 1 }, pagination: { total: 1 } } } } })
+  const events = []
+  const connection = { async execute() { events.push('configure') }, async beginTransaction() { events.push('begin') }, async rollback() { events.push('rollback') } }
+  const service = new Service({ repository: {
+    async withConnection(operation) { try { return await operation(connection) } finally { events.push('release') } },
+    async list(scope, query, db) { assert.equal(db, connection); return { rows: [record], summary: { total: 1 }, pagination: { total: 1 } } }
+  } })
   const controller = new Controller({ service })
   controller.fields.masking = { async getUserFieldPermissions() { return { hiddenFields: ['payment.supplier_name', 'payment.brand_name'] } }, filterSensitiveFields: value => value }
   const response = { status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } }
@@ -62,6 +67,7 @@ test('采购列表服务先投影原资料再脱敏，内部原始JSON不透传�
   assert.equal(response.body.data[0].brand_name, null)
   assert.equal(response.body.data[0].has_snapshot, true)
   assert.equal('product_snapshot' in response.body.data[0], false)
+  assert.deepEqual(events, ['configure', 'begin', 'rollback', 'release'])
 })
 
 test('原资料读取绑定最终商品、本次供应商及原门店；采购名称检索沿用快照并参数绑定', async () => {

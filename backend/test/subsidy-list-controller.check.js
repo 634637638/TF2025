@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -79,7 +81,7 @@ test('subsidy list service preserves pagination, sorting, formatting, signed pho
     mapPhotos(photos, userId) { assert.deepEqual(photos, ['photo']); assert.equal(userId, 7); return ['/signed'] },
     logger: { info() {}, error() {} }
   })
-  const result = await service.list({ userId: 7, query: { page: '2', page_size: '10', sort_by: 'created_at', sort_order: 'asc' } })
+  const result = await service.list({ actor: scopedActor, userId: 7, query: { page: '2', page_size: '10', sort_by: 'created_at', sort_order: 'asc' } })
   assert.equal(input.sortField, 'created_at')
   assert.equal(input.sortDirection, 'ASC')
   assert.equal(input.pageSize, 10)

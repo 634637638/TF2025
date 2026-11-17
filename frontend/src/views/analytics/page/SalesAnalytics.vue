@@ -177,6 +177,7 @@
               <h3>销售趋势</h3>
               <el-radio-group
                 v-model="trendPeriod"
+                class="tf-state-selector"
                 size="small"
               >
                 <el-radio-button value="monthly">
@@ -207,7 +208,6 @@
             <div class="card-header">
               <h3>产品销售分布</h3>
               <el-button
-                size="small"
                 @click="toggleChartType"
               >
                 {{ chartType === 'pie' ? '柱状图' : '饼图' }}
@@ -264,7 +264,6 @@
                 </el-select>
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportTopProducts"
                 >
                   导出
@@ -418,7 +417,6 @@
               />
             </el-select>
             <el-button
-              size="small"
               type="primary"
               :loading="forecastLoading"
               @click="generateForecast"
@@ -447,7 +445,6 @@
               <span class="unit">台</span>
             </div>
             <el-button
-              size="small"
               text
               @click="selectedDate = null"
             >
@@ -517,7 +514,6 @@
                 <i class="fas fa-info-circle" />
                 <span>{{ selectedDate }} 是历史日期，实际销量为 {{ getHistoricalTotal(selectedDate) }} 台。请点击未来日期查看预测销量。</span>
                 <el-button
-                  size="small"
                   text
                   @click="selectedDate = null"
                 >
@@ -599,7 +595,7 @@ import { buildCsvContent } from '@/utils/csv-export'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { logger } from '@/utils/logger'
 import { TimeUtil } from '@/utils/time'
-import { getCachedStores, type ReferenceRecord } from '@/services/reference-options'
+import { getStores, type ReferenceRecord } from '@/services/reference-options'
 import type { CallbackDataParams, EChartsOption, TopLevelFormatterParams } from '@/utils/echarts'
 
 const props = withDefaults(defineProps<SalesAnalyticsProps>(), {
@@ -898,7 +894,7 @@ const loadMonthlyTrendData = async () => {
 const loadStoreComparisonData = async () => {
   try {
     // 获取店铺列表（使用缓存）
-    const storesResponse = await getCachedStores()
+    const storesResponse = await getStores({ strictScope: true })
     if (!storesResponse.success || !storesResponse.data) return
 
     const storeValues: unknown[] = Array.isArray(storesResponse.data)

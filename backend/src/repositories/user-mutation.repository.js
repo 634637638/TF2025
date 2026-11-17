@@ -4,24 +4,11 @@ const USER_PUBLIC_COLUMNS = 'u.id, u.username, u.name, u.email, u.phone, u.statu
 
 class UserMutationRepository {
   findRoleByName(connection, role) { return connection.execute('SELECT id FROM roles WHERE code = ? OR name = ? LIMIT 1', [role, role]) }
-  findRolesByIds(connection, ids) { return connection.execute(`SELECT id FROM roles WHERE id IN (${ids.map(() => '?').join(',')})`, ids) }
   findByUsername(connection, username) { return connection.execute('SELECT id FROM users WHERE username = ?', [username]) }
   findById(connection, id) { return connection.execute('SELECT id FROM users WHERE id = ?', [id]) }
   findDuplicateUsername(connection, username, id) { return connection.execute('SELECT id FROM users WHERE username = ? AND id != ?', [username, id]) }
   create(connection, values) { return connection.execute('INSERT INTO users (username, password, name, email, phone, status, store_id, salary_template_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)', values) }
   update(connection, fields, values) { return connection.execute(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values) }
-  async replaceUserRoles(connection, userId, roleIds) {
-    if (roleIds === null) return
-
-    await connection.execute('DELETE FROM user_roles WHERE user_id = ?', [userId])
-    if (roleIds.length === 0) return
-
-    const values = roleIds.map(() => '(?, ?, NOW(), NOW())').join(',')
-    await connection.execute(
-      `INSERT INTO user_roles (user_id, role_id, assigned_at, created_at) VALUES ${values}`,
-      roleIds.flatMap(roleId => [userId, roleId])
-    )
-  }
   async selectPublicUser(connection, { id, username } = {}) {
     const whereClause = id !== undefined ? 'u.id = ?' : 'u.username = ?'
     const value = id !== undefined ? id : username

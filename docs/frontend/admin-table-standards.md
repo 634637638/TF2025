@@ -216,6 +216,8 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 
 ### 综合查询 PC 全字段最终基准
 
+综合查询手机模式的普通字段在PC、平板及手机共用 `QueryDetailDialog` 设备详情，PC双击不受移动端宽度限制，详情内复用既有贴膜及整单等权限动作。成色、状态和备注的既有专用双击继续优先处理，PC分别进入素材、销售凭证和备注原文；操作按钮、链接及输入控件沿用 `isInteractiveTableTarget` 公共排除规则，不同时打开行详情。手机/平板仍通过 `v-table-double-tap` 识别同一记录，不更换公共触摸规则。
+
 综合查询 `/query` 是管理员全字段场景的紧凑基准。下列数值是字段语义下限或测量参数，最终宽度仍按当前页实际内容扩展：
 
 | 字段 | 最终规则 |
@@ -223,7 +225,7 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 | 普通字段 | `getTextColumnMinWidth`，读取当前页表头和内容，`horizontalPadding: 20` |
 | 序列号、IMEI | 完整单行展示，`getIdentifierColumnMinWidth`，`horizontalPadding: 24` |
 | 备注 | `88px` 至 `144px`，超出显示省略号；PC 双击该单元格查看完整原文 |
-| Apple ID | 完整单行展示，最小 `180px`，至少容纳 `15279028053@139.com`，不设置双击查看 |
+| Apple ID | 完整单行展示，最小 `180px`，至少容纳 `15279028053@139.com`；双击沿用设备详情，不单设文字预览 |
 | 型号 | 最小 `74px`，`horizontalPadding: 16`，`asciiCharacterWidth: 7` |
 | 成色、状态 | 最小 `50px`，`horizontalPadding: 44`；同长度短徽章保持同宽 |
 | 操作 | 使用 `getAdaptiveActionColumnWidth` 按当前用户实际可见按钮计算动态 `width`；一个、两个、三个、四个标准按钮当前约为 `104px`、`184px`、`264px`、`344px`，权限减少时自动缩小，按钮增加时自动扩大；按钮组居中且左右留白相等 |
@@ -233,7 +235,7 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 ### 操作列文字规则
 
 - PC 端主列表的查看、编辑、删除、审核等常规操作必须使用“图标 + 中文文字”，不得只显示图标让用户猜测功能。
-- 主列表操作按钮统一使用 `.action-buttons` 和 `el-button size="small"`，事件必须使用 `@click.stop`；按钮文字必须完整显示。
+- 主列表操作按钮统一使用 `.action-buttons` 和不声明尺寸的 `el-button`，事件必须使用 `@click.stop`；按钮文字必须完整显示。
 - `.action-buttons` 的排列、间距和不换行由公共样式控制。PC 和手机端的操作列按钮间距统一读取公共变量，`.actions-column .cell` 通过 `--admin-data-table-action-edge-space` 设置左右各 `8px` 安全空间，操作列宽度函数同步预留总计 `16px`，保持按钮组紧凑且左右对称。按钮内部图标与文字只使用公共 `4px` 间距，公共规则会清除历史 `mr-*` 以及页面图标 `margin`，避免重复间距改变按钮实际宽度。业务页面不得设置 `gap`、`flex-wrap: wrap`、按钮或图标外边距、操作单元格内边距或固定偏移，该覆盖会被统一审计直接拦截。
 - 审批、到账、待办事项标题等位于普通业务字段列中的单个文字按钮使用 `.table-inline-action`。宽度固定为 `auto`，最小宽度为 `0`，使用全局紧凑变量 `--admin-data-table-inline-action-padding-x`、`--admin-data-table-inline-action-icon-size` 和 `--admin-data-table-inline-action-icon-gap`，不得设置 `width: 100%` 或业务固定宽度。
 - 操作列宽度根据当前权限下实际显示的按钮和按钮文字调用 `getActionColumnMinWidth` 计算。紧凑表格按钮按公共 `66px` 基准测量；两字标准按钮仍可传数量；出现“页面权限”“取消打款”“设为默认”等三字以上按钮时必须传文字数组，由公共函数分别测量文字、图标、间距、内边距和边框后求和，并统一预留左右各 `8px` 安全空间。按钮增减后列宽需要同步变化，禁止依赖固定窄列遮挡文字。
@@ -268,8 +270,8 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 >
   <template #default="{ row }">
     <div class="action-buttons">
-      <el-button v-if="canEdit" size="small" @click.stop="edit(row)">编辑</el-button>
-      <el-button v-if="canDelete" size="small" @click.stop="remove(row)">删除</el-button>
+      <el-button v-if="canEdit" @click.stop="edit(row)">编辑</el-button>
+      <el-button v-if="canDelete" @click.stop="remove(row)">删除</el-button>
     </div>
   </template>
 </el-table-column>
@@ -305,9 +307,9 @@ const actionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.value
 
 ```vue
 <div class="action-buttons">
-  <el-button class="table-action table-action--view" size="small" @click.stop="view(row)">查看</el-button>
-  <el-button class="table-action table-action--edit" size="small" @click.stop="edit(row)">编辑</el-button>
-  <el-button class="table-action table-action--delete" size="small" @click.stop="remove(row)">删除</el-button>
+  <el-button class="table-action table-action--view" @click.stop="view(row)">查看</el-button>
+  <el-button class="table-action table-action--edit" @click.stop="edit(row)">编辑</el-button>
+  <el-button class="table-action table-action--delete" @click.stop="remove(row)">删除</el-button>
 </div>
 ```
 
@@ -387,6 +389,8 @@ const clearSelection = () => {
 
 选择功能至少验证：单项勾选与取消、全选后取消一项、半选后再次全选、取消当前页全选、清空全部选择、翻页后返回、筛选后恢复、禁用行不参与全选，以及 PC/手机点击复选框不会打开详情。
 
+商品选购等需要高密度信息的小卡片，可在 `.admin-panel` 显式声明 `data-density="compact"`，由公共 `admin-layout.css` 将当前卡片内边距映射为 `--tf-space-2`。未声明时继续使用 `--admin-panel-padding`，嵌套的普通卡片重新读取默认值，不继承外层紧凑密度。页面只声明规格，不覆盖公共 padding 或追加 `!important`。商品卡片标签在同一容器按内容宽度连续排列，保持完整条码，桌面和手机均核对边界；不能为了压缩卡片修改公共徽章尺寸。
+
 ## 5. 全局变量
 
 所有统一调整在 `frontend/src/styles/admin-layout.css` 的 `:root` 中完成。
@@ -428,7 +432,7 @@ const clearSelection = () => {
 4. 普通页面按业务优先级减少手机端列数，表格宽度保持在页面卡片内。
 5. 手机端正文统一读取 `--mobile-text-table`，表头读取 `--mobile-text-table-header`，两个令牌只在 `frontend/src/styles.scss` 定义。当前普通手机均为 `13px`，`375px` 及以下均为 `11px`。`responsive.scss` 不得再次覆盖这两个令牌。表格内的 `span` 必须继承单元格字号，不能被通用正文样式放大；禁止 `clamp(...vw...)`、小于公共字号的像素值或按机型连续缩放字体。
 6. 手机端双击打开详情时，使用全局 `v-table-double-tap` 直接识别两次完整触摸，不依赖浏览器生成两次 `row-click`；必须忽略按钮、链接和表单控件，防止误触。
-7. PC 表格操作使用 `.action-buttons` 和 `el-button size="small"`；手机操作放在查看详情的 `.tf-dialog-actions`，读取公共弹窗按钮规格，按钮点击添加 `.stop`。
+7. PC 表格操作使用 `.action-buttons` 和不声明尺寸的 `el-button`；手机操作放在查看详情的 `.tf-dialog-actions`，读取公共弹窗按钮规格，按钮点击添加 `.stop`。
 
 ### 手机端双击详情
 
@@ -534,6 +538,8 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 
 权限管理 `/permissions` 的角色管理、角色分配、门店绑定、模块管理和权限日志列表统一使用 `el-table.data-table.devices-table`，并放入 `.table-responsive`。用户名、角色、门店、模块标识、日期等字段按当前页内容计算紧凑最小宽度；角色描述、日志描述等长文本使用有限 `maxWidth` 并完整换行，不能恢复原生 `<table>` 或页面私有表头、行高和滚动样式。操作按钮继续使用图标加中文文字，并按实际可见按钮文字与状态计算宽度。
 
+模块管理“已注册模块”的列表字段顺序为：模块名称、模块标识、分类、权限数量、名称状态、状态、创建时间、操作；手机保留前七个业务字段，操作进入详情底部。列表、网格和查看详情的权限数量均读取已注册模块接口的 `permission_count`，代表统一能力清单中的业务动作数，不含 `menu_view`，不使用角色授权行数、历史缓存值或固定数量；字段缺失显示未知标记，不伪装为零。接口口径见[模块查询与权限数量](../permissions/page-module-scan-guide.md#模块查询与权限数量)。
+
 模块管理 Tab 的网格卡片读取 `--admin-panel-gap`、`--admin-panel-padding` 和 `--admin-panel-radius`。卡片头部固定为两行：第一行按“模块名称、分类、启用状态”排序，第二行展示模块 KEY 和说明；两行均保持单行，超出时在当前字段内省略并通过 `title` 查看完整内容。手机端权限数量、名称状态、创建日期和模块类型固定为两列紧凑信息网格，每个信息项的标签和值在同一行展示，不得退化为四张纵向嵌套卡片。卡片操作使用 `.card-actions.tf-actions--fit-row` 保持单行自适应；分页只使用公共 `Pagination` 和全局 `.pagination-wrapper`，页面不得覆盖分页间距、边框或手机布局。
 
 ### 考勤管理页规则
@@ -574,6 +580,7 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 - 普通字段不得使用 `show-overflow-tooltip` 截断；长说明使用 `.complete-text-column.wrapped-text-column`，明确具有完整查看入口的长文本例外才使用 `.ellipsis-text-column`。
 - 超宽表格只保留 Element Plus 内部一个滚动区域，PC 鼠标拖动和手机触摸横移均可用。
 - 全站页面、报价页根容器和表格滚动容器隐藏可见滚动条，但必须保留原有上下/左右滚动能力；统一实现位于 `frontend/src/styles/components/_scrollbars.scss` 和价格表公共混入，页面不得单独恢复可见滚动条。
+- 弹窗内的商品列表、购物车和结算明细等原生滚动容器可接入公共 `tf-scrollbar-hidden`；只隐藏滚动条外观，保留原有 `overflow: auto`、滚轮及触摸滚动，不用 `overflow: hidden` 替代。
 - PC 鼠标拖动后表头、表体和汇总行保持同一 `scrollLeft`，不存在表头与内容错位。
 - PC 主列表操作按钮显示“图标 + 文字”，列宽随可见按钮数量自适应；模态框纯图标按钮具备 `title` 或 tooltip。
 - 操作按钮组在列内居中，左右安全留白一致；备注双击能查看完整内容，Apple ID 示例长度无需双击即可完整显示。

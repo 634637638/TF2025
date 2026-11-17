@@ -8,11 +8,14 @@
 | --- | --- |
 | `frontend/src/components/MobileDialog.vue` | 弹窗结构、关闭行为、响应式模式、默认 footer |
 | `frontend/src/components/RecordDetailDialog.vue` | 公共字段记录详情，字段权限与底部动作插槽 |
-| `frontend/src/components/RecordDescriptions.vue` | 描述列表手机标签置顶、两列及长字段换行，桌面保留列数 |
+| `frontend/src/components/RecordDescriptions.vue` | 描述列表默认手机标签置顶、两列及长字段换行，桌面保留列数；compact 显式启用横向紧凑布局 |
 | `frontend/src/components/MediaPreviewViewer.vue` | 图片/视频全屏预览、缩放、切换及可选删除/下载事件 |
 | `frontend/src/styles/components/_dialog.scss` | 遮罩、宽度、圆角、标题栏、关闭按钮、正文间距、确认框内容宽度、移动端边界 |
+| `frontend/src/styles/components/_query-modal.scss` | 综合查询编辑、快速出库与商品入库的公共表单分区、紧凑标题及卡片间距 |
 | `frontend/src/styles/components/_dialog-actions.scss` | 取消/确认按钮的排列、尺寸、间距和移动端居中等分布局 |
 | `frontend/src/styles/components/_buttons.scss` | 按钮颜色、语义和普通按钮视觉 |
+
+`RecordDescriptions` 以 render 函数调用 Element Plus 描述列表，须在自身入口显式加载 `element-plus/es/components/descriptions/style/css`。模板自动组件解析不能替代这项依赖；业务页面不重复导入该样式，也不以私有宽度、边框或间距覆盖补救。其按需样式浏览器回归见 `node frontend/scripts/test-mobile-record-details.mjs --attendance-only`：使用真实考勤详情模板与公共组件，禁止导入 Element Plus 全量 CSS，核对全宽、边框、单元格间距及响应式两列，避免测试环境掩盖缺失依赖。
 
 关闭按钮统一使用 `MobileDialog` 的 `tf-button--dialog-close` 语义。该语义同时覆盖 Element Plus 的 `--el-button-*` 变量和 SVG 图标尺寸；公共弹窗样式还按 `.mobile-dialog-sheet-close` 结构类提供兜底，禁止浏览器默认按钮外观在手机端泄漏。PC 与手机端都必须保持半透明标题栏背景、白色关闭图标和圆形触控区域；业务页面不得重新设置关闭按钮背景、颜色、宽高或 SVG 尺寸。
 
@@ -88,7 +91,9 @@
 
 以上样式由 `frontend/src/main.ts` 全局加载。页面不得再维护第二套弹窗外壳样式。
 
-`tf-dialog-body-flush` 是唯一正文贴边变体，PC 和手机共用，不在业务样式中写零 padding。销售出库、批量销售、调货/划拨、销售单据及多栏权限工作台按内容语义使用该变体。
+`tf-dialog-body-flush` 是唯一正文贴边变体，PC 和手机共用，不在业务样式中写零 padding。销售出库、批量销售、调货/划拨、销售单据、商品入库及模板/档案/原批次编辑、多栏权限工作台按内容语义使用该变体。
+
+表单分区可复用 `tf-query-modal-section` 和 `tf-query-modal-section-title`，由公共入口维护内边距、分区间距、图标和标题底线。分区下方有加载、空状态、表单或其他内容时，保留公共分区间距（手机 `--tf-space-3`、平板及桌面 `--tf-space-6`）；只有父容器的最后一个子元素才移除底部间距，不能按 HTML 标签类型判断末尾。分区背景使用 `--tf-dialog-surface` / `--tf-dialog-surface-soft`，标题使用 `--tf-dialog-body-text`，背景与文字成对适配主题；禁止组合暗色背景与固定浅色渐变端点。商品入库及模板/档案/原批次编辑只归零正文外层留白，卡片及控件仍保留公共间距；业务字段、对照区及提交规则保持独立。
 
 `tf-dialog-workspace` 用于权限矩阵、角色分配等需要独立滚动的多栏工作台：桌面高度取 `min(820px, 100dvh - 48px)`，手机/平板取 `100dvh - 24px`，最终仍受公共外壳最大高度约束；标题与 footer 不收缩，正文填充剩余空间。提供 `100vh` 回退，高度参数由公共工作台令牌定义。高度与滚动由 `_dialog.scss` 唯一维护，业务只控制内部栏位，不设置私有全屏、圆角、正文 padding 或外壳高度。
 
@@ -152,7 +157,7 @@ PC、平板和手机的彩色标题栏统一为 `50px`（CSS 像素），唯一�
 | 标题 | 16px | 16px | 15px |
 | 正文和提示 | 14px | 15px | 14px |
 | 表单标签 | 14px | 14px | 13px |
-| 普通按钮（footer 与正文工具栏见下文） | 14px | 14px | 13px |
+| 普通按钮（footer 与正文工具栏见下文） | 13px | 13px | 13px |
 
 标题使用 `--tf-font-dialog-title`，正文使用 `--tf-font-body`，标签使用 `--tf-font-label`，按钮使用 `--tf-button-font-size`。`MobileDialog`、Element Plus Dialog 和 MessageBox 必须遵循同一组令牌；业务页面不得单独设置弹窗标题、提示正文或表单标签字号。业务提示可以调整换行、最大高度和行高，但不得复制字号值。
 
@@ -237,13 +242,13 @@ Safari 标签页和主屏幕书签可能返回不同的 `safe-area-inset-*`。�
 
 ## Footer 按钮
 
-- 按钮公共尺寸：PC 高度为 `32px`、最小宽度 `64px`、水平内边距 `8px`、按钮间距 `4px`；平板（`768–1024px`）高度为 `40px`、间距 `8px`、水平内边距 `10px`；手机（`<=767px`）高度为 `clamp(30px, 8.54vw, 32px)`、字号 `12px`、间距 `6px`、水平内边距 `clamp(6px, 2.14vw, 8px)`，圆角复用公共控件令牌（`6px`）。手机和平板按钮在可用宽度内按实际数量等分，每个最大 `150px`（`--tf-dialog-action-max-width`），空间充足时每个为 `150px`，空间不足时等分收缩，整组居中；页面不设置固定宽度或最小宽度。
+- 按钮公共尺寸：PC 复用公共默认小号，高度为 `28px`、字号 `13px`、最小宽度 `64px`、水平内边距 `10px`、按钮间距 `4px`；平板（`768–1024px`）高度为 `40px`、间距 `8px`、水平内边距 `10px`；手机（`<=767px`）高度为 `clamp(30px, 8.54vw, 32px)`、字号 `12px`、间距 `6px`、水平内边距 `clamp(6px, 2.14vw, 8px)`，圆角复用公共控件令牌（`6px`）。手机和平板按钮在可用宽度内按实际数量等分，每个最大 `150px`（`--tf-dialog-action-max-width`），空间充足时每个为 `150px`，空间不足时等分收缩，整组居中；页面不设置固定宽度或最小宽度。
 - 所有业务 footer 容器及详情正文末尾的操作区必须使用 `.tf-dialog-actions`（可与业务语义 class 并列）；综合查询不再维护私有按钮网格或尺寸。
 - PC 端按钮靠右、按内容宽度排列；按钮使用统一最小宽度、统一高度和统一间距。
 - 手机和平板按钮保持一行并在 footer 可用宽度内居中等分，取消在左、确认/保存/提交在右；操作区占满可用宽度，所有按钮等宽且不超过公共宽度上限，整组左右留白必须对称。按钮间距和底部安全区由全局令牌控制。
 - 三个及以上按钮仍使用同一行居中等分布局；不在页面中改成独立 grid 或分别设置左右宽度。
 - 不在页面中给 footer 按钮重复设置高度、宽度、圆角或间距。
-- PC footer 按钮由全局令牌统一为 `32px`；平板维持 `40px`，手机统一使用综合查询紧凑规格（约 `30–32px`）。`MobileDialog` 不得另设按钮尺寸等级或覆盖对应断点高度。
+- PC footer 按钮复用全局小号基础令牌，统一为 `28px`；平板维持 `40px`，手机统一使用综合查询紧凑规格（约 `30–32px`）。`MobileDialog` 不得另设按钮尺寸等级或覆盖对应断点高度。
 - 公共 footer 和 `.tf-dialog-toolbar` 内的 `small/default/large` 高度别名统一映射到 `--tf-dialog-action-height`，防止页面遗留的 `size` 属性覆盖公共规格；新代码不再为这些按钮指定尺寸等级。
 - 取消使用中性语义，保存/确认使用 `primary`，删除使用 `danger`，完成使用 `success`。
 - 业务 footer 容器可以保留自己的 class，但应同时使用 `.tf-dialog-actions`。
@@ -310,6 +315,10 @@ Safari 标签页和主屏幕书签可能返回不同的 `safe-area-inset-*`。�
 
 客户商品历史在手机/平板使用公共双击记录详情，整单动作放在详情底部；关闭、切页或撤权卸载记录详情，避免公共弹窗隐藏后仍保留上页记录。贴膜历史窗口仅保留有权限的办理业务动作，无办理权限时不渲染footer。对应隔离浏览器回归为 `node frontend/scripts/test-checkout-order.mjs --customer-pages-only`，商品查询长名称和客户手机号整行由 `--goods-page-only` 检查；服务为内存替身，物理设备及真实业务另验。
 
-`RecordDetailDialog` 过滤不可见字段后，按可见顺序配对短字段；长字段前的落单项及末尾落单项由公共组件补为整行，长字段后的两个短字段仍同排，不按整份列表的奇偶位置推断。复杂格式复用 `#field="{ field, row }"`，不能为格式化另建详情。泛型表格转接已有 actions 插槽时监听 `beforeAction` 先关闭，禁用按钮不触发交接；业务页面已有 `runDetailAction` 时继续使用原入口。`RecordDescriptions` 统一手机两列/标签置顶与长字段跨列，桌面保留原列数和插槽。
+`RecordDetailDialog` 过滤不可见字段后，按可见顺序配对短字段；长字段前的落单项及末尾落单项由公共组件补为整行，长字段后的两个短字段仍同排，不按整份列表的奇偶位置推断。复杂格式复用 `#field="{ field, row }"`，不能为格式化另建详情。泛型表格转接已有 actions 插槽时监听 `beforeAction` 先关闭，禁用按钮不触发交接；业务页面已有 `runDetailAction` 时继续使用原入口。`RecordDescriptions` 默认统一手机两列/标签置顶与长字段跨列，桌面保留原列数和插槽。紧凑商品资料可显式声明 `compact`：所有终端使用标签与内容横向同行，手机保持两个短字段一行，长字段仍跨列；公共入口统一采用小号描述列表、公共表格字号和紧凑单元格内边距，页面不覆盖描述列表字号与尺寸。未设置标签时自动移除空标签占位，仅保留字段内容；无边框模式移除单元格左右留白、缩短标签间距且标签不拆字，空间不足时内容自然换行。
 
 直排表单与详情网格的公共 class、长字段标记和隐藏补位见[手机字段布局](form-control-standards.md#手机表单字段布局)。静态采用、组件行为、浏览器布局及真机验收必须分别记录。
+
+只读短字段摘要可在 `tf-record-details` 上显式增加 `tf-record-details--inline`：继续两列等宽，标签与内容横向同行，行距、字段间距及标签/内容字号分别复用公共间距、辅助文字和表格文字令牌。标签不拆字，长内容按原规则换行；`tf-record-details__field--wide` 仍用于整行字段。该修饰由 `_dialog.scss` 唯一维护，未启用的详情保留原布局。贴膜顶部摘要采用此方式，两行展示姓名/手机号及本机/客户累计，手机号和本机统计用公共 `el-text` 的primary色，总计用success色，不在业务页面复制色板或控件尺寸。
+
+紧凑描述列表的字号及有/无边框内边距按公共根节点、正文、表格和单元格结构覆盖 Element Plus，不使用 `!important`；小号组件样式在公共样式前后加载时均须保持一致，默认描述列表不受影响。2026-11-15 移除该处3项强制优先级，不扩大样式债务登记上限。

@@ -1,3 +1,5 @@
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 /**
  * 仪表板数据访问层
  * 处理所有仪表板相关的数据库操作
@@ -25,6 +27,7 @@ class DashboardRepository extends BaseRepository {
       'p.status = \'in_stock\'',
       'p.supplier_id IS NOT NULL'
     ]
+    appendStoreScopeCondition(filters.scope, 'p.store_id', conditions, [])
     if (filters.storeId !== undefined && filters.storeId !== null) {
       conditions.push('p.store_id = ?')
     }
@@ -214,12 +217,13 @@ class DashboardRepository extends BaseRepository {
    * 按型号、颜色、内存分组统计，使用配置的预警值进行判断
    * 优先级：型号级配置 > 品牌级配置 > 全局配置
    */
-  async getPhoneStockWarnings(_threshold = 3, pageSize = 20) {
+  async getPhoneStockWarnings(_threshold = 3, pageSize = 20, filters = {}) {
     try {
+      if (!filters.scope?.allStores && !filters.scope?.storeIds?.length) return []
       await ensurePhoneStockWarningSchema()
 
-      const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql()
-      const warningCandidatesSql = this.buildWarningCandidatesSql()
+      const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql(filters)
+      const warningCandidatesSql = this.buildWarningCandidatesSql(filters)
       const betterSpecificitySql = this.buildWarningSpecificitySql('psw2')
 
       const query = `
@@ -284,7 +288,12 @@ class DashboardRepository extends BaseRepository {
         LIMIT ?
       `
 
-      const phoneWarnings = await this.executeQuery(query, [pageSize])
+      const scopeParams = []
+      appendStoreScopeCondition(filters.scope, 'p.store_id', [], scopeParams)
+      const filterParams = [...scopeParams]
+      if (filters.storeId !== undefined && filters.storeId !== null) filterParams.push(filters.storeId)
+      if (filters.supplierId !== undefined && filters.supplierId !== null) filterParams.push(filters.supplierId)
+      const phoneWarnings = await this.executeQuery(query, [...filterParams, ...filterParams, pageSize])
       return phoneWarnings
     } catch (error) {
       log.error('获取手机库存预警失败:', error)
@@ -327,20 +336,22 @@ class DashboardRepository extends BaseRepository {
    * 获取今日销售统计
    * 用于显示今日销售情况预警
    */
-  async getTodaySalesWarnings() {
+  async getTodaySalesWarnings(scope) {
     try {
+      const conditions = ['1=1']; const params = []
+      appendStoreScopeCondition(scope, 'current_sale.store_id', conditions, params)
       const query = `
         SELECT
           COUNT(*) as sales_count,
           SUM(p.sale_price) as total_amount,
           SUM(p.sale_price - p.purchase_cost) as total_profit,
           COUNT(DISTINCT p.sale_operator_id) as operator_count
-        FROM phones p
-        WHERE DATE(p.sale_time) = CURDATE()
+        FROM phones p JOIN sales current_sale ON current_sale.id = (${getLatestActiveSaleIdSql('p')})
+        WHERE ${conditions.join(' AND ')} AND DATE(p.sale_time) = CURDATE()
           AND p.status = 'sold'
       `
 
-      const [result] = await this.executeQuery(query)
+      const [result] = await this.executeQuery(query, params)
       return result || { sales_count: 0, total_amount: 0, total_profit: 0, operator_count: 0 }
     } catch (error) {
       log.error('获取今日销售预警失败:', error)
@@ -352,21 +363,23 @@ class DashboardRepository extends BaseRepository {
    * 获取近7天销售预警
    * 对比上周同期，显示销售趋势
    */
-  async getSalesTrendWarnings() {
+  async getSalesTrendWarnings(scope) {
     try {
+      const conditions = ['1=1']; const params = []
+      appendStoreScopeCondition(scope, 'current_sale.store_id', conditions, params)
       const query = `
         SELECT
           DATE(p.sale_time) as sale_time,
           COUNT(*) as sales_count,
           SUM(p.sale_price) as total_amount
-        FROM phones p
-        WHERE p.sale_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        FROM phones p JOIN sales current_sale ON current_sale.id = (${getLatestActiveSaleIdSql('p')})
+        WHERE ${conditions.join(' AND ')} AND p.sale_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
           AND p.status = 'sold'
         GROUP BY DATE(p.sale_time)
         ORDER BY sale_time DESC
       `
 
-      const trends = await this.executeQuery(query)
+      const trends = await this.executeQuery(query, params)
       return trends
     } catch (error) {
       log.error('获取销售趋势预警失败:', error)
@@ -378,8 +391,11 @@ class DashboardRepository extends BaseRepository {
    * 获取入库预警
    * 显示最近入库情况和长期未入库的供应商
    */
-  async getPurchaseWarnings() {
+  async getPurchaseWarnings(scope) {
+    if (!scope?.allStores && !scope?.storeIds?.length) return { recent: [], no_recent: [] }
     try {
+      const conditions = ['1=1']; const params = []
+      appendStoreScopeCondition(scope, 'p.store_id', conditions, params)
       // 最近7天入库统计
       const recentPurchaseQuery = `
         SELECT
@@ -388,14 +404,14 @@ class DashboardRepository extends BaseRepository {
           s.name as supplier_name
         FROM phones p
         LEFT JOIN suppliers s ON p.supplier_id = s.id
-        WHERE DATE(p.inventory_time) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        WHERE ${conditions.join(' AND ')} AND DATE(p.inventory_time) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
           AND p.supplier_id IS NOT NULL
           AND p.inventory_time IS NOT NULL
         GROUP BY DATE(p.inventory_time), s.name
         ORDER BY inventory_time DESC, purchase_count DESC
       `
 
-      const recentPurchases = await this.executeQuery(recentPurchaseQuery)
+      const recentPurchases = await this.executeQuery(recentPurchaseQuery, params)
 
       // 长期未入库的供应商（超过7天未进货）
       const noPurchaseQuery = `
@@ -406,14 +422,14 @@ class DashboardRepository extends BaseRepository {
           DATEDIFF(CURDATE(), MAX(p.inventory_time)) as days_since_purchase
         FROM suppliers s
         LEFT JOIN phones p ON s.id = p.supplier_id
-          AND p.inventory_time IS NOT NULL
+          AND p.inventory_time IS NOT NULL AND ${conditions.join(' AND ')}
         WHERE s.status = 1
         GROUP BY s.id, s.name
         HAVING days_since_purchase > 7 OR last_inventory_time IS NULL
         ORDER BY days_since_purchase DESC
       `
 
-      const noPurchases = await this.executeQuery(noPurchaseQuery)
+      const noPurchases = await this.executeQuery(noPurchaseQuery, params)
 
       return {
         recent: recentPurchases,
@@ -432,6 +448,7 @@ class DashboardRepository extends BaseRepository {
    */
   async getModelStockWarnings(_threshold = 3, pageSize = 20, filters = {}) {
     try {
+      if (!filters.scope?.allStores && !filters.scope?.storeIds?.length) return []
       await ensurePhoneStockWarningSchema()
 
       const inventoryAggregateSql = this.buildPhoneInventoryAggregateSql(filters)
@@ -502,7 +519,10 @@ class DashboardRepository extends BaseRepository {
         LIMIT ?
       `
 
+      const scopeParams = []
+      appendStoreScopeCondition(filters.scope, 'p.store_id', [], scopeParams)
       const filterParams = [
+        ...scopeParams,
         ...(filters.storeId !== undefined && filters.storeId !== null ? [filters.storeId] : []),
         ...(filters.supplierId !== undefined && filters.supplierId !== null ? [filters.supplierId] : [])
       ]
@@ -519,16 +539,17 @@ class DashboardRepository extends BaseRepository {
   /**
    * 获取综合预警信息
    * 汇总所有预警类型，用于仪表盘显示
-   * 注意：暂时移除配件预警，等后续需要时再加
+   * 配件预警由业务服务按角色、字段权限和授权门店补齐
    */
   async getComprehensiveWarnings(options = {}) {
     try {
       const {
         phone_threshold = 3,
-        page_size = 10
+        page_size = 10,
+        scope
       } = options
 
-      // 并行获取各类预警数据（移除配件预警 accessoryWarnings）
+      // 配件库存需要角色、字段权限及门店范围，交由业务服务补齐。
       const [
         phoneWarnings,
         todaySales,
@@ -536,11 +557,11 @@ class DashboardRepository extends BaseRepository {
         purchaseWarnings,
         modelWarnings
       ] = await Promise.all([
-        this.getPhoneStockWarnings(phone_threshold, page_size),
-        this.getTodaySalesWarnings(),
-        this.getSalesTrendWarnings(),
-        this.getPurchaseWarnings(),
-        this.getModelStockWarnings(phone_threshold, page_size)
+        this.getPhoneStockWarnings(phone_threshold, page_size, { scope }),
+        this.getTodaySalesWarnings(scope),
+        this.getSalesTrendWarnings(scope),
+        this.getPurchaseWarnings(scope),
+        this.getModelStockWarnings(phone_threshold, page_size, { scope })
       ])
 
       return {
@@ -549,11 +570,7 @@ class DashboardRepository extends BaseRepository {
           threshold: phone_threshold,
           count: phoneWarnings.length
         },
-        // 暂时移除配件预警
-        // accessories: {
-        //   warnings: [],
-        //   count: 0
-        // },
+        accessories: { warnings: [], count: 0 },
         sales: {
           today: todaySales,
           trend: salesTrend,
@@ -571,8 +588,7 @@ class DashboardRepository extends BaseRepository {
         },
         summary: {
           total_warnings: phoneWarnings.length + modelWarnings.length,
-          has_warnings: (phoneWarnings.length + modelWarnings.length) > 0,
-          note: '配件预警功能暂未启用'
+          has_warnings: (phoneWarnings.length + modelWarnings.length) > 0
         }
       }
     } catch (error) {

@@ -9,13 +9,13 @@ class PhoneOptionController {
     this.checkDatabaseConnection = checkDatabaseConnection
   }
 
-  async getPhoneOptions(_req, res) {
+  async getPhoneOptions(req, res) {
     try {
       if (!this.checkDatabaseConnection()) {
         return ApiResponse.error(res, '数据库未连接', 500)
       }
 
-      const options = await this.service.getPhoneOptions()
+      const options = await this.service.getPhoneOptions(req.user)
       return ApiResponse.success(res, options, '获取手机选项成功')
     } catch (error) {
       log.error('获取手机选项失败:', error)

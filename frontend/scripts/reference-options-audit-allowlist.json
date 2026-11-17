@@ -5,7 +5,6 @@
     {"file": "backend/src/controllers/supplier-payment.controller.js", "label": "固定 page_size", "text": "page_size = 50", "reason": "供应商打款业务列表的单页默认值，接口返回完整 pagination，不是参考选项截断。"},
     {"file": "backend/src/repositories/accessory.repository.js", "label": "固定 page_size", "text": "page_size = 50", "reason": "配件业务列表的单页默认值，属于业务记录分页。"},
     {"file": "backend/src/repositories/accessory.repository.js", "label": "固定 page_size", "text": "page_size = 50", "reason": "配件业务列表的单页默认值，属于业务记录分页。"},
-    {"file": "backend/src/repositories/accessory.repository.js", "label": "固定 page_size", "text": "page_size = 50", "reason": "配件业务列表的单页默认值，属于业务记录分页。"},
     {"file": "backend/src/repositories/supplier.repository.js", "label": "固定 page_size", "text": "page_size = 100", "reason": "供应商管理业务列表的单页默认值，属于业务记录分页。"},
     {"file": "backend/src/services/supplier-payment.service.js", "label": "固定 page_size", "text": "page_size = 50", "reason": "供应商打款业务列表的单页默认值，属于业务记录分页。"},
     {"file": "frontend/src/stores/app.ts", "label": "前端固定 slice", "text": "slice(0, 50)", "reason": "本地搜索历史保留条数，不限制任何后端业务检索结果。"},

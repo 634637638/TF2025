@@ -152,7 +152,11 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--tf-space-2);
+}
+
+.site-logo-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .logo-editor-help {

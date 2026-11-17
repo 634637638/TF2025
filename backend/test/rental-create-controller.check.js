@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -72,7 +74,7 @@ const setup = ({ phone = { id: 4, status: 'in_stock', purchase_cost: 700, store_
 
 test('daily rental creation validates, locks customer and phone, commits and marks the phone rented', async () => {
   const { service, events } = setup()
-  const result = await service.create({
+  const result = await service.create({ actor: scopedActor,
     operatorId: 8,
     body: { customer_id: 2, phone_id: 4, billing_mode: 'daily', unit_price: 30, sale_price: 500, start_date: '2026-11-08', deposit: 100 }
   })
@@ -87,7 +89,7 @@ test('daily rental creation validates, locks customer and phone, commits and mar
 
 test('buyout rental creation writes sale, points, down payment and sale payment atomically', async () => {
   const { service, events } = setup()
-  const result = await service.create({
+  const result = await service.create({ actor: scopedActor,
     operatorId: 8,
     body: {
       customer_id: 2, phone_id: 4, billing_mode: 'buyout', term_months: 4, sale_price: 1200,
@@ -111,13 +113,13 @@ test('buyout rental creation writes sale, points, down payment and sale payment 
 
 test('rental creation rejects invalid inputs before acquiring a connection', async () => {
   const { service, events } = setup()
-  await assert.rejects(service.create({ operatorId: 8, body: { customer_id: 1, phone_id: 2, billing_mode: 'buyout' } }), { statusCode: 400 })
+  await assert.rejects(service.create({ actor: scopedActor, operatorId: 8, body: { customer_id: 1, phone_id: 2, billing_mode: 'buyout' } }), { statusCode: 400 })
   assert.ok(!events.includes('acquire'))
 })
 
 test('rental creation rolls back failed buyout synchronization and releases the connection', async () => {
   const { service, events } = setup({ failAt: 'sold' })
-  await assert.rejects(service.create({
+  await assert.rejects(service.create({ actor: scopedActor,
     operatorId: 8,
     body: { customer_id: 2, phone_id: 4, billing_mode: 'buyout', term_months: 1, sale_price: 1000, down_payment: 100, monthly_rent: 20, sale_operator_id: 9, sale_store_id: 5, sale_payment_method: 'cash', start_date: '2026-11-08' }
   }), /write failed/)

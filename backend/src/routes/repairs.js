@@ -401,7 +401,7 @@ router.get('/options', unifiedAuth, requirePermission('repairs:view'), repairLoo
 
 router.get('/customers/search', unifiedAuth, requireAnyPermission(['repairs:view', 'repairs:create', 'repairs:edit']), repairLookupController.searchCustomers.bind(repairLookupController))
 
-router.post('/customers', unifiedAuth, requirePermission('repairs:create'), repairCustomerController.create.bind(repairCustomerController))
+router.post('/customers', unifiedAuth, requirePermission('repairs:create'), requirePermission('customers:create'), repairCustomerController.create.bind(repairCustomerController))
 
 router.get('/devices/search', unifiedAuth, requirePermission('repairs:view'), repairLookupController.searchDevices.bind(repairLookupController))
 

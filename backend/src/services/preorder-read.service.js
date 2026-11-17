@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const { listTemplateReferenceOptions } = require('./reference-options.service')
 const PreorderReadRepository = require('../repositories/preorder-read.repository')
 const { PREORDER_STATUS_LABELS } = require('../config/preorder-response.constants')
@@ -30,8 +32,8 @@ class PreorderReadService {
     this.listReferenceOptions = listReferenceOptions
   }
 
-  async getStats() {
-    const row = await this.repository.getStats()
+  async getStats(actor) {
+    const row = await this.repository.getStats(resolveStoreScope(actor))
     return {
       pending_count: parseInt(row?.pending_count) || 0,
       matched_count: parseInt(row?.matched_count) || 0,
@@ -40,11 +42,13 @@ class PreorderReadService {
     }
   }
 
-  async getById(id) {
-    return this.repository.getById(id)
+  async getById(id, actor) {
+    const record = await this.repository.getById(id)
+    if (record) assertStoreInScope(resolveStoreScope(actor), record.store_id)
+    return record
   }
 
-  async list(query = {}) {
+  async list(query = {}, actor) {
     const page = query.page && query.page !== 'undefined' ? query.page : 1
     const pageSize = query.page_size ?? 20
     const filters = Object.fromEntries([
@@ -75,7 +79,7 @@ class PreorderReadService {
 
     const parsedPage = Math.min(100000, Math.max(1, parseInt(page, 10) || 1))
     const parsedPageSize = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20))
-    const result = await this.repository.list({ filters, page: parsedPage, pageSize: parsedPageSize })
+    const result = await this.repository.list({ scope: resolveStoreScope(actor, query.store_id), filters, page: parsedPage, pageSize: parsedPageSize })
     const total = parseInt(result.total) || 0
     return {
       records: result.records,
@@ -90,9 +94,9 @@ class PreorderReadService {
     }
   }
 
-  async getOptions() {
+  async getOptions(actor) {
     const [stores, brands, models, colors, memories] = await Promise.all([
-      this.repository.getStores(),
+      this.repository.getStores(resolveStoreScope(actor)),
       this.listReferenceOptions('brands'),
       this.listReferenceOptions('models'),
       this.listReferenceOptions('colors'),
@@ -101,17 +105,18 @@ class PreorderReadService {
     return { stores, brands, models, colors, memories }
   }
 
-  async getMatchablePreorders(filters) {
-    return this.repository.getMatchablePreorders(filters)
+  async getMatchablePreorders(filters, actor) {
+    return this.repository.getMatchablePreorders(filters, resolveStoreScope(actor, filters.store_id))
   }
 
-  async getMatchablePhones(id) {
+  async getMatchablePhones(id, actor) {
     return this.repository.withConnection(async connection => {
       const preorder = await this.repository.getPreorderForMatching(connection, id)
       if (!preorder) return { error: 'not_found' }
+      assertStoreInScope(resolveStoreScope(actor), preorder.store_id)
       if (!['pending', 'arrived'].includes(preorder.status)) return { error: 'invalid_status' }
 
-      const phones = await this.repository.getCandidatePhones(connection, preorder)
+      const phones = await this.repository.getCandidatePhones(connection, preorder, resolveStoreScope(actor))
       return { phones }
     })
   }

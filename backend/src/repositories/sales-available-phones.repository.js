@@ -128,7 +128,7 @@ class SalesAvailablePhonesRepository {
   async findPreorderDelivery(preorderId) {
     const database = await this.getDb()
     const [rows] = await database.execute(
-      `SELECT matched_phone_id, status
+      `SELECT store_id, matched_phone_id, status
        FROM preorders
        WHERE id = ?
        LIMIT 1`,

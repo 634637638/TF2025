@@ -3,6 +3,7 @@
 const BrandManagementService = require('../services/brand-management.service')
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
+const { isDatabaseAvailabilityError } = require('../utils/database-errors')
 const FieldAccessService = require('../services/field-access.service')
 const createFieldAccessMiddleware = require('../middleware/field-access')
 
@@ -30,24 +31,26 @@ class BrandController {
     return ApiResponse.error(res, '数据库未连接', 500)
   }
 
-  async getStats(req, res) {
+  async getStats(req, res, next) {
     try {
       const result = await this.service.getStats(req.query)
       if (result.type === 'unavailable') return this.unavailable(res)
       return ApiResponse.success(res, result.data)
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) return next(error)
       log.error('获取品牌统计失败:', error)
       if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.serverError(res, '获取品牌统计失败', error)
     }
   }
 
-  async list(req, res) {
+  async list(req, res, next) {
     try {
       const result = await this.service.list(req.query)
       if (result.type === 'unavailable') return this.unavailable(res)
       return ApiResponse.success(res, await this.maskScope(req, result.data))
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) return next(error)
       log.error('获取品牌列表失败:', error)
       if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.error(res, '获取品牌列表失败', 500)
@@ -115,12 +118,13 @@ class BrandController {
     }
   }
 
-  async suggest(req, res) {
+  async suggest(req, res, next) {
     try {
       const result = await this.service.suggest(req.query)
       if (result.type === 'unavailable') return this.unavailable(res)
       return ApiResponse.success(res, result.data)
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) return next(error)
       log.error('获取品牌搜索建议失败:', error)
       if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400)
       return ApiResponse.error(res, '获取品牌搜索建议失败', 500)

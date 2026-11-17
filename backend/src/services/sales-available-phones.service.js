@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, appendStoreScopeCondition, assertStoreInScope } = require('../utils/store-scope')
+
 const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 
 const SalesAvailablePhonesRepository = require('../repositories/sales-available-phones.repository')
@@ -55,20 +57,21 @@ class SalesAvailablePhonesService {
     return this.repository.findReferenceId(resource, value)
   }
 
-  async getAvailablePhones(query, { page, pageSize, preorderId = null }) {
+  async getAvailablePhones(query, { page, pageSize, preorderId = null, actor }) {
     let preorderDeliveryPhoneId = null
     if (preorderId) {
       const preorder = await this.repository.findPreorderDelivery(preorderId)
       if (!preorder) {
         throw Object.assign(new Error('预定单不存在'), { statusCode: 404 })
       }
+      assertStoreInScope(resolveStoreScope(actor), preorder.store_id)
       if (preorder.status !== 'arrived' || !preorder.matched_phone_id) {
         throw Object.assign(new Error('只有已匹配的预定单可以交付'), { statusCode: 400 })
       }
       preorderDeliveryPhoneId = Number(preorder.matched_phone_id)
     }
 
-    const filters = await this.buildFilters(query, { preorderDeliveryPhoneId })
+    const filters = await this.buildFilters(query, { preorderDeliveryPhoneId, actor })
     const result = await this.repository.getAvailablePhones({ ...filters, page, pageSize })
     return {
       phones: result.phones.map(phone => ({
@@ -82,8 +85,8 @@ class SalesAvailablePhonesService {
     }
   }
 
-  async getAvailablePhonesForExport(query) {
-    const filters = await this.buildFilters(query)
+  async getAvailablePhonesForExport(query, actor) {
+    const filters = await this.buildFilters(query, { actor })
     const phones = await this.repository.getAvailablePhonesForExport(filters)
     return phones.map(phone => ({
       ...phone,
@@ -93,7 +96,7 @@ class SalesAvailablePhonesService {
     }))
   }
 
-  async buildFilters(query = {}, { preorderDeliveryPhoneId = null } = {}) {
+  async buildFilters(query = {}, { preorderDeliveryPhoneId = null, actor } = {}) {
     const {
       phone_id,
       search,
@@ -143,10 +146,7 @@ class SalesAvailablePhonesService {
       queryParams.push(...searchCondition.params)
     }
 
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      queryParams.push(store_id)
-    }
+    appendStoreScopeCondition(resolveStoreScope(actor, store_id), 'p.store_id', whereConditions, queryParams)
 
     if (supplier_id) {
       whereConditions.push('p.supplier_id = ?')
@@ -276,8 +276,8 @@ class SalesAvailablePhonesService {
     return { whereConditions, queryParams }
   }
 
-  async getStats(query = {}) {
-    const filters = await this.buildFilters(query)
+  async getStats(query = {}, actor) {
+    const filters = await this.buildFilters(query, { actor })
     const todayStart = getBeijingDayStart(this.now())
     const todayQueryParams = filters.queryParams.slice(COMPLETED_TRANSACTION_STATUSES.length)
     const stats = await this.repository.getStats({ ...filters, todayQueryParams, todayStart })

@@ -358,7 +358,6 @@
               <span class="text-sm font-semibold text-gray-600">待上传文件 ({{ pendingFiles.length }})</span>
               <el-button
                 type="primary"
-                size="small"
                 :loading="uploading"
                 @click="uploadPendingFiles"
               >
@@ -427,7 +426,6 @@
                 </div>
                 <el-button
                   type="danger"
-                  size="small"
                   @click="deleteVideo"
                 >
                   <i class="fas fa-trash" /> 删除

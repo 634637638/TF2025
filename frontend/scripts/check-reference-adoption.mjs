@@ -46,12 +46,13 @@ const referenceService = fs.readFileSync(path.resolve(sourceRoot, 'services/refe
 for (const token of ['searchCustomerOptions', 'CustomerSearchContext']) {
   if (!customerService.includes(token)) throw new Error(`客户公共检索服务缺少 ${token}`)
 }
-for (const token of ['getCachedStores', 'getCachedSuppliers', 'getModels', 'getTemplateBrands', 'sortResponseRecords', 'sortOptionGroups', 'sortOptionsByOrder']) {
+for (const token of ['getStores', 'getCachedSuppliers', 'getModels', 'getTemplateBrands', 'sortResponseRecords', 'sortOptionGroups', 'sortOptionsByOrder']) {
   if (!referenceService.includes(token)) throw new Error(`基础选项公共服务缺少 ${token}`)
 }
 const requiredSortedExports = [
   ['供应商', /export const getCachedSuppliers\s*=\s*\(\)\s*=>\s*sortResponseRecords\([\s\S]*?\/suppliers\?all=true/],
-  ['门店', /export const getCachedStores[\s\S]*?return sortResponseRecords\(cachedGet/],
+  // 门店范围与账号权限相关，必须使用统一入口并明确禁用缓存。
+  ['门店', /export const getStores\s*=\s*\(\s*\{\s*strictScope\s*=\s*false\s*\}\s*(?::\s*StoreOptions)?\s*=\s*\{\}\s*\)[\s\S]*?sortResponseRecords\(\s*unifiedApi\.get[\s\S]*?useCache:\s*false/],
   ['品牌', /export const getCachedBrands\s*=\s*\(\)\s*=>\s*sortResponseRecords\(/],
   ['型号', /return sortResponseRecords\(cachedGet<ReferenceRecord\[]>\(url, url\)\)/],
   ['颜色', /export const getCachedColors\s*=\s*\(\)\s*=>\s*sortResponseRecords\(/],

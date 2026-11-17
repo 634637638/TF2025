@@ -13,7 +13,6 @@
         >
           已选择 {{ selected.length }} 项
           <el-button
-            size="small"
             @click="clearSelection"
           >
             清空

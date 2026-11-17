@@ -268,6 +268,7 @@
                       class="receipt-product-name"
                     >{{ row.goods.name || '-' }}</strong>
                     <span v-if="canViewAccessoryField('usage_type')">{{ row.goods.sale_type === 'gift' ? '赠品' : row.goods.sale_type === 'sale' ? '购买' : '-' }}</span>
+                    <span v-if="showGiftAgreement(row.goods)">赠品未退约定：{{ giftReturnAgreementText(row.goods) }}</span>
                     <span>{{ [canViewAccessoryField('brand_name') ? row.goods.brand_name : '', canViewAccessoryField('product_model') ? row.goods.product_model : '', canViewAccessoryField('color_name') ? row.goods.color_name : ''].filter(Boolean).join(' / ') }}</span>
                   </div>
                 </template>
@@ -391,6 +392,7 @@
 </template>
 
 <script setup lang="ts">
+import { printElement } from '@/utils/print'
 import { computed, nextTick, ref, watch, type CSSProperties } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -400,10 +402,11 @@ import { loadHtml2Canvas, normalizeCanvasColors } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { formatRmbUppercase, formatAmount } from '@/utils/format'
 import { getPhoneReceiptAccessories } from '@/api/sales-receipt'
+import { isGiftReturnAgreement, giftReturnAgreementText } from '@/utils/query-goods'
 import type { ReceiptItem, SearchPhoneResult, PhoneReceiptAccessory } from '@/types/sales-receipt'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { canViewAccessoryField } from '@/components/accessory-field-permissions'
+import { canViewQueryGoodsField as canViewAccessoryField } from '@/components/accessory-field-permissions'
 
 
 interface Props extends VisibleProps {
@@ -501,7 +504,8 @@ const customerRoleLabel = '客户姓名'
 const showSupplierInfo = computed(() => Boolean(props.status === 'supplier_proxy' && props.supplierName))
 const showSupplierReceiverInfo = computed(() => Boolean(props.status === 'supplier_proxy' && props.customerName))
 
-const { canView: canViewAccessories } = usePagePermissions('accessories')
+const queryPermissions = usePagePermissions('query')
+const canViewAccessories = computed(() => queryPermissions.canView.value && queryPermissions.hasPermission('goods-view'))
 const { nextRequest, cancelLatest, isCanceledError } = useLatestRequest()
 const accessoryLoading = ref(false)
 const accessoryError = ref('')
@@ -522,7 +526,7 @@ const loadAccessories = async () => {
     const phones = [...new Map(props.items.map(phone => [phone.sale_id, phone])).values()]
     const results = await Promise.all(phones.map(async phone => {
       const response = await getPhoneReceiptAccessories(Number(phone.sale_id), request.signal)
-      if (!response.success || !Array.isArray(response.data)) throw new Error('配件明细响应不完整')
+      if (!response.success || !Array.isArray(response.data) || !response.data.every(isGiftReturnAgreement)) throw new Error('配件明细响应不完整')
       return response.data.map(goods => ({ phone, goods }))
     }))
     if (request.isLatest()) accessoryRows.value = results.flat()
@@ -539,6 +543,8 @@ watch(() => [props.visible, props.status, props.items.map(item => `${item.phone_
 
 const accessoryQuantity = computed(() => canViewAccessoryField('total_quantity') && accessoryRows.value.every(row => row.goods.quantity !== null)
   ? accessoryRows.value.reduce((sum, row) => sum + Number(row.goods.quantity), 0) : '-')
+const showGiftAgreement = (row: PhoneReceiptAccessory) => row.sale_type === 'gift' && row.gift_agreement_state !== null &&
+  (['usage_type', 'total_quantity', 'unit_price', 'total_price'] as const).every(canViewAccessoryField)
 const canExport = computed(() => !accessoryLoading.value && !accessoryError.value)
 const canTotal = computed(() => canExport.value && accessoryRows.value.every(row => row.goods.total_price !== null) &&
   (!accessoryRows.value.length || canViewAccessoryField('total_price') && canViewAccessoryField('unit_price') && canViewAccessoryField('total_quantity') && canViewAccessoryField('usage_type')))
@@ -554,14 +560,6 @@ const formatPrice = (price: number) => {
 
 const formatTotalAmount = (amount: number) => formatPrice(amount)
 
-const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, character => ({
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  "'": '&#39;',
-  '"': '&quot;'
-}[character] || character))
-
 const handleClose = () => {
   emit('close')
 }
@@ -574,17 +572,6 @@ const handleDialogVisibility = (nextVisible: boolean) => {
 
 const handlePrint = () => {
   if (!receiptRef.value || !canExport.value || isDownloading.value) return
-
-  const printContent = receiptRef.value.outerHTML
-  const stylesheetText = Array.from(document.styleSheets).map((styleSheet) => {
-    try {
-      return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('\n')
-    } catch {
-      return ''
-    }
-  }).join('\n')
-  const printWindow = window.open('', '', 'width=800,height=600')
-  if (!printWindow) return
 
   const printOverrides = `
     @page { size: A4; margin: 12mm; }
@@ -604,14 +591,7 @@ const handlePrint = () => {
     .sales-receipt .receipt-table .el-table__row { break-inside: avoid; }
     body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   `
-  const printDocument = printWindow.document
-  printDocument.open()
-  printDocument.write(`<!DOCTYPE html><html><head><title>${escapeHtml(receiptTitle.value)}</title></head><body>${printContent}</body></html>`)
-  const printStyle = printDocument.createElement('style')
-  printStyle.textContent = `${stylesheetText}\n${printOverrides}`
-  printDocument.head.append(printStyle)
-  printDocument.close()
-  void printDocument.fonts.ready.then(() => printWindow.print(), () => printWindow.print())
+  printElement(receiptRef.value, receiptTitle.value, printOverrides)
 }
 
 const downloadImage = async () => {

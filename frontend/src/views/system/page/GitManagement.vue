@@ -266,7 +266,6 @@
                           <el-button
                             v-if="canEdit"
                             type="primary"
-                            size="small"
                             @click="handleCheckoutCommit(commit.hash, 'view')"
                           >
                             <i class="fas fa-eye" />
@@ -275,7 +274,6 @@
                           <el-button
                             v-if="canEdit"
                             type="warning"
-                            size="small"
                             @click="handleCheckoutCommit(commit.hash, 'reset')"
                           >
                             <i class="fas fa-undo" />
@@ -284,7 +282,6 @@
                           <el-button
                             v-if="canDeleteCommit(commit)"
                             type="danger"
-                            size="small"
                             @click="handleDeleteCommit(commit.hash, commit.message)"
                           >
                             <i class="fas fa-trash" />

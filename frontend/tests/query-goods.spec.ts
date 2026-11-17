@@ -8,11 +8,17 @@ import { vTableDoubleTap } from '@/directives/table-double-tap'
 
 const mocks = vi.hoisted(() => ({ get: vi.fn(), stores: vi.fn(), hidden: new Set<string>(), returnPermission: false, exchangePermission: false }))
 const queryView = ref(true), goodsView = ref(true)
+const goodsCreate = ref(false), goodsGift = ref(false)
 const isMobile = ref(false), isTablet = ref(false)
+const hiddenFields = ref(mocks.hidden)
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: mocks }))
-vi.mock('@/services/reference-options', () => ({ getCachedStores: mocks.stores }))
-vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => module === 'query' ? queryView.value : goodsView.value), hasPermission: (action: string) => action === 'exchange' ? mocks.exchangePermission : mocks.returnPermission }) }))
-vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFieldVisible: (_module: string, field: string) => !mocks.hidden.has(field) } }))
+vi.mock('@/services/reference-options', () => ({ getStores: mocks.stores }))
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({
+  canView: computed(() => module === 'query' ? queryView.value : goodsView.value),
+  canCreate: computed(() => false),
+  hasPermission: (action: string) => module === 'query' && (action === 'goods-view' ? goodsView.value : action === 'goods-sell' ? goodsCreate.value : action === 'goods-gift' ? goodsGift.value : action === 'exchange' ? mocks.exchangePermission : mocks.returnPermission)
+}) }))
+vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFieldVisible: (_module: string, field: string) => !hiddenFields.value.has(field) } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile, isTablet }) }))
 
 const row = (extra: Partial<AccessorySaleRecord> = {}): AccessorySaleRecord => ({ id: 51, accessory_id: 5, sale_no: 'AS001', order_no: 'SO001', linked_phone_invoice: 'PHONE001',
@@ -25,9 +31,10 @@ const Pagination = { props: ['current', 'total', 'pageSize'], emits: ['change'],
 const Search = { emits: ['search', 'reset'], template: '<div class="search"><slot name="primary" /><slot /><button @click="$emit(\'search\')">搜索</button><button @click="$emit(\'reset\')">重置</button></div>' }
 const ReturnDialog = { props: ['modelValue', 'sale', 'mode'], emits: ['success', 'update:modelValue'], template: '<button v-if="modelValue" class="return-dialog" @click="$emit(\'success\'); $emit(\'update:modelValue\', false)">完成退货</button>' }
 const History = { props: ['saleId'], template: '<section class="aftersales">原单售后历史</section>' }
+const Checkout = { props: ['modelValue'], emits: ['success', 'update:modelValue'], template: '<div v-if="modelValue" class="goods-checkout"><button @click="$emit(\'success\'); $emit(\'update:modelValue\', false)">完成商品销售</button></div>' }
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async () => {
-  const wrapper = mount(Panel, { global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, CheckoutOrderDialog: { name: 'CheckoutOrderDialog', props: ['modelValue', 'saleId', 'source'], template: '<div class="order-child" />' }, GoodsReturnDialog: ReturnDialog, GoodsAftersaleHistory: History, Pagination, UnifiedSearchPanel: Search, DateRangePicker: true, SectionLoading: true, TableLoadingRow: true, DataEmptyState: true },
+  const wrapper = mount(Panel, { global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, CheckoutOrderDialog: { name: 'CheckoutOrderDialog', props: ['modelValue', 'saleId', 'source'], template: '<div class="order-child" />' }, GoodsReturnDialog: ReturnDialog, GoodsAftersaleHistory: History, SalesGoodsCheckoutDialog: Checkout, Pagination, UnifiedSearchPanel: Search, DateRangePicker: true, SectionLoading: true, TableLoadingRow: true, DataEmptyState: true },
     mocks: { $getNumberColumnWidth: () => 80 }, directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': vTableDoubleTap } } })
   wrappers.push(wrapper)
   await flushPromises()
@@ -36,6 +43,7 @@ const render = async () => {
 const button = (wrapper: Awaited<ReturnType<typeof render>>, text: string) => wrapper.findAll('button').find(item => item.text() === text)!
 beforeEach(() => {
   queryView.value = goodsView.value = true
+  goodsCreate.value = goodsGift.value = false
   isMobile.value = isTablet.value = false
   mocks.hidden.clear()
   mocks.returnPermission = false
@@ -45,14 +53,20 @@ beforeEach(() => {
 })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.resetAllMocks(); vi.unstubAllGlobals() })
 
-it('展示商品销售/赠送原单和客户，未知成本保持空值，严格门店选项及实际分页总数', async () => {
+it('展示商品销售类型、数量、原单和客户，未知成本保持空值，严格门店选项及实际分页总数', async () => {
   const wrapper = await render()
   expect(wrapper.text()).toContain('原单充电器')
   expect(wrapper.text()).toContain('赠送')
+  expect(wrapper.text()).toContain('2026-11-13 10:00:00')
+  expect(wrapper.text()).toContain('数量')
+  expect(wrapper.text()).toContain('获得积分')
+  expect(wrapper.text()).not.toContain('累计积分')
+  expect(wrapper.find('.status-badge.status-warning').text()).toBe('赠送')
+  expect(wrapper.findAll('th .cell').some(cell => cell.text() === '销售')).toBe(true)
   expect(wrapper.text()).toContain('13900000001')
   expect(wrapper.text()).not.toContain('¥NaN')
   expect(wrapper.findComponent(Pagination).props('total')).toBe(125)
-  expect(mocks.stores).toHaveBeenCalledWith(true)
+  expect(mocks.stores).toHaveBeenCalledWith({ strictScope: true })
   expect(mocks.get).toHaveBeenCalledWith('/query/goods', expect.objectContaining({ params: expect.objectContaining({ page: 1, page_size: 20 }), useCache: false, showLoading: false }))
   await button(wrapper, '第二页').trigger('click'); await flushPromises()
   expect(mocks.get).toHaveBeenLastCalledWith('/query/goods', expect.objectContaining({ params: expect.objectContaining({ page: 2 }) }))
@@ -62,7 +76,7 @@ it('商品退货只针对有权限的共同原单，成功后立即重读数量�
   mocks.returnPermission = true
   mocks.get.mockResolvedValueOnce(result([row({ order_id: 10, order_item_id: 50, returned_quantity: 1, remaining_quantity: 1 })]))
   const wrapper = await render()
-  expect(wrapper.text()).toContain('已退数量'); expect(wrapper.text()).toContain('原成交净额')
+  expect(wrapper.text()).toContain('已退数量'); expect(wrapper.text()).toContain('实际收款')
   await button(wrapper, '退货').trigger('click'); await flushPromises()
   expect(wrapper.findComponent(ReturnDialog).props('sale').order_item_id).toBe(50)
   const calls = mocks.get.mock.calls.length
@@ -95,6 +109,12 @@ it('查看成交资料、SN和原采购批次，关闭详情后不保留旧内�
   await button(wrapper, '详情').trigger('click'); await flushPromises()
   expect(mocks.get).toHaveBeenLastCalledWith('/query/goods/51', expect.objectContaining({ useCache: false }))
   expect(wrapper.find('.dialog').text()).toContain('销售时资料')
+  expect(wrapper.find('.dialog .goods-detail__overview').exists()).toBe(true)
+  expect(wrapper.find('.dialog .goods-detail__metrics').exists()).toBe(true)
+  expect(wrapper.find('.dialog').text()).toContain('销售与客户')
+  expect(wrapper.find('.dialog').text()).toContain('商品与规格')
+  expect(wrapper.find('.dialog').text()).toContain('关联单据')
+  expect(wrapper.findAll('.goods-detail__descriptions--cards')).toHaveLength(3)
   expect(wrapper.find('.dialog').text()).toContain('SN001、SN002')
   expect(wrapper.find('.dialog').text()).toContain('原采购商')
   expect(wrapper.find('.dialog').text()).toContain('¥12.5')
@@ -111,7 +131,7 @@ it('旧单明确显示当前档案，不把现行名称冒充销售快照', asyn
   expect(wrapper.findComponent(History).exists()).toBe(false)
 })
 
-it('手机商品详情的长名称和客户手机号独占整行，短字段保持两列', async () => {
+it('手机商品详情使用字段卡片，长名称和客户手机号独占整行', async () => {
   isMobile.value = true
   vi.stubGlobal('innerWidth', 390)
   const wrapper = await render()
@@ -217,10 +237,29 @@ it('隐藏客户、价格和门店字段不展示，也不读取门店选项或�
   for (const field of ['customer_info.customer_phone', 'price_info.purchase_cost', 'stock_info.distribution']) mocks.hidden.add(field)
   const wrapper = await render()
   expect(wrapper.text()).not.toContain('13900000001')
-  expect(wrapper.text()).not.toContain('原单总成本')
+  expect(wrapper.text()).not.toContain('总成本')
   expect(wrapper.text()).not.toContain('销售门店')
   expect(mocks.stores).not.toHaveBeenCalled()
   expect(mocks.get.mock.calls[0][1].params.store_id).toBeUndefined()
+})
+
+it('运行中撤销商品字段清理详情并重读，迟到响应不能恢复已隐藏资料', async () => {
+  const wrapper = await render()
+  let finishOld!: (value: object) => void
+  const old = new Promise<object>(resolve => { finishOld = resolve })
+  mocks.get.mockReturnValueOnce(old)
+  await button(wrapper, '详情').trigger('click'); await flushPromises()
+  const oldSignal = mocks.get.mock.lastCall?.[1].signal
+  mocks.get.mockImplementation(async (url: string) => url === '/query/goods'
+    ? result([row({ customer_phone: null })])
+    : { data: { ...row({ customer_phone: null }), serial_numbers: [], batches: [] } })
+  hiddenFields.value.add('customer_info.customer_phone'); await flushPromises()
+  expect(oldSignal.aborted).toBe(true)
+  expect(wrapper.find('.dialog').exists()).toBe(true)
+  expect(wrapper.text()).not.toContain('13900000001')
+  finishOld({ data: { ...row(), serial_numbers: [], batches: [] } }); await flushPromises()
+  expect(wrapper.text()).not.toContain('13900000001')
+  expect(mocks.get).toHaveBeenLastCalledWith('/query/goods/51', expect.objectContaining({ useCache: false }))
 })
 
 
@@ -250,4 +289,33 @@ it('已全退商品仍可从详情打开整单原记录，按真实销售ID传�
   await button(wrapper, '整单明细').trigger('click'); await flushPromises()
   expect(wrapper.findComponent({ name: 'CheckoutOrderDialog' }).props()).toMatchObject({ saleId: 51, source: 'goods', modelValue: true })
   expect(wrapper.find('.dialog').exists()).toBe(false)
+})
+
+
+it('商品模式开单逐次核验查看及销售/赠送权限，成功回首页重读，取消不刷新', async () => {
+  const wrapper = await render()
+  wrapper.vm.openSale(); await flushPromises()
+  expect(wrapper.find('.goods-checkout').exists()).toBe(false)
+  goodsCreate.value = true; await flushPromises()
+  wrapper.vm.openSale(); await flushPromises()
+  expect(wrapper.find('.goods-checkout').exists()).toBe(true)
+  const calls = mocks.get.mock.calls.length
+  wrapper.findComponent(Checkout).vm.$emit('update:modelValue', false); await flushPromises()
+  expect(mocks.get).toHaveBeenCalledTimes(calls)
+  await button(wrapper, '第二页').trigger('click'); await flushPromises()
+  goodsCreate.value = false; goodsGift.value = true; await flushPromises()
+  wrapper.vm.openSale(); await flushPromises()
+  expect(wrapper.find('.goods-checkout').exists()).toBe(true)
+  await button(wrapper, '完成商品销售').trigger('click'); await flushPromises()
+  expect(mocks.get).toHaveBeenLastCalledWith('/query/goods', expect.objectContaining({ useCache: false, params: expect.objectContaining({ page: 1 }) }))
+  expect(wrapper.find('.goods-checkout').exists()).toBe(false)
+  for (const permission of [goodsGift, goodsView, queryView]) {
+    goodsGift.value = goodsView.value = queryView.value = true; await flushPromises()
+    wrapper.vm.openSale(); await flushPromises()
+    expect(wrapper.find('.goods-checkout').exists()).toBe(true)
+    permission.value = false; await flushPromises()
+    expect(wrapper.find('.goods-checkout').exists()).toBe(false)
+    wrapper.vm.openSale(); await flushPromises()
+    expect(wrapper.find('.goods-checkout').exists()).toBe(false)
+  }
 })

@@ -25,6 +25,7 @@ module.exports = Object.freeze({
   'rentals:view': ['rentals_rentalsview:view'],
   'rentals:create': ['rentals_rentalsview:create'],
   'rentals:edit': ['rentals_rentalsview:edit'],
+  'rentals:edit-history': ['rentals_rentalsview:edit-history'],
 
   // 销售权限映射
   'sales:view': ['sales_salesview:view', 'sales_phonesaleview:view'],
@@ -35,10 +36,10 @@ module.exports = Object.freeze({
   'sales:edit': ['sales_salesview:edit', 'sales_phonesaleview:edit'],
   'sales:delete': ['sales_salesview:delete', 'sales_phonesaleview:delete'],
   'sales:export': ['sales_salesview:export'],
-  'sales-editphoneview:view': ['sales_editphoneview:view'],
-  'sales-editphoneview:edit': ['sales_editphoneview:edit'],
+  'sales-editphoneview:view': ['sales_salesview:view', 'sales_editphoneview:view'],
+  'sales-editphoneview:edit': ['sales_salesview:edit', 'sales_editphoneview:edit'],
   'sales-editphoneview:create': ['sales_editphoneview:create'],
-  'sales-editphoneview:delete': ['sales_editphoneview:delete'],
+  'sales-editphoneview:delete': ['sales_salesview:delete', 'sales_editphoneview:delete'],
 
   // 菜单管理权限映射
   'menus:view': ['menu_menumanagementview:view'],
@@ -73,26 +74,30 @@ module.exports = Object.freeze({
   'memories:delete': ['memories_memoriesview:delete'],
 
   // 店铺管理权限映射
-  'stores:view': ['stores_storesview:view', 'stores_storesview:menu_view'],
+  'stores:view': ['stores_storesview:view'],
   'stores:create': ['stores_storesview:create'],
   'stores:edit': ['stores_storesview:edit'],
   'stores:delete': ['stores_storesview:delete'],
   'stores:export': ['stores_storesview:export'],
 
   // 用户管理权限映射（合并）
-  'users:view': ['users_usersview:view', 'users_usersview:menu_view', 'employees_employeesview:view'],
+  'users:view': ['users_usersview:view'],
   'users:create': ['users_usersview:create'],
   'users:edit': ['users_usersview:edit'],
   'users:delete': ['users_usersview:delete'],
   'users:view:own': ['users_usersview:view:own'],
 
   // 员工管理权限映射
-  'query:view': ['query_queryview:view', 'query_queryview:menu_view', 'query:view'],
+  'query:view': ['query_queryview:view', 'query:view'],
   'query:create': ['query_queryview:create', 'query:create'],
   'query:edit': ['query_queryview:edit', 'query:edit'],
   'query:export': ['query_queryview:export', 'query:export'],
   'query:return-to-stock': ['query_queryview:return-to-stock', 'query:return-to-stock'],
   'query:exchange': ['query_queryview:exchange', 'query:exchange'],
+  'query:goods-view': ['query_queryview:goods-view'],
+  'query:goods-sell': ['query_queryview:goods-sell'],
+  'query:goods-gift': ['query_queryview:goods-gift'],
+  'query:film': ['query_queryview:film', 'query:film'],
   'query:delete': ['query_queryview:delete', 'query:delete'],
 
   // 字段扫描权限映射
@@ -104,14 +109,16 @@ module.exports = Object.freeze({
   'fieldscannerview:delete': ['fieldscannerview:delete'],
 
   // 客户管理权限映射
-  'customers:view': ['customers_customersview:view', 'customers_customersview:menu_view'],
+  'customers:view': ['customers_customersview:view'],
   'customers:create': ['customers_customersview:create'],
   'customers:edit': ['customers_customersview:edit'],
   'customers:delete': ['customers_customersview:delete'],
   'customers:export': ['customers_customersview:export'],
-  'customers:manage': ['customers_customersview:edit', 'customers_customersview:manage'],
+  'customers:manage': ['customers_customersview:manage'],
 
   // 配件管理权限映射
+  'accessories:stock-in': ['accessories_accessoriesview:stock-in'],
+  'accessories:sell': ['accessories_accessoriesview:sell'],
   'accessories:view': ['accessories_accessoriesview:view'],
   'accessories:create': ['accessories_accessoriesview:create'],
   'accessories:edit': ['accessories_accessoriesview:edit'],
@@ -157,15 +164,14 @@ module.exports = Object.freeze({
   'return-goods:delete': ['system_returngoods:delete'],
 
   // 数据导入权限映射
-  'data-import:view': ['data-import:view'],
-  'data-import:upload': ['data-import:upload'],
-  'data-import:execute': ['data-import:execute'],
-  'data-import:edit': ['data-import:edit'],
-  'data-import:delete': ['data-import:delete'],
+  'data-import:view': ['data_optimization_dataimporttab:view'],
+  'data-import:upload': ['data_optimization_dataimporttab:upload'],
+  'data-import:execute': ['data_optimization_dataimporttab:import'],
+  'data-import:delete': ['data_optimization_dataimporttab:delete'],
 
   // 考勤权限映射
   'attendance:view:all': ['attendance_attendanceview:view'],
-  'attendance:view': ['attendance_attendanceview:view', 'attendance_myattendanceview:view'],
+  'attendance:view': ['attendance_attendanceview:view'],
   'attendance:view:own': ['attendance_attendanceview:view:own', 'attendance_myattendanceview:view'],
   'attendance:create': ['attendance_attendanceview:create', 'attendance_myattendanceview:create'],
   'attendance:edit': ['attendance_attendanceview:edit'],
@@ -209,12 +215,12 @@ module.exports = Object.freeze({
   'module-management:create': ['permissions_modulemanagementview:create'],
   'module-management:edit': ['permissions_modulemanagementview:edit'],
   'module-management:delete': ['permissions_modulemanagementview:delete'],
-  'permissions:admin': ['permissions_permissionsview:view', 'permissions_permissionsview:create', 'permissions_permissionsview:edit', 'permissions_permissionsview:delete', 'permissions_modulemanagementview:view'],
+  'permissions:admin': ['permissions_permissionsview:view', 'permissions_permissionsview:create', 'permissions_permissionsview:edit', 'permissions_permissionsview:delete'],
   'permissions:edit': ['permissions_permissionsview:edit'],
   'permissions:delete': ['permissions_permissionsview:delete'],
 
   // 薪资管理权限映射
-  'salary:view': ['salary_salaryview:view', 'salary_mysalaryview:view'],
+  'salary:view': ['salary_salaryview:view'],
   'salary:view:own': ['salary_salaryview:view:own', 'salary_mysalaryview:view'],
   'salary:create': ['salary_salaryview:create'],
   'salary:edit': ['salary_salaryview:edit'],
@@ -229,7 +235,8 @@ module.exports = Object.freeze({
 
   // 工资记录权限映射
   'salary-records:view:all': ['salary_salaryrecordsview:view'],
-  'salary-records:view': ['salary_salaryrecordsview:view', 'salary_mysalaryview:view'],
+  'salary-records:pay': ['salary_salaryrecordsview:pay'],
+  'salary-records:view': ['salary_salaryrecordsview:view'],
   'salary-records:view:own': ['salary_mysalaryview:view'],
   'salary-records:create': ['salary_salaryrecordsview:create'],
   'salary-records:edit': ['salary_salaryrecordsview:edit'],
@@ -258,6 +265,7 @@ module.exports = Object.freeze({
   'subsidy:export': ['subsidy_subsidyview:export', 'subsidy:export'],
 
   // 供应商付款管理权限映射
+  'supplier-payments:return-check': ['payments_supplierphonepaymentsview:return-check'],
   'supplier-payments:view': ['payments_supplierphonepaymentsview:view'],
   'supplier-payments:create': ['payments_supplierphonepaymentsview:create'],
   'supplier-payments:edit': ['payments_supplierphonepaymentsview:edit'],
@@ -266,7 +274,7 @@ module.exports = Object.freeze({
   'supplier-payments:export': ['payments_supplierphonepaymentsview:export'],
 
   // 预定管理权限映射
-  'preorders:view': ['preorders_preordersview:view', 'preorders_preordersview:menu_view'],
+  'preorders:view': ['preorders_preordersview:view'],
   'preorders:create': ['preorders_preordersview:create'],
   'preorders:edit': ['preorders_preordersview:edit'],
   'preorders:delete': ['preorders_preordersview:delete'],
@@ -296,7 +304,7 @@ module.exports = Object.freeze({
   'guide:upload': ['guide_guidemanagementview:upload'],
 
   // 价目表管理权限映射
-  'price-list:view': ['price_list_pricelistview:view', 'price_list_pricelistview:menu_view'],
+  'price-list:view': ['price_list_pricelistview:view'],
   'price-list:create': ['price_list_pricelistview:create'],
   'price-list:edit': ['price_list_pricelistview:edit'],
   'price-list:delete': ['price_list_pricelistview:delete'],
@@ -305,32 +313,33 @@ module.exports = Object.freeze({
   'price-list:sync': ['price_list_pricelistview:sync'],
 
   // 同步日志是独立页面，不复用价目表删除权限
-  'price-list-sync-logs:view': ['price_list_synclogview:view', 'price_list_synclogview:menu_view'],
+  'price-list-sync-logs:view': ['price_list_synclogview:view'],
   'price-list-sync-logs:delete': ['price_list_synclogview:delete'],
 
   // 营销词库后台使用独立页面权限
-  'marketing:view': ['marketing_marketingmanagementview:view', 'marketing_marketingmanagementview:menu_view'],
+  'marketing:view': ['marketing_marketingmanagementview:view'],
   'marketing:create': ['marketing_marketingmanagementview:create'],
   'marketing:edit': ['marketing_marketingmanagementview:edit'],
   'marketing:delete': ['marketing_marketingmanagementview:delete'],
 
   // Git 管理权限映射
-  'git-management:view': ['system_gitmanagement:view', 'system_gitmanagement:menu_view'],
+  'git-management:view': ['system_gitmanagement:view'],
   'git-management:create': ['system_gitmanagement:create'],
   'git-management:edit': ['system_gitmanagement:edit'],
   'git-management:delete': ['system_gitmanagement:delete'],
 
   // 备份管理权限映射
-  'backup:view': ['backup_backupview:view', 'backup_backupview:menu_view'],
+  'backup:view': ['backup_backupview:view'],
   'backup:create': ['backup_backupview:create'],
   'backup:edit': ['backup_backupview:edit'],
   'backup:delete': ['backup_backupview:delete'],
 
   // 仪表盘权限映射
-  'dashboard:view': ['dashboard_dashboardview:view', 'dashboard_dashboardview:menu_view'],
+  'dashboard:goods-warning': ['dashboard_dashboardview:goods-warning'],
+  'dashboard:view': ['dashboard_dashboardview:view'],
 
   // 系统管理权限映射
-  'system:view': ['system_systemview:view', 'system_systemview:menu_view'],
+  'system:view': ['system_systemview:view'],
   'system:create': ['system_systemview:create'],
   'system:edit': ['system_systemview:edit'],
   'system:delete': ['system_systemview:delete'],

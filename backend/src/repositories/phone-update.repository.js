@@ -58,14 +58,14 @@ class PhoneUpdateRepository {
     await connection.execute(`UPDATE phones SET ${fields.join(', ')} WHERE id = ?`, [...values, phoneId])
   }
 
-  async findCustomerPhone(connection, customerId) {
-    const [rows] = await connection.execute('SELECT phone FROM customers WHERE id = ?', [customerId])
-    return rows[0]?.phone || null
+  async findCustomerById(connection, customerId) {
+    const [rows] = await connection.execute('SELECT id, name, phone, apple_id FROM customers WHERE id = ?', [customerId])
+    return rows[0] || null
   }
 
   async findCustomerByPhone(connection, phone) {
     const [rows] = await connection.execute(
-      'SELECT id, name FROM customers WHERE phone = ? ORDER BY id DESC LIMIT 1',
+      'SELECT id, name, apple_id FROM customers WHERE phone = ? ORDER BY id DESC LIMIT 1',
       [phone]
     )
     return rows[0] || null
@@ -73,7 +73,7 @@ class PhoneUpdateRepository {
 
   async findActiveCustomerByPhone(connection, phone) {
     const [rows] = await connection.execute(
-      'SELECT id, name FROM customers WHERE phone = ? AND status = 1',
+      'SELECT id, name, apple_id FROM customers WHERE phone = ? AND status = 1',
       [phone]
     )
     return rows[0] || null

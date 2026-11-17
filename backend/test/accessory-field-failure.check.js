@@ -3,6 +3,8 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const masking = require('../src/services/data-masking.service')
+const FieldRepository = require('../src/repositories/user-field-permissions.repository')
+const { normalizeStoredFieldConfig } = require('../src/utils/field-permission-normalizer')
 const log = require('../src/utils/log')
 const Query = require('../src/controllers/query-goods.controller')
 const Checkout = require('../src/controllers/sales-checkout.controller')
@@ -19,19 +21,52 @@ const request = () => ({ user: { id: 7 }, params: { id: '1', orderId: '1', itemI
   phones: [{ phone_id: 4, sale_price: 100 }], accessories: [{ accessory_id: 5, quantity: 1, unit_price: 10 }]
 } })
 
+test('存储解析只接受完整有效的SQL NULL单字段权限，JSON null和非法列不能降级放行', () => {
+  const row = { field_config: null, field_config_is_null: 1, field_key: 'settings.site_info',
+    can_view: 1, can_edit: 1, is_hidden: 0, permission_level: 'FULL' }
+  const parse = patch => normalizeStoredFieldConfig({ ...row, ...patch }, { strict: true })
+  assert.deepEqual(parse({}), { config: { hidden_fields: [], editable_fields: ['settings.site_info'] }, readonlyFields: [] })
+  assert.deepEqual(parse({ permission_level: 'PARTIAL' }), parse({}))
+  assert.deepEqual(parse({ permission_level: 'READ_ONLY' }).readonlyFields, ['settings.site_info'])
+  assert.deepEqual(parse({ can_edit: '0' }).readonlyFields, ['settings.site_info'])
+  assert.deepEqual(parse({ can_view: '0' }).config.hidden_fields, ['settings.site_info'])
+  assert.deepEqual(parse({ is_hidden: '1' }).config.hidden_fields, ['settings.site_info'])
+  assert.deepEqual(parse({ permission_level: 'HIDDEN' }).config.hidden_fields, ['settings.site_info'])
+  for (const patch of [{ field_key: '' }, { field_key: ' settings.site_info' }, { field_key: undefined },
+    { can_view: null }, { can_edit: 2 }, { is_hidden: 'false' }, { permission_level: 'UNKNOWN' },
+    { field_config_is_null: 0 }, { field_config_is_null: undefined }, { field_config: 'null' },
+    { field_config: '[]' }, { field_config: { hidden_fields: 'secret' } }]) assert.equal(parse(patch), null)
+  assert.throws(() => parse({ field_config: '{broken' }))
+})
+
+test('严格后端读取合并单字段与聚合JSON，多角色不能覆盖已有隐藏或只读限制', async () => {
+  const legacy = { field_config: null, field_config_is_null: 1, field_key: 'settings.site_info',
+    can_view: 1, can_edit: 0, is_hidden: 0, permission_level: 'READ_ONLY' }
+  const source = new masking.constructor({ logger, getActiveRoles: async () => [{ role_id: 1 }, { role_id: 2 }], database: () => ({ execute: async () => [[{ role_id: 1 }, { role_id: 2 }]] }),
+    fieldRepository: { listRoleFieldPermissions: async () => [legacy,
+      { ...legacy, can_edit: 1, permission_level: 'FULL' },
+      { ...legacy, field_key: 'settings.logo', is_hidden: 1 },
+      { field_config: { hidden_fields: ['settings.title'], editable_fields: ['settings.site_info', 'settings.logo'] } }] } })
+  assert.deepEqual(await source.getUserFieldPermissions(7, 'system_systemview', { strict: true }), {
+    hiddenFields: ['settings.logo', 'settings.title'], readonlyFields: ['settings.site_info', 'settings.logo'], editableFields: []
+  })
+})
+
 /** 使用真实字段读取和解析；数据库替身不会租借云端连接。 */
 function fieldSource({ fail, configs = [{ hidden_fields: [] }], roles = [1, 2] } = {}) {
   const reads = []
-  const source = new masking.constructor({ logger, database() {
-    if (fail === 'pool') throw new Error('internal-field-pool-failure')
-    return { async execute(sql, params) {
-      reads.push({ sql, params })
-      if (fail === 'roles' || fail === 'config' && sql.includes('FROM role_field_permissions')) throw new Error('internal-field-read-failure')
-      if (sql.includes('FROM user_roles')) return [roles.map(role_id => ({ role_id }))]
-      assert.match(sql, /FROM role_field_permissions/)
-      return [configs.map((field_config, i) => ({ role_id: roles[i], field_config }))]
-    } }
-  } })
+  const source = new masking.constructor({ logger,
+    getActiveRoles: async (userId, database) => (await database.execute('SELECT role_id FROM user_roles WHERE user_id = ?', [userId]))[0],
+    fieldRepository: new FieldRepository({ columnExists: async () => false }), database() {
+      if (fail === 'pool') throw new Error('internal-field-pool-failure')
+      return { async execute(sql, params) {
+        reads.push({ sql, params })
+        if (fail === 'roles' || fail === 'config' && sql.includes('FROM role_field_permissions')) throw new Error('internal-field-read-failure')
+        if (sql.includes('FROM user_roles')) return [roles.map(role_id => ({ role_id }))]
+        assert.match(sql, /FROM role_field_permissions/)
+        return [configs.map((field_config, i) => ({ role_id: roles[i], field_config }))]
+      } }
+    } })
   return { source, reads }
 }
 
@@ -50,11 +85,11 @@ function expectFailed(res) {
 }
 
 for (const fail of ['pool', 'roles', 'config']) {
-  test(`严格字段读取在${fail}故障时抛出，普通读取保留原兼容边界`, async () => {
+  test(`字段读取在${fail}故障时统一拒绝，包括旧非严格调用`, async () => {
     const f = fieldSource({ fail })
     await assert.rejects(f.source.getUserFieldPermissions(7, 'accessories_accessoriesview', { strict: true }), /internal-field/)
-    if (fail === 'pool') await assert.rejects(f.source.getUserFieldPermissions(7, 'accessories_accessoriesview'), /internal-field/)
-    else assert.deepEqual(await f.source.getUserFieldPermissions(7, 'accessories_accessoriesview'), { hiddenFields: [], readonlyFields: [] })
+    await assert.rejects(f.source.getUserFieldPermissions(7, 'accessories_accessoriesview'), /internal-field/)
+    await assert.rejects(f.source.getUserFieldPermissions(7, 'accessories_accessoriesview', { strict: false }), /internal-field/)
   })
 }
 
@@ -71,7 +106,7 @@ test('严格读取合并有效角色配置，显式空配置或没有配置不�
   const f = fieldSource({ configs: [JSON.stringify({ hidden_fields: ['price_info.purchase_cost'] }),
     { hidden_fields: ['price_info.purchase_cost', 'customer_info.customer_phone'], editable_fields: [] }] })
   assert.deepEqual(await f.source.getUserFieldPermissions(7, 'accessories_accessoriesview', { strict: true }), {
-    hiddenFields: ['price_info.purchase_cost', 'customer_info.customer_phone'], readonlyFields: []
+    hiddenFields: ['price_info.purchase_cost', 'customer_info.customer_phone'], readonlyFields: [], editableFields: []
   })
   assert.deepEqual(f.reads[0].params, [7])
   assert.deepEqual(f.reads[1].params, [1, 2, 'accessories_accessoriesview'])
@@ -111,7 +146,7 @@ for (const mode of ['checkout', 'quote']) {
       t.mock.method(masking, 'getUserFieldPermissions', (id, module, options) =>
         (module === deniedModule ? failed : healthy).source.getUserFieldPermissions(id, module, options))
       let calls = 0
-      const controller = new Checkout({ service: { async [mode]() { calls++; return { order_id: 1 } } }, logger })
+      const controller = new Checkout({ permissionCheck: async () => true, service: { async [mode]() { calls++; return { order_id: 1 } } }, logger })
       const res = response()
       await controller[mode](request(), res)
       expectFailed(res)
@@ -136,7 +171,7 @@ for (const mode of ['goodsReturnContext', 'quoteGoodsReturn', 'submitGoodsReturn
 test('手机售后可读不代表关联商品可读，商品字段故障仍不执行联合退货', async t => {
   const failed = fieldSource({ fail: 'roles' }), healthy = fieldSource()
   t.mock.method(masking, 'getUserFieldPermissions', (id, module, options) =>
-    (module === 'accessories_accessoriesview' ? failed : healthy).source.getUserFieldPermissions(id, module, options))
+    (module === 'query_queryview' && options?.fieldScope === 'goods' ? failed : healthy).source.getUserFieldPermissions(id, module, options))
   const controller = new Aftersale({ phoneReturns: { async submit() { assert.fail('不可执行联合售后') } }, logger })
   const res = response()
   await controller.submitPhoneReturn(request(), res)
@@ -146,7 +181,7 @@ test('手机售后可读不代表关联商品可读，商品字段故障仍不�
 test('退货核对已读取原单后关联商品字段故障，整份响应不得携带原单数据', async t => {
   const failed = fieldSource({ fail: 'config' }), healthy = fieldSource()
   t.mock.method(masking, 'getUserFieldPermissions', (id, module, options) =>
-    (module === 'accessories_accessoriesview' ? failed : healthy).source.getUserFieldPermissions(id, module, options))
+    (module === 'query_queryview' && options?.fieldScope === 'goods' ? failed : healthy).source.getUserFieldPermissions(id, module, options))
   const controller = new Aftersale({ service: { async returnChecklist() {
     return { mode: 'checkout', phone: { total_amount: 100 }, accessories: [{ name: '内部原单', total_amount: 10 }] }
   } }, logger })
@@ -221,4 +256,17 @@ test('贴膜服务已使用严格字段读取，损坏配置同样禁止读取�
   const res = response()
   await controller.context(request(), res)
   expectFailed(res)
+})
+
+test('国补导出沿用同一字段读取，默认调用遇到权限故障时不生成文件', async () => {
+  const Service = require('../src/services/subsidy-export.service')
+  const failed = fieldSource({ fail: 'config' })
+  let generated = false
+  const service = new Service({
+    repository: { async listForExport() { return [{ id: 1, customer_phone: 'isolated', purchase_cost: 300 }] } },
+    masking: failed.source,
+    buildExportFile() { generated = true; return {} }
+  })
+  await assert.rejects(service.export({ userId: 7, query: {} }), /internal-field-read-failure/)
+  assert.equal(generated, false)
 })

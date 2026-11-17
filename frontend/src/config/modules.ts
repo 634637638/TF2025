@@ -28,7 +28,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   DASHBOARD: {
     id: 'dashboard',
     key: 'dashboard_dashboardview', // 使用数据库中的实际module_key
-    name: '仪表板',
+    name: permissionCapabilities.moduleMetadata['dashboard_dashboardview'].name,
     permissions: getCapabilityPermissions('dashboard_dashboardview')
   },
 
@@ -36,7 +36,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   INVENTORY: {
     id: 'inventory',
     key: 'inventory_inventoryview', // 使用数据库中的实际module_key
-    name: '库存管理',
+    name: permissionCapabilities.moduleMetadata['inventory_inventoryview'].name,
     permissions: getCapabilityPermissions('inventory_inventoryview')
   },
 
@@ -44,7 +44,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   SALES: {
     id: 'sales',
     key: 'sales_salesview', // 使用数据库中的实际module_key
-    name: '销售管理',
+    name: permissionCapabilities.moduleMetadata['sales_salesview'].name,
     permissions: getCapabilityPermissions('sales_salesview')
   },
 
@@ -52,7 +52,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   CUSTOMERS: {
     id: 'customers',
     key: 'customers_customersview', // 使用数据库中的实际module_key
-    name: '客户管理',
+    name: permissionCapabilities.moduleMetadata['customers_customersview'].name,
     permissions: getCapabilityPermissions('customers_customersview')
   },
 
@@ -60,28 +60,28 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   BRANDS: {
     id: 'brands',
     key: 'brands_brandsview', // 使用数据库中的实际module_key
-    name: '品牌管理',
+    name: permissionCapabilities.moduleMetadata['brands_brandsview'].name,
     permissions: getCapabilityPermissions('brands_brandsview')
   },
 
   MODELS: {
     id: 'models',
     key: 'models_modelsview', // 使用数据库中的实际module_key
-    name: '型号管理',
+    name: permissionCapabilities.moduleMetadata['models_modelsview'].name,
     permissions: getCapabilityPermissions('models_modelsview')
   },
 
   COLORS: {
     id: 'colors',
     key: 'colors_colorsview', // 使用数据库中的实际module_key
-    name: '颜色管理',
+    name: permissionCapabilities.moduleMetadata['colors_colorsview'].name,
     permissions: getCapabilityPermissions('colors_colorsview')
   },
 
   MEMORIES: {
     id: 'memories',
     key: 'memories_memoriesview', // 使用数据库中的实际module_key
-    name: '内存管理',
+    name: permissionCapabilities.moduleMetadata['memories_memoriesview'].name,
     permissions: getCapabilityPermissions('memories_memoriesview')
   },
 
@@ -89,7 +89,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   EMPLOYEES: {
     id: 'employees',
     key: 'employees_employeesview', // 使用数据库中的实际module_key
-    name: '员工管理',
+    name: permissionCapabilities.moduleMetadata['employees_employeesview'].name,
     permissions: getCapabilityPermissions('employees_employeesview')
   },
 
@@ -97,7 +97,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   STORES: {
     id: 'stores',
     key: 'stores_storesview', // 使用数据库中的实际module_key
-    name: '店铺管理',
+    name: permissionCapabilities.moduleMetadata['stores_storesview'].name,
     permissions: getCapabilityPermissions('stores_storesview')
   },
 
@@ -105,7 +105,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   SUPPLIERS: {
     id: 'suppliers',
     key: 'suppliers_suppliersview', // 使用数据库中的实际module_key
-    name: '供应商管理',
+    name: permissionCapabilities.moduleMetadata['suppliers_suppliersview'].name,
     permissions: getCapabilityPermissions('suppliers_suppliersview')
   },
 
@@ -113,7 +113,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   SUPPLIER_PAYMENTS: {
     id: 'supplier_payments',
     key: 'payments_supplierphonepaymentsview', // 使用数据库中的实际module_key
-    name: '供应商付款',
+    name: permissionCapabilities.moduleMetadata['payments_supplierphonepaymentsview'].name,
     permissions: getCapabilityPermissions('payments_supplierphonepaymentsview')
   },
 
@@ -121,13 +121,13 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   ACCESSORIES: {
     id: 'accessories',
     key: 'accessories_accessoriesview', // 使用数据库中的实际module_key
-    name: '配件管理',
+    name: permissionCapabilities.moduleMetadata['accessories_accessoriesview'].name,
     permissions: getCapabilityPermissions('accessories_accessoriesview')
   },
   ACCESSORY_CATALOG: {
     id: 'accessories-catalog',
     key: 'accessories_accessorycatalogview',
-    name: '配件设置',
+    name: permissionCapabilities.moduleMetadata['accessories_accessorycatalogview'].name,
     permissions: getCapabilityPermissions('accessories_accessorycatalogview')
   },
 
@@ -135,7 +135,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   PERMISSIONS: {
     id: 'permissions',
     key: 'permissions_permissionsview', // 使用数据库中的实际module_key
-    name: '权限管理',
+    name: permissionCapabilities.moduleMetadata['permissions_permissionsview'].name,
     permissions: getCapabilityPermissions('permissions_permissionsview')
   },
 
@@ -143,7 +143,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   MODULE_MANAGEMENT: {
     id: 'module_management',
     key: 'permissions_modulemanagementview', // 使用数据库中的实际module_key
-    name: '模块管理',
+    name: permissionCapabilities.moduleMetadata['permissions_modulemanagementview'].name,
     permissions: getCapabilityPermissions('permissions_modulemanagementview')
   },
 
@@ -151,7 +151,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   MENU: {
     id: 'menu',
     key: 'menu_menumanagementview', // 使用数据库中的实际module_key
-    name: '菜单管理',
+    name: permissionCapabilities.moduleMetadata['menu_menumanagementview'].name,
     permissions: getCapabilityPermissions('menu_menumanagementview')
   },
 
@@ -159,7 +159,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   QUERY: {
     id: 'query',
     key: 'query_queryview', // 使用数据库中的实际module_key
-    name: '综合查询',
+    name: permissionCapabilities.moduleMetadata['query_queryview'].name,
     permissions: getCapabilityPermissions('query_queryview')
   },
 
@@ -167,7 +167,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   SYSTEM: {
     id: 'system',
     key: 'system_systemview', // 使用数据库中的实际module_key
-    name: '系统设置',
+    name: permissionCapabilities.moduleMetadata['system_systemview'].name,
     permissions: getCapabilityPermissions('system_systemview')
   },
 
@@ -175,7 +175,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   STANDARDS_AUDIT: {
     id: 'standards',
     key: 'standards_standardsauditview',
-    name: '规范与审计',
+    name: permissionCapabilities.moduleMetadata['standards_standardsauditview'].name,
     permissions: getCapabilityPermissions('standards_standardsauditview')
   },
 
@@ -183,7 +183,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   ANALYTICS: {
     id: 'analytics',
     key: 'analytics_analyticsview', // 使用数据库中的实际module_key
-    name: '数据分析',
+    name: permissionCapabilities.moduleMetadata['analytics_analyticsview'].name,
     permissions: getCapabilityPermissions('analytics_analyticsview')
   },
 
@@ -191,14 +191,14 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   ATTENDANCE: {
     id: 'attendance',
     key: 'attendance_attendanceview',
-    name: '考勤管理',
+    name: permissionCapabilities.moduleMetadata['attendance_attendanceview'].name,
     permissions: getCapabilityPermissions('attendance_attendanceview')
   },
 
   MY_ATTENDANCE: {
     id: 'my_attendance',
     key: 'attendance_myattendanceview',
-    name: '我的考勤',
+    name: permissionCapabilities.moduleMetadata['attendance_myattendanceview'].name,
     permissions: getCapabilityPermissions('attendance_myattendanceview')
   },
 
@@ -206,28 +206,28 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   SALARY: {
     id: 'salary',
     key: 'salary_salaryview',
-    name: '工资管理',
+    name: permissionCapabilities.moduleMetadata['salary_salaryview'].name,
     permissions: getCapabilityPermissions('salary_salaryview')
   },
 
   MY_SALARY: {
     id: 'my_salary',
     key: 'salary_mysalaryview',
-    name: '我的工资',
+    name: permissionCapabilities.moduleMetadata['salary_mysalaryview'].name,
     permissions: getCapabilityPermissions('salary_mysalaryview')
   },
 
   SALARY_RECORDS: {
     id: 'salary_records',
     key: 'salary_salaryrecordsview',
-    name: '工资记录',
+    name: permissionCapabilities.moduleMetadata['salary_salaryrecordsview'].name,
     permissions: getCapabilityPermissions('salary_salaryrecordsview')
   },
 
   SALARY_TEMPLATES: {
     id: 'salary_templates',
     key: 'salary_salarytemplatesview',
-    name: '工资模板',
+    name: permissionCapabilities.moduleMetadata['salary_salarytemplatesview'].name,
     permissions: getCapabilityPermissions('salary_salarytemplatesview')
   },
 
@@ -235,7 +235,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   DATA_OPTIMIZATION: {
     id: 'data_optimization',
     key: 'data_optimization_dataoptimizationview', // 使用数据库中的实际module_key
-    name: '数据优化',
+    name: permissionCapabilities.moduleMetadata['data_optimization_dataoptimizationview'].name,
     permissions: getCapabilityPermissions('data_optimization_dataoptimizationview')
   },
 
@@ -243,7 +243,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   PREORDERS: {
     id: 'preorders',
     key: 'preorders_preordersview',
-    name: '新品预定',
+    name: permissionCapabilities.moduleMetadata['preorders_preordersview'].name,
     permissions: getCapabilityPermissions('preorders_preordersview')
   },
 
@@ -251,7 +251,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   PRICE_LIST: {
     id: 'price_list',
     key: 'price_list_pricelistview',
-    name: '价目表管理',
+    name: permissionCapabilities.moduleMetadata['price_list_pricelistview'].name,
     permissions: getCapabilityPermissions('price_list_pricelistview')
   },
 
@@ -259,7 +259,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   SUBSIDY: {
     id: 'subsidy',
     key: 'subsidy_subsidyview',
-    name: '国补管理',
+    name: permissionCapabilities.moduleMetadata['subsidy_subsidyview'].name,
     permissions: getCapabilityPermissions('subsidy_subsidyview')
   },
 
@@ -267,14 +267,14 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   RENTALS: {
     id: 'rentals',
     key: 'rentals_rentalsview',
-    name: '租赁管理',
+    name: permissionCapabilities.moduleMetadata['rentals_rentalsview'].name,
     permissions: getCapabilityPermissions('rentals_rentalsview')
   },
 
   GUIDE: {
     id: 'guide',
     key: 'guide_guidemanagementview',
-    name: '导航管理',
+    name: permissionCapabilities.moduleMetadata['guide_guidemanagementview'].name,
     permissions: getCapabilityPermissions('guide_guidemanagementview')
   }
 }

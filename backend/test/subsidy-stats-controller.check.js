@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -86,15 +88,15 @@ test('subsidy summary service binds filters, hides fields and omits store query 
     } }
   })
   let filterTiming
-  const result = await service.getSummary({
+  const result = await service.getSummary({ actor: scopedActor,
     userId: 7,
     query: { status: 'unarrived', store_id: '3', start_date: '2026-01-01', include_store_stats: '1' },
     onFiltersBuilt: details => { filterTiming = details }
   })
 
   assert.deepEqual(repositoryInput, {
-    whereConditions: ['1=1', 'apply_time IS NOT NULL', 'arrival_time IS NULL', 'sale_time >= ?', 'store_id = ?'],
-    queryParams: ['2026-01-01', '3'],
+    whereConditions: ['1=1', 'store_id IN (?)', 'apply_time IS NOT NULL', 'arrival_time IS NULL', 'sale_time >= ?'],
+    queryParams: [3, '2026-01-01'],
     includeStoreStats: false
   })
   assert.deepEqual(filterTiming, { includeStoreStats: false, filterCount: 5, queryParamCount: 2 })

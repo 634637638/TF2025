@@ -6,7 +6,7 @@ import RecordDetailDialog from '@/components/RecordDetailDialog.vue'
 import Returngoods from '@/views/system/page/Returngoods.vue'
 
 const mocks = vi.hoisted(() => ({
-  get: vi.fn(), clearCache: vi.fn(), success: vi.fn(), error: vi.fn()
+  canEdit: false, canDelete: false, get: vi.fn(), clearCache: vi.fn(), success: vi.fn(), error: vi.fn()
 }))
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: { get: mocks.get, clearCache: mocks.clearCache } }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.success, error: mocks.error }) }))
@@ -14,11 +14,11 @@ vi.mock('@/utils/logger', () => ({ default: { error: vi.fn() }, logger: { error:
 vi.mock('@/composables', () => ({ useLoadingState: () => ({ loading: ref(false) }) }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: ref(true) }) }))
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({
-  canView: ref(true), canEdit: ref(false), canDelete: ref(false), handleNoPermission: vi.fn()
+  canView: ref(true), canEdit: ref(mocks.canEdit), canDelete: ref(mocks.canDelete), handleNoPermission: vi.fn()
 }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({
-  fieldPermissions: { init: vi.fn(), isFieldVisible: (_module: string, field: string) => field === 'record.product_info' },
-  shouldShowActionColumn: () => false
+  fieldPermissions: { init: vi.fn(), isFieldVisible: (_module: string, field: string) => ['record.product_info', 'record.refund_amount'].includes(field) },
+  shouldShowActionColumn: (_visible: boolean, actions: boolean[]) => actions.some(Boolean)
 }))
 vi.mock('@/services/reference-options', () => ({ searchOperators: vi.fn().mockResolvedValue({ success: true, data: [] }) }))
 
@@ -45,7 +45,7 @@ const render = async () => {
   return wrapper
 }
 
-beforeEach(() => mocks.get.mockReset())
+beforeEach(() => { mocks.get.mockReset(); mocks.canEdit = false; mocks.canDelete = false })
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount())
   vi.clearAllMocks()
@@ -81,5 +81,30 @@ describe('系统顶部调用退库列表刷新接口', () => {
     expect(wrapper.text()).toContain('原有设备')
     expect(mocks.error).not.toHaveBeenCalled()
     expect(mocks.success).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('联合退货凭据展示与动作保护', () => {
+  it.each([
+    { refund_amount: 120, collection_amount: 0, text: '整单退款' },
+    { refund_amount: 0, collection_amount: 20, text: '整单补款' },
+    { refund_amount: null, collection_amount: null, text: '-' }
+  ])('保留手机原单信息并正确显示 $text，手机详情无编辑删除入口', async amounts => {
+    mocks.canEdit = true; mocks.canDelete = true
+    const wrapper = await render()
+    mocks.get.mockResolvedValueOnce({ success: true, data: [{
+      id: 'aftersale:1:6', record_source: 'sales_aftersale', phone_id: 2,
+      original_sale_id: 21, model: '联合退货手机', ...amounts
+    }], pagination: { total: 1 } })
+    await wrapper.vm.reload(); await flushPromises()
+    expect(wrapper.text()).toContain('联合退货手机')
+    expect(wrapper.text()).toContain(amounts.text)
+    const table = wrapper.findComponent(ElTable)
+    const row = table.props('data')[0]
+    table.vm.$emit('row-dblclick', row, null, new MouseEvent('dblclick'))
+    await flushPromises()
+    const detail = wrapper.findComponent(RecordDetailDialog)
+    expect(detail.props('hasActions')).toBe(false)
   })
 })

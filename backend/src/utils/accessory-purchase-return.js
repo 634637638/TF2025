@@ -11,7 +11,8 @@ const eventId = key => typeof key === 'string' && /^event:[1-9]\d*$/.test(key) &
 
 /** 选择只描述原批次及实物，不接收客户端的店铺、供应商、成本或金额。 */
 const parsePurchaseReturnSelection = body => {
-  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(key => !['batches', 'serial_ids'].includes(key)) ||
+  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(key => !['batches', 'serial_ids', 'settlement_mode'].includes(key)) ||
+    Object.hasOwn(body, 'settlement_mode') && !['reduce_payable', 'supplier_refund', 'supplier_credit'].includes(body.settlement_mode) ||
     !Array.isArray(body.batches) || body.batches.length > 100 || !Array.isArray(body.serial_ids) || body.serial_ids.length > 1000 ||
     (!body.batches.length && !body.serial_ids.length) || body.serial_ids.some(value => !validId(value)) ||
     body.batches.some(row => !row || typeof row !== 'object' || Array.isArray(row) || Object.keys(row).some(key => !['row_key', 'quantity'].includes(key)) ||
@@ -22,7 +23,21 @@ const parsePurchaseReturnSelection = body => {
   if (new Set(serialIds).size !== serialIds.length || new Set(batches.map(row => row.row_key)).size !== batches.length) {
     throw Object.assign(new Error('退供不能重复选择批次或SN'), { statusCode: 400, code: 'VALIDATION_ERROR' })
   }
-  return { batches, serialIds }
+  return { batches, serialIds, ...(Object.hasOwn(body, 'settlement_mode') ? { settlementMode: body.settlement_mode } : {}) }
+}
+
+/** 只规划本次原采购价值的归属；不表示退款已到账或留抵已经入账。 */
+const planPurchaseReturnSettlement = (paymentStatus, mode, costCents) => {
+  if (!Number.isSafeInteger(costCents) || costCents < 0 || costCents >= 10000000000 ||
+    !['paid', 'unpaid'].includes(paymentStatus) ||
+    (paymentStatus === 'unpaid' ? mode !== 'reduce_payable' : !['supplier_refund', 'supplier_credit'].includes(mode))) {
+    throw Object.assign(new Error('原采购付款状态与退供资金处理方式不一致，请重新核对后选择'), {
+      statusCode: 409, code: 'PURCHASE_RETURN_SETTLEMENT_CONFLICT'
+    })
+  }
+  return { mode, payable_reduction: mode === 'reduce_payable' ? costCents / 100 : 0,
+    refund_amount: mode === 'supplier_refund' ? costCents / 100 : 0,
+    credit_amount: mode === 'supplier_credit' ? costCents / 100 : 0 }
 }
 
 /** 按原采购和当前实物分配；读取或写入调用方分别负责一致性快照或持锁，不占库、不记资金。 */
@@ -66,4 +81,4 @@ const allocatePurchaseReturn = ({ purchase, scope, currentQuantity, batches, ser
   return { quantity, costCents, allocations: allocations.sort((a, b) => a.store_id - b.store_id || a.source_event_id - b.source_event_id) }
 }
 
-module.exports = { parsePurchaseReturnSelection, allocatePurchaseReturn }
+module.exports = { parsePurchaseReturnSelection, allocatePurchaseReturn, planPurchaseReturnSettlement }

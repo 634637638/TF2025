@@ -159,7 +159,6 @@
                   <el-button
                     v-if="canEditPost(post)"
                     class="table-action table-action--edit"
-                    size="small"
                     title="编辑"
                     @click="openEdit(post.id)"
                   >
@@ -168,7 +167,6 @@
                   <el-button
                     v-if="canDeletePost(post)"
                     class="table-action table-action--delete"
-                    size="small"
                     title="删除"
                     @click="removePost(post)"
                   >
@@ -177,7 +175,6 @@
                   <el-button
                     v-if="canPinPost(post)"
                     class="table-action table-action--pin"
-                    size="small"
                     title="置顶"
                     @click="togglePin(post)"
                   >
@@ -288,7 +285,7 @@
             >
               <el-radio-group
                 v-model="form.visibility"
-                class="visibility-control tf-segment"
+                class="visibility-control tf-state-selector"
               >
                 <el-radio-button value="public">
                   <span class="visibility-option"><i class="fas fa-globe" /><span>公开</span></span>
@@ -331,7 +328,6 @@
                     />
                     <span>px</span>
                     <el-button
-                      size="small"
                       text
                       @click="applyCustomFontSize"
                     >
@@ -675,6 +671,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { watch } from 'vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
@@ -1115,6 +1112,11 @@ const categoryDetailFields = computed<RecordDetailField[]>(() => {
   ]
 })
 watch(categoryDetailVisible, visible => { if (!visible) cancelCategoryEdit() })
+
+usePageShortcuts('/shared', {
+  'shared-create': { open: openCreate },
+  'shared-categories': { open: openCategoryManager }
+})
 </script>
 
 <style scoped lang="scss">

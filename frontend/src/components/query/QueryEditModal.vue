@@ -158,6 +158,7 @@
           >
             <el-input
               v-model="formData.serial_number"
+              v-identifier-input="'device-serial'"
               placeholder="请输入序列号"
               maxlength="50"
               clearable
@@ -181,6 +182,7 @@
             >
               <el-input
                 v-model="formData.imei"
+                v-identifier-input="formData.isNoIMEIMode ? 'device-serial' : 'imei'"
                 :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
                 :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
                 :maxlength="formData.isNoIMEIMode ? 50 : 15"
@@ -377,6 +379,7 @@
           >
             <el-input
               v-model="formData.apple_id"
+              :readonly="!!editFoundCustomer && !customerPermissions.canEdit.value"
               placeholder="请输入 Apple ID（可选）"
               clearable
               data-field="apple_id"
@@ -506,6 +509,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import type { FormInstance } from 'element-plus'
 import { ValidationRules } from '@/composables'
@@ -531,7 +535,7 @@ import {
   getCachedColors,
   getCachedMemories,
   getModels,
-  getCachedStores,
+  getStores,
   getCachedSuppliers,
   searchEmployees
 } from '@/services/reference-options'
@@ -580,6 +584,8 @@ interface CustomerOption extends Pick<Customer, 'id' | 'name' | 'phone'> {
   member_number?: string
   vip_level?: string
 }
+
+const customerPermissions = usePagePermissions('customers')
 
 const { success: showSuccess, error: showError, info: showInfo } = useNotification()
 
@@ -787,7 +793,7 @@ const fetchEditOptions = async (): Promise<EditModalOptions> => {
           usersRes
         ] = await Promise.all([
           getCachedSuppliers(),
-          getCachedStores(true),
+          getStores({ strictScope: true }),
           getCachedBrands(),
           getCachedColors(),
           getCachedMemories(),
@@ -1541,6 +1547,7 @@ const { promptCustomerName, promptingCustomerName } = useCustomerNamePrompt()
 const customerNameSaving = ref(false)
 
 const enableCustomerNameEdit = (event?: MouseEvent) => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!editFoundCustomer.value) return
   customerNameEditing.value = true
 
@@ -1555,6 +1562,7 @@ const enableCustomerNameEdit = (event?: MouseEvent) => {
 }
 
 const handleCustomerNameTouchEnd = async (event: TouchEvent) => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!isIOS.value) return
 
   const now = Date.now()
@@ -1572,7 +1580,7 @@ const handleCustomerNameTouchEnd = async (event: TouchEvent) => {
 
   const customerId = editFoundCustomer.value.id
   await promptCustomerName(formData.customer_name, async name => {
-    if (!props.modelValue || editFoundCustomer.value?.id !== customerId) return
+    if (!customerPermissions.requirePermission('edit') || !props.modelValue || editFoundCustomer.value?.id !== customerId) return
     customerNameEditing.value = true
     formData.customer_name = name
     await saveCustomerNameEdit()
@@ -1594,6 +1602,7 @@ const handleCustomerNameBlur = () => {
 }
 
 const saveCustomerNameEdit = async () => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (customerNameSaving.value) return
   if (!editFoundCustomer.value) {
     customerNameEditing.value = false
@@ -1735,6 +1744,7 @@ const selectCustomer = (customer: CustomerOption) => {
 }
 
 const createNewCustomer = async () => {
+  if (!customerPermissions.requirePermission('create')) return
   formatCustomerPhone()
   formatAppleId()
 

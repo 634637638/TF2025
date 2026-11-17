@@ -58,6 +58,7 @@
               <span>客户增长趋势</span>
               <el-radio-group
                 v-model="growthPeriod"
+                class="tf-state-selector"
                 size="small"
               >
                 <el-radio-button value="7d">
@@ -191,7 +192,6 @@
                 />
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportCustomers"
                 >
                   <el-icon><Download /></el-icon>
@@ -281,7 +281,6 @@
                 <div class="action-buttons">
                   <el-button
                     type="primary"
-                    size="small"
                     link
                     @click.stop="viewCustomerDetail(row)"
                   >
@@ -317,7 +316,6 @@
               <span>客户行为洞察</span>
               <el-button
                 link
-                size="small"
                 @click="refreshInsights"
               >
                 <el-icon><Refresh /></el-icon>

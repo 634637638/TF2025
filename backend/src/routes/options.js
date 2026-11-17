@@ -7,6 +7,6 @@ const phoneOptionController = new PhoneOptionController()
 
 router.use(unifiedAuth)
 
-router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessories:create']), phoneOptionController.getPhoneOptions.bind(phoneOptionController))
+router.get('/phone-options', requireAnyPermission(['accessories:view', 'accessories:create', 'accessories:stock-in', 'accessories:edit']), phoneOptionController.getPhoneOptions.bind(phoneOptionController))
 
 module.exports = router

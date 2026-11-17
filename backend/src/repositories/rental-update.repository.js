@@ -14,11 +14,10 @@ class RentalUpdateRepository {
 
   async findForUpdate(connection, id) {
     const [rows] = await connection.execute(
-      `SELECT status,billing_mode,start_date,sale_id,phone_id,customer_id,unit_price,term_months,sale_price,
-              down_payment,principal_amount,monthly_rent,monitoring_lock,deposit,remarks,
-              (SELECT purchase_cost FROM phones WHERE id=rentals.phone_id) AS purchase_cost,
-              (SELECT is_new FROM phones WHERE id=rentals.phone_id) AS is_new
-       FROM rentals WHERE id=? FOR UPDATE`,
+      `SELECT r.*, p.purchase_cost, p.is_new, p.store_id AS source_store_id,
+              COALESCE(s.store_id, p.store_id) AS store_id
+       FROM rentals r JOIN phones p ON p.id=r.phone_id
+       LEFT JOIN sales s ON s.id=r.sale_id WHERE r.id=? FOR UPDATE`,
       [id]
     )
     return rows[0] || null

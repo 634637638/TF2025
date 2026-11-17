@@ -28,7 +28,6 @@
       <template #actions="{ loading: searchLoading }">
         <el-button
           type="primary"
-          size="small"
           :loading="searchLoading"
           :aria-busy="searchLoading"
           @click="emit('search')"
@@ -38,7 +37,6 @@
         </el-button>
         <el-button
           type="default"
-          size="small"
           :disabled="searchLoading"
           @click="emit('reset')"
         >
@@ -214,9 +212,8 @@
             <template #default="{ row }">
               <div class="template-action-buttons action-buttons">
                 <el-button
-                  v-if="!row.is_default && canEdit"
+                  v-if="!row.is_default && canEdit && canEditField('salary_salarytemplatesview', 'template_is_default')"
                   v-permission="'salary-templates:edit'"
-                  size="small"
                   type="warning"
                   plain
                   @click.stop="emit('setDefault', row)"
@@ -225,9 +222,8 @@
                   <span class="btn-text">默认</span>
                 </el-button>
                 <el-button
-                  v-if="canEdit"
+                  v-if="canEdit && canEditField('salary_salarytemplatesview', 'template_is_active')"
                   v-permission="'salary-templates:edit'"
-                  size="small"
                   :type="row.is_active ? 'warning' : 'success'"
                   plain
                   @click.stop="emit('toggleStatus', row)"
@@ -238,7 +234,6 @@
                 <el-button
                   v-if="canEdit"
                   v-permission="'salary-templates:edit'"
-                  size="small"
                   type="primary"
                   plain
                   @click.stop="emit('edit', row)"
@@ -249,7 +244,6 @@
                 <el-button
                   v-if="canDelete"
                   v-permission="'salary-templates:delete'"
-                  size="small"
                   type="danger"
                   plain
                   @click.stop="emit('delete', row)"
@@ -270,7 +264,7 @@
         >
           <template #actions="{ row }">
             <el-button
-              v-if="!row.is_default && canEdit"
+              v-if="!row.is_default && canEdit && canEditField('salary_salarytemplatesview', 'template_is_default')"
               v-permission="'salary-templates:edit'"
               type="warning"
               @click.stop="mobileDetailRunAction(() => emit('setDefault', row))"
@@ -279,7 +273,7 @@
               <span>默认</span>
             </el-button>
             <el-button
-              v-if="canEdit"
+              v-if="canEdit && canEditField('salary_salarytemplatesview', 'template_is_active')"
               v-permission="'salary-templates:edit'"
               :type="row.is_active ? 'warning' : 'success'"
               @click.stop="mobileDetailRunAction(() => emit('toggleStatus', row))"
@@ -344,6 +338,7 @@ import type { SalaryTemplate } from '@/types/salary'
 const props = defineProps<{
   canDelete: boolean
   canEdit: boolean
+  canEditField: (_moduleKey: string, _fieldName: string) => boolean
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
   filteredTemplates: SalaryTemplate[]
   getEmployeeCount: (_templateId: number) => number

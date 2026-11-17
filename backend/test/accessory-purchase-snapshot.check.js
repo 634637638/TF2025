@@ -96,3 +96,115 @@ test('付款历史非法分页在租借连接前拒绝', async () => {
   }
   assert.equal(f.leases, 0)
 })
+
+/** 模拟默认读已提交连接；只有显式设置RR后，跨语句读取才固定版本。 */
+function listFixture({ failAt, appendAfterCount = false } = {}) {
+  const state = { rows: [{ id: '8', accessory_id: '3', supplier_id: '4', store_id: '1',
+    name: '充电器', product_snapshot: null, quantity: 2, total_amount: 50,
+    payment_status: 'unpaid', latest_event_id: '0' }] }
+  const events = [], reads = []
+  let active = false, repeatable = false, snapshot, leases = 0
+  const connection = {
+    async execute(sql) {
+      events.push('configure')
+      assert.equal(sql, 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+      if (failAt === 'configure') throw new Error('configure-failed')
+      repeatable = true
+    },
+    async beginTransaction() {
+      events.push('begin')
+      if (failAt === 'begin') throw new Error('begin-failed')
+      active = true
+    },
+    async query(sql, params) {
+      assert.equal(active, true)
+      assert.doesNotMatch(sql, /FOR UPDATE|INSERT|DELETE|UPDATE |request_key|request_hash/)
+      snapshot ??= structuredClone(state)
+      const current = repeatable ? snapshot : structuredClone(state)
+      reads.push({ sql, params }); events.push('read')
+      if (failAt === `read:${reads.length}`) throw new Error('read-failed')
+      if (sql.includes('COUNT(*)')) {
+        const summary = { total: String(current.rows.length), total_quantity: 0, total_amount: 0, paid_amount: 0, unpaid_amount: 0 }
+        for (const row of current.rows) {
+          summary.total_quantity += row.quantity
+          summary.total_amount += row.total_amount
+          summary[row.payment_status === 'paid' ? 'paid_amount' : 'unpaid_amount'] += row.total_amount
+        }
+        if (appendAfterCount && state.rows.length === 1) {
+          state.rows[0].payment_status = 'paid'; state.rows[0].latest_event_id = '1'
+          state.rows.push({ ...state.rows[0], id: '9', quantity: 3, total_amount: 75, payment_status: 'unpaid', latest_event_id: '0' })
+        }
+        return [[summary]]
+      }
+      const [size, offset] = params.slice(-2)
+      return [current.rows.toReversed().slice(offset, offset + size)]
+    },
+    async commit() { events.push('commit'); active = false; snapshot = undefined; repeatable = false },
+    async rollback() {
+      events.push('rollback')
+      if (failAt === 'rollback') throw new Error('rollback-failed')
+      active = false; snapshot = undefined; repeatable = false
+    },
+    destroy() { events.push('destroy'); active = false; snapshot = undefined; repeatable = false },
+    release() { events.push('release'); assert.equal(active, false) }
+  }
+  const repository = new Repository()
+  repository.getConnection = () => ({ async getConnection() { leases++; events.push('acquire'); return connection } })
+  return { service: new Service({ repository }), state, reads, events, get leases() { return leases } }
+}
+
+test('采购列表汇总、付款状态和分页共用快照，并发付款及新增采购在下一次请求可见', async () => {
+  const f = listFixture({ appendAfterCount: true })
+  const first = await f.service.list(actor)
+  assert.equal(f.state.rows.length, 2)
+  assert.deepEqual(first.summary, { total: 1, total_quantity: 2, total_amount: 50, paid_amount: 0, unpaid_amount: 50 })
+  assert.deepEqual(first.rows.map(row => [row.id, row.payment_status, row.latest_event_id]), [[8, 'unpaid', 0]])
+  assert.deepEqual(first.pagination, { page: 1, page_size: 20, total: 1, total_pages: 1 })
+  const second = await f.service.list(actor)
+  assert.deepEqual(second.summary, { total: 2, total_quantity: 5, total_amount: 125, paid_amount: 50, unpaid_amount: 75 })
+  assert.deepEqual(second.rows.map(row => [row.id, row.payment_status, row.latest_event_id]), [[9, 'unpaid', 0], [8, 'paid', 1]])
+  assert.equal(f.leases, 2)
+  assert.deepEqual(f.events, Array(2).fill(['acquire', 'configure', 'begin', 'read', 'read', 'rollback', 'release']).flat())
+})
+
+test('采购列表分页、筛选和整单门店范围绑定同一连接，不暴露原JSON', async () => {
+  const f = listFixture()
+  const result = await f.service.list(actor, { page: '2', page_size: '1', supplier_id: '4', store_id: '1', keyword: ' 充电器 ' })
+  assert.deepEqual(result.rows, [])
+  assert.deepEqual(f.reads[1].params, [...f.reads[0].params, 1, 1])
+  assert.ok(f.reads[0].params.includes('%充电器%'))
+  assert.match(f.reads[0].sql, /JSON_CONTAINS/)
+  const first = await f.service.list(actor)
+  assert.equal(first.rows[0].accessory_id, 3)
+  assert.equal(first.rows[0].has_snapshot, false)
+  assert.equal(Object.hasOwn(first.rows[0], 'product_snapshot'), false)
+})
+
+for (const failAt of ['configure', 'begin', 'read:1', 'read:2', 'rollback']) {
+  test(`采购列表${failAt}失败不返回部分汇总并清理连接`, async () => {
+    const f = listFixture({ failAt })
+    await assert.rejects(f.service.list(actor), new RegExp(`${failAt.startsWith('read:') ? 'read' : failAt}-failed`))
+    assert.equal(f.leases, 1)
+    assert.equal(f.events.at(-1), 'release')
+    assert.equal(f.events.includes('destroy'), ['configure', 'begin', 'rollback'].includes(failAt))
+    assert.equal(f.events.includes('rollback'), !['configure', 'begin'].includes(failAt))
+    assert.equal(f.events.includes('commit'), false)
+  })
+}
+
+test('采购列表原资料投影异常仍结束只读事务，不返回坏快照', async () => {
+  const f = listFixture()
+  f.state.rows[0].product_snapshot = '{'
+  await assert.rejects(f.service.list(actor), { code: 'PURCHASE_SNAPSHOT_CONFLICT' })
+  assert.deepEqual(f.events.slice(-2), ['rollback', 'release'])
+  assert.equal(f.events.includes('commit'), false)
+})
+
+test('采购列表无效参数或越店请求在租借连接前拒绝', async () => {
+  const f = listFixture()
+  for (const query of [{ page: 0 }, { page_size: true }, { supplier_id: [] }, { payment_status: 'bad' }]) {
+    await assert.rejects(f.service.list(actor, query), { statusCode: 400 })
+  }
+  await assert.rejects(f.service.list(actor, { store_id: 99 }), { statusCode: 403 })
+  assert.equal(f.leases, 0)
+})

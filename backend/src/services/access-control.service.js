@@ -496,7 +496,7 @@ async function getExplicitViewAccessScope(userId, options = {}, executor = null)
   const permissions = sortPermissionTypes(uniqueStrings([...allPermissions, ...ownPermissions]))
   const canManage = permissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType))
   const isAdminRole = await hasGlobalAdminRole(profile.roles, executor)
-  const canViewAll = isAdminRole || allPermissions.some((permissionType) => allViewPermissions.includes(permissionType))
+  const canViewAll = allPermissions.some((permissionType) => allViewPermissions.includes(permissionType))
   const canViewOwn = ownPermissions.some((permissionType) => ownViewPermissions.includes(permissionType))
 
   let scope = 'none'
@@ -529,13 +529,13 @@ async function getModuleAccessScope(userId, moduleKeys, executor = null) {
     normalizedModuleKeys.flatMap((moduleKey) => profile.summary[moduleKey] || [])
   )
   const sortedPermissions = sortPermissionTypes(permissions)
-  const canView = sortedPermissions.includes('view') || sortedPermissions.includes('menu_view')
+  const canView = sortedPermissions.includes('view')
   const canManage = sortedPermissions.some((permissionType) => MODULE_MANAGE_ACTIONS.has(permissionType))
   const isAdminRole = await hasGlobalAdminRole(profile.roles, executor)
 
   let scope = 'none'
   if (canView) {
-    scope = (isAdminRole || canManage) ? 'all' : 'own'
+    scope = 'own'
   }
 
   return {

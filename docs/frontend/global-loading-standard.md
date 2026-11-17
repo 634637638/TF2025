@@ -10,6 +10,10 @@
 
 具体实现和审计入口由 [规范清单](standards-manifest.json) 登记，页面结构见 [页面结构规范](page-structure-standards.md)。
 
+区块加载和区域刷新提示默认铺满当前容器的可用宽度，使用边框盒计算，转圈和文字在区域内居中。`SectionLoading` 统一维护区块宽度，包含表单的 flex 内容区，`LoadingOverlay`、`TableLoadingRow` 及业务页面不重复覆盖；`v-tf-loading` 和 `LoadingOverlay` 的背景遮罩与反馈层铺满目标区域的宽度和高度，背景只由遮罩承载，不另绘制居中的白色横条或卡片。按钮与 `InlineLoading` 随行内内容布局。
+
+手机端（不超过 767px）的加载提示文字统一单行展示；超出实际可用空间时省略号收尾，保留完整文本及 `title`，不挤压圆环、不撑出容器。全屏提示、区域刷新及公共行内提示均使用此策略。桌面和平板的超长提示允许在可用宽度内换行。
+
 ## 统一与调整顺序
 
 全站加载效果先按场景接入公共入口，再调整某个场景的视觉或行为。全屏、表格/列表、区块占位、区块覆盖和按钮反馈允许有不同表现，但同一场景必须共用同一个公共组件、指令或按钮原生状态；业务页面不得复制动画、遮罩、spinner、加载占位文案或另建私有样式。
@@ -40,6 +44,8 @@
 `v-tf-loading` 首次绑定为 true 只登记首屏状态；首次完成后再次从 false 进入 true 才显示刷新遮罩。首次绑定为 false 表示当前列表已就绪（包括缓存命中和条件挂载），下一次变为 true 立即显示区域反馈。不得为了立刻展示局部 Loading 伪造一次已完成状态。表格首载需要专属文案时，在空状态槽用 `TableLoadingRow` 承载；该组件显示期间会登记局部 Loading，避免全局层和表格提示同时出现。
 
 遮罩仅覆盖表头、数据和列表范围，不挂在整个页面、搜索区或统计区。禁止通过 `loading ? [] : rows` 清空旧数据制造闪烁。已有数据刷新时，不能再叠加 `TableLoadingRow` 或其他 spinner。
+
+区域刷新反馈的全宽、全高、居中和手机单行规则由 `styles.scss` 统一维护，转圈图标不参与压缩。反馈高度跟随被覆盖区域，不使用固定高度条带。表格与普通列表容器共用此规则，页面不另设宽高或私有换行规则。
 
 当空表刷新同时挂载 `TableLoadingRow` 和区域遮罩时，由 `styles.scss` 的公共规则隐藏占位内容并保留高度，只显示区域反馈。该规则使用 `visibility`，避免路由懒加载后组件的 `display: flex` 覆盖隐藏状态；不得在页面逐个补私有样式或新增 `!important`。
 
@@ -105,6 +111,8 @@ Element Plus 按钮只使用自身 `:loading`，按业务叠加禁用条件；�
 
 执行 `npm --prefix frontend run check:loading` 及相关类型、UI 和行为测试。逐文件接入证据使用 `npm --silent --prefix frontend run check:loading -- --json`；统计包括 `LoadingOverlay`，按钮反馈与区域反馈分别列出。逐路由复核见[页面台账](page-audit-inventory.md#全量-loading-接入复核2026-11-11)。公共行为回归位于 `frontend/tests/global-loading.spec.ts`、`table-loading-directive.spec.ts`、`loading-store.spec.ts`、`loading-overlay.spec.ts`、`section-loading.spec.ts`、`table-loading-row.spec.ts`、`loading-text.spec.ts` 和 `api-loading.spec.ts`。后两者验证业务文案，以及真实 Axios 拦截器在模拟适配器下的并发、失败、取消、静默和重试生命周期；不访问业务 API。审计解析完整 Vue SFC 模板，检查全局唯一挂载、公共入口、重复动画、空容器、业务页泛化文案、按钮与已登记例外，解析失败必须失败。
 
-`npm --prefix frontend run test:input-flows -- --loading-only` 使用真实表格、占位和区域指令，在全局样式之后懒加载占位组件，验证首载、空结果、空表刷新、保留数据刷新和失败结束；断言每次仅一个可见等待，隐藏占位仍保留高度。默认覆盖 Chromium 五视口明暗主题；追加 `--ios` 覆盖 Xcode iPhone 模拟器 Safari，不能替代物理设备。完整 `--overlays` 回归也包含此用例。
+`npm --prefix frontend run test:input-flows -- --loading-only` 使用真实表格、占位和区域指令，在全局样式之后懒加载占位组件，验证首载、空结果、空表刷新、保留数据刷新和失败结束；断言每次仅一个可见等待，隐藏占位仍保留高度。覆盖 Chromium 320/360/375/390/430/768/1024/1440px 明暗主题，在表格、普通区域及窄容器检查背景及反馈层铺满宽高且居中、手机单行省略、长中文/连续英文的桌面换行、完整文案保留、图标不变形和横向边界；真实表单还检查 `SectionLoading` 紧凑、普通、大号三种规格铺满内容区宽度。追加 `--ios` 覆盖 Xcode iPhone 模拟器 Safari，不能替代物理设备。完整 `--overlays` 回归也包含布局用例，沿用五视口矩阵。
+
+权限管理的角色列表和角色分配列表统一维护请求状态，不以“静默加载”参数关闭首载、检索、重置或分页反馈。角色首载从字段配置等待阶段使用原表格的 `TableLoadingRow`，角色查询与统计并行；已有数据刷新使用原 `v-tf-loading`。列表请求显式关闭全局层，并各自复用 `useLatestRequest`，旧请求结束不能释放新请求的加载状态。字段初始化或当前请求失败结束等待，卸载取消请求；行为回归见 `frontend/tests/permission-lists-loading.spec.ts`。
 
 静态检查不能证明每个页面的加载粒度或视觉正确。浏览器分别验证首屏短/长请求、保留数据刷新、失败、取消、连续点击、卸载清理及全局/局部互斥，不以历史使用数量或审计通过代替实际验收。

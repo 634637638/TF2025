@@ -10,8 +10,8 @@ const consume = async (f, db, itemId, points, rate = 100) => f.service.consume(d
   customerId: 9, itemId, points, pointsPerYuan: rate, amountCents: points * 100 / rate,
   snapshot: await f.service.snapshot(db, 9)
 })
-const sourceReturn = (f, db, sourceId, points, requestKey, sourceType = 'phone_sale') => f.service.returnAward(db, {
-  customerId: 9, sourceType, sourceId, points, requestKey
+const sourceReturn = (f, db, sourceId, points, requestKey, sourceType = 'phone_sale', details = {}) => f.service.returnAward(db, {
+  customerId: 9, sourceType, sourceId, points, requestKey, details
 })
 const itemReturn = (f, db, itemId, points, requestKey) => f.service.returnRedemption(db, { customerId: 9, itemId, points, requestKey })
 const state = f => f.transaction(db => f.service.state(db, 9))
@@ -31,6 +31,21 @@ test('退奖励先扣原来源未用积分，已抵扣部分按原价值追回�
     await assert.rejects(sourceReturn(f, db, 1, 1, 'return:source:again'), /剩余可冲回奖励不足/)
     await assert.rejects(sourceReturn(f, db, 99, 1, 'return:legacy:99'), /剩余可冲回奖励不足/)
     for (const delta of [-1, 1]) await assert.rejects(award(f, db, 1, delta), { code: 'POINTS_AFTERSALE_SOURCE_LOCKED' })
+  })
+})
+
+test('手机销售退货积分流水保存中文说明和实际办理人', async () => {
+  const f = fixture()
+  await f.transaction(async db => {
+    await award(f, db, 88, 5)
+    const returned = await sourceReturn(f, db, 88, 5, 'phone:return:metadata', 'phone_sale', {
+      reason: '手机退货', operator_id: 17, sale_id: 88
+    })
+    assert.equal(returned.points_delta, -5)
+    const metadata = JSON.parse(f.state.aftersales[0].allocation_snapshot)
+    assert.deepEqual({ reason: metadata.reason, operator_id: metadata.operator_id, sale_id: metadata.sale_id }, {
+      reason: '手机退货', operator_id: 17, sale_id: 88
+    })
   })
 })
 

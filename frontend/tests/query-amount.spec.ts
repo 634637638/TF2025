@@ -7,7 +7,7 @@ import QueryEditModal from '@/components/query/QueryEditModal.vue'
 import type { QueryOperationOptions } from '@/types'
 
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 1, name: '测试销售员' } }) }))
-vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({ canView: computed(() => false), canSell: computed(() => false), canCreate: computed(() => false), hasPermission: () => false }) }))
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({ canEdit: computed(() => false), requirePermission: () => false, canView: computed(() => false), canSell: computed(() => false), canCreate: computed(() => false), hasPermission: () => false }) }))
 vi.mock('@/utils/unified-api', () => { const api = {
   get: vi.fn().mockResolvedValue({ success: true, data: {
     基本信息: { phone_id: 11, status_code: 'in_stock' },
@@ -23,7 +23,7 @@ vi.mock('@/services/reference-options', () => ({
   getCachedBrands: vi.fn().mockResolvedValue({ success: true, data: [] }),
   getCachedColors: vi.fn().mockResolvedValue({ success: true, data: [] }),
   getCachedMemories: vi.fn().mockResolvedValue({ success: true, data: [] }),
-  getCachedStores: vi.fn().mockResolvedValue({ success: true, data: [] }),
+  getStores: vi.fn().mockResolvedValue({ success: true, data: [] }),
   getCachedSuppliers: vi.fn().mockResolvedValue({ success: true, data: [] }),
   searchEmployees: vi.fn().mockResolvedValue({ success: true, data: { employees: [] } })
 }))

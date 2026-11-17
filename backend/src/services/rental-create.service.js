@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const { ensureRentalSchema } = require('../utils/rental-schema')
 const { isValidIdCard } = require('../utils/security-enhanced')
 const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
@@ -32,7 +34,7 @@ class RentalCreateService {
     this.reconcilePoints = reconcilePoints
   }
 
-  async create({ body = {}, operatorId }) {
+  async create({ body = {}, operatorId, actor }) {
     body = parseRentalInput(body)
     await this.ensureSchema()
     const billingMode = body.billing_mode
@@ -77,6 +79,9 @@ class RentalCreateService {
         }
         const phone = await this.repository.findPhoneForUpdate(connection, phoneId)
         if (!phone || phone.status !== 'in_stock') throw new Error('设备已不在库，请重新选择')
+        const scope = resolveStoreScope(actor)
+        assertStoreInScope(scope, phone.store_id)
+        if (buyout) assertStoreInScope(scope, saleStoreId || phone.store_id)
 
         const purchaseCost = body.purchase_cost === undefined ? Number(phone.purchase_cost || 0) : Number(body.purchase_cost)
         if (buyout && !positiveMoney(purchaseCost)) throw new Error('入库价格金额不正确')

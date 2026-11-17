@@ -1,81 +1,11 @@
 const express = require('express')
 const router = express.Router()
-const { unifiedAuth, requirePermission, getUserPermissions } = require('../middleware/unified-auth')
-const log = require('../utils/log')
+const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
 const CustomerController = require('../controllers/customer.controller')
 const customerController = new CustomerController()
 const createFieldAccessMiddleware = require('../middleware/field-access')
 const { service: customerFields, fieldMap: addressFieldMap } = require('../services/customer-field-access.service')
 const protectCustomerAddress = createFieldAccessMiddleware(customerFields).protectFields(addressFieldMap)
-
-const LEGACY_PERMISSION_CANONICAL_MAP = {
-  'customers_customersview:create': 'customers:create',
-  'inventory_inventoryview:edit': 'inventory:edit',
-  'query_queryview:edit': 'query:edit',
-  'sales_salesview:create': 'sales:create',
-  'sales_salesview:view': 'sales:view',
-  'sales_salesview:edit': 'sales:edit',
-  'sales_phonesaleview:create': 'sales:create',
-  'sales_phonesaleview:view': 'sales:view',
-  'sales_phonesaleview:edit': 'sales:edit',
-  'sales_editphoneview:edit': 'sales-editphoneview:edit'
-}
-
-const CUSTOMER_CREATE_BYPASS_PERMISSIONS = new Set([
-  'sales:create',
-  'sales:view',
-  'sales:edit',
-  'sales-editphoneview:edit',
-  'query:edit',
-  'inventory:edit'
-])
-
-const toCanonicalPermission = (permission = '') => LEGACY_PERMISSION_CANONICAL_MAP[permission] || permission
-
-const normalizePermissionEntries = (permissions = []) => permissions.map((perm) => {
-  if (typeof perm === 'string') {
-    return toCanonicalPermission(perm)
-  }
-
-  if (perm && perm.module_key && perm.permission_type) {
-    return toCanonicalPermission(`${perm.module_key}:${perm.permission_type}`)
-  }
-
-  return ''
-}).filter(Boolean)
-
-const requireCustomerCreatePermissionForBusinessFlow = async (req, res, next) => {
-  try {
-    const cachedPermissions = Array.isArray(req.user?.permissions) ? req.user.permissions : []
-    const dbPermissions = cachedPermissions.length > 0 ? [] : await getUserPermissions(req.user.id)
-    const normalizedCachedPermissions = normalizePermissionEntries(cachedPermissions)
-    const normalizedPermissions = new Set([
-      ...normalizedCachedPermissions,
-      ...normalizePermissionEntries(dbPermissions)
-    ])
-
-    if (normalizedPermissions.has('customers:create')) {
-      return next()
-    }
-
-    const hasBusinessBypassPermission = Array.from(normalizedPermissions)
-      .some((permission) => CUSTOMER_CREATE_BYPASS_PERMISSIONS.has(permission))
-
-    if (hasBusinessBypassPermission) {
-      return next()
-    }
-
-    return requirePermission('customers:create')(req, res, next)
-  } catch (error) {
-    log.error('客户创建权限检查失败:', error)
-    return res.status(500).json({
-      success: false,
-      message: '权限检查失败',
-      code: 'PERMISSION_CHECK_FAILED'
-    })
-  }
-}
-
 
 // 搜索客户（用于模糊搜索）
 router.get('/search', unifiedAuth, requirePermission('customers:view'), customerController.search.bind(customerController))
@@ -92,6 +22,9 @@ router.get('/stats/overview', unifiedAuth, requirePermission('customers:view'), 
 // 获取客户积分自动累计设置
 router.get('/points-config', unifiedAuth, requirePermission('customers:view'), customerController.getPointsConfig.bind(customerController))
 
+// 积分规则的商品最小选项，沿用客户查看权限
+router.get('/points-products', unifiedAuth, requirePermission('customers:view'), customerController.getPointsProducts.bind(customerController))
+
 // 保存客户积分自动累计设置
 router.put('/points-config', unifiedAuth, requirePermission('customers:manage'), customerController.savePointsConfig.bind(customerController))
 
@@ -103,7 +36,7 @@ router.get('/export', unifiedAuth, requirePermission('customers:export'), protec
 router.get('/:id', unifiedAuth, requirePermission('customers:view'), protectCustomerAddress, customerController.getById.bind(customerController))
 
 // 创建客户
-router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, protectCustomerAddress, customerController.create.bind(customerController))
+router.post('/', unifiedAuth, requirePermission('customers:create'), protectCustomerAddress, customerController.create.bind(customerController))
 
 // 更新客户信息
 router.put('/:id', unifiedAuth, requirePermission('customers:edit'), protectCustomerAddress, customerController.update.bind(customerController))
@@ -113,6 +46,10 @@ router.delete('/:id', unifiedAuth, requirePermission('customers:delete'), custom
 
 // 获取客户消费记录（手机购买记录）
 router.get('/:id/purchases', unifiedAuth, requirePermission('customers:view'), customerController.getPurchases.bind(customerController))
+
+// 客户积分/余额明细及受控账户调整
+router.get('/:id/account-ledger', unifiedAuth, requirePermission('customers:view'), customerController.getAccountLedger.bind(customerController))
+router.post('/:id/account-adjustments', unifiedAuth, requirePermission('customers:manage'), customerController.adjustAccount.bind(customerController))
 
 // 消费记录必须通过真实销售事务创建，禁止从客户接口伪造消费流水。
 router.post('/:id/purchases', unifiedAuth, requirePermission('customers:edit'), customerController.rejectPurchaseCreation.bind(customerController))

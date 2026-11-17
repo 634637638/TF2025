@@ -95,6 +95,14 @@ const hasAllPermissionTokens = (user, requiredPermissions = []) => {
 let rolesHierarchyColumnExists = null
 const authProfileCache = new Map()
 
+const invalidateAuthProfiles = (userIds = null) => {
+  if (!userIds) return authProfileCache.clear()
+  const ids = new Set(userIds.map(String))
+  for (const key of authProfileCache.keys()) {
+    if (ids.has(key.split(':')[0])) authProfileCache.delete(key)
+  }
+}
+
 const getAuthProfileCacheKey = (decoded) => {
   const userId = decoded?.sub ?? decoded?.id
   const issuedAt = decoded?.iat || 0
@@ -160,6 +168,102 @@ const hasRolesHierarchyColumn = async (db) => {
 /**
  * 统一认证中间件
  */
+// 签名文件与 JWT 请求共用当前身份装配；文件读取不复用旧门店缓存。
+const loadCurrentAuthUser = async (userId) => {
+  const pool = getDatabase()
+  const hierarchyExpr = await hasRolesHierarchyColumn(pool)
+    ? 'COALESCE(r.hierarchy_level, 0)'
+    : '0'
+
+  // 从数据库获取最新用户信息（使用新的user_roles表结构）
+  const userQuery = `
+    SELECT u.id, u.username, u.name, u.email, u.phone, u.status,
+           COALESCE((SELECT GROUP_CONCAT(us.store_id ORDER BY us.is_primary DESC, us.store_id)
+                     FROM user_stores us JOIN stores s ON s.id = us.store_id
+                     WHERE us.user_id = u.id), '') AS current_store_ids,
+           (SELECT us.store_id FROM user_stores us JOIN stores s ON s.id = us.store_id
+            WHERE us.user_id = u.id ORDER BY us.is_primary DESC, us.store_id LIMIT 1) AS current_primary_store_id,
+           COALESCE(
+             (SELECT GROUP_CONCAT(DISTINCT r.name SEPARATOR ',')
+              FROM user_roles ur
+              JOIN roles r ON ur.role_id = r.id
+              WHERE ur.user_id = u.id
+                AND ur.status = 'active'
+                AND r.is_active = 1
+                AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+             ), ''
+           ) as user_roles,
+           COALESCE(
+             (SELECT GROUP_CONCAT(DISTINCT COALESCE(r.code, CONCAT('role_', r.id)) SEPARATOR ',')
+              FROM user_roles ur
+              JOIN roles r ON ur.role_id = r.id
+              WHERE ur.user_id = u.id
+                AND ur.status = 'active'
+                AND r.is_active = 1
+                AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+             ), ''
+           ) as user_role_codes,
+           COALESCE(
+             (SELECT MAX(${hierarchyExpr})
+              FROM user_roles ur
+              JOIN roles r ON ur.role_id = r.id
+              WHERE ur.user_id = u.id
+                AND ur.status = 'active'
+                AND r.is_active = 1
+                AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+             ), 0
+           ) as max_hierarchy
+    FROM users u
+    WHERE u.id = ?
+      AND (u.status = 1 OR u.status = 'active')
+  `
+
+  const [userResult] = await pool.execute(userQuery, [userId])
+
+  if (userResult.length === 0) return null
+
+  const user = userResult[0]
+
+  // 获取用户权限列表并转换为字符串数组格式
+  const userPermissionsResult = await pool.execute(`
+    SELECT DISTINCT rp.module_key, rp.permission_type
+    FROM role_permissions rp
+    JOIN roles r ON r.id = rp.role_id AND r.is_active = 1
+    JOIN user_roles ur ON rp.role_id = ur.role_id
+    WHERE ur.user_id = ?
+      AND ur.status = 'active'
+      AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+  `, [userId])
+
+  // 将权限转换为字符串数组格式，如 ['attendance_attendanceview:view', ...]
+  const permissions = userPermissionsResult[0].map(p => `${p.module_key}:${p.permission_type}`)
+  const permissionObjects = userPermissionsResult[0].map(p => ({
+    module_key: p.module_key,
+    permission_type: p.permission_type
+  }))
+
+  debugLog('用户权限加载完成:', {
+    userId: userId,
+    permissionCount: permissions.length
+  })
+
+  return {
+    ...user,
+    id: user.id,  // 确保id字段存在
+    username: user.username,
+    name: user.name,
+    // 门店授权以当前绑定为准，旧 JWT 中的门店只代表签发时快照。
+    store_id: Number(user.current_primary_store_id) || null,
+    store_ids: [...new Set(String(user.current_store_ids || '').split(',').map(Number)
+      .filter(id => Number.isSafeInteger(id) && id > 0))],
+    user_roles: user.user_roles ? user.user_roles.split(',') : [],
+    role_codes: user.user_role_codes ? user.user_role_codes.split(',') : [],
+    maxHierarchy: user.max_hierarchy || 0,
+    permissions: permissions,  // 添加权限数组
+    permissionObjects
+  }
+}
+
 const unifiedAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization']
@@ -234,95 +338,10 @@ const unifiedAuth = async (req, res, next) => {
       return next()
     }
 
-    const pool = getDatabase()
-    const hierarchyExpr = await hasRolesHierarchyColumn(pool)
-      ? 'COALESCE(r.hierarchy_level, 0)'
-      : '0'
-
-    // 从数据库获取最新用户信息（使用新的user_roles表结构）
-    const userQuery = `
-      SELECT u.id, u.username, u.name, u.email, u.phone, u.status,
-             COALESCE(
-               (SELECT GROUP_CONCAT(DISTINCT r.name SEPARATOR ',')
-                FROM user_roles ur
-                JOIN roles r ON ur.role_id = r.id
-                WHERE ur.user_id = u.id
-                  AND ur.status = 'active'
-                  AND r.is_active = 1
-                  AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
-               ), ''
-             ) as user_roles,
-             COALESCE(
-               (SELECT GROUP_CONCAT(DISTINCT COALESCE(r.code, CONCAT('role_', r.id)) SEPARATOR ',')
-                FROM user_roles ur
-                JOIN roles r ON ur.role_id = r.id
-                WHERE ur.user_id = u.id
-                  AND ur.status = 'active'
-                  AND r.is_active = 1
-                  AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
-               ), ''
-             ) as user_role_codes,
-             COALESCE(
-               (SELECT MAX(${hierarchyExpr})
-                FROM user_roles ur
-                JOIN roles r ON ur.role_id = r.id
-                WHERE ur.user_id = u.id
-                  AND ur.status = 'active'
-                  AND r.is_active = 1
-                  AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
-               ), 0
-             ) as max_hierarchy
-      FROM users u
-      WHERE u.id = ?
-        AND (u.status = 1 OR u.status = 'active')
-    `
-
-    const [userResult] = await pool.execute(userQuery, [decoded.sub])
-
-    if (userResult.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: '用户不存在或已禁用',
-        code: 'USER_INACTIVE'
-      })
-    }
-
-    const user = userResult[0]
-
-    // 获取用户权限列表并转换为字符串数组格式
-    const userPermissionsResult = await pool.execute(`
-      SELECT DISTINCT rp.module_key, rp.permission_type
-      FROM role_permissions rp
-      JOIN user_roles ur ON rp.role_id = ur.role_id
-      WHERE ur.user_id = ?
-        AND ur.status = 'active'
-        AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
-    `, [decoded.sub])
-
-    // 将权限转换为字符串数组格式，如 ['attendance_attendanceview:view', ...]
-    const permissions = userPermissionsResult[0].map(p => `${p.module_key}:${p.permission_type}`)
-    const permissionObjects = userPermissionsResult[0].map(p => ({
-      module_key: p.module_key,
-      permission_type: p.permission_type
-    }))
-
-    debugLog('用户权限加载完成:', {
-      userId: decoded.sub,
-      permissionCount: permissions.length
-    })
-
-    req.user = {
-      ...user,
-      id: user.id,  // 确保id字段存在
-      username: user.username,
-      name: user.name,
-      store_id: decoded.store_id || null,  // 从JWT获取主门店ID
-      store_ids: decoded.store_ids || [],  // 从JWT获取所有门店ID
-      user_roles: user.user_roles ? user.user_roles.split(',') : [],
-      role_codes: user.user_role_codes ? user.user_role_codes.split(',') : [],
-      maxHierarchy: user.max_hierarchy || 0,
-      permissions: permissions,  // 添加权限数组
-      permissionObjects
+    req.user = await loadCurrentAuthUser(decoded.sub)
+    req.token = token
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: '用户不存在或已禁用', code: 'USER_INACTIVE' })
     }
 
     setCachedAuthProfile(cacheKey, { user: req.user })
@@ -504,7 +523,8 @@ const getUserPermissions = async (userId) => {
     return result
   } catch (error) {
     log.error('Error getting user permissions', error)
-    return []
+    // 核验失败不能当作目标账户没有管理权限，否则账户保护会反向放行。
+    throw error
   }
 }
 
@@ -568,9 +588,9 @@ const checkUnifiedPermission = (options = {}) => {
       let userPermissions = []
       if (requiredPermissions.length > 0) {
         // 复用 unifiedAuth 中已获取的权限
-        if (req.user.permissionObjects && Array.isArray(req.user.permissionObjects) && req.user.permissionObjects.length > 0) {
+        if (Array.isArray(req.user.permissionObjects)) {
           userPermissions = req.user.permissionObjects
-        } else if (req.user.permissions && Array.isArray(req.user.permissions) && req.user.permissions.length > 0) {
+        } else if (Array.isArray(req.user.permissions)) {
           // 将字符串数组权限转换为对象数组格式
           userPermissions = req.user.permissions.map(permStr => {
             const [module_key, permission_type] = permStr.split(':')
@@ -670,6 +690,12 @@ const checkSinglePermission = (userPermissions, requiredPermission, _moduleType)
     requiredPermission,
     permissionCount: normalizedUserPermissions.length
   })
+
+  // 权限管理是完整授权集合；单项查看、编辑或其他模块的管理不能提升为管理员。
+  if (requiredPermission === 'permissions:admin') {
+    return normalizedUserPermissions.includes(normalizePermissionString('permissions:admin')) ||
+      PERMISSION_ADMIN_REQUIREMENTS.every(permission => normalizedUserPermissions.includes(permission))
+  }
 
   // 提取所需权限的模块前缀
   const moduleMatch = requiredPermission.match(/^([^:]+):/)
@@ -878,6 +904,8 @@ const checkModuleAdmin = async (userId, modulePrefix) => {
 module.exports = {
   // 核心中间件
   unifiedAuth,
+  invalidateAuthProfiles,
+  loadCurrentAuthUser,
   optionalAuth,
   checkUnifiedPermission,
 

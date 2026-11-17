@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const SalaryTemplateController = require('../controllers/salary-template.controller')
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 
 // 工资模板相关路由（需要认证）
 router.use(unifiedAuth)
@@ -11,8 +11,8 @@ router.get('/', requirePermission('salary-templates:view'),
   SalaryTemplateController.getTemplates.bind(SalaryTemplateController)
 )
 
-// 获取激活的模板列表 - 所有认证用户都可以访问
-router.get('/active',
+// 获取启用模板仅供模板查看或工资计算使用
+router.get('/active', requireAnyPermission(['salary-templates:view', 'salary-records:view']),
   SalaryTemplateController.getActiveTemplates.bind(SalaryTemplateController)
 )
 

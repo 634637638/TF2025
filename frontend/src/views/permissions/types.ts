@@ -51,6 +51,7 @@ export type StatsPayload = Partial<Record<
 >>
 
 export interface FieldDefinition {
+  editable?: boolean
   description?: string
   id: string
   name: string
@@ -66,6 +67,7 @@ export interface FieldGroup {
 }
 
 export interface RoleFieldModule {
+  field_scope?: 'goods'
   category?: string
   icon: string
   key?: string

@@ -1,11 +1,13 @@
 <template>
-  <div class="batch-sale-form">
+  <div
+    class="batch-sale-form"
+    :inert="disabled || submitting"
+  >
     <div class="form-header">
       <h3>批量销售信息 ({{ selectedCount }}台)</h3>
       <el-button
         type="info"
         plain
-        size="small"
         :disabled="submitting"
         @click="emit('clear-selection')"
       >
@@ -76,6 +78,7 @@
             <label class="form-label">Apple ID</label>
             <el-input
               v-model="batchSaleForm.apple_id"
+              :readonly="!!selectedCustomer && !customerPermissions.canEdit.value"
               class="batch-apple-id-input"
               placeholder="请输入Apple ID（手机号或邮箱）"
               @input="emit('apple-id-input', $event)"
@@ -364,25 +367,7 @@
         class="form-section"
       >
         <h4>利润计算</h4>
-        <div class="profit-summary">
-          <div class="profit-item">
-            <span class="label">总成本:</span>
-            <span class="value">¥{{ formatAmount(totalCost) }}</span>
-          </div>
-          <div class="profit-item">
-            <span class="label">总收入:</span>
-            <span class="value">¥{{ formatAmount(totalRevenue) }}</span>
-          </div>
-          <div class="profit-item">
-            <span class="label">总利润:</span>
-            <span
-              class="value"
-              :class="Number(totalProfit) >= 0 ? 'positive' : 'negative'"
-            >
-              ¥{{ formatAmount(totalProfit) }}
-            </span>
-          </div>
-        </div>
+        <SalesProfitSummary :lines="profitLines" />
       </div>
 
       <div class="form-section">
@@ -402,6 +387,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { TIME_FORMATS } from '@/utils/time'
 import { computed, ref } from 'vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
@@ -410,10 +396,15 @@ import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { hasPaymentChannelOptions, requiresTransactionNumber } from '@/constants/paymentMethods'
 import { formatAmount } from '@/utils/format'
 import { useMobile } from '@/composables/mobile'
+import SalesProfitSummary from './SalesProfitSummary.vue'
+import type { CheckoutGoodsDraft } from '@/types/sales-checkout'
 import type { Operator, Store } from '@/types'
-import type { BatchCustomer, BatchSaleFormData, BatchSaleItem } from '../types'
+import type { BatchCustomer, BatchSaleFormData, BatchSaleItem, SalesProfitLine } from '../types'
+
+const customerPermissions = usePagePermissions('customers')
 
 const props = defineProps<{
+  disabled?: boolean
   form: BatchSaleFormData
   selectedCount: number
   batchItems: BatchSaleItem[]
@@ -431,6 +422,7 @@ const props = defineProps<{
   isCurrentUser: (_operator: Operator) => boolean
   totalCost: number
   totalProfit: string | number
+  additionalGoods?: CheckoutGoodsDraft[]
 }>()
 
 const emit = defineEmits<{
@@ -479,9 +471,18 @@ const showCustomerSearch = computed({
   get: () => props.showCustomerSearch,
   set: value => emit('update:showCustomerSearch', value)
 })
-const totalRevenue = computed(() => props.batchItems.reduce((sum, item) => (
-  sum + (Number.parseFloat(item.sale_price) || 0)
-), 0))
+const profitLines = computed<SalesProfitLine[]>(() => [
+  ...props.batchItems.map(item => ({
+    key: `phone:${item.phone_id}`, type: 'phone' as const, name: deviceName(item), quantity: 1,
+    purchase_cost: Number.isFinite(Number(item.purchase_cost)) ? Number(item.purchase_cost) : null,
+    sale_price: Number(item.sale_price) || 0
+  })),
+  ...(props.additionalGoods || []).filter(row => row.option).map(row => ({
+    key: `goods:${row.key}`, type: 'goods' as const, name: [row.option!.name, row.option!.product_model, ...row.serial_numbers].filter(Boolean).join(' · '), quantity: row.quantity,
+    purchase_cost: row.option!.purchase_cost === null || row.option!.purchase_cost === undefined || !Number.isFinite(Number(row.option!.purchase_cost)) ? null : Number(row.option!.purchase_cost),
+    sale_price: row.sale_type === 'gift' ? 0 : Number(row.unit_price || 0), sale_type: row.sale_type
+  }))
+])
 
 const itemProfit = (item: BatchSaleItem) => (
   formatAmount((Number.parseFloat(item.sale_price) || 0) - (Number.parseFloat(item.purchase_cost) || 0))
@@ -490,7 +491,7 @@ const isLoss = (item: BatchSaleItem) => (
   (Number.parseFloat(item.sale_price) || 0) < (Number.parseFloat(item.purchase_cost) || 0)
 )
 const deviceName = (item: BatchSaleItem) => (
-  [item.brand, item.model, item.color, item.memory].filter(Boolean).join(' ') || '未命名设备'
+  [item.brand, item.model, item.memory].filter(Boolean).join(' ') || '未命名设备'
 )
 const updateItemPrice = (
   item: BatchSaleItem,

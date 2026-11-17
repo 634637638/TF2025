@@ -425,6 +425,8 @@ export interface QueryOperatorInfo {
 
 export interface QuerySaleInfo {
   sale_id?: number
+  /** 当前销售是否关联真实共同结算单；不替代原单接口鉴权。 */
+  has_checkout_order?: boolean
   sale_type?: string
   payment_method?: string
   payment_channel?: string
@@ -981,15 +983,6 @@ export interface LongPressDirectiveValue {
 }
 
 /**
- * 无限滚动指令值类型
- */
-export interface InfiniteScrollDirectiveValue {
-  fn: (...args: unknown[]) => unknown
-  distance?: number
-  disabled?: boolean
-}
-
-/**
  * 移动端优化指令配置
  */
 export interface MobileOptimizeConfig {
@@ -1429,7 +1422,6 @@ declare module '@vue/runtime-core' {
     vDebounce?: DebounceDirectiveValue
     vThrottle?: ThrottleDirectiveValue
     vLongPress?: LongPressDirectiveValue
-    vInfiniteScroll?: InfiniteScrollDirectiveValue
     vLazy?: string
     vFocus?: boolean
     vSelect?: boolean

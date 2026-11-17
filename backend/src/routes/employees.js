@@ -37,19 +37,19 @@ router.get('/system-roles', unifiedAuth, requirePermission('permissions:admin'),
 router.get('/roles', unifiedAuth, requirePermission('employee:view'), employeeRoleController.list.bind(employeeRoleController))
 
 // 创建新角色
-router.post('/roles', unifiedAuth, requirePermission('employee:create'), employeeRoleController.create.bind(employeeRoleController))
+router.post('/roles', unifiedAuth, requirePermission('permissions:admin'), employeeRoleController.create.bind(employeeRoleController))
 
 // 更新角色
-router.put('/roles/:id', unifiedAuth, requirePermission('employee:edit'), employeeRoleController.update.bind(employeeRoleController))
+router.put('/roles/:id', unifiedAuth, requirePermission('permissions:admin'), employeeRoleController.update.bind(employeeRoleController))
 
 // 删除角色
-router.delete('/roles/:id', unifiedAuth, requirePermission('employee:delete'), employeeRoleController.delete.bind(employeeRoleController))
+router.delete('/roles/:id', unifiedAuth, requirePermission('permissions:admin'), employeeRoleController.delete.bind(employeeRoleController))
 
 // 为员工分配角色
-router.post('/:id/roles', unifiedAuth, requirePermission('employee:edit'), employeeRoleController.assign.bind(employeeRoleController))
+router.post('/:id/roles', unifiedAuth, requirePermission('permissions:admin'), employeeRoleController.assign.bind(employeeRoleController))
 
 // 移除员工的单个角色
-router.delete('/:employeeId/roles/:roleId', unifiedAuth, requirePermission('employee:edit'), employeeRoleController.remove.bind(employeeRoleController))
+router.delete('/:employeeId/roles/:roleId', unifiedAuth, requirePermission('permissions:admin'), employeeRoleController.remove.bind(employeeRoleController))
 
 // ==================== 员工详情相关路由 ====================
 

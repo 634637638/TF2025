@@ -102,7 +102,8 @@ test('客户定向历史COUNT与成交行共用快照，新增购买在下一次
 
 test('手机随单购买/赠品及原SN同一快照，重读在新事务读取新版本', async () => {
   const f = fixture({ state: { serials: [{ sale_id: 51, serial_number: '000SN1' }] },
-    read: (sql, _params, state) => sql.includes('FROM accessory_sales') ? [sale, { ...sale, id: 52, sale_type: 'gift', total_price: 0 }] : state.serials,
+    read: (sql, _params, state) => sql.includes('FROM accessory_sales') ? [{ ...sale, receipt_snapshot: { sale_type: 'sale' } },
+      { ...sale, id: 52, sale_type: 'gift', total_price: 0, receipt_snapshot: { sale_type: 'gift' } }] : state.serials,
     afterRead(sql, state) { if (sql.includes('FROM accessory_sales')) state.serials.push({ sale_id: 52, serial_number: '000GIFT' }) }
   })
   const rows = await f.service.phoneReceipt(actor, 81)

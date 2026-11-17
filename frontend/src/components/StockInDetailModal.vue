@@ -255,21 +255,18 @@
       <div class="tf-dialog-actions dialog-footer">
         <el-button
           :icon="Printer"
-          :size="isMobile ? 'default' : 'large'"
           @click="handlePrint"
         >
           打印
         </el-button>
         <el-button
           :icon="Download"
-          :size="isMobile ? 'default' : 'large'"
           @click="handleExport"
         >
           导出
         </el-button>
         <el-button
           type="primary"
-          :size="isMobile ? 'default' : 'large'"
           @click="handleClose"
         >
           关闭

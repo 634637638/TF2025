@@ -368,6 +368,7 @@
               <h3><i class="fas fa-brand" /> 品牌销量排行 TOP10</h3>
               <el-radio-group
                 v-model="brandRankType"
+                class="tf-state-selector"
                 size="small"
               >
                 <el-radio-button value="count">
@@ -429,6 +430,7 @@
               <h3><i class="fas fa-tags" /> 型号销量排行 TOP10</h3>
               <el-radio-group
                 v-model="modelRankType"
+                class="tf-state-selector"
                 size="small"
               >
                 <el-radio-button value="count">
@@ -510,6 +512,7 @@
                 </el-select>
                 <el-radio-group
                   v-model="performanceViewType"
+                  class="tf-state-selector"
                   size="small"
                 >
                   <el-radio-button value="sales">
@@ -524,7 +527,6 @@
                 </el-radio-group>
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportPerformance"
                 >
                   导出
@@ -872,6 +874,7 @@
                 </div>
                 <el-radio-group
                   v-model="profitTrendPeriod"
+                  class="tf-state-selector"
                   size="small"
                 >
                   <el-radio-button value="month">
@@ -969,14 +972,12 @@
                 </el-select>
                 <el-button
                   type="primary"
-                  size="small"
                   @click="generateForecast"
                 >
                   生成预测
                 </el-button>
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportForecast"
                 >
                   导出报告
@@ -1077,7 +1078,6 @@
             <div class="card-header">
               <h3>店铺利润对比</h3>
               <el-button
-                size="small"
                 @click="toggleStoreComparisonType"
               >
                 {{ storeComparisonType === 'bar' ? '雷达图' : '柱状图' }}
@@ -1146,6 +1146,7 @@
               <el-space>
                 <el-radio-group
                   v-model="costViewType"
+                  class="tf-state-selector"
                   size="small"
                 >
                   <el-radio-button value="category">
@@ -1160,7 +1161,6 @@
                 </el-radio-group>
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportCostAnalysis"
                 >
                   导出

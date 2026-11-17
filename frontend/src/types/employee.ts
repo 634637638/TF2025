@@ -36,7 +36,7 @@ export interface EmployeeForm {
   name: string
   phone?: string
   email?: string
-  role_ids: number[]
+  role_ids?: number[]
   password?: string
   confirm_password?: string
   store_id?: number

@@ -8,6 +8,8 @@ export interface CustomerPointsRedemption {
   sources: CustomerPointsSource[]
   all_accessory_categories: boolean
   category_ids: number[]
+  /** 未提供时兼容旧的按类型规则；新设置保存具体商品ID。 */
+  accessory_ids?: number[]
 }
 
 export interface CustomerPointsConfig {
@@ -25,4 +27,16 @@ export interface CustomerPointsConfig {
 export interface CustomerPointsSettingsData {
   config: CustomerPointsConfig
   categories: { id: number; name: string; status: number }[]
+  products?: CustomerPointsProduct[]
+}
+
+/** 积分设置使用的商品最小档案，排除采购和库存资料。 */
+export interface CustomerPointsProduct {
+  id: number
+  name: string
+  category_id: number
+  product_model: string | null
+  brand_name: string | null
+  color_name: string | null
+  status: number
 }

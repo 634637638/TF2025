@@ -38,6 +38,7 @@ if (unique(actionOrder).length !== actionOrder.length) {
 
 for (const action of actionOrder) {
   if (!actionDefinitions[action]) findings.push(`动作 ${action} 缺少 actionDefinitions 说明`)
+  if (!/^[\u4e00-\u9fff]/.test(registry.actionLabels?.[action] || '')) findings.push(`动作 ${action} 缺少中文 actionLabels 名称`)
 }
 
 for (const [moduleKey, actions] of Object.entries(modules)) {
@@ -45,6 +46,7 @@ for (const [moduleKey, actions] of Object.entries(modules)) {
     findings.push(`模块 ${moduleKey} 没有声明任何权限`)
     continue
   }
+  if (!registry.moduleMetadata?.[moduleKey]?.name) findings.push(`模块 ${moduleKey} 缺少权威中文名称`)
   if (!actions.includes('view')) findings.push(`模块 ${moduleKey} 必须包含 view 权限`)
   if (unique(actions).length !== actions.length) findings.push(`模块 ${moduleKey} 存在重复权限`)
 
@@ -188,7 +190,7 @@ for (const moduleKey of Object.keys(modules)) {
   const expectedView = `${moduleKey}:view`
   const mappedViewEntries = Object.entries(backendPermissionMapping).filter(([permission, aliases]) => {
     const parsed = parsePermission(permission)
-    return parsed?.action === 'view' && Array.isArray(aliases) && aliases.includes(expectedView)
+    return (parsed?.action === 'view' || parsed?.action === 'view:own') && Array.isArray(aliases) && aliases.includes(expectedView)
   })
   if (mappedViewEntries.length === 0) {
     findings.push(`后端权限映射缺少模块 ${moduleKey} 的 view 映射`)
@@ -275,11 +277,11 @@ for (const sourcePath of walkSourceFiles(resolve(frontendRoot, 'src'))) {
 
   const distinctPermissionCalls = unique(permissionCalls)
   // 多业务模块页面也可以通过完整权限名使用公共鉴权，不依赖唯一 usePagePermissions 模块推断。
-  for (const match of source.matchAll(/(?:hasPermission|handleNoPermission)\(\s*['"]([^:'"]+):([^'"]+)['"]\s*\)/g)) {
+  for (const match of source.matchAll(/(?:hasPermission|hasFullPermission|handleNoPermission)\(\s*['"]([^:'"]+):([^'"]+)['"]\s*\)/g)) {
     if (actionDefinitions[match[2]]) validateActionUse(match[1], match[2], sourcePath)
   }
   if (distinctPermissionCalls.length === 1) {
-    for (const match of source.matchAll(/(?:hasPermission|handleNoPermission)\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+    for (const match of source.matchAll(/(?:hasPermission|hasFullPermission|handleNoPermission)\(\s*['"]([^'"]+)['"]\s*\)/g)) {
       if (actionDefinitions[match[1]]) validateActionUse(distinctPermissionCalls[0], match[1], sourcePath)
     }
   }

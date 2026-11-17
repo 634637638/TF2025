@@ -9,7 +9,7 @@ const { withReadConnection } = require('./helpers/query-goods-read')
 
 const actor = { id: 7, store_ids: [1, 2] }
 const record = { id: 51, sale_no: 'AS-ORIGINAL', name: '原单充电器', customer_name: '测试顾客', customer_phone: '13900000001',
-  quantity: 2, returned_quantity: 1, remaining_quantity: 1, unit_price: '20.50', total_price: '41.00', purchase_cost: null, profit: null, points_awarded: 0, points_used: 1, deduction_amount: '0.10',
+  quantity: 2, returned_quantity: 1, remaining_quantity: 1, unit_price: '20.50', total_price: '41.00', purchase_cost: null, profit: null, points_awarded: 0, points_used: 0, deduction_amount: '0.00',
   sale_type: 'sale', store_id: 1, store_name: '一店', has_snapshot: 1 }
 const response = () => ({ status(code) { this.code = code; return this }, json(body) { this.body = body; return this } })
 const fixture = (hidden = []) => {
@@ -29,7 +29,7 @@ test('商品模式沿用严格授权门店，允许销售/赠送分页，翻页�
   const f = fixture()
   const result = await f.service.list(actor, { page: '7', page_size: '20', store_id: '2', sale_type: 'gift', keyword: ' SN1 ', start_date: '2026-11-01', end_date: '2026-11-13' }, ['serial_number'])
   assert.equal(result.pagination.total, 125)
-  assert.deepEqual(f.calls, ['query:view', 'accessories:view'])
+  assert.deepEqual(f.calls, ['query:view', 'query:goods-view'])
   assert.deepEqual(f.reads[0].scope, { allStores: false, requestedStoreId: 2, storeIds: [2] })
   assert.deepEqual(f.reads[0].query, { page: 7, page_size: 20, keyword: 'SN1', sale_type: 'gift', start_date: '2026-11-01', end_date: '2026-11-13' })
 })
@@ -43,7 +43,7 @@ test('门店越权拒绝，无绑定账户保持空范围；不因商品模式�
 })
 
 test('商品查看和综合查询查看权限均须满足，匿名或缺任何一域权限不进仓储', async () => {
-  for (const denied of ['query:view', 'accessories:view']) {
+  for (const denied of ['query:view', 'query:goods-view']) {
     const service = new Service({ repository: { list() { assert.fail('不得读取') }, detail() { assert.fail('不得读取') } }, permissionCheck: async (_user, permission) => permission !== denied })
     await assert.rejects(service.list(actor, {}, []), { statusCode: 403, code: 'PERMISSION_DENIED' })
     await assert.rejects(service.detail(actor, 51), { statusCode: 403 })
@@ -135,14 +135,36 @@ test('仓储列表和COUNT共享过滤，使用原单资料、参数绑定及稳
   repo.withConnection = async fn => fn({ async query(sql, params) {
     statements.push({ sql, params }); return [sql.startsWith('SELECT COUNT') ? [{ total: 125 }] : [record]]
   } })
-  const result = await repo.list({ storeIds: [1, 2] }, { page: 7, page_size: 20, keyword: 'MW-VW3', sale_type: 'sale' }, ['product_model', 'serial_number'])
-  assert.deepEqual(statements[0].params, [1, 2, 'sale', '%MW-VW3%', '%MW-VW3%'])
+  const result = await repo.list({ storeIds: [1, 2] }, { page: 7, page_size: 20, keyword: 'MW-VW3', sale_type: 'sale',
+    start_date: '2026-11-01', end_date: '2026-11-13' }, ['product_model', 'serial_number'])
+  assert.deepEqual(statements[0].params, [1, 2, 'sale', '2026-11-01 00:00:00', '2026-11-13 23:59:59', '%MW-VW3%', '%MW-VW3%'])
   assert.deepEqual(statements[1].params, [...statements[0].params, 20, 120])
   assert.match(statements[1].sql, /CASE WHEN i.id IS NOT NULL THEN/)
   assert.match(statements[0].sql, /EXISTS \(SELECT 1 FROM accessory_serial_events/)
-  assert.match(statements[1].sql, /ORDER BY s.sale_time DESC, s.id DESC LIMIT \? OFFSET \?/)
+  assert.match(statements[1].sql, /s\.created_at AS sale_time/)
+  assert.match(statements[1].sql, /ORDER BY s\.created_at DESC, s\.id DESC LIMIT \? OFFSET \?/)
+  assert.match(statements[1].sql, /s\.created_at >= \? AND s\.created_at <= \?/)
   assert.equal(result.pagination.has_next, false)
   assert.equal(result.pagination.total_pages, 7)
+})
+
+test('手机凭证只返回未退配件，按剩余数量和逐件分摊重算金额并过滤已退SN', async () => {
+  const service = new Service({ permissionCheck: async () => true, repository: { withConnection: withReadConnection,
+    async phoneReceipt() {
+      return [{ ...record, quantity: 2, returned_quantity: 1, unit_price: 20, total_price: '35.02', points_used: 498, deduction_amount: '4.98',
+        serial_numbers: ['SN2'], receipt_snapshot: { sale_type: 'sale', serial_numbers: ['SN1', 'SN2'], points_units: [
+          { quantity: 2, points_used: 249, deduction_cents: 249, payable_cents: 1751 }] } },
+      { ...record, id: 52, quantity: 1, returned_quantity: 1, points_used: 0, deduction_amount: 0,
+        serial_numbers: ['SN3'], receipt_snapshot: { sale_type: 'gift', serial_numbers: ['SN3'] } }]
+    } } })
+  const rows = await service.phoneReceipt(actor, 81)
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].id, 51)
+  assert.equal(rows[0].quantity, 1)
+  assert.equal(rows[0].total_price, 17.51)
+  assert.equal(rows[0].points_used, 249)
+  assert.equal(rows[0].deduction_amount, 2.49)
+  assert.deepEqual(rows[0].serial_numbers, ['SN2'])
 })
 
 test('仓储先校验销售门店再读SN/批次，来源按原出库流水而不是当前主档供应商', async () => {
@@ -167,14 +189,14 @@ test('仓储先校验销售门店再读SN/批次，来源按原出库流水而�
 })
 
 test('手机原凭证只读关联配件，沿用双模块权限和门店范围，不返回采购成本', async () => {
-  const reads = [], repository = { withConnection: withReadConnection, async phoneReceipt(scope, id) { reads.push({ scope, id }); return [{ ...record, serial_numbers: ['000SN'] }] } }
+  const reads = [], repository = { withConnection: withReadConnection, async phoneReceipt(scope, id) { reads.push({ scope, id }); return [{ ...record, receipt_snapshot: { sale_type: 'sale' }, serial_numbers: ['000SN'] }] } }
   const service = new Service({ repository, permissionCheck: async () => true })
   const rows = await service.phoneReceipt(actor, '81')
   assert.deepEqual(reads, [{ scope: { allStores: false, requestedStoreId: null, storeIds: [1, 2] }, id: 81 }])
   assert.equal(rows[0].name, '原单充电器'); assert.deepEqual(rows[0].serial_numbers, ['000SN'])
-  for (const field of ['purchase_cost', 'profit', 'customer_phone', 'batches']) assert.equal(Object.hasOwn(rows[0], field), false)
+  for (const field of ['purchase_cost', 'profit', 'customer_phone', 'batches', 'receipt_snapshot']) assert.equal(Object.hasOwn(rows[0], field), false)
   await assert.rejects(service.phoneReceipt(actor, '81 OR 1'), { statusCode: 400 })
-  for (const denied of ['query:view', 'accessories:view']) {
+  for (const denied of ['query:view', 'query:goods-view']) {
     const restricted = new Service({ repository, permissionCheck: async (_user, permission) => permission !== denied })
     await assert.rejects(restricted.phoneReceipt(actor, 81), { statusCode: 403 })
   }
@@ -183,7 +205,7 @@ test('手机原凭证只读关联配件，沿用双模块权限和门店范围�
 
 test('手机凭证后端同样遮蔽隐藏SN、价格、数量和用途，不因打印补回敏感信息', async () => {
   const masking = { async getUserFieldPermissions() { return { hiddenFields: ['basic_info.serial_number', 'price_info.total_price', 'basic_info.usage_type'] } }, filterSensitiveFields(rows) { return rows } }
-  const service = new Service({ repository: { withConnection: withReadConnection, async phoneReceipt() { return [{ ...record, serial_numbers: ['000SN'] }] } }, permissionCheck: async () => true })
+  const service = new Service({ repository: { withConnection: withReadConnection, async phoneReceipt() { return [{ ...record, receipt_snapshot: { sale_type: 'sale' }, serial_numbers: ['000SN'] }] } }, permissionCheck: async () => true })
   const controller = new Controller({ service, masking }), res = response()
   await controller.phoneReceipt({ user: actor, params: { saleId: '81' } }, res)
   const row = res.body.data[0]
@@ -204,12 +226,75 @@ test('手机原凭证仓储按真实销售ID和同订单关联，排除其它手
   const rows = await repo.phoneReceipt({ storeIds: [2] }, 81)
   assert.deepEqual(statements[0].params, [81, 2, 2])
   assert.match(statements[0].sql, /ps\.id = \?/)
+  assert.match(statements[0].sql, /i\.snapshot AS receipt_snapshot/)
   assert.match(statements[0].sql, /ps\.store_id IN \(\?\)/)
   assert.match(statements[0].sql, /s\.store_id IN \(\?\)/)
   assert.match(statements[0].sql, /pi\.sale_id = ps\.id AND pi\.item_type = 'phone' AND pi\.order_id = i\.order_id/)
   assert.deepEqual(statements[1].params, [51, 52])
   assert.match(statements[1].sql, /se\.event_type IN \('sale', 'gift'\)/)
+  assert.match(statements[1].sql, /NOT EXISTS \(SELECT 1 FROM accessory_serial_events returned/)
   assert.equal(rows.length, 2)
   assert.deepEqual(rows.map(row => row.serial_numbers), [['A01', 'A02'], ['G01']])
   assert.equal(released, true)
+})
+
+test('手机凭证赠品约定只取原快照，缺失不当零元，原数量计算合计且不扩大公开字段', async () => {
+  for (const price of [undefined, null, 0, '12.34']) {
+    const service = new Service({ permissionCheck: async () => true, repository: { withConnection: withReadConnection,
+      async phoneReceipt() { return [{ ...record, sale_type: 'gift', quantity: 3, returned_quantity: 0, unit_price: 0, total_price: 0, points_used: 0, deduction_amount: 0,
+        sale_price: 999, receipt_snapshot: JSON.stringify({ sale_type: 'gift', gift_return_unit_price: price,
+          commission: { internal: 'not-public' } }) }] } } })
+    const [row] = await service.phoneReceipt(actor, 81)
+    assert.equal(row.gift_return_unit_price, price === undefined || price === null ? null : Number(price))
+    assert.equal(row.gift_return_total, price === undefined || price === null ? null : price === 0 ? 0 : 37.02)
+    assert.equal(row.gift_agreement_state, price === undefined || price === null ? 'not_recorded' : 'recorded')
+    assert.equal(row.total_price, 0)
+    for (const key of ['receipt_snapshot', 'snapshot', 'sale_price', 'commission', 'purchase_cost']) assert.equal(key in row, false)
+  }
+})
+
+test('手机凭证原约定错用途、损坏JSON或金额损坏时拒绝输出', async () => {
+  for (const snapshot of ['{', null, { sale_type: 'sale', gift_return_unit_price: 5 },
+    { sale_type: 'gift', gift_return_unit_price: -1 }, { sale_type: 'gift', gift_return_unit_price: true }]) {
+    const service = new Service({ permissionCheck: async () => true, repository: { withConnection: withReadConnection,
+      async phoneReceipt() { return [{ ...record, sale_type: 'gift', receipt_snapshot: snapshot }] } } })
+    await assert.rejects(service.phoneReceipt(actor, 81), { statusCode: 409, code: 'CHECKOUT_FACTS_CONFLICT' })
+  }
+})
+
+for (const field of ['basic_info.usage_type', 'stock_info.total_quantity', 'price_info.unit_price', 'price_info.total_price']) {
+  test(`手机凭证隐藏${field}同时遮蔽赠品约定及状态`, async () => {
+    const service = new Service({ permissionCheck: async () => true, repository: { withConnection: withReadConnection,
+      async phoneReceipt() { return [{ ...record, sale_type: 'gift', points_used: 0, deduction_amount: 0,
+        receipt_snapshot: { sale_type: 'gift', gift_return_unit_price: 5 } }] } } })
+    const controller = new Controller({ service, masking: {
+        async getUserFieldPermissions() { return { hiddenFields: [field] } }, filterSensitiveFields(rows) { return rows }
+      } }), res = response()
+    await controller.phoneReceipt({ user: actor, params: { saleId: 81 } }, res)
+    assert.equal(res.body.success, true)
+    for (const key of ['gift_return_unit_price', 'gift_return_total', 'gift_agreement_state']) assert.equal(res.body.data[0][key], null)
+  })
+}
+
+test('手机凭证无积分商品部分退货按剩余数量重算，全部退货不返回商品行', async () => {
+  const service = new Service({ permissionCheck: async () => true, repository: { withConnection: withReadConnection,
+    async phoneReceipt() {
+      return [{ ...record, quantity: 2, returned_quantity: 1, points_used: 0, deduction_amount: 0,
+        unit_price: 20, total_price: 40, serial_numbers: [], receipt_snapshot: { sale_type: 'sale', serial_numbers: [] } },
+      { ...record, id: 52, quantity: 2, returned_quantity: 2, points_used: 0, deduction_amount: 0,
+        unit_price: 10, total_price: 20, serial_numbers: [], receipt_snapshot: { sale_type: 'sale', serial_numbers: [] } }]
+    } } })
+  const rows = await service.phoneReceipt(actor, 81)
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].quantity, 1)
+  assert.equal(rows[0].total_price, 20)
+  assert.equal(rows[0].points_used, 0)
+})
+
+test('手机凭证拒绝退货数量与剩余SN事件不一致的记录', async () => {
+  const service = new Service({ permissionCheck: async () => true, repository: { withConnection: withReadConnection,
+    async phoneReceipt() { return [{ ...record, returned_quantity: 1, serial_numbers: ['SN1', 'SN2'],
+      receipt_snapshot: { sale_type: 'sale', serial_numbers: ['SN1', 'SN2'] } }] }
+  } })
+  await assert.rejects(service.phoneReceipt(actor, 81), { statusCode: 409, code: 'CHECKOUT_FACTS_CONFLICT' })
 })

@@ -30,10 +30,11 @@ const normalizePointsConfig = (input = {}) => {
     max_percent: integer(raw.max_percent, 1, 100) ? Number(raw.max_percent) : null,
     sources: Array.isArray(raw.sources) ? unique(raw.sources.filter(source => SOURCES.includes(source))) : [],
     all_accessory_categories: boolean(raw.all_accessory_categories, false),
+    ...(raw.accessory_ids === undefined ? {} : { accessory_ids: Array.isArray(raw.accessory_ids) ? unique(raw.accessory_ids.filter(id => integer(id, 1, 2147483647)).map(Number)).sort((a, b) => a - b) : [] }),
     category_ids: Array.isArray(raw.category_ids) ? unique(raw.category_ids.filter(id => integer(id, 1, 2147483647)).map(Number)).sort((a, b) => a - b) : []
   }
   if (!redemption.points_per_yuan || !redemption.max_percent || !redemption.sources.length ||
-    (redemption.sources.includes('accessory') && !redemption.all_accessory_categories && !redemption.category_ids.length)) redemption.enabled = false
+    (redemption.sources.includes('accessory') && !redemption.all_accessory_categories && (!redemption.category_ids.length || (redemption.accessory_ids !== undefined && !redemption.accessory_ids.length)))) redemption.enabled = false
   return {
     enabled: boolean(config.enabled, true), amount_per_point: CUSTOMER_POINTS_AMOUNT_PER_POINT,
     include_new: boolean(config.include_new, true), include_used: boolean(config.include_used, true),
@@ -55,15 +56,23 @@ const validatePointsConfig = (input, previous = DEFAULT_POINTS_CONFIG) => {
     if (!integer(merged[field], 1, 100)) invalid(`${label}积分必须是1到100之间的整数`)
   }
   if (merged.enabled && !merged.include_new && !merged.include_used && !merged.include_accessories) invalid('请至少选择一种积分来源')
-  const r = merged.redemption
+  let r = merged.redemption
+  if (r && typeof r === 'object' && !Array.isArray(r) && r.accessory_ids === undefined && previous.redemption?.accessory_ids !== undefined) merged.redemption = { ...r, accessory_ids: previous.redemption.accessory_ids }
+  r = merged.redemption
   if (!r || typeof r !== 'object' || Array.isArray(r) || typeof r.enabled !== 'boolean' || typeof r.all_accessory_categories !== 'boolean') invalid('抵扣规则格式无效')
   if (!Array.isArray(r.sources) || r.sources.some(source => !SOURCES.includes(source)) || unique(r.sources).length !== r.sources.length) invalid('请选择有效且不重复的可抵扣类型')
   if (!Array.isArray(r.category_ids) || r.category_ids.length > 1000 || r.category_ids.some(id => !integer(id, 1, 2147483647)) || unique(r.category_ids.map(Number)).length !== r.category_ids.length) invalid('请选择有效且不重复的商品类型')
+  if (r.accessory_ids !== undefined && (!Array.isArray(r.accessory_ids) || r.accessory_ids.length > 1000 || r.accessory_ids.some(id => !integer(id, 1, 2147483647)) || unique(r.accessory_ids.map(Number)).length !== r.accessory_ids.length)) invalid('请选择有效且不重复的商品，最多1000个')
   if ((r.points_per_yuan !== null && !integer(r.points_per_yuan, 1, 1000000)) || (r.max_percent !== null && !integer(r.max_percent, 1, 100))) invalid('兑换比例须为1到1000000的整数，抵扣上限须为1到100的整数百分比')
   if (r.enabled && (!r.points_per_yuan || !r.max_percent || !r.sources.length ||
-    (r.sources.includes('accessory') && !r.all_accessory_categories && !r.category_ids.length))) invalid('启用抵扣前，请填写兑换比例、单件上限和可抵扣范围')
+    (r.sources.includes('accessory') && !r.all_accessory_categories && (!r.category_ids.length || (r.accessory_ids !== undefined && !r.accessory_ids.length))))) invalid('启用抵扣前，请填写兑换比例、单件上限和可抵扣范围')
   return normalizePointsConfig(merged)
 }
+
+/** 新配置按类型与具体商品双重匹配；未配置商品ID的旧规则保留原类型语义。 */
+const matchesAccessoryRedemption = (rule, item) => rule.all_accessory_categories ||
+  (rule.category_ids.includes(Number(item.category_id)) &&
+    (rule.accessory_ids === undefined || rule.accessory_ids.includes(Number(item.accessory_id))))
 
 const sourceRate = (source, config) => {
   const fields = { new: ['include_new', 'new_points_per_100'], used: ['include_used', 'used_points_per_100'], accessory: ['include_accessories', 'accessory_points_per_100'] }
@@ -86,7 +95,7 @@ const quoteCustomerPoints = ({ items, available_points, config = DEFAULT_POINTS_
     if (item.is_gift && (amount !== 0 || points !== 0)) invalid('赠品金额和抵扣积分必须为0')
     if (points) {
       if (!rule.enabled || !rule.sources.includes(item.source) || item.is_gift || !amount ||
-        (item.source === 'accessory' && !rule.all_accessory_categories && !rule.category_ids.includes(Number(item.category_id)))) invalid('该商品不符合积分抵扣范围')
+        (item.source === 'accessory' && !matchesAccessoryRedemption(rule, item))) invalid('该商品不符合积分抵扣范围')
       // 整数积分按可精确到分的兑换步长抵扣，不吞掉不足一分的积分。
       if ((points * 100) % rule.points_per_yuan !== 0) invalid('抵扣积分不能精确兑换到分，请调整积分数量')
       redeemed = points * 100 / rule.points_per_yuan
@@ -107,4 +116,4 @@ const quoteCustomerPoints = ({ items, available_points, config = DEFAULT_POINTS_
     balance_after: Number(available_points) - spent + awarded, config_snapshot: normalized }
 }
 
-module.exports = { CUSTOMER_POINTS_AMOUNT_PER_POINT, DEFAULT_POINTS_CONFIG, normalizePointsConfig, validatePointsConfig, sourceRate, quoteCustomerPoints }
+module.exports = { CUSTOMER_POINTS_AMOUNT_PER_POINT, DEFAULT_POINTS_CONFIG, normalizePointsConfig, validatePointsConfig, matchesAccessoryRedemption, sourceRate, quoteCustomerPoints }

@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const test = require('node:test')
 const assert = require('node:assert/strict')
 
@@ -19,9 +21,9 @@ test('预定创建与匹配拒绝伪数字金额，不取得业务连接或预�
   let connections = 0
   const service = new Service({ repository: { async withConnection() { connections += 1; throw new Error('invalid input reached repository') } } })
   for (const value of ['1e3', '0x10', '12元', '12abc', '1.001', ' 10 ', true, [], {}]) {
-    assert.deepEqual(await service.create({ is_new: 1, deposit_amount: value }), { error: 'invalid_deposit' })
-    assert.deepEqual(await service.create({ is_new: 1, deposit_amount: 10, total_price: value }), { error: 'invalid_total_price' })
-    assert.deepEqual(await service.match('9', { phone_id: 3, actual_price: value }), { error: 'invalid_price' })
+    assert.deepEqual(await service.create({ is_new: 1, deposit_amount: value }, scopedActor), { error: 'invalid_deposit' })
+    assert.deepEqual(await service.create({ is_new: 1, deposit_amount: 10, total_price: value }, scopedActor), { error: 'invalid_total_price' })
+    assert.deepEqual(await service.match('9', { phone_id: 3, actual_price: value }, scopedActor), { error: 'invalid_price' })
   }
   assert.equal(connections, 0)
 })
@@ -54,7 +56,7 @@ test('预定恢复 controller 保持状态错误、字段脱敏和匹配响应�
   const controller = new PreorderMutationController({
     service: { async restore(id) {
       assert.equal(id, '23')
-      return { data: { id: 23, status: 'arrived' }, matched: true }
+      return { data: { store_id: 1, id: 23, status: 'arrived' }, matched: true }
     } },
     async maskItem(item, req) {
       assert.equal(req.user.id, 8)
@@ -62,7 +64,7 @@ test('预定恢复 controller 保持状态错误、字段脱敏和匹配响应�
     }
   })
   const response = createResponse()
-  await controller.restore({ params: { id: '23' }, user: { id: 8 } }, response)
+  await controller.restore({ params: { id: '23' }, user: { id: 8, store_id: 1, store_ids: [1] } }, response)
   assert.deepEqual(response.body.data, { id: 23, masked: true })
   assert.equal(response.body.message, '预定单已恢复，并已按当前商品规格自动匹配库存')
 
@@ -126,7 +128,7 @@ test('预定创建 controller 保持错误、脱敏及自动匹配响应契约',
     }
   })
   const response = createResponse()
-  await controller.create({ body: { customer_id: 17 }, user: { id: 8 } }, response)
+  await controller.create({ body: { customer_id: 17 }, user: { id: 8, store_id: 1, store_ids: [1] } }, response)
   assert.deepEqual(response.body.data, { id: 23, masked: true })
   assert.equal(response.body.message, '预定单创建成功，已自动匹配并预留库存，尚未出库')
 
@@ -140,7 +142,7 @@ test('预定创建 controller 保持错误、脱敏及自动匹配响应契约',
   ]) {
     const failed = new PreorderMutationController({ service: { async create() { return { error } } } })
     const failedResponse = createResponse()
-    await failed.create({ body: {}, user: { id: 8 } }, failedResponse)
+    await failed.create({ body: {}, user: { id: 8, store_id: 1, store_ids: [1] } }, failedResponse)
     assert.equal(failedResponse.statusCode, status)
     assert.equal(failedResponse.body.message, message)
   }
@@ -217,8 +219,9 @@ test('预定取消 service 在一个事务内锁定状态、释放匹配设备�
     async getForUpdate(executor, id) {
       assert.equal(executor, connection)
       calls.push({ type: 'lock', id })
-      return { id: 23, status: 'arrived', matched_phone_id: 68 }
+      return { store_id: 1, id: 23, status: 'arrived', matched_phone_id: 68 }
     },
+    async getPreviousPhoneForMatching() { return { store_id: 1 } },
     async releaseMatchedPhone(executor, phoneId, id) {
       assert.equal(executor, connection)
       calls.push({ type: 'release-phone', phoneId, id })
@@ -230,7 +233,7 @@ test('预定取消 service 在一个事务内锁定状态、释放匹配设备�
     }
   } })
 
-  const result = await service.cancel('23', '客户改期')
+  const result = await service.cancel('23', '客户改期', scopedActor)
   assert.deepEqual(result, { data: { id: 23, message: '预定单取消成功' } })
   assert.equal(calls[0].type, 'begin')
   assert.deepEqual(calls[1], { type: 'lock', id: '23' })
@@ -245,9 +248,9 @@ test('预定取消 service 对缺失、终态、占用冲突和写入错误回�
   const PreorderMutationService = require('../src/services/preorder-mutation.service')
   const cases = [
     { preorder: null, expected: { error: 'not_found' } },
-    { preorder: { status: 'cancelled' }, expected: { error: 'already_cancelled' } },
-    { preorder: { status: 'completed' }, expected: { error: 'delivered' } },
-    { preorder: { status: 'arrived', matched_phone_id: 68 }, released: false, expected: { error: 'phone_in_use' } }
+    { preorder: { store_id: 1, status: 'cancelled' }, expected: { error: 'already_cancelled' } },
+    { preorder: { store_id: 1, status: 'completed' }, expected: { error: 'delivered' } },
+    { preorder: { store_id: 1, status: 'arrived', matched_phone_id: 68 }, released: false, expected: { error: 'phone_in_use' } }
   ]
 
   for (const item of cases) {
@@ -260,11 +263,12 @@ test('预定取消 service 对缺失、终态、占用冲突和写入错误回�
     }
     const service = new PreorderMutationService({ repository: {
       async withConnection(callback) { try { return await callback(connection) } finally { released = true } },
-      async getForUpdate() { return item.preorder },
-      async releaseMatchedPhone() { return item.released },
+      async getForUpdate() { return item.preorder && { store_id: 1, ...item.preorder } },
+      async getPreviousPhoneForMatching() { return { store_id: 1 } },
+    async releaseMatchedPhone() { return item.released },
       async markCancelled() { calls.push('update') }
     } })
-    assert.deepEqual(await service.cancel('23'), item.expected)
+    assert.deepEqual(await service.cancel('23', undefined, scopedActor), item.expected)
     assert.equal(calls.includes('rollback'), true)
     assert.equal(calls.includes('commit'), false)
     assert.equal(released, true)
@@ -279,11 +283,12 @@ test('预定取消 service 对缺失、终态、占用冲突和写入错误回�
   }
   const failingService = new PreorderMutationService({ repository: {
     async withConnection(callback) { try { return await callback(connection) } finally { released = true } },
-    async getForUpdate() { return { id: 23, status: 'pending' } },
+    async getForUpdate() { return { store_id: 1, id: 23, status: 'pending' } },
+    async getPreviousPhoneForMatching() { return { store_id: 1 } },
     async releaseMatchedPhone() { return true },
     async markCancelled() { throw new Error('write failed') }
   } })
-  await assert.rejects(failingService.cancel('23'), /write failed/)
+  await assert.rejects(failingService.cancel('23', undefined, scopedActor), /write failed/)
   assert.deepEqual(calls, ['begin', 'rollback'])
   assert.equal(released, true)
 })
@@ -344,10 +349,11 @@ test('预定删除 service 仅允许删除已取消或已交付记录', async ()
   for (const item of cases) {
     const calls = []
     const service = new PreorderMutationService({ repository: {
-      async getStatus(id) { calls.push(['status', id]); return item.status },
+      async withConnection(operation) { return operation({ async beginTransaction() {}, async commit() {}, async rollback() {} }) },
+      async getForUpdate(_connection, id) { calls.push(['status', id]); return item.status ? { store_id: 1, status: item.status } : null },
       async deleteById(id) { calls.push(['delete', id]); return true }
     } })
-    assert.deepEqual(await service.remove('23'), item.expected)
+    assert.deepEqual(await service.remove('23', scopedActor), item.expected)
     assert.equal(calls.filter(([name]) => name === 'delete').length, item.deletes)
   }
 })
@@ -383,14 +389,15 @@ test('预定恢复 service 在同一事务内清理历史匹配、重新匹配�
       async getForRestore(executor, id) {
         assert.equal(executor, connection)
         calls.push(['lock', id])
-        return { id: 23, status: 'cancelled', matched_phone_id: 68, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }
+        return { store_id: 1, id: 23, status: 'cancelled', matched_phone_id: 68, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }
       },
-      async releaseMatchedPhone(executor, phoneId, id) { calls.push(['release', phoneId, id]) },
+      async getPreviousPhoneForMatching() { return { store_id: 1 } },
+    async releaseMatchedPhone(executor, phoneId, id) { calls.push(['release', phoneId, id]) },
       async findRestoreCandidate(executor, preorder) {
         assert.equal(executor, connection)
         assert.equal(preorder.id, 23)
         calls.push('find-candidate')
-        return { id: 81, imei: 'test-imei', brand_name: '品牌', model_name: '型号' }
+        return { store_id: 1, id: 81, imei: 'test-imei', brand_name: '品牌', model_name: '型号' }
       },
       async reserveRestoreCandidate(executor, phoneId) { calls.push(['reserve', phoneId]); return true },
       async restorePreorder(executor, id, phone) { calls.push(['restore', id, phone.id]) }
@@ -399,11 +406,11 @@ test('预定恢复 service 在同一事务内清理历史匹配、重新匹配�
       assert.equal(id, '23')
       assert.equal(executor, connection)
       calls.push('read-detail')
-      return { id: 23, status: 'arrived' }
+      return { store_id: 1, id: 23, status: 'arrived' }
     } }
   })
 
-  assert.deepEqual(await service.restore('23'), { data: { id: 23, status: 'arrived' }, matched: true })
+  assert.deepEqual(await service.restore('23', scopedActor), { data: { store_id: 1, id: 23, status: 'arrived' }, matched: true })
   assert.deepEqual(calls, [
     'begin', ['lock', '23'], ['release', 68, '23'], 'find-candidate', ['reserve', 81],
     ['restore', '23', 81], 'commit', 'read-detail'
@@ -414,8 +421,8 @@ test('预定恢复 service 在缺失、错误状态、设备冲突或读写异�
   const PreorderMutationService = require('../src/services/preorder-mutation.service')
   for (const item of [
     { preorder: null, error: 'not_found' },
-    { preorder: { status: 'pending' }, error: 'invalid_status' },
-    { preorder: { status: 'cancelled' }, candidate: { id: 81 }, reserve: false, error: 'phone_in_use' }
+    { preorder: { store_id: 1, status: 'pending' }, error: 'invalid_status' },
+    { preorder: { store_id: 1, status: 'cancelled' }, candidate: { id: 81 }, reserve: false, error: 'phone_in_use' }
   ]) {
     const calls = []
     const service = new PreorderMutationService({
@@ -423,15 +430,16 @@ test('预定恢复 service 在缺失、错误状态、设备冲突或读写异�
         async withConnection(callback) {
           return callback({ async beginTransaction() { calls.push('begin') }, async rollback() { calls.push('rollback') }, async commit() { calls.push('commit') } })
         },
-        async getForRestore() { return item.preorder },
-        async releaseMatchedPhone() {},
+        async getForRestore() { return item.preorder && { store_id: 1, ...item.preorder } },
+        async getPreviousPhoneForMatching() { return { store_id: 1 } },
+    async releaseMatchedPhone() {},
         async findRestoreCandidate() { return item.candidate || null },
         async reserveRestoreCandidate() { return item.reserve },
         async restorePreorder() { calls.push('write') }
       },
       readRepository: { async getById() { throw new Error('must not read') } }
     })
-    assert.deepEqual(await service.restore('23'), { error: item.error })
+    assert.deepEqual(await service.restore('23', scopedActor), { error: item.error })
     assert.equal(calls.includes('rollback'), true)
     assert.equal(calls.includes('commit'), false)
   }
@@ -442,12 +450,12 @@ test('预定恢复 service 在缺失、错误状态、设备冲突或读写异�
       async withConnection(callback) {
         return callback({ async beginTransaction() { calls.push('begin') }, async rollback() { calls.push('rollback') }, async commit() { calls.push('commit') } })
       },
-      async getForRestore() { return { status: 'cancelled' } },
+      async getForRestore() { return { store_id: 1, status: 'cancelled' } },
       async findRestoreCandidate() { return null },
       async restorePreorder() { throw new Error('restore write failed') }
     }
   })
-  await assert.rejects(failing.restore('23'), /restore write failed/)
+  await assert.rejects(failing.restore('23', scopedActor), /restore write failed/)
   assert.deepEqual(calls, ['begin', 'rollback'])
 })
 
@@ -464,7 +472,7 @@ test('预定匹配 service 在事务中核对规格、释放旧设备并预留�
     async getForMatching(executor, id) {
       assert.equal(executor, connection)
       calls.push(['preorder', id])
-      return {
+      return { store_id: 1,
         status: 'arrived', matched_phone_id: 67,
         brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1,
         total_price: 300, deposit_amount: 100
@@ -473,7 +481,7 @@ test('预定匹配 service 在事务中核对规格、释放旧设备并预留�
     async getPhoneForMatching(_executor, phoneId, imei) {
       calls.push(['phone', phoneId, imei])
       return {
-        id: 81, imei: 'test-imei', brand_id: 1, model_id: 2, color_id: 3,
+        store_id: 1, id: 81, imei: 'test-imei', brand_id: 1, model_id: 2, color_id: 3,
         memory_id: 4, is_new: 1, status: 'in_stock', is_preordered: 0,
         sale_price: 350, brand_name: '品牌', model_name: '型号'
       }
@@ -481,7 +489,7 @@ test('预定匹配 service 在事务中核对规格、释放旧设备并预留�
     async hasOtherActivePreorder() { calls.push('other-preorder'); return false },
     async getPreviousPhoneForMatching(_executor, phoneId) {
       calls.push(['old-phone', phoneId])
-      return { id: phoneId, status: 'reserved', is_preordered: 1 }
+      return { store_id: 1, id: phoneId, status: 'reserved', is_preordered: 1 }
     },
     async releasePreviousPhone(_executor, phoneId) { calls.push(['release-old', phoneId]); return true },
     async updateMatchedPreorder(_executor, values) { calls.push(['update-preorder', values]) },
@@ -490,7 +498,7 @@ test('预定匹配 service 在事务中核对规格、释放旧设备并预留�
 
   const result = await service.match('23', {
     phone_id: 81, actual_model: '指定机型', arrival_date: '2026-11-07', actual_price: '320'
-  })
+  }, scopedActor)
   assert.deepEqual(result, {
     data: {
       id: 23, matched_phone_id: 81, imei: 'test-imei', actual_model: '指定机型',
@@ -521,7 +529,7 @@ test('预定创建 service 验证引用后在同一事务内自动预留库存�
     async findAutoMatchCandidate(executor, spec) {
       assert.equal(executor, connection)
       calls.push(['candidate', spec])
-      return { id: 81, imei: 'test-imei' }
+      return { store_id: 1, id: 81, imei: 'test-imei' }
     },
     async reserveAutoMatchPhone(executor, phoneId) { assert.equal(executor, connection); calls.push(['reserve', phoneId]); return true },
     async insertPreorder(executor, values) { assert.equal(executor, connection); calls.push(['insert', values]); return 23 }
@@ -529,7 +537,7 @@ test('预定创建 service 验证引用后在同一事务内自动预留库存�
   const result = await service.create({
     customer_id: 17, store_id: 4, brand_id: 1, model_id: 2, color_id: 3, memory_id: 5,
     is_new: 1, total_price: '300', deposit_amount: '100', expected_arrival: '2026-11-07', remarks: '备注'
-  }, { id: 8, store_id: 6 })
+  }, { id: 8, store_id: 6, store_ids: [1, 4, 6] })
 
   assert.deepEqual(result.data, {
     id: 23,
@@ -560,8 +568,8 @@ test('预定创建 service 拒绝废弃字段和无效输入，并回滚库存�
   const earlyValidation = new PreorderMutationService({ repository: {
     async withConnection(callback) { connections += 1; return callback({}) }
   } })
-  assert.deepEqual(await earlyValidation.create({ deposit: 1 }), { error: 'legacy_field', field: 'deposit' })
-  assert.deepEqual(await earlyValidation.create({ is_new: 2 }), { error: 'invalid_condition' })
+  assert.deepEqual(await earlyValidation.create({ deposit: 1 }, scopedActor), { error: 'legacy_field', field: 'deposit' })
+  assert.deepEqual(await earlyValidation.create({ is_new: 2 }, scopedActor), { error: 'invalid_condition' })
   assert.equal(connections, 0)
 
   const calls = []
@@ -581,7 +589,7 @@ test('预定创建 service 拒绝废弃字段和无效输入，并回滚库存�
   await assert.rejects(failing.create({
     customer_id: 17, brand_id: 1, model_id: 2, color_id: 3, memory_id: 5,
     is_new: 1, deposit_amount: 100
-  }, { id: 8 }), /匹配设备已被占用/)
+  }, { id: 8, store_id: 1, store_ids: [1] }), /匹配设备已被占用/)
   assert.deepEqual(calls, ['begin', 'rollback'])
 })
 
@@ -600,11 +608,12 @@ test('预定更新 service 锁定状态、释放旧匹配并在同一事务内�
       async getForUpdate(executor, id) {
         assert.equal(executor, connection)
         calls.push(['lock', id])
-        return { id: 23, status: 'arrived', matched_phone_id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }
+        return { store_id: 1, id: 23, status: 'arrived', matched_phone_id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }
       },
       async hasCustomer(executor, id) { assert.equal(executor, connection); calls.push(['customer', id]); return true },
       async hasActiveUser(executor, id) { assert.equal(executor, connection); calls.push(['creator', id]); return true },
-      async releaseMatchedPhone(executor, phoneId, preorderId) {
+      async getPreviousPhoneForMatching() { return { store_id: 1 } },
+    async releaseMatchedPhone(executor, phoneId, preorderId) {
         assert.equal(executor, connection)
         calls.push(['release', phoneId, preorderId])
         return true
@@ -617,15 +626,15 @@ test('预定更新 service 锁定状态、释放旧匹配并在同一事务内�
         assert.equal(executor, connection)
         assert.equal(id, '23')
         calls.push('read')
-        return { id: 23, status: 'pending' }
+        return { store_id: 1, id: 23, status: 'pending' }
       }
     }
   })
 
   const result = await service.update('23', {
     customer_id: '17', brand_id: 9, deposit_amount: '100', total_price: '300', created_by: '8', remarks: '备注'
-  })
-  assert.deepEqual(result, { data: { id: 23, status: 'pending' }, staleMatchNeedsClearing: true })
+  }, scopedActor)
+  assert.deepEqual(result, { data: { store_id: 1, id: 23, status: 'pending' }, staleMatchNeedsClearing: true })
   const update = calls.find(call => Array.isArray(call) && call[0] === 'update')
   assert.deepEqual(update, ['update', '23', {
     customer_id: 17, created_by: 8, brand_id: 9, total_price: 300, deposit_amount: 100, remarks: '备注'
@@ -639,18 +648,18 @@ test('预定更新 service 对无效字段和状态拒绝时回滚并释放连�
   const PreorderMutationService = require('../src/services/preorder-mutation.service')
   for (const scenario of [
     { preorder: null, input: { remarks: '备注' }, error: 'not_found' },
-    { preorder: { status: 'completed' }, input: { remarks: '备注' }, error: 'invalid_status' },
-    { preorder: { status: 'pending' }, input: { customer_name: '旧字段' }, error: 'legacy_field', field: 'customer_name' },
-    { preorder: { status: 'pending' }, input: { expected_arrival: '2026-02-30' }, error: 'invalid_expected_arrival' },
-    { preorder: { status: 'pending' }, input: { remarks: '备注', deposit_amount: 0 }, error: 'invalid_deposit' },
-    { preorder: { status: 'pending' }, input: { deposit_amount: '1e3' }, error: 'invalid_deposit' },
-    { preorder: { status: 'pending' }, input: { deposit_amount: false }, error: 'invalid_deposit' },
-    { preorder: { status: 'pending' }, input: { total_price: '10.001' }, error: 'invalid_total_price' },
-    { preorder: { status: 'pending' }, input: { total_price: '12元' }, error: 'invalid_total_price' },
-    { preorder: { status: 'pending' }, input: { customer_id: 'bad' }, error: 'invalid_customer_id' },
-    { preorder: { status: 'pending' }, input: {}, error: 'no_fields' },
-    { preorder: { status: 'pending' }, input: { created_by: 7 }, error: 'creator_unavailable', creatorAvailable: false },
-    { preorder: { status: 'arrived', matched_phone_id: 81, brand_id: 1 }, input: { brand_id: 2 }, error: 'release_failed', release: false }
+    { preorder: { store_id: 1, status: 'completed' }, input: { remarks: '备注' }, error: 'invalid_status' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { customer_name: '旧字段' }, error: 'legacy_field', field: 'customer_name' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { expected_arrival: '2026-02-30' }, error: 'invalid_expected_arrival' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { remarks: '备注', deposit_amount: 0 }, error: 'invalid_deposit' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { deposit_amount: '1e3' }, error: 'invalid_deposit' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { deposit_amount: false }, error: 'invalid_deposit' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { total_price: '10.001' }, error: 'invalid_total_price' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { total_price: '12元' }, error: 'invalid_total_price' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { customer_id: 'bad' }, error: 'invalid_customer_id' },
+    { preorder: { store_id: 1, status: 'pending' }, input: {}, error: 'no_fields' },
+    { preorder: { store_id: 1, status: 'pending' }, input: { created_by: 7 }, error: 'creator_unavailable', creatorAvailable: false },
+    { preorder: { store_id: 1, status: 'arrived', matched_phone_id: 81, brand_id: 1 }, input: { brand_id: 2 }, error: 'release_failed', release: false }
   ]) {
     const calls = []
     const connection = {
@@ -661,13 +670,14 @@ test('预定更新 service 对无效字段和状态拒绝时回滚并释放连�
     }
     const service = new PreorderMutationService({ repository: {
       async withConnection(callback) { try { return await callback(connection) } finally { connection.release() } },
-      async getForUpdate() { return scenario.preorder },
+      async getForUpdate() { return scenario.preorder && { store_id: 1, ...scenario.preorder } },
       async hasCustomer() { return true },
       async hasActiveUser() { return scenario.creatorAvailable ?? true },
-      async releaseMatchedPhone() { return scenario.release },
+      async getPreviousPhoneForMatching() { return { store_id: 1 } },
+    async releaseMatchedPhone() { return scenario.release },
       async updateEditablePreorder() { calls.push('unexpected-update') }
     }, readRepository: { async getById() { return { id: 23 } } } })
-    const result = await service.update('23', scenario.input)
+    const result = await service.update('23', scenario.input, scopedActor)
     assert.equal(result.error, scenario.error, JSON.stringify(scenario))
     if (scenario.field) assert.equal(result.field, scenario.field)
     assert.equal(calls.includes('rollback'), true, scenario.error)
@@ -682,22 +692,22 @@ test('预定匹配 service 校验输入并对业务拒绝及设备占用失败�
   const validationService = new PreorderMutationService({ repository: {
     async withConnection(callback) { opened = true; return callback({}) }
   } })
-  assert.deepEqual(await validationService.match('23', {}), { error: 'phone_required' })
-  assert.deepEqual(await validationService.match('23', { phone_id: 1, arrival_date: '2026-02-30' }), { error: 'invalid_date' })
+  assert.deepEqual(await validationService.match('23', {}, scopedActor), { error: 'phone_required' })
+  assert.deepEqual(await validationService.match('23', { phone_id: 1, arrival_date: '2026-02-30' }, scopedActor), { error: 'invalid_date' })
   assert.equal(opened, false)
 
   const scenarios = [
     { preorder: null, error: 'preorder_not_found' },
-    { preorder: { status: 'cancelled' }, error: 'invalid_preorder_status' },
-    { preorder: { status: 'pending' }, phone: null, error: 'phone_not_found' },
-    { preorder: { status: 'pending' }, phone: { id: 81, status: 'sold', is_preordered: 0 }, error: 'phone_unavailable' },
-    { preorder: { status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 9, status: 'in_stock', is_preordered: 0 }, error: 'specification_mismatch' },
-    { preorder: { status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock', sale_price: 10 }, other: true, error: 'phone_has_other_preorder' },
-    { preorder: { status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, price: 'bad', error: 'invalid_price' },
-    { preorder: { status: 'pending', matched_phone_id: 67, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, previous: null, error: 'previous_phone_unavailable' },
-    { preorder: { status: 'pending', matched_phone_id: 67, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, previous: { status: 'in_stock', is_preordered: 0 }, error: 'previous_phone_state_invalid' },
-    { preorder: { status: 'pending', matched_phone_id: 67, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, previous: { status: 'in_stock', is_preordered: 1 }, release: false, error: 'previous_phone_release_failed' },
-    { preorder: { status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, reserve: false, error: 'phone_reservation_failed' }
+    { preorder: { store_id: 1, status: 'cancelled' }, error: 'invalid_preorder_status' },
+    { preorder: { store_id: 1, status: 'pending' }, phone: null, error: 'phone_not_found' },
+    { preorder: { store_id: 1, status: 'pending' }, phone: { id: 81, status: 'sold', is_preordered: 0 }, error: 'phone_unavailable' },
+    { preorder: { store_id: 1, status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 9, status: 'in_stock', is_preordered: 0 }, error: 'specification_mismatch' },
+    { preorder: { store_id: 1, status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock', sale_price: 10 }, other: true, error: 'phone_has_other_preorder' },
+    { preorder: { store_id: 1, status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, price: 'bad', error: 'invalid_price' },
+    { preorder: { store_id: 1, status: 'pending', matched_phone_id: 67, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, previous: null, error: 'previous_phone_unavailable' },
+    { preorder: { store_id: 1, status: 'pending', matched_phone_id: 67, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, previous: { status: 'in_stock', is_preordered: 0 }, error: 'previous_phone_state_invalid' },
+    { preorder: { store_id: 1, status: 'pending', matched_phone_id: 67, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, previous: { status: 'in_stock', is_preordered: 1 }, release: false, error: 'previous_phone_release_failed' },
+    { preorder: { store_id: 1, status: 'pending', brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1 }, phone: { id: 81, brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, is_new: 1, status: 'in_stock' }, reserve: false, error: 'phone_reservation_failed' }
   ]
 
   for (const item of scenarios) {
@@ -706,15 +716,15 @@ test('预定匹配 service 校验输入并对业务拒绝及设备占用失败�
       async withConnection(callback) {
         return callback({ async beginTransaction() { calls.push('begin') }, async rollback() { calls.push('rollback') }, async commit() { calls.push('commit') } })
       },
-      async getForMatching() { return item.preorder },
-      async getPhoneForMatching() { return item.phone },
+      async getForMatching() { return item.preorder && { store_id: 1, ...item.preorder } },
+      async getPhoneForMatching() { return item.phone && { store_id: 1, ...item.phone } },
       async hasOtherActivePreorder() { return Boolean(item.other) },
-      async getPreviousPhoneForMatching() { return item.previous },
+      async getPreviousPhoneForMatching() { return item.previous && { store_id: 1, ...item.previous } },
       async releasePreviousPhone() { return item.release },
       async updateMatchedPreorder() { calls.push('write') },
       async reserveMatchedPhone() { return item.reserve }
     } })
-    assert.deepEqual(await service.match('23', { phone_id: 81, actual_price: item.price }), { error: item.error })
+    assert.deepEqual(await service.match('23', { phone_id: 81, actual_price: item.price }, scopedActor), { error: item.error })
     if (item.error === 'invalid_price') assert.deepEqual(calls, [], '非法价格在开启事务前拒绝')
     else assert.equal(calls.includes('rollback'), true, item.error)
     assert.equal(calls.includes('commit'), false, item.error)
@@ -727,8 +737,8 @@ test('预定恢复 repository 执行锁定、规格查找、占用和状态恢�
   const connection = {
     async execute(sql, params) {
       calls.push({ sql, params })
-      if (sql.includes('SELECT id, status, matched_phone_id')) return [[{ id: 23, status: 'cancelled' }]]
-      if (sql.includes('SELECT p.id, p.imei')) return [[{ id: 81, imei: 'test-imei', brand_name: '品牌', model_name: '型号' }]]
+      if (sql.includes('SELECT id, store_id, status, matched_phone_id')) return [[{ id: 23, status: 'cancelled' }]]
+      if (sql.includes('SELECT p.id, p.store_id, p.imei')) return [[{ id: 81, imei: 'test-imei', brand_name: '品牌', model_name: '型号' }]]
       return [{ affectedRows: 1 }]
     }
   }
@@ -759,7 +769,7 @@ test('预定匹配 repository 锁定订单和设备，并使用绑定条件执�
       if (sql.includes('FROM preorders WHERE id =')) return [[{ id: 23, status: 'arrived' }]]
       if (sql.includes('FROM phones p') && sql.includes('p.id = ?')) return [[{ id: 81, imei: 'test-imei' }]]
       if (sql.includes('SELECT id FROM preorders')) return [[]]
-      if (sql.includes('SELECT id, status, is_preordered')) return [[{ id: 67, status: 'reserved', is_preordered: 1 }]]
+      if (sql.includes('SELECT id, store_id, status, is_preordered')) return [[{ id: 67, status: 'reserved', is_preordered: 1 }]]
       return [{ affectedRows: 1 }]
     }
   }

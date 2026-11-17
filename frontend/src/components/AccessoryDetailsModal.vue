@@ -38,7 +38,7 @@
               v-if="canViewAccessoryField('brand_name')"
               class="detail-item"
             >
-              <label>品牌：</label>
+              <label>配件品牌：</label>
               <span>{{ accessory.brand_name || '-' }}</span>
             </div>
             <div
@@ -60,7 +60,14 @@
               class="detail-item"
             >
               <label>颜色：</label>
-              <span>{{ accessory.color_name || '-' }}</span>
+              <span>{{ isColorTemplate ? accessory.color_variants?.map(variant => variant.color_name || '-').join('、') : accessory.color_name || '-' }}</span>
+            </div>
+            <div
+              v-if="canViewAccessoryField('barcode')"
+              class="detail-item"
+            >
+              <label>条形码：</label>
+              <span>{{ isColorTemplate ? accessory.color_variants?.map(variant => `${canViewAccessoryField('color_name') ? `${variant.color_name || '-'}：` : ''}${variant.barcode || '未填写'}`).join('；') : accessory.barcode || '-' }}</span>
             </div>
             <div
               v-if="canViewAccessoryField('unit')"
@@ -121,7 +128,7 @@
 
         <!-- 库存信息 -->
         <div
-          v-if="showStockSection"
+          v-if="showStockSection && !isColorTemplate"
           class="detail-section"
         >
           <h3>库存信息</h3>
@@ -152,16 +159,47 @@
           </div>
         </div>
 
-        <AccessoryTransferHistory :accessory-id="accessory.id" />
-        <AccessoryBatchStock :accessory-id="accessory.id" />
-        <AccessoryStockLocations
-          v-if="canViewAccessoryField('distribution')"
-          :accessory-id="accessory.id"
-        />
-        <AccessorySerialPanel
-          v-if="canViewAccessoryField('serial_number')"
-          :accessory-id="accessory.id"
-        />
+        <div
+          v-if="isColorTemplate && canViewAccessoryField('color_name')"
+          class="detail-section tf-dialog-form"
+        >
+          <h3>按颜色查看库存</h3>
+          <el-select
+            v-model="selectedColorId"
+            aria-label="查看库存的颜色"
+            placeholder="请选择颜色"
+          >
+            <el-option
+              v-for="variant in accessory.color_variants"
+              :key="variant.accessory_id"
+              :label="variant.color_name || '未命名颜色'"
+              :value="variant.accessory_id"
+            />
+          </el-select>
+        </div>
+        <template v-if="inventoryAccessoryId">
+          <AccessoryTransferHistory
+            :key="`transfers-${inventoryAccessoryId}`"
+            :accessory-id="inventoryAccessoryId"
+          />
+          <AccessoryBatchStock
+            :key="`batches-${inventoryAccessoryId}`"
+            :accessory-id="inventoryAccessoryId"
+            :accessory-name="accessory.name"
+            @success="handleInventoryAdjusted"
+          />
+          <AccessoryStockLocations
+            v-if="canViewAccessoryField('distribution')"
+            :key="`locations-${inventoryAccessoryId}`"
+            :accessory-id="inventoryAccessoryId"
+            :refresh-key="stockRefreshKey"
+          />
+          <AccessorySerialPanel
+            v-if="canViewAccessoryField('serial_number')"
+            :key="`serials-${inventoryAccessoryId}`"
+            :accessory-id="inventoryAccessoryId"
+          />
+        </template>
 
         <!-- 描述和备注 -->
         <div
@@ -230,7 +268,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type PropType } from 'vue'
+import { computed, ref, watch, type PropType } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import AccessorySerialPanel from '@/components/AccessorySerialPanel.vue'
 import AccessoryStockLocations from '@/components/AccessoryStockLocations.vue'
@@ -268,9 +306,19 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'success'])
+const isColorTemplate = computed(() => Boolean(props.accessory?.color_variants?.length && props.accessory.color_template_id === props.accessory.id))
+const selectedColorId = ref<number>()
+watch(() => [props.accessory?.id, canViewAccessoryField('color_name')], () => { selectedColorId.value = undefined })
+const inventoryAccessoryId = computed(() => isColorTemplate.value
+  ? (canViewAccessoryField('color_name') && props.accessory?.color_variants?.some(variant => variant.accessory_id === selectedColorId.value) ? selectedColorId.value : undefined) : props.accessory?.id)
+const stockRefreshKey = ref(0)
+const handleInventoryAdjusted = () => {
+  stockRefreshKey.value++
+  emit('success')
+}
 const hasAnyField = (fields: AccessoryFieldName[]) => fields.some(canViewAccessoryField)
-const showBasicSection = computed(() => hasAnyField(['name','category','brand_name','model_name','color_name','unit','supplier_name','status','product_model']))
+const showBasicSection = computed(() => hasAnyField(['name','barcode','category','brand_name','model_name','color_name','unit','supplier_name','status','product_model']))
 const showPriceSection = computed(() => hasAnyField(['purchase_cost','sale_price','profit']))
 const showStockSection = computed(() => hasAnyField(['total_stock','min_stock','remaining_stock']))
 const showOtherSection = computed(() => hasAnyField(['description','remarks','created_at','updated_at']))

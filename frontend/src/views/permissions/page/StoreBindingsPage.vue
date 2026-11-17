@@ -119,7 +119,6 @@
               <el-button
                 v-if="ctx.canEdit"
                 type="primary"
-                size="small"
                 :title="row.stores?.length ? '管理' : '绑定'"
                 @click.stop="ctx.openStoreBindingDialog(row)"
               >
@@ -127,7 +126,6 @@
               </el-button><el-button
                 v-if="ctx.canDelete && row.stores && row.stores.length > 0"
                 type="danger"
-                size="small"
                 title="解绑所有门店"
                 @click.stop="ctx.unbindStore(row)"
               >

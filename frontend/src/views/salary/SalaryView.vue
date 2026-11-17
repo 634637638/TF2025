@@ -12,6 +12,7 @@
           :active-tab="activeTab"
           :can-create-salary-template="canCreateSalaryTemplate"
           :can-view-salary-records="canViewSalaryRecords"
+          :can-edit-salary-records="canEditSalaryRecord"
           :payout-loading="payoutLoading"
           :refreshing="refreshing"
           @add-template="handleAddTemplate"
@@ -46,6 +47,7 @@
               data-view-permission="salary-templates:view"
               :can-delete="canDeleteSalaryTemplate"
               :can-edit="canEditSalaryTemplate"
+              :can-edit-field="canUseSalaryField"
               :can-view-field="canViewSalaryField"
               :filtered-templates="filteredTemplates"
               :get-employee-count="getEmployeeCountByTemplate"
@@ -80,6 +82,7 @@
               :can-edit-template="canEditSalaryTemplate"
               :can-view-field="canViewSalaryField"
               :can-view-records="canViewSalaryRecords"
+              :can-view-attendance="canViewEmployeeAttendance"
               :employees="paginatedEmployees"
               :filtered-employees="filteredEmployees"
               :get-attendance-stats="getEmployeeAttendanceStats"
@@ -119,6 +122,8 @@
               :calculate-overtime="calculateOvertimePay"
               :calculate-work-days="calculateWorkDays"
               :can-create="canCreateSalaryRecord"
+              :can-pay="canPaySalaryRecord"
+              :can-approve="canApproveSalaryRecord"
               :can-delete="canDeleteSalaryRecord"
               :can-edit="canEditSalaryRecord"
               :can-view-field="canViewSalaryField"
@@ -141,6 +146,7 @@
               @reset="resetPayoutFilters"
               @search="loadPayoutList"
               @settle="handlePayoutByEmployee"
+              @approve="handleApprovePayout"
               @status-change="handleFilterChange"
             />
 
@@ -280,9 +286,9 @@
 
         <SalaryAttendanceListDialog
           v-model="attendanceDialogVisible"
-          :can-create="canCreateSalaryRecord"
-          :can-delete="canDeleteSalaryRecord"
-          :can-edit="canEditSalaryRecord"
+          :can-create="attendancePermissions.canCreate.value"
+          :can-delete="attendancePermissions.canDelete.value"
+          :can-edit="attendancePermissions.canEdit.value"
           :can-view-field="canViewSalaryField"
           :employee="currentAttendanceEmployee"
           :get-attendance-type-tag="getAttendanceTypeTag"
@@ -296,7 +302,7 @@
 
         <SalaryAttendanceFormDialog
           v-model="attendanceFormVisible"
-          :can-edit-field="canEditSalaryField"
+          :can-edit-field="canEditAttendanceField"
           :can-view-field="canViewSalaryField"
           :has-salary-template="Boolean(currentAttendanceEmployee?.salary_template_id)"
           :form="attendanceForm"
@@ -312,6 +318,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElConfigProvider, type TabPaneName } from 'element-plus'
@@ -406,6 +413,17 @@ const salaryPagePermissions = usePagePermissions('salary')
 const salaryTemplatePermissions = usePagePermissions('salary-templates')
 const salaryRecordPermissions = usePagePermissions('salary-records')
 const mySalaryPermissions = usePagePermissions('my-salary')
+const attendancePermissions = usePagePermissions('attendance')
+const myAttendancePermissions = usePagePermissions('my-attendance')
+const canViewEmployeeAttendance = (id: number) => attendancePermissions.canView.value || (myAttendancePermissions.canView.value && Number(authStore.user?.id) === id)
+const requireAttendancePermission = (action: 'view' | 'create' | 'edit' | 'delete') => {
+  const employeeId = currentAttendanceEmployee.value?.id
+  const allowed = action === 'view'
+    ? Boolean(employeeId && canViewEmployeeAttendance(employeeId))
+    : attendancePermissions.hasPermission(action) && Boolean(employeeId && canViewEmployeeAttendance(employeeId))
+  if (!allowed) attendancePermissions.handleNoPermission(action)
+  return allowed
+}
 const canViewSalaryPage = computed(() => salaryPagePermissions.canView.value)
 const canViewSalaryTemplates = computed(() => salaryTemplatePermissions.canView.value)
 const canCreateSalaryTemplate = computed(() => salaryTemplatePermissions.canCreate.value)
@@ -415,6 +433,7 @@ const canViewSalaryRecords = computed(() => salaryRecordPermissions.canView.valu
 const canCreateSalaryRecord = computed(() => salaryRecordPermissions.canCreate.value)
 const canEditSalaryRecord = computed(() => salaryRecordPermissions.canEdit.value)
 const canDeleteSalaryRecord = computed(() => salaryRecordPermissions.canDelete.value)
+const canPaySalaryRecord = computed(() => salaryRecordPermissions.hasPermission('pay'))
 const canApproveSalaryRecord = computed(() => salaryRecordPermissions.canApprove.value)
 const canViewOwnSalary = computed(() => mySalaryPermissions.canView.value)
 const canViewPayoutRecords = computed(() => canViewSalaryRecords.value || canViewOwnSalary.value)
@@ -440,7 +459,7 @@ const requireSalaryTemplatePermission = (action: 'view' | 'create' | 'edit' | 'd
   return allowed
 }
 
-const requireSalaryRecordPermission = (action: 'view' | 'create' | 'edit' | 'delete' | 'approve') => {
+const requireSalaryRecordPermission = (action: 'view' | 'create' | 'edit' | 'delete' | 'approve' | 'pay') => {
   const allowed = action === 'view'
     ? canViewSalaryRecords.value
     : action === 'create'
@@ -449,7 +468,7 @@ const requireSalaryRecordPermission = (action: 'view' | 'create' | 'edit' | 'del
         ? canEditSalaryRecord.value
         : action === 'delete'
           ? canDeleteSalaryRecord.value
-          : canApproveSalaryRecord.value
+          : action === 'pay' ? canPaySalaryRecord.value : canApproveSalaryRecord.value
 
   if (!allowed) {
     salaryRecordPermissions.handleNoPermission(action)
@@ -493,6 +512,12 @@ const canUseSalaryField = (moduleKey: string, fieldName: string) => {
   return canViewSalaryField(moduleKey, fieldName) && canEditSalaryField(moduleKey, fieldName)
 }
 
+const canEditAttendanceField = (moduleKey: string, fieldName: string) => {
+  if (fieldName === 'attendance_status') return attendancePermissions.canApprove.value
+  return canViewSalaryField(moduleKey, fieldName) && (editingAttendanceId.value
+    ? attendancePermissions.canEdit.value : attendancePermissions.canCreate.value)
+}
+
 const canViewSalaryField = (moduleKey: string, fieldName: string) => {
   return fieldPermissions.isFieldVisible(moduleKey, getSalaryFieldKey(fieldName))
 }
@@ -501,20 +526,15 @@ const canEditSalaryField = (moduleKey: string, fieldName: string) => {
     return false
   }
 
-  if (fieldName === 'template_goods_commission_rule') {
-    return fieldPermissions.isFieldEditable(moduleKey, getSalaryFieldKey(fieldName))
-  }
+  if (!fieldPermissions.isFieldEditable(moduleKey, getSalaryFieldKey(fieldName), { allowUnconfigured: true })) return false
 
-  if (
-    canCreateSalaryTemplate.value ||
-    canEditSalaryTemplate.value ||
-    canCreateSalaryRecord.value ||
-    canEditSalaryRecord.value
-  ) {
-    return true
+  if (moduleKey === 'salary_salaryrecordsview') {
+    if (fieldName === 'salary_status') return canApproveSalaryRecord.value
+    if (fieldName === 'payment_method') return canPaySalaryRecord.value || canCreateSalaryRecord.value || canEditSalaryRecord.value
+    return canCreateSalaryRecord.value || canEditSalaryRecord.value
   }
-
-  return fieldPermissions.isFieldEditable(moduleKey, getSalaryFieldKey(fieldName))
+  if (moduleKey === 'salary_salarytemplatesview') return canCreateSalaryTemplate.value || canEditSalaryTemplate.value
+  return false
 }
 
 const salaryStatsModuleKey = computed(() => (
@@ -530,6 +550,7 @@ const showSalaryStatsCards = computed(() => (
 
 // TAB 切换
 const activeTab = ref('my')
+const shortcutPageReady = ref(false)
 
 // 统计数据
 const stats = ref({
@@ -612,7 +633,7 @@ const syncVisibleSalaryFilters = () => {
 const payoutActionColumnWidth = computed(() => {
   const hasPayoutRecord = paginatedPayoutData.value.some(item => Boolean(item.payoutRecord))
   const buttonCount = Number(canCreateSalaryRecord.value) + (hasPayoutRecord
-    ? Number(canEditSalaryRecord.value) + Number(canDeleteSalaryRecord.value)
+    ? Number(canEditSalaryRecord.value) + Number(canDeleteSalaryRecord.value) + Number(canPaySalaryRecord.value) + Number(canApproveSalaryRecord.value)
     : 0)
   return getActionColumnMinWidth(buttonCount)
 })
@@ -1077,30 +1098,30 @@ const loadMyStats = async () => {
     const currentMonthKey = `${startDate.slice(0, 7)}`
     const [currentYear, currentMonth] = currentMonthKey.split('-').map(Number)
     const [employeeListResult, currentSalaryResult, attendanceResult, leaveBalanceResult, salesDetailResult] = await Promise.allSettled([
-      unifiedApi.get('/employees/salary-list'),
-      unifiedApi.get('/employees/current-salary', { params: { date: currentMonthKey } }),
-      attendanceApi.getAttendanceRecords({
+      canViewTeamSalaryRecords.value ? unifiedApi.get('/employees/salary-list') : Promise.resolve(null),
+      canViewTeamSalaryRecords.value ? unifiedApi.get('/employees/current-salary', { params: { date: currentMonthKey } }) : Promise.resolve(null),
+      canViewEmployeeAttendance(userId) ? attendanceApi.getAttendanceRecords({
         start_date: startDate,
         end_date: endDate,
         status: 'approved',
         page_size: 100
-      }),
-      attendanceApi.getLeaveBalance(),
+      }) : Promise.resolve(null),
+      canViewEmployeeAttendance(userId) ? attendanceApi.getLeaveBalance() : Promise.resolve(null),
       salaryApi.records.getEmployeeSalesDetails(userId, startDate, endDate)
     ])
 
     const employeesData = employeeListResult.status === 'fulfilled'
-      ? (employeeListResult.value.data?.employees || [])
+      ? (employeeListResult.value?.data?.employees || [])
       : []
     const currentSalaryData = currentSalaryResult.status === 'fulfilled'
-      ? (currentSalaryResult.value.data?.employees || [])
+      ? (currentSalaryResult.value?.data?.employees || [])
       : []
 
     const myEmployee = employeesData.find((employee: SalaryEmployeeRow) => Number(employee.id) === userId)
     const mySalaryInfo = currentSalaryData.find((employee: SalaryEmployeeRow) => Number(employee.id) === userId)
     const myTemplate = mySalaryInfo || templates.value.find(template => Number(template.id) === Number(myEmployee?.salary_template_id))
 
-    if (attendanceResult.status === 'fulfilled') {
+    if (attendanceResult.status === 'fulfilled' && attendanceResult.value) {
       const attendanceRecords = attendanceResult.value.data?.records || []
       let myLeaveDays = 0
       let myOvertimeHours = 0
@@ -1129,7 +1150,7 @@ const loadMyStats = async () => {
       stats.value.myRestDays = 0
     }
 
-    if (leaveBalanceResult.status === 'fulfilled') {
+    if (leaveBalanceResult.status === 'fulfilled' && leaveBalanceResult.value) {
       const leaveBalance = leaveBalanceResult.value.data
       stats.value.myRestQuota = parseFloat(String(leaveBalance?.total_quota ?? leaveBalance?.monthly_limit ?? 0)) || 0
       stats.value.myRestRemaining = parseFloat(String(leaveBalance?.available ?? 0)) || 0
@@ -1361,7 +1382,7 @@ const loadEmployeeList = async (dateParam?: string) => {
 // monthParam 格式: "2025-01"，如果为空则使用当前月份
 // 休假逻辑：每月休假天数从薪资模板读取，上个月没用完可以累积到本月
 const loadAllEmployeesAttendance = async (monthParam?: string) => {
-  if (!canViewSalaryRecords.value) {
+  if (!canViewSalaryRecords.value || !attendancePermissions.canView.value) {
     employeeAttendanceData.value = new Map()
     return
   }
@@ -1755,11 +1776,23 @@ const closeSettleDialog = () => {
   pendingSalaryData.value = null
 }
 
+const handleApprovePayout = async (employee: SalaryEmployeeRow) => {
+  const record = getEmployeePayoutRecord(employee.id)
+  if (!record?.id || !requireSalaryRecordPermission('approve')) return
+  try {
+    await salaryApi.records.approveSalaryRecord(record.id)
+    globalNotifications.success('工资审批成功')
+    await loadPayoutList()
+  } catch (err) {
+    globalNotifications.error(getRequestErrorMessage(err, '工资审批失败'))
+  }
+}
+
 // 按员工结算工资
 const handlePayoutByEmployee = async (employee: SalaryEmployeeRow) => {
   const existingRecord = getEmployeePayoutRecord(employee.id)
   if (!requireUnpaidPayout(existingRecord)) return
-  if (!requireSalaryRecordPermission(existingRecord ? 'edit' : 'create')) {
+  if (!requireSalaryRecordPermission('pay') || (!existingRecord && (!requireSalaryRecordPermission('create') || !requireSalaryRecordPermission('approve')))) {
     return
   }
 
@@ -1828,7 +1861,7 @@ const confirmSettle = async () => {
   if (settleSaving.value) return
   if (!requireUnpaidPayout(getEmployeePayoutRecord(settleForm.value.employeeId))) return
   const action = (pendingSalaryData.value?.existingRecord || settleForm.value.recordId) ? 'edit' : 'create'
-  if (!requireSalaryRecordPermission(action)) {
+  if (!requireSalaryRecordPermission('pay') || (action === 'create' && (!requireSalaryRecordPermission('create') || !requireSalaryRecordPermission('approve')))) {
     return
   }
 
@@ -1852,7 +1885,7 @@ const confirmSettle = async () => {
       ? settleForm.value.payment_method || undefined : undefined
     let savedRecord = pending.calculatedData
     if (!pending.existingRecord) {
-      const input = salaryCalculationInput(pending.calculatedData)
+      const input = { ...salaryCalculationInput(pending.calculatedData), status: 'approved' as const }
       const response = await salaryApi.saveCalculatedSalary({ ...input, ...(paymentMethod ? { payment_method: paymentMethod } : {}) })
       if (!response.data?.data) throw new Error('保存工资记录失败')
       savedRecord = response.data.data
@@ -1922,7 +1955,7 @@ const handleEditPayoutByEmployee = async (employee: SalaryEmployeeRow) => {
       id: record.id || null, employee_id: record.employee_id, salary_template_id: record.salary_template_id || null,
       base_salary: Number(record.base_salary) || 0, commission_amount: salaryPhoneCommission(record),
       overtime_pay: Number(record.overtime_pay) || 0, leave_deduction: Number(record.leave_deduction) || 0,
-      status: record.status || 'approved'
+      status: existing?.status || (salaryRecordPermissions.canApprove.value ? 'approved' : 'pending')
     }
     editPayoutDialogVisible.value = true
   } catch (error) { globalNotifications.error(getRequestErrorMessage(error, '加载工资失败')) }
@@ -1946,7 +1979,7 @@ const handleSaveEditPayout = async () => {
     for (const field of fields) {
       if (canUseSalaryField('salary_salaryrecordsview', field)) saveData[field] = editPayoutForm.value[field]
     }
-    if (canUseSalaryField('salary_salaryrecordsview', 'salary_status')) {
+    if (salaryRecordPermissions.canApprove.value && canUseSalaryField('salary_salaryrecordsview', 'salary_status')) {
       saveData.status = normalizeSalaryStatus(editPayoutForm.value.status)
     }
     // 手工金额不含商品提成；商品净额始终由服务器逐源核对后追加。
@@ -2124,7 +2157,8 @@ const buildAttendanceDateRange = (startDate: string, endDate: string) => {
 
 // 打开员工考勤记录对话框
 const handleViewAttendance = async (row: SalaryEmployeeRow) => {
-  if (!requireSalaryRecordPermission('view')) {
+  currentAttendanceEmployee.value = row
+  if (!requireAttendancePermission('view')) {
     return
   }
 
@@ -2137,7 +2171,7 @@ const handleViewAttendance = async (row: SalaryEmployeeRow) => {
 
 // 加载员工考勤记录
 const loadEmployeeAttendance = async (employeeId: number) => {
-  if (!canViewSalaryRecords.value) {
+  if (!canViewEmployeeAttendance(employeeId)) {
     attendanceRecords.value = []
     return
   }
@@ -2171,7 +2205,7 @@ const loadEmployeeAttendance = async (employeeId: number) => {
 
 // 打开新增考勤记录对话框
 const handleAddAttendance = () => {
-  if (!requireSalaryRecordPermission('create')) {
+  if (!requireAttendancePermission('create')) {
     return
   }
   if (!currentAttendanceEmployee.value?.salary_template_id) {
@@ -2190,14 +2224,14 @@ const handleAddAttendance = () => {
     overtime_hours: 2,
     monthly_leave_days: 1,
     reason: '',
-    status: 'approved'
+    status: attendancePermissions.canApprove.value ? 'approved' : 'pending'
   }
   attendanceFormVisible.value = true
 }
 
 // 打开编辑考勤记录对话框
 const handleEditAttendance = (row: AttendanceRecord & { reason?: string }) => {
-  if (!requireSalaryRecordPermission('edit')) {
+  if (!requireAttendancePermission('edit')) {
     return
   }
 
@@ -2219,7 +2253,7 @@ const handleEditAttendance = (row: AttendanceRecord & { reason?: string }) => {
 
 // 保存考勤记录（支持新增和编辑）
 const handleSaveAttendance = async () => {
-  if (!requireSalaryRecordPermission(editingAttendanceId.value ? 'edit' : 'create')) {
+  if (!requireAttendancePermission(editingAttendanceId.value ? 'edit' : 'create')) {
     return
   }
 
@@ -2240,7 +2274,7 @@ const handleSaveAttendance = async () => {
     const recordType = attendanceForm.value.record_type || 'leave'
     const recordDate = attendanceForm.value.record_date || TimeUtil.nowFormatted(TIME_FORMATS.DATE)
     const recordEndDate = attendanceForm.value.record_end_date || recordDate
-    const recordStatus = attendanceForm.value.status || 'approved'
+    const recordStatus = attendanceForm.value.status || 'pending'
     const recordDates = recordType === 'leave' || recordType === 'monthly_leave'
       ? buildAttendanceDateRange(recordDate, recordEndDate)
       : [recordDate]
@@ -2250,6 +2284,10 @@ const handleSaveAttendance = async () => {
       return
     }
     const isEdit = !!editingAttendanceId.value
+    if (isEdit && recordDates.length > 1 && !attendancePermissions.canCreate.value) {
+      attendancePermissions.handleNoPermission('create')
+      return
+    }
 
     // 根据记录类型构建提交数据
     const submitData: Partial<AttendanceRecord> & { employee_id: number } = {
@@ -2429,7 +2467,7 @@ const handleSaveAttendance = async () => {
 
 // 删除考勤记录
 const handleDeleteAttendance = async (id: number) => {
-  if (!requireSalaryRecordPermission('delete')) {
+  if (!requireAttendancePermission('delete')) {
     return
   }
 
@@ -2516,7 +2554,8 @@ const handleSaveTemplate = async () => {
     }
 
     // 构建自动涨薪规则
-    if (canUseSalaryField('salary_salarytemplatesview', 'template_auto_raise_enabled')) {
+    if (['template_auto_raise_enabled', 'template_auto_raise_months', 'template_auto_raise_amount', 'template_auto_raise_max_salary']
+      .every(field => canUseSalaryField('salary_salarytemplatesview', field))) {
       if (templateForm.value.auto_raise_enabled) {
         saveData.auto_raise_rule = JSON.stringify({
           enabled: true,
@@ -2550,7 +2589,7 @@ const handleSaveTemplate = async () => {
 }
 
 const handleSetDefault = async (row: SalaryTemplate) => {
-  if (!requireSalaryTemplatePermission('edit')) {
+  if (!requireSalaryTemplatePermission('edit') || !canUseSalaryField('salary_salarytemplatesview', 'template_is_default')) {
     return
   }
 
@@ -2569,7 +2608,7 @@ const handleSetDefault = async (row: SalaryTemplate) => {
 }
 
 const handleToggleTemplateStatus = async (row: SalaryTemplate) => {
-  if (!requireSalaryTemplatePermission('edit')) {
+  if (!requireSalaryTemplatePermission('edit') || !canUseSalaryField('salary_salarytemplatesview', 'template_is_active')) {
     return
   }
 
@@ -2724,6 +2763,7 @@ const handleRefresh = async () => {
 
 onMounted(async () => {
   if (!canAccessSalaryPage.value) {
+    shortcutPageReady.value = true
     return
   }
 
@@ -2745,6 +2785,7 @@ onMounted(async () => {
     activeTab.value = 'my'
     await Promise.all([loadMyRecords(), loadMyStats()])
   }
+  shortcutPageReady.value = true
 })
 
 // 监听标签切换，自动刷新数据（确保显示最新的考勤、销售等数据）
@@ -2787,6 +2828,14 @@ const openCurrentSalarySales = () => {
   detailDialogVisible.value = false
   return handleViewSalesDetail(row)
 }
+
+usePageShortcuts('/salary', {
+  'salary-template-create': { open: handleAddTemplate, ready: () => shortcutPageReady.value },
+  'salary-templates': { open: () => { activeTab.value = 'templates'; return handleTabChange('templates') }, ready: () => shortcutPageReady.value },
+  'salary-employees': { open: () => { activeTab.value = 'employees'; return handleTabChange('employees') }, ready: () => shortcutPageReady.value },
+  'salary-payout': { open: () => { activeTab.value = 'payout'; return handleTabChange('payout') }, ready: () => shortcutPageReady.value },
+  'salary-my': { open: () => { activeTab.value = 'my'; return handleTabChange('my') }, ready: () => shortcutPageReady.value }
+})
 </script>
 
 <style lang="scss" scoped src="./styles/salary-view.scss"></style>

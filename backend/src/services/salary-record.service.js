@@ -37,14 +37,20 @@ class SalaryRecordService {
   /** 写入只使用同一连接；发放与编辑/重算竞争时，以原记录行锁决定先后。 */
   async mutate(operation) {
     return this.repository.withConnection(async connection => {
-      await connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
-      await connection.beginTransaction()
+      let started = false
       try {
+        await connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+        await connection.beginTransaction()
+        started = true
         const result = await operation(connection)
         await connection.commit()
         return result
       } catch (error) {
-        await connection.rollback()
+        if (!started) connection.destroy()
+        else {
+          try { await connection.rollback() }
+          catch (rollbackError) { connection.destroy(); throw rollbackError }
+        }
         throw error
       }
     })
@@ -130,7 +136,7 @@ class SalaryRecordService {
       if (existing) reject('该员工周期已有工资，请编辑原记录', 'SALARY_PERIOD_CONFLICT')
       const preview = await this.withGoods(connection, calculated)
       assertCalculationVersion(preview, data.expected_calculation_version)
-      const salary = manualSalary(removeGoods(preview), { ...this.repository.sanitizeWriteData(data), created_by: userId })
+      const salary = manualSalary(removeGoods(preview), { ...this.repository.sanitizeWriteData(data), status: data.status ?? 'pending', created_by: userId })
       return this.persist(connection, applyGoods(salary, preview.goods_commission_snapshot))
     })
   }
@@ -163,6 +169,12 @@ class SalaryRecordService {
   async calculateSalary(employeeId, periodStart, periodEnd) {
     const input = { employee_id: employeeId, period_start: periodStart, period_end: periodEnd }
     identity(input)
+    // 已发记录保留原金额和商品核销事实，预览不依赖后来变动的模板或考勤公式。
+    const previous = await this.repository.getRecordByEmployeePeriod(employeeId, periodStart, periodEnd)
+    if (isPaid(previous)) {
+      const paid = await this.mutatePeriod(input, async (_connection, existing) => isPaid(existing) ? publicSalary(existing) : null)
+      if (paid) return paid
+    }
     const calculated = calculatedSalary(await this.calculator.calculateSalary(employeeId, periodStart, periodEnd))
     return this.mutatePeriod(input, async (connection, existing) => {
       if (isPaid(existing)) return publicSalary(existing)
@@ -330,7 +342,7 @@ class SalaryRecordService {
   /**
    * 批量重算未发工资；已发记录单独计入跳过数，不修改其原始快照。
    */
-  async bulkRecalculateByPeriod(periodStart, periodEnd, operatorId) {
+  async bulkRecalculateByPeriod(periodStart, periodEnd, operatorId, authorize = null, canApprove = false) {
     identity({ employee_id: 1, period_start: periodStart, period_end: periodEnd })
     const employees = await this.repository.activeEmployeeIds()
     const results = {
@@ -342,7 +354,7 @@ class SalaryRecordService {
 
     for (const emp of employees) {
       try {
-        await this.saveCalculatedSalary({ employee_id: emp.id, period_start: periodStart, period_end: periodEnd }, operatorId)
+        await this.saveCalculatedSalary({ employee_id: emp.id, period_start: periodStart, period_end: periodEnd, status: canApprove ? 'approved' : 'pending' }, operatorId, authorize)
         results.recalculated += 1
       } catch (error) {
         if (error.code === 'SALARY_RECORD_PAID') results.skipped_paid += 1

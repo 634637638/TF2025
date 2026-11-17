@@ -17,7 +17,8 @@ const interactionsOnly = process.argv.includes('--interactions-only')
 const safeAreaOnly = process.argv.includes('--safe-area-only')
 const priceHeaderOnly = process.argv.includes('--price-header-only')
 const mediaOnly = process.argv.includes('--media-only')
-const focusedRun = interactionsOnly || safeAreaOnly || priceHeaderOnly || mediaOnly
+const buttonsOnly = process.argv.includes('--buttons-only')
+const focusedRun = interactionsOnly || safeAreaOnly || priceHeaderOnly || mediaOnly || buttonsOnly
 const chrome = process.env.CHROME_BIN || [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'
@@ -56,7 +57,7 @@ function scanDialogs(directory) {
 scanDialogs(join(root, 'src'))
 const { quoteSaveModules, quoteHeaderModules } = createQuoteFixtureModules(root)
 const styleImports = []
-for (const [fileIndex, file] of (priceHeaderOnly ? [] : shellSources).entries()) {
+for (const [fileIndex, file] of (priceHeaderOnly || buttonsOnly ? [] : shellSources).entries()) {
   const path = join(root, 'src', file)
   const { descriptor } = parse(readFileSync(path, 'utf8'), { filename: path })
   for (const [index, style] of descriptor.styles.entries()) {
@@ -74,7 +75,7 @@ for (const [fileIndex, file] of (priceHeaderOnly ? [] : shellSources).entries())
 const entry = `
 import { createApp, h, reactive, nextTick } from 'vue';
 import { createPinia } from 'pinia';
-import { ElDialog, ElButton, ElMessageBox, ElIcon, ElInput } from 'element-plus';
+import { ElDialog, ElButton, ElMessageBox, ElIcon, ElInput, ElForm } from 'element-plus';
 import { WarningFilled, Grid, Box, Download } from '@element-plus/icons-vue';
 import PublicPriceHeader from '/src/components/base/PublicPriceHeader.vue';
 import PublicSearchBox from '/src/components/search/PublicSearchBox.vue';
@@ -207,12 +208,37 @@ window.stackMetrics = () => ({ ...stackState,
 });
 window.openStackConfirm = () => { ElMessageBox.confirm('确认删除', '嵌套确认').catch(() => {}); };
 const actionButtons = count => Array.from({ length: count }, (_, index) => h(ElButton, { size: ['small', 'default', 'large'][index % 3], type: ['primary', 'danger', 'warning'][index % 3] }, () => ['取消', '保存更改', '退库', '关闭'][index]));
+window.renderCommandButtons = async () => {
+  ElMessageBox.close(); app?.unmount(); await nextTick();
+  const button = (id, props = {}) => h(ElButton, { id, ...props }, () => '操作');
+  app = createApp({ render: () => h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' } }, [
+    button('command-default'), button('command-explicit-default', { size: 'default' }),
+    button('command-small', { size: 'small' }), button('command-large', { size: 'large' }),
+    button('command-compact', { class: 'tf-button--compact' }),
+    button('command-circle', { circle: true }), button('command-small-circle', { circle: true, size: 'small' }),
+    button('command-primary', { type: 'primary' }), button('command-danger', { class: 'tf-button--delete' }),
+    button('command-disabled', { disabled: true }), button('command-loading', { loading: true }),
+    h('div', { class: 'page-header' }, [h('div', { class: 'header-actions' }, [button('command-header')])]),
+    h(ElForm, { size: 'large' }, () => button('command-form-large')),
+    h(ElForm, { size: 'small' }, () => button('command-form-small')),
+    h(ElForm, { size: 'large' }, () => button('command-compact-form-large', { class: 'tf-button--compact' })),
+    h(ElForm, { size: 'small' }, () => button('command-compact-form-small', { class: 'tf-button--compact' }))
+  ]) });
+  app.component('ElButton', ElButton); app.mount('#app'); await nextTick();
+};
+window.commandMetrics = () => [...document.querySelectorAll('[id^="command-"]')].map(button => {
+  const rect = button.getBoundingClientRect(), css = getComputedStyle(button);
+  return { id: button.id, height: rect.height, width: rect.width, left: rect.left, right: rect.right,
+    font: parseFloat(css.fontSize), padding: parseFloat(css.paddingLeft), disabled: button.disabled,
+    background: css.backgroundColor, color: css.color, loading: button.classList.contains('is-loading') };
+});
 window.renderActions = async (kind, count = 3) => {
   ElMessageBox.close();
   app?.unmount();
   const pinia = createPinia();
   const content = kind === 'query'
-    ? () => h(QueryDetailContent, { detailItem: { 基本信息: {} }, canEdit: true, canDelete: count >= 2, canReturnToStock: count >= 3 })
+    // 隔离样本保留贴膜入口，再逐项增加编辑、删除和退库，覆盖 1～4 个操作。
+    ? () => h(QueryDetailContent, { detailItem: { 基本信息: {} }, canEdit: count >= 2, canDelete: count >= 3, canReturnToStock: count >= 4 })
     : () => h('div', { class: kind === 'toolbar' ? 'tf-dialog-toolbar' : 'tf-dialog-actions dialog-footer' }, actionButtons(count));
   app = createApp({ render: () => kind === 'messagebox' ? h('div') : kind === 'query' || kind === 'toolbar'
     ? h(MobileDialog, { modelValue: true, title: '设备销售信息', showDefaultFooter: false }, { default: content })
@@ -562,15 +588,49 @@ try {
     }
   }
   if (shellChecks) console.log(`业务弹窗外壳浏览器回归通过：${shellChecks} 组；加载 ${shellSources.length} 个真实 SFC 的样式，按源码中的业务 class/width 检查标题、关闭、正文/footer、边界及长内容滚动。此检查不替代业务整页或真机验收。`)
+  let commandChecks = 0
+  for (const viewport of buttonsOnly || !focusedRun ? [320, 390, 767, 768, 1024, 1440] : []) {
+    await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 1000, screenWidth: viewport, screenHeight: 1000, deviceScaleFactor: 1, mobile: viewport < 768 })
+    for (const theme of ['light', 'dark']) {
+      await evaluate(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`)
+      await evaluate('window.renderCommandButtons()')
+      await evaluate('new Promise(requestAnimationFrame)')
+      const metrics = await evaluate('window.commandMetrics()')
+      const expectedDefault = viewport < 768 ? Math.min(36, Math.max(34, viewport * 0.096)) : 28
+      const expectedSmall = viewport < 768 ? Math.min(32, Math.max(30, viewport * 0.0854)) : 28
+      for (const button of metrics) {
+        const expectedHeight = button.id === 'command-large' ? 44 : button.id === 'command-header'
+          ? viewport < 768 ? Math.min(30, Math.max(28, viewport * 0.075)) : 28
+          : button.id.startsWith('command-compact') || button.id === 'command-small' || button.id === 'command-small-circle' ? expectedSmall : expectedDefault
+        assert.ok(Math.abs(button.height - expectedHeight) < 0.1, `${viewport}/${theme}/${button.id} 高度 ${button.height} 应为 ${expectedHeight}`)
+        assert.ok(button.left >= -1 && button.right <= viewport + 1, `${button.id} 不得横向溢出`)
+        if (viewport >= 768) {
+          assert.equal(button.font, 13, `${button.id} 电脑端字号`)
+          assert.equal(button.padding, button.id.includes('circle') ? 0 : 10, `${button.id} 电脑端内边距`)
+        }
+        if (viewport < 768 && button.id.startsWith('command-compact')) {
+          assert.equal(button.font, 12, `${button.id} 手机端紧凑字号`)
+          assert.ok(Math.abs(button.padding - Math.min(8, Math.max(6, viewport * 0.0214))) < 0.1, `${button.id} 手机端紧凑内边距`)
+        }
+        if (button.id.includes('circle')) assert.equal(button.width, button.height, '圆形按钮必须等宽等高')
+      }
+      assert.equal(metrics.find(button => button.id === 'command-disabled').disabled, true)
+      assert.equal(metrics.find(button => button.id === 'command-loading').loading, true)
+      assert.notEqual(metrics.find(button => button.id === 'command-primary').background, metrics.find(button => button.id === 'command-default').background, '主按钮保留语义颜色')
+      commandChecks++
+    }
+  }
+  if (commandChecks) console.log(`全局默认紧凑按钮浏览器回归通过：${commandChecks} 组，默认不声明尺寸、显式尺寸、圆形、语义颜色、页头、禁用与 Loading，电脑/手机及明暗主题。`)
+
   let actionChecks = 0
-  for (const viewport of focusedRun ? [] : [360, 375, 390, 430, 767, 768, 1024, 1440]) {
+  for (const viewport of focusedRun && !buttonsOnly ? [] : [360, 375, 390, 430, 767, 768, 1024, 1440]) {
     await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
     for (const theme of ['light', 'dark']) {
       await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }, { name: 'prefers-reduced-motion', value: 'reduce' }] })
       await evaluate(`document.documentElement.dataset.theme = ${JSON.stringify(theme)}`)
-      const expectedHeight = viewport <= 767 ? Math.min(32, Math.max(30, viewport * 0.0854)) : viewport <= 1024 ? 40 : 32
+      const expectedHeight = viewport <= 767 ? Math.min(32, Math.max(30, viewport * 0.0854)) : viewport <= 1024 ? 40 : 28
       for (const kind of ['query', 'default', 'custom', 'raw', 'toolbar', 'messagebox']) {
-        for (const count of kind === 'query' ? [1, 2, 3] : ['default', 'messagebox'].includes(kind) ? [2] : [1, 2, 3, 4]) {
+        for (const count of ['default', 'messagebox'].includes(kind) ? [2] : [1, 2, 3, 4]) {
           await evaluate(`window.renderActions(${JSON.stringify(kind)}, ${count})`); await measure()
           const { contentLeft, contentRight, gap, buttons } = await evaluate('window.actionMetrics()')
           assert.equal(buttons.length, count, `${kind} 按钮数量`)
@@ -582,6 +642,9 @@ try {
             if (viewport <= 767) {
               assert.equal(button.font, 12, `${kind} 手机字号`)
               assert.ok(Math.abs(button.padding - Math.min(8, Math.max(6, viewport * 0.0214))) < 0.1, `${kind} 手机内边距`)
+            } else if (viewport > 1024) {
+              assert.equal(button.font, 13, `${kind} 电脑端字号`)
+              assert.equal(button.padding, 10, `${kind} 电脑端内边距`)
             }
             if (kind !== 'toolbar' && viewport <= 1024) {
               assert.ok(Math.abs(button.top - buttons[0].top) < 0.1, `${kind} 保持单行`)
@@ -604,7 +667,7 @@ try {
     }
   }
   if (actionChecks) console.log(`弹窗按钮浏览器回归通过：${actionChecks} 组，真实综合查询组件、默认/自定义/原生 footer、确认框和正文工具栏，1～4 个按钮、等宽/150px上限/居中、尺寸别名和明暗主题。`)
-  if (!interactionsOnly && !priceHeaderOnly && !mediaOnly) {
+  if (!interactionsOnly && !priceHeaderOnly && !mediaOnly && !buttonsOnly) {
     let safeAreaChecks = 0
     for (const [width, height] of [[375, 812], [430, 932], [667, 375], [812, 375], [768, 1024]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, screenWidth: width, screenHeight: height, deviceScaleFactor: 1, mobile: width < 768 })
@@ -651,7 +714,7 @@ try {
     await evaluate("document.documentElement.classList.remove('device-standalone')")
     console.log(`报价保存安全区浏览器回归通过：${safeAreaChecks} 组，销售/批发真实模板、普通浏览器/主屏幕安全区、明暗主题、竖屏/横屏；不替代 iOS 真机验收。`)
   }
-  if (!safeAreaOnly && !priceHeaderOnly && !mediaOnly) {
+  if (!safeAreaOnly && !priceHeaderOnly && !mediaOnly && !buttonsOnly) {
     for (const viewport of [1440, 1024, 768, 375]) {
       await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: false })
       for (const modal of [true, false]) {
@@ -679,7 +742,7 @@ try {
     }
     assert.fail(`${label}：${JSON.stringify(await evaluate('window.stackMetrics()'))}`)
   }
-  for (const viewport of safeAreaOnly || priceHeaderOnly || mediaOnly ? [] : [768, 375, 1440]) {
+  for (const viewport of safeAreaOnly || priceHeaderOnly || mediaOnly || buttonsOnly ? [] : [768, 375, 1440]) {
     await send('Emulation.setDeviceMetricsOverride', { width: viewport, height: 900, screenWidth: viewport, screenHeight: 900, deviceScaleFactor: 1, mobile: viewport < 768 })
     await evaluate('window.renderStack()'); await delay(400)
     await evaluate('document.querySelector(\'.stack-first input\').focus()')
@@ -707,7 +770,7 @@ try {
     await evaluate('window.updateStack({first:false})'); await delay(400)
     assert.equal((await evaluate('window.stackMetrics()')).locked, false, `${viewport}/最终关闭恢复滚动`)
   }
-  if (!safeAreaOnly && !priceHeaderOnly && !mediaOnly) {
+  if (!safeAreaOnly && !priceHeaderOnly && !mediaOnly && !buttonsOnly) {
     console.log('弹窗关闭浏览器回归通过：375/768/1024/1440px，有/无遮罩，标题关闭、主动重开、业务关闭后均无可见残留。')
     console.log('嵌套弹窗浏览器回归通过：375/768/1440px，Tab/Shift+Tab、媒体和确认框 Escape、焦点恢复及最终滚动解锁。')
   }

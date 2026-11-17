@@ -3,13 +3,20 @@
     v-if="canViewAccessoryField('distribution')"
     class="detail-section"
   >
-    <h3>店铺库存位置</h3>
-    <el-button
-      :disabled="loading"
-      @click="loadLocations"
-    >
-      刷新店铺库存
-    </el-button>
+    <div class="flex items-center justify-between gap-2 mb-3">
+      <h3 class="m-0">
+        店铺库存位置
+      </h3>
+      <div class="tf-dialog-toolbar">
+        <el-button
+          class="tf-button--refresh"
+          :disabled="loading"
+          @click="loadLocations"
+        >
+          刷新
+        </el-button>
+      </div>
+    </div>
     <el-alert
       v-if="failed"
       title="店铺库存读取失败，请刷新重试"
@@ -27,25 +34,29 @@
       <el-table-column
         prop="store_name"
         label="店铺"
-        min-width="140"
+        :min-width="getTextColumnMinWidth(['店铺', ...stores.map(row => row.store_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('total_quantity')"
         prop="quantity"
         label="剩余数量"
-        min-width="100"
+        :min-width="getTextColumnMinWidth(['剩余数量', ...stores.map(row => row.quantity)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('total_quantity') && canViewAccessoryField('serial_number')"
         prop="serial_quantity"
         label="SN库存"
-        min-width="100"
+        :min-width="getTextColumnMinWidth(['SN库存', ...stores.map(row => row.serial_quantity)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('total_quantity')"
         prop="plain_quantity"
         label="普通库存"
-        min-width="100"
+        :min-width="getTextColumnMinWidth(['普通库存', ...stores.map(row => row.plain_quantity)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <template #empty>
         <DataEmptyState
@@ -71,9 +82,10 @@ import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
 import { unifiedApi } from '@/utils/unified-api'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { getTextColumnMinWidth } from '@/utils/table-layout'
 import { canViewAccessoryField } from './accessory-field-permissions'
 import type { AccessoryStoreStock } from '@/types/accessory'
-const props = defineProps<{ accessoryId: number }>()
+const props = defineProps<{ accessoryId: number; refreshKey?: number }>()
 const stores = ref<AccessoryStoreStock[]>([])
 const loading = ref(false)
 const failed = ref(false)
@@ -92,7 +104,7 @@ const loadLocations = async () => {
     if (request.isLatest() && !requests.isCanceledError(error)) failed.value = true
   } finally { if (request.isLatest()) loading.value = false }
 }
-watch(() => props.accessoryId, () => { stores.value = []; void loadLocations() }, { immediate: true })
+watch(() => [props.accessoryId, props.refreshKey], () => { stores.value = []; void loadLocations() }, { immediate: true })
 
 const { isMobile } = useMobile()
 const { detailRow, detailVisible, doubleTapOptions: detailTapOptions, handleRowDoubleClick: detailDoubleClick } = useMobileTableDetail({

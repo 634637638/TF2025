@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_ids: [1, 2, 3, 4, 5] }
+
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const SalesAvailablePhonesService = require('../src/services/sales-available-phones.service')
@@ -47,11 +49,11 @@ test('available phone filters preserve status prefix, reference lookup, and para
     sale_status: 'reserved',
     salesman_id: '11',
     price_range: '100-200'
-  }, { preorderDeliveryPhoneId: 55 })
+  }, { actor: scopedActor, preorderDeliveryPhoneId: 55 })
 
   assert.equal(filters.whereConditions[0], "COALESCE(p.status, '') NOT IN (?, ?, ?)")
   assert.deepEqual(filters.queryParams.slice(0, 3), ['sold', 'peer_transfer', 'supplier_proxy'])
-  assert.deepEqual(filters.queryParams.slice(3), [55, '%123%', '%123%', '%123%', '123', '%123%', '%123%', 123, '3', 7, 8, 9, 42, 42, '11', 100, 200])
+  assert.deepEqual(filters.queryParams.slice(3), [55, '%123%', '%123%', '%123%', '123', '%123%', '%123%', 123, 3, 7, 8, 9, 42, 42, '11', 100, 200])
   assert.ok(filters.whereConditions.some(condition => condition.includes("p.status IN ('in_stock', 'reserved')")))
   assert.ok(filters.whereConditions.some(condition => condition.includes('p.model_id IN (?,?)')))
   assert.ok(filters.whereConditions.some(condition => condition.includes("p.status = 'reserved'")))
@@ -76,7 +78,7 @@ test('available phone service validates preorder delivery and normalizes list re
   const repository = createRepositoryStub({
     async findPreorderDelivery(id) {
       calls.push(['preorder', id])
-      return { status: 'arrived', matched_phone_id: 81 }
+      return { status: 'arrived', store_id: 4, matched_phone_id: 81 }
     },
     async getAvailablePhones(options) {
       calls.push(['list', options])
@@ -88,10 +90,10 @@ test('available phone service validates preorder delivery and normalizes list re
     }
   })
   const service = new SalesAvailablePhonesService({ repository })
-  const result = await service.getAvailablePhones({ store_id: '4' }, { page: 2, pageSize: 25, preorderId: 17 })
+  const result = await service.getAvailablePhones({ store_id: '4' }, { actor: scopedActor, page: 2, pageSize: 25, preorderId: 17 })
 
   assert.deepEqual(calls[0], ['preorder', 17])
-  assert.deepEqual(calls[1][1].queryParams.slice(-2), [81, '4'])
+  assert.deepEqual(calls[1][1].queryParams.slice(-2), [81, 4])
   assert.equal(calls[1][1].page, 2)
   assert.equal(calls[1][1].pageSize, 25)
   assert.deepEqual(result, {
@@ -102,14 +104,14 @@ test('available phone service validates preorder delivery and normalizes list re
 
   for (const [preorder, statusCode] of [
     [null, 404],
-    [{ status: 'pending', matched_phone_id: 81 }, 400],
-    [{ status: 'arrived', matched_phone_id: null }, 400]
+    [{ status: 'pending', store_id: 4, matched_phone_id: 81 }, 400],
+    [{ store_id: 4, status: 'arrived', matched_phone_id: null }, 400]
   ]) {
     const invalidService = new SalesAvailablePhonesService({
       repository: createRepositoryStub({ async findPreorderDelivery() { return preorder } })
     })
     await assert.rejects(
-      invalidService.getAvailablePhones({}, { page: 1, pageSize: 20, preorderId: 17 }),
+      invalidService.getAvailablePhones({}, { actor: scopedActor, page: 1, pageSize: 20, preorderId: 17 }),
       error => error.statusCode === statusCode
     )
   }
@@ -200,10 +202,10 @@ test('available phone stats service normalizes results and uses Beijing midnight
       }
     })
   })
-  const result = await service.getStats({ store_id: '5' })
+  const result = await service.getStats({ store_id: '5' }, scopedActor)
   assert.deepEqual(result, { total_value: 1200.25, today_sold: 4, avg_profit_margin: 15 })
   assert.equal(received.todayStart, '2026-11-07 00:00:00')
-  assert.deepEqual(received.todayQueryParams, ['5'])
+  assert.deepEqual(received.todayQueryParams, [5])
 })
 
 test('available phone stats route keeps auth and permission, controller preserves responses', async () => {
@@ -248,7 +250,7 @@ test('available phone list validates page bounds and returns canonical paginatio
 
   const response = { json(body) { this.body = body; return this } }
   await controller.getAvailablePhones({ query: { page: '2', page_size: '20' } }, response)
-  assert.deepEqual(calls, [[{ page: '2', page_size: '20' }, { page: 2, pageSize: 20, preorderId: null }]])
+  assert.deepEqual(calls, [[{ page: '2', page_size: '20' }, { actor: undefined, page: 2, pageSize: 20, preorderId: null }]])
   assert.deepEqual(response.body.pagination, {
     page: 2,
     page_size: 20,

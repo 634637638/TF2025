@@ -19,6 +19,7 @@ class CustomerController {
     } catch (error) {
       if (error.statusCode === 400) return this.response.badRequest(res, error.message)
       if (error.statusCode === 404) return this.response.notFound(res, error.message)
+      if (error.code === 'ER_NO_SUCH_TABLE') return this.response.error(res, '账户流水结构尚未迁移，请先完成账户流水迁移', 409)
 
       this.logger.error('搜索客户失败:', error)
       return this.response.serverError(res, '搜索客户失败', error)
@@ -63,6 +64,17 @@ class CustomerController {
 
       this.logger.error('获取客户积分设置失败:', error)
       return this.response.serverError(res, '获取客户积分设置失败', error)
+    }
+  }
+
+  async getPointsProducts(req, res) {
+    try {
+      const result = await this.service.getPointsProducts(req.query || {})
+      return this.response.success(res, result.data, result.message, 200, result.extra)
+    } catch (error) {
+      if (error.statusCode === 400) return this.response.badRequest(res, error.message)
+      this.logger.error('获取积分商品失败:', error)
+      return this.response.serverError(res, '获取积分商品失败', error)
     }
   }
 
@@ -143,6 +155,32 @@ class CustomerController {
 
       this.logger.error('获取客户消费记录失败:', error)
       return this.response.serverError(res, '获取客户消费记录失败', error)
+    }
+  }
+
+  async getAccountLedger(req, res) {
+    try {
+      const result = await this.service.getAccountLedger(req.params, req.query)
+      return this.response.success(res, result.data, result.message)
+    } catch (error) {
+      if (error.statusCode === 400) return this.response.badRequest(res, error.message)
+      if (error.statusCode === 404) return this.response.notFound(res, error.message)
+      if (error.statusCode === 409) return this.response.error(res, error.message, 409)
+      this.logger.error('获取客户账户明细失败:', error)
+      return this.response.serverError(res, '获取客户账户明细失败', error)
+    }
+  }
+
+  async adjustAccount(req, res) {
+    try {
+      const result = await this.service.adjustAccount(req.params, req.body, req.user)
+      return this.response.success(res, result.data, result.message)
+    } catch (error) {
+      if (error.statusCode === 400) return this.response.badRequest(res, error.message)
+      if (error.statusCode === 404) return this.response.notFound(res, error.message)
+      if (error.statusCode === 409) return this.response.error(res, error.message, 409)
+      this.logger.error('调整客户账户失败:', error)
+      return this.response.serverError(res, '调整客户账户失败', error)
     }
   }
 

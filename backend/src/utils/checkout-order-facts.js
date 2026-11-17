@@ -37,7 +37,8 @@ function readCheckoutOrder(header, rows) {
       product_model: null, color_name: text(snapshot.color_name), memory: text(snapshot.memory_name),
       imei: text(snapshot.imei), serial_numbers: snapshot.serial_number ? [snapshot.serial_number] : [],
       unit: '台', quantity: 1, unit_price: moneyCents(row.unit_price) / 100, total_amount: moneyCents(row.total_amount) / 100,
-      gross_amount: moneyCents(row.total_amount) / 100, points_used: 0, deduction_amount: 0, points_awarded: Number(row.points_awarded) }
+      gross_amount: moneyCents(row.total_amount) / 100, points_used: 0, deduction_amount: 0, points_awarded: Number(row.points_awarded),
+      gift_return_unit_price: null, gift_return_total: null, gift_agreement_state: null }
     if (row.item_type !== 'accessory' || !integer(row.accessory_sale_id) || Number(row.accessory_sale_id) < 1 || !integer(row.accessory_id) || Number(row.accessory_id) < 1 ||
       Number(row.accessory_id) !== Number(row.goods_accessory_id) ||
       Number(row.quantity) !== Number(row.goods_quantity) || moneyCents(row.unit_price) !== moneyCents(row.goods_unit_price) ||
@@ -51,7 +52,8 @@ function readCheckoutOrder(header, rows) {
       sale_type: item.sale_type, name: item.name, brand_name: text(snapshot.brand_name), product_model: text(snapshot.product_model),
       color_name: text(snapshot.color_name), memory: null, imei: null, serial_numbers: item.serial_numbers, unit: text(snapshot.unit),
       quantity: item.quantity, unit_price: item.unit_price, total_amount: item.total_amount, gross_amount: item.gross_amount,
-      points_used: item.points_used, deduction_amount: item.deduction_amount, points_awarded: item.points_awarded }
+      points_used: item.points_used, deduction_amount: item.deduction_amount, points_awarded: item.points_awarded,
+      gift_return_unit_price: item.gift_return_unit_price, gift_return_total: item.gift_return_total, gift_agreement_state: item.gift_agreement_state }
   })
   const sums = items.reduce((sum, item) => ({ gross: sum.gross + Math.round(item.gross_amount * 100),
     net: sum.net + Math.round(item.total_amount * 100), deduction: sum.deduction + Math.round(item.deduction_amount * 100),

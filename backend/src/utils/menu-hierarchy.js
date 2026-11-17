@@ -30,6 +30,21 @@ function buildHierarchicalMenu(flatMenus) {
   return sortMenus(rootMenus)
 }
 
+function sortModulesByMenu(modules, menus, normalizeModuleKey) {
+  const positions = new Map()
+  const visit = nodes => {
+    for (const menu of nodes) {
+      const key = menu.module_key && normalizeModuleKey(menu.module_key)
+      if (key && !positions.has(key)) positions.set(key, positions.size)
+      visit(menu.children || [])
+    }
+  }
+  visit(buildHierarchicalMenu(menus))
+  // 无导航位置的模块保留原分类/名称顺序，既不丢失，也不挤到已配置菜单前。
+  const position = module => positions.get(normalizeModuleKey(module.module_key)) ?? Number.MAX_SAFE_INTEGER
+  return [...modules].sort((left, right) => position(left) - position(right))
+}
+
 function formatMenus(menus) {
   return menus.map((menu) => ({
     id: menu.id,
@@ -44,4 +59,4 @@ function formatMenus(menus) {
   }))
 }
 
-module.exports = { buildHierarchicalMenu, formatMenus }
+module.exports = { buildHierarchicalMenu, sortModulesByMenu, formatMenus }

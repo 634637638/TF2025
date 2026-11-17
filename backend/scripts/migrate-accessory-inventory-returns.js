@@ -3,7 +3,7 @@
 const fs = require('node:fs/promises')
 const path = require('node:path')
 const crypto = require('node:crypto')
-const { inspect: inspectInventory, definitions, returnEventType } = require('./migrate-accessory-inventory-events')
+const { inspect: inspectInventory, definitions, returnEventType, correctionEventTypes } = require('./migrate-accessory-inventory-events')
 
 const RETURN_ENUM = returnEventType
 const columns = {
@@ -29,7 +29,8 @@ async function inspect(db) {
   }
   const eventType = type(fields.find(row => row.COLUMN_NAME === 'event_type')?.COLUMN_TYPE)
   if (eventType === definitions.event_type) sql.push(`MODIFY COLUMN event_type ${RETURN_ENUM} NOT NULL`)
-  else if (eventType !== RETURN_ENUM.toLowerCase()) throw new Error('退货流水事件枚举冲突')
+  else if (eventType === correctionEventTypes[0]) sql.push(`MODIFY COLUMN event_type ${correctionEventTypes[1]} NOT NULL`)
+  else if (![RETURN_ENUM.toLowerCase(), correctionEventTypes[1]].includes(eventType)) throw new Error('退货流水事件枚举冲突')
   const [keys] = await db.query(`SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX
     FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accessory_inventory_events' ORDER BY INDEX_NAME, SEQ_IN_INDEX`)
   const addedIndexes = []
@@ -40,7 +41,7 @@ async function inspect(db) {
     if (rows.map(row => row.COLUMN_NAME).join(',') !== names.join(',') || rows.some(row => Number(row.NON_UNIQUE) !== Number(!unique))) throw new Error(`退货流水索引结构冲突：${name}`)
     addedIndexes.push(name)
   }
-  return { sql, added, addedIndexes, extended: eventType === RETURN_ENUM.toLowerCase() }
+  return { sql, added, addedIndexes, extended: [RETURN_ENUM.toLowerCase(), correctionEventTypes[1]].includes(eventType), corrected: correctionEventTypes.includes(eventType) }
 }
 
 async function snapshot(db) {
@@ -58,6 +59,7 @@ async function migrate(db, { apply = false, rollback = false, backupFile } = {})
   const state = await inspect(db)
   let changes = state.sql
   if (rollback) {
+    if (state.corrected) throw new Error('请先受控回退商品库存更正结构，再回退返库结构')
     if (state.added.length || state.extended) {
       const conditions = ["event_type IN ('sale_return','gift_return')", ...state.added.map(name => `${name} IS NOT NULL`)]
       const [[row]] = await db.query(`SELECT COUNT(*) AS count FROM accessory_inventory_events WHERE ${conditions.join(' OR ')}`)

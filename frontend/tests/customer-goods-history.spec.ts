@@ -14,7 +14,7 @@ const access = reactive({ customers: true, query: true, accessories: true })
 const hidden = ref<string[]>([])
 const isMobile = ref(true), isTablet = ref(false)
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: mocks }))
-vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: keyof typeof access) => ({ canView: computed(() => access[module]) }) }))
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: keyof typeof access) => ({ canView: computed(() => access[module]), hasPermission: (action: string) => action === 'goods-view' && access.accessories }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: {
   isFieldVisible: (_module: string, field: string) => !hidden.value.includes(field), getHiddenFields: () => hidden.value
 } }))

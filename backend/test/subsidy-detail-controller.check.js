@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -26,7 +28,7 @@ test('subsidy detail service formats values, signs photos, builds handler data a
   const service = new Service({
     repository: { async findById() {
       return {
-        sale_price: '10.50', subsidy_amount: '2.25', subsidy_rate: '0.2',
+        store_id: 1, sale_price: '10.50', subsidy_amount: '2.25', subsidy_rate: '0.2',
         sale_time_formatted: '2026-11-08', subsidy_photos: '["/uploads/subsidy/a.jpg"]',
         has_different_handler: 1, handler_name: 'A', handler_phone: '123', handler_idcard: 'ID'
       }
@@ -39,7 +41,7 @@ test('subsidy detail service formats values, signs photos, builds handler data a
     logger: { error(...args) { loggerCalls.push(args) } }
   })
 
-  const detail = await service.getById('4', 9)
+  const detail = await service.getById('4', 9, scopedActor)
   assert.equal(detail.sale_price, 10.5)
   assert.equal(detail.subsidy_amount, 2.25)
   assert.equal(detail.subsidy_rate, 0.2)
@@ -61,10 +63,10 @@ test('subsidy detail service returns null and tolerates malformed stored photos'
     maskingService: { maskDataItem(item) { return item } },
     logger: { error(...args) { errors.push(args) } }
   })
-  assert.equal(await service.getById('missing', 9), null)
+  assert.equal(await service.getById('missing', 9, scopedActor), null)
 
-  record = { subsidy_photos: '{invalid', has_different_handler: 0 }
-  const detail = await service.getById('4', 9)
+  record = { store_id: 1, subsidy_photos: '{invalid', has_different_handler: 0 }
+  const detail = await service.getById('4', 9, scopedActor)
   assert.deepEqual(detail.subsidy_photos, [])
   assert.equal(detail.handler_info, null)
   assert.equal(errors.length, 1)

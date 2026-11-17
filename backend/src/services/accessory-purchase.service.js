@@ -10,7 +10,7 @@ const InventoryRepository = require('../repositories/accessory-inventory.reposit
 const { hasTable } = require('./schema-inspector.service')
 const { validId, moneyCents } = require('../utils/sale-input')
 const { projectPurchaseSnapshot } = require('../utils/accessory-purchase-snapshot')
-const { parsePurchaseReturnSelection, allocatePurchaseReturn } = require('../utils/accessory-purchase-return')
+const { parsePurchaseReturnSelection, allocatePurchaseReturn, planPurchaseReturnSettlement } = require('../utils/accessory-purchase-return')
 const PAYMENT_RECONCILE_PAGE_SIZE = 100
 
 class AccessoryPurchaseService extends BaseService {
@@ -107,13 +107,14 @@ class AccessoryPurchaseService extends BaseService {
   async quoteReturn(actor, id, body = {}) {
     this.getActorId(actor)
     if (!validId(id)) throw this.createError('原采购单无效', 400, 'VALIDATION_ERROR')
-    const { batches, serialIds } = parsePurchaseReturnSelection(body)
+    const { batches, serialIds, settlementMode } = parsePurchaseReturnSelection(body)
     return this.withReturnSnapshot(actor, id, {}, { includeSerials: false }, async ({ purchase, payment, input, ledgerStatus, currentQuantity }, connection) => {
       if (ledgerStatus !== 'verified') throw this.createError('历史采购来源未核对，无法试算退供', 409, 'PURCHASE_RETURN_UNTRACKED')
       const selected = await this.inventory.purchaseReturnSelection({ ...input, serialIds, batchEventIds: batches.map(row => Number(row.row_key.slice(6))) }, connection)
       const plan = allocatePurchaseReturn({ purchase, scope: input.scope, currentQuantity, batches, serialIds, selected })
       return { purchase_id: Number(id), quantity: plan.quantity, purchase_cost: Number(purchase.purchase_cost), total_amount: plan.costCents / 100,
         payment_status: payment.payment_status, latest_event_id: payment.latest_event_id, preview_only: true,
+        ...(settlementMode === undefined ? {} : { settlement: planPurchaseReturnSettlement(payment.payment_status, settlementMode, plan.costCents) }),
         data: plan.allocations.map(row => ({ row_key: row.row_key, store_id: row.store_id, store_name: row.store_name,
           quantity: row.quantity, usage_type: row.usage_type, serial_tracking: row.serial_tracking, serial_numbers: row.serial_numbers })) }
     })
@@ -124,11 +125,17 @@ class AccessoryPurchaseService extends BaseService {
     for (;;) {
       const events = await this.repository.paymentEventsAfter(purchase.id, after, PAYMENT_RECONCILE_PAGE_SIZE, connection)
       for (const event of events) {
+        try { this.paymentDetails(event.payment_method, event.payment_time) }
+        catch (error) {
+          if (error.code !== 'VALIDATION_ERROR') throw error
+          throw this.createError('采购付款方式或时间不完整，请核对原登记', 409, 'PURCHASE_PAYMENT_CONFLICT')
+        }
         const valid = Number.isSafeInteger(Number(event.id)) && Number(event.id) > after &&
           Number(event.stock_in_id) === Number(purchase.id) && Number(event.supplier_id) === Number(purchase.supplier_id) &&
           moneyCents(event.amount) === amount && amount > 0 &&
           (event.action === 'pay' ? last?.action !== 'pay' && event.reference_event_id === null :
-            event.action === 'cancel' && last?.action === 'pay' && Number(event.reference_event_id) === Number(last.id))
+            event.action === 'cancel' && last?.action === 'pay' && Number(event.reference_event_id) === Number(last.id) &&
+              event.payment_method === last.payment_method && event.payment_time === last.payment_time)
         if (!valid) throw this.createError('采购付款追加账不一致，请核对原登记', 409, 'PURCHASE_PAYMENT_CONFLICT')
         last = event; after = Number(event.id)
       }
@@ -151,6 +158,15 @@ class AccessoryPurchaseService extends BaseService {
     if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() !== month - 1 || parsed.getUTCDate() !== day) throw this.createError('日期无效', 400, 'VALIDATION_ERROR')
     return value
   }
+  paymentDetails(method, value) {
+    if (!settlement.some(item => item.value === method) || typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
+      throw this.createError('请选择打款方式和完整的北京时间', 400, 'VALIDATION_ERROR')
+    }
+    this.date(value.slice(0, 10))
+    const [hours, minutes, seconds] = value.slice(11).split(':').map(Number)
+    if (hours > 23 || minutes > 59 || seconds > 59) throw this.createError('打款时间无效', 400, 'VALIDATION_ERROR')
+    return { method, paymentTime: normalizeDateTime(value, false) }
+  }
   async list(actor, input = {}) {
     this.getActorId(actor)
     const query = { page: this.integer(input.page, '页码', 1, 1000000), page_size: this.integer(input.page_size, '每页数量', 20, 100),
@@ -167,11 +183,14 @@ class AccessoryPurchaseService extends BaseService {
       query[field] = query[field].trim()
     }
     resolveStoreScope(actor, query.store_id)
-    const result = await this.repository.list(resolveStoreScope(actor, null), query)
-    return { ...result, rows: result.rows.map(raw => { const row = projectPurchaseSnapshot(raw); return { ...row, id: Number(row.id),
-      accessory_id: row.accessory_id === null || row.accessory_id === undefined ? null : Number(row.accessory_id),
-      supplier_id: Number(row.supplier_id), store_id: Number(row.store_id), latest_event_id: Number(row.latest_event_id || 0) } }),
-    summary: { ...result.summary, total: Number(result.summary.total) } }
+    const scope = resolveStoreScope(actor, null)
+    return this.withReadSnapshot(async connection => {
+      const result = await this.repository.list(scope, query, connection)
+      return { ...result, rows: result.rows.map(raw => { const row = projectPurchaseSnapshot(raw); return { ...row, id: Number(row.id),
+        accessory_id: row.accessory_id === null || row.accessory_id === undefined ? null : Number(row.accessory_id),
+        supplier_id: Number(row.supplier_id), store_id: Number(row.store_id), latest_event_id: Number(row.latest_event_id || 0) } }),
+      summary: { ...result.summary, total: Number(result.summary.total) } }
+    })
   }
   async history(actor, id, query = {}) {
     this.getActorId(actor)
@@ -192,21 +211,14 @@ class AccessoryPurchaseService extends BaseService {
     if (!['pay', 'cancel'].includes(action) || typeof input.request_key !== 'string' || !/^[a-f0-9]{32}$/.test(input.request_key)) throw this.createError('请求标识无效，请重新打开登记窗口', 400, 'VALIDATION_ERROR')
     const remarks = input.remarks === undefined ? '' : input.remarks
     if (typeof remarks !== 'string' || remarks.trim().length > 1000 || (action === 'cancel' && !remarks.trim())) throw this.createError('请填写有效备注，撤销必须填写原因（最多1000字）', 400, 'VALIDATION_ERROR')
-    let paymentTime = null
-    let method = null
-    if (action === 'pay') {
-      method = input.payment_method
-      if (!settlement.some(item => item.value === method) || typeof input.payment_time !== 'string' || !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(input.payment_time)) throw this.createError('请选择打款方式和完整的北京时间', 400, 'VALIDATION_ERROR')
-      this.date(input.payment_time.slice(0, 10))
-      const [hours, minutes, seconds] = input.payment_time.slice(11).split(':').map(Number)
-      if (hours > 23 || minutes > 59 || seconds > 59) throw this.createError('打款时间无效', 400, 'VALIDATION_ERROR')
-      paymentTime = normalizeDateTime(input.payment_time, false)
-    }
+    const { method, paymentTime } = action === 'pay' ? this.paymentDetails(input.payment_method, input.payment_time) : { method: null, paymentTime: null }
     const hash = crypto.createHash('sha256').update(JSON.stringify([operatorId, purchaseId, action, expected, method, paymentTime, remarks.trim()])).digest('hex')
     try {
       return await this.repository.withConnection(async connection => {
-        await connection.beginTransaction()
+        let started = false
         try {
+          await connection.beginTransaction()
+          started = true
           const purchase = await this.repository.getPurchase(purchaseId, resolveStoreScope(actor, null), connection, true)
           if (!purchase) throw this.createError('采购单不存在或无权操作', 404, 'NOT_FOUND')
           const replay = await this.repository.byKey(input.request_key, connection)
@@ -230,7 +242,12 @@ class AccessoryPurchaseService extends BaseService {
             operator_id: operatorId, operator_name: actor.name || actor.username || '', created_at: getBeijingTimeString() }, connection)
           await connection.commit()
           return { id: Number(eventId), action, amount: cents / 100, replayed: false }
-        } catch (error) { await connection.rollback(); throw error }
+        } catch (error) {
+          if (!started) { connection.destroy(); throw error }
+          try { await connection.rollback() }
+          catch (rollbackError) { connection.destroy(); throw rollbackError }
+          throw error
+        }
       })
     } catch (error) {
       if (error.code === 'ER_DUP_ENTRY') throw this.createError('请求已处理，请刷新核对原登记', 409, 'PAYMENT_REQUEST_CONFLICT')

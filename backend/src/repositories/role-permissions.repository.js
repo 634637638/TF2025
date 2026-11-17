@@ -1,6 +1,8 @@
 'use strict'
 
-class RolePermissionsRepository {
+const PermissionMenuRepository = require('./permission-menu.repository')
+
+class RolePermissionsRepository extends PermissionMenuRepository {
   async findRole(database, roleId) {
     const [roles] = await database.execute(
       'SELECT id, name FROM roles WHERE id = ?',

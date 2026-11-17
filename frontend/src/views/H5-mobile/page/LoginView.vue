@@ -60,7 +60,6 @@
       <el-form-item>
         <el-button
           type="primary"
-          size="large"
           native-type="button"
           :loading="loading"
           class="w-full"

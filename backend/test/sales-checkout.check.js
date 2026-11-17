@@ -24,16 +24,17 @@ const request = () => ({ request_key: 'a'.repeat(32), store_id: 1, operator_id: 
     { key: 'gift', accessory_id: 5, quantity: 1, unit_price: 0, sale_type: 'gift', linked_phone_id: 13, serial_numbers: ['00aa'] }],
   payment_info: { payment_method: 'cash', payment_amount: 600 }, remarks: '整批一个备注' })
 
-function fixture({ failAt, denied = [], initialPoints = 10, phoneStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule } = {}) {
+function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneStore = 1, goodsStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule, transactionFailure } = {}) {
   const state = { orders: [], items: [], payments: [], sales: [], accessorySales: [], stock: 4,
-    points: initialPoints, entries: trackedPoints ? [{ id: 1, customer_id: 9, entry_type: 'award', source_type: 'phone_sale', source_id: 999, points: trackedPoints }] : [], allocations: [], customerUpdates: [], sold: [], staged: [], serials: [{ id: 1, serial_number: '00AA', accessory_id: 5, store_id: 1,
+    points: initialPoints, entries: trackedPoints ? [{ id: 1, customer_id: 9, entry_type: 'award', source_type: 'phone_sale', source_id: 999, points: trackedPoints }] : [], allocations: [], customerUpdates: [], sold: [], staged: [], serials: [{ id: 1, serial_number: '00AA', accessory_id: 5, store_id: goodsStore,
       status: 'in_stock', stock_in_id: 30, purchase_cost: '10.25' }], serialEvents: [] }
   let snapshot, failure = failAt, tail = Promise.resolve(), remainingDeadlocks = deadlocks, active = false
   const events = [], check = db => assert.equal(db, connection)
   const connection = {
-    async beginTransaction() { assert.equal(active, false); active = true; snapshot = structuredClone(state); events.push('begin') },
-    async commit() { assert.equal(active, true); active = false; events.push('commit') },
-    async rollback() { assert.equal(active, true); active = false; Object.assign(state, snapshot); events.push('rollback') }
+    async beginTransaction() { assert.equal(active, false); events.push('begin'); if (transactionFailure === 'begin') throw new Error('begin-failed'); active = true; snapshot = structuredClone(state) },
+    async commit() { assert.equal(active, true); events.push('commit'); if (transactionFailure === 'commit') throw new Error('commit-failed'); active = false },
+    async rollback() { assert.equal(active, true); events.push('rollback'); if (transactionFailure === 'rollback') throw new Error('rollback-failed'); active = false; Object.assign(state, snapshot) },
+    destroy() { events.push('destroy'); active = false }
   }
   const customers = { get 9() { return state.points }, set 9(value) { state.points = value } }
   const executor = ledgerExecutor({ getState: () => ({ customers, entries: state.entries, allocations: state.allocations }),
@@ -66,9 +67,9 @@ function fixture({ failAt, denied = [], initialPoints = 10, phoneStore = 1, dead
   const config = normalizePointsConfig(pointsConfig || { include_accessories: true })
   const phones = new SalesPhoneService({ repository: {
     async withConnection() { assert.fail('外层事务不得重新租连接') },
-    async findCustomerByPhone(db) { check(db); return { id: 9 } },
+    async findCustomerByPhone(db) { check(db); return { id: 9, name: '测试客户' } },
     async updateCustomer(db, row) { check(db); state.customerUpdates.push(row) },
-    async findPhonesForSale(db, ids) { check(db); return ids.map(id => ({ id, purchase_cost: state.staged.some(row => row.id === id) ? state.staged.find(row => row.id === id).values[8] : 80, status: state.sold.includes(id) ? 'sold' : 'in_stock', is_new: state.staged.find(row => row.id === id)?.values[10] ?? (id === 12 ? 1 : 0) })) },
+    async findPhonesForSale(db, ids) { check(db); return ids.map(id => ({ id, store_id: phoneStore, purchase_cost: state.staged.some(row => row.id === id) ? state.staged.find(row => row.id === id).values[8] : 80, status: state.sold.includes(id) ? 'sold' : 'in_stock', is_new: state.staged.find(row => row.id === id)?.values[10] ?? (id === 12 ? 1 : 0) })) },
     async findDuplicateSales(db) { check(db); return [] },
     async createSale(db, row) { check(db); const id = state.sales.length + 21; state.sales.push({ ...row, id }); return id },
     async createPayment(db, row) { check(db); const id = state.payments.length + 1; state.payments.push({ ...row, id }); return id },
@@ -87,13 +88,13 @@ function fixture({ failAt, denied = [], initialPoints = 10, phoneStore = 1, dead
   const accessories = new AccessoryService({ repository: {
     async getAccessoryById(id, db) { check(db); return id === 5 ? product : null },
     async lockAccessory(id, db) { check(db); return product },
-    async lockStoreStock(id, store, db) { check(db); return { quantity: state.stock } },
-    async countStockSerials(id, store, db) { check(db); return state.serials.filter(row => row.status === 'in_stock').length },
+    async lockStoreStock(id, store, db) { check(db); return store === goodsStore ? { quantity: state.stock } : null },
+    async countStockSerials(id, store, db) { check(db); return state.serials.filter(row => row.store_id === store && row.status === 'in_stock').length },
     async lockSerials(numbers, db) { check(db); return state.serials.filter(row => numbers.includes(row.serial_number)) },
     async createSalesRecord(row, db) { check(db); const id = state.accessorySales.length + 1; state.accessorySales.push({ ...row, id }); return id },
     async markSerialOut(id, saleId, type, time, db) { check(db); state.serials.find(row => row.id === id).status = type === 'gift' ? 'gifted' : 'sold'; return true },
     async createSerialEvent(row, db) { check(db); if (failure === 'serial') throw new Error('serial-failed'); state.serialEvents.push(row) },
-    async deductStock(id, store, quantity, db) { check(db); if (state.stock < quantity) return false; state.stock -= quantity; return true }
+    async deductStock(id, store, quantity, db) { check(db); if (store !== goodsStore || state.stock < quantity) return false; state.stock -= quantity; return true }
   }, inventoryService: inventoryFixture(state, check) })
   const inventory = new InventoryService({ repository: {
     async validateQuickSaleReferences(db) { check(db); return validReferences },
@@ -109,7 +110,7 @@ function fixture({ failAt, denied = [], initialPoints = 10, phoneStore = 1, dead
       for (const source of sources) if (!await pointsLedger.applyDelta(db, { customerId: id, delta: source.points, sourceType: 'checkout_item', sourceId: source.item_id })) state.points += source.points
     },
     getPointsConfig: async db => { check(db); return config }, prepareInvoice: async db => { check(db); events.push('prepare') },
-    permissionCheck: async (user, permission) => { assert.ok(user.id > 0); return !denied.includes(permission) }, createOrderNo: () => 'SO-TEST' })
+    permissionCheck: async (user, permission) => { assert.ok(user.id > 0); return granted.includes(permission) || !permission.startsWith('query:goods-') && !denied.includes(permission) }, createOrderNo: () => 'SO-TEST' })
   return { service, state, events, product, initial: structuredClone(state), retry() { failure = null } }
 }
 
@@ -323,7 +324,7 @@ test('商品数量行逐件积分和实付分组保存原单，改当前商品�
 })
 
 test('手机/商品/赠送权限分别核验，任一不足均在事务前拒绝', async () => {
-  for (const denied of [['accessories:create'], ['accessories:gift'], ['sales:sell', 'inventory:sell']]) {
+  for (const denied of [['accessories:sell'], ['accessories:gift'], ['sales:sell', 'inventory:sell']]) {
     const f = fixture({ denied })
     await assert.rejects(f.service.checkout(request(), actor), { statusCode: 403 })
     assert.deepEqual(f.state, f.initial)
@@ -331,7 +332,7 @@ test('手机/商品/赠送权限分别核验，任一不足均在事务前拒绝
   }
 })
 
-test('错误关联、未选实际商品、积分抵扣、金额不符、跨店手机和库存不足均不留下任何部分事实', async () => {
+test('错误关联、未选实际商品、积分抵扣、金额不符、未授权来源手机和库存不足均不留下任何部分事实', async () => {
   const edits = [
     body => { body.accessories[0].linked_phone_id = 99 }, body => { delete body.accessories[0].accessory_id },
     body => { body.accessories[0].redeem_points = 1 }, body => { body.redeem_points = -1 },
@@ -345,9 +346,55 @@ test('错误关联、未选实际商品、积分抵扣、金额不符、跨店�
     await assert.rejects(f.service.checkout(body, actor))
     assert.deepEqual(f.state, f.initial)
   }
-  const f = fixture({ phoneStore: 2 })
-  await assert.rejects(f.service.checkout(request(), actor), /属于选择/)
+  const f = fixture({ phoneStore: 3 })
+  await assert.rejects(f.service.checkout(request(), actor), { statusCode: 403, code: 'STORE_SCOPE_DENIED' })
   assert.deepEqual(f.state, f.initial)
+})
+
+test('授权跨店共同结算：一店手机由二店销售，普通及SN商品只扣二店，来源及成本快照保留', async () => {
+  const f = fixture({ phoneStore: 1, goodsStore: 2 }), body = request()
+  body.store_id = 2
+  const quoted = await f.service.quote(body, actor)
+  assert.equal(quoted.payable_cents, 60000)
+  assert.deepEqual(f.state, f.initial, '试算不能写销售或库存')
+  const result = await f.service.checkout(body, actor)
+  assert.equal(f.state.orders[0].store_id, 2)
+  assert.deepEqual(f.state.sales.map(row => row.storeId), [2, 2])
+  assert.deepEqual(f.state.accessorySales.map(row => row.store_id), [2, 2])
+  assert.equal(f.state.stock, 1)
+  assert.equal(f.state.serials[0].store_id, 2)
+  assert.equal(f.state.serials[0].status, 'gifted')
+  assert.ok(f.state.inventoryEvents.length > 0)
+  assert.ok(f.state.inventoryEvents.every(row => row.store_id === 2))
+  assert.deepEqual(f.state.items.filter(row => row.type === 'phone').map(row => [row.snapshot.store_id, row.purchase_cost]), [[1, 80], [1, 80]])
+  const saved = structuredClone(f.state)
+  assert.deepEqual(await f.service.checkout(body, actor), result)
+  assert.deepEqual(f.state, saved, '跨店原请求重试不得重复扣库或计分')
+})
+
+test('跨店共同结算试算及提交均要求销售店和每台手机来源店权限', async () => {
+  for (const storeIds of [[1], [2]]) {
+    for (const operation of ['quote', 'checkout']) {
+      const f = fixture({ phoneStore: 1, goodsStore: 2 }), body = request()
+      body.store_id = 2
+      await assert.rejects(f.service[operation](body, { ...actor, store_ids: storeIds }), { statusCode: 403, code: 'STORE_SCOPE_DENIED' })
+      assert.deepEqual(f.state, f.initial)
+      if (storeIds[0] === 1) assert.deepEqual(f.events, [], '无销售门店权限须在事务前拒绝')
+      else assert.ok(f.events.includes('rollback'), '无来源门店权限须整单回滚')
+    }
+  }
+})
+
+test('跨店销售不会借用手机来源店的商品库存或SN，失败不留半单', async () => {
+  for (const wrongSerialStore of [false, true]) {
+    const f = fixture({ phoneStore: 1, goodsStore: wrongSerialStore ? 2 : 1 }), body = request()
+    body.store_id = 2
+    if (wrongSerialStore) f.state.serials[0].store_id = 1
+    const before = structuredClone(f.state)
+    await assert.rejects(f.service.checkout(body, actor), { statusCode: 400, code: wrongSerialStore ? 'SERIAL_UNAVAILABLE' : 'INSUFFICIENT_STOCK' })
+    assert.deepEqual(f.state, before)
+    assert.ok(f.events.includes('rollback'))
+  }
 })
 
 test('只重试受控锁冲突，达到次数后返回错误而不写半单', async () => {
@@ -362,7 +409,7 @@ test('只重试受控锁冲突，达到次数后返回错误而不写半单', as
 test('字段权限逐域覆盖嵌套价格/客户/店铺/SN；拒绝时不进入结算且内部错误不泄漏', async () => {
   for (const field of ['sale_price', 'phone', 'store_id', 'unit_price', 'serial_numbers', 'gift_return_unit_price', 'redeem_points', 'operator_id', 'sale_time', 'sale_type']) {
     const access = { async getDeniedWrite(id, body, map) { assert.equal(id, 7); return body?.[field] !== undefined && map[field] ? map[field] : null } }
-    const controller = new Controller({ service: { async checkout() { assert.fail('隐藏字段不应进入结算') } }, phoneAccess: access, goodsAccess: access })
+    const controller = new Controller({ permissionCheck: async () => true, service: { async checkout() { assert.fail('隐藏字段不应进入结算') } }, phoneAccess: access, goodsAccess: access })
     const res = { status(code) { this.code = code; return this }, json(value) { this.body = value; return this } }
     const body = request()
     body.accessories[1].gift_return_unit_price = 20
@@ -380,7 +427,7 @@ test('仅售商品时销售员、日期和出库方式字段隐藏同样拒绝�
       if (body?.[field] !== undefined && map[field]) { checked.push(map[field]); return map[field] }
       return null
     } }
-    const controller = new Controller({ service: { async checkout() { assert.fail('隐藏字段不可写入') } },
+    const controller = new Controller({ permissionCheck: async () => true, service: { async checkout() { assert.fail('隐藏字段不可写入') } },
       phoneAccess: { async getDeniedWrite() { assert.fail('无手机明细不可依赖手机字段鉴权') } }, goodsAccess: access })
     const body = { ...request(), phones: [] }
     const res = { status(code) { this.code = code; return this }, json(value) { this.body = value; return this } }
@@ -395,7 +442,7 @@ test('快速共同结算的采购设备及客户字段均由后端拒绝隐藏�
   for (const field of ['brand_id', 'model_id', 'color_id', 'memory_id', 'supplier_id', 'imei', 'serial_number',
     'is_new', 'purchase_cost', 'inventory_time', 'sale_price', 'name', 'phone']) {
     const access = { async getDeniedWrite(id, body, map) { return body?.[field] !== undefined && map[field] ? map[field] : null } }
-    const controller = new Controller({ service: { async checkout() { assert.fail('隐藏字段不应落账') } }, phoneAccess: access, goodsAccess: access })
+    const controller = new Controller({ permissionCheck: async () => true, service: { async checkout() { assert.fail('隐藏字段不应落账') } }, phoneAccess: access, goodsAccess: access })
     const res = { status(code) { this.code = code; return this }, json(value) { this.body = value; return this } }
     await controller.checkout({ body: quickRequest(), user: actor }, res)
     assert.equal(res.code, 403, field)
@@ -411,7 +458,7 @@ test('共同结算手机不能经旧退库或删除入口拆单，拒绝时不�
       async lockPhoneForReturn() { return [[{ status: 'sold', store_id: 1, checkout_order_id: 10 }]] },
       async lockPhoneForDelete() { return [[{ store_id: 1, checkout_order_id: 10 }]] }
     }
-    const service = new QueryMutationService({ repository, reversePoints: () => assert.fail('不可先冲回积分') })
+    const service = new QueryMutationService({ access: { async authorize() {} }, repository, reversePoints: () => assert.fail('不可先冲回积分') })
     const promise = action === 'returnToStock'
       ? service.returnToStock(12, 7, { return_reason: '客户退货', return_type: '退货处理', handle_method: '返厂维修', refund_amount: 100,
         refund_method: 'cash', reversal_date: '2026-11-13 12:00:00' }, { allStores: true })
@@ -658,6 +705,29 @@ test('实际结算前的服务端试算只读并释放锁，与原单积分/抵�
   assert.equal(result.paid_amount, quote.payable_cents / 100)
 })
 
+test('自动积分仅用于只读试算，实际提交逐行分配并重新核验，非法自动参数不进入事务', async () => {
+  const f = fixture({ trackedPoints: 10, pointsConfig: redemptionConfig })
+  const body = { ...request(), auto_redeem: true }, before = structuredClone(body)
+  const quote = await f.service.quote(body, actor)
+  assert.equal(quote.points_used, 10)
+  assert.equal(quote.lines.find(row => row.key === 'goods:buy').points_used, 10)
+  assert.equal(quote.lines.find(row => row.key === 'goods:gift').points_used, 0)
+  assert.ok(quote.lines.filter(row => row.source !== 'accessory').every(row => row.points_used === 0))
+  assert.deepEqual(f.state, f.initial)
+  assert.deepEqual(body, before)
+  await assert.rejects(f.service.checkout(body, actor), { statusCode: 400 })
+  const input = request()
+  input.accessories[0].redeem_points = 10
+  input.payment_info.payment_amount = quote.payable_cents / 100
+  const result = await f.service.checkout(input, actor)
+  assert.equal(result.points_used, 10)
+  assert.equal(result.paid_amount, quote.payable_cents / 100)
+  const invalid = fixture()
+  for (const auto_redeem of [null, 1, 'true', [], {}]) await assert.rejects(invalid.service.quote({ ...request(), auto_redeem }, actor), { statusCode: 400 })
+  for (const body of [null, [], false]) await assert.rejects(invalid.service.quote(body, actor), { statusCode: 400 })
+  assert.deepEqual(invalid.events, [])
+})
+
 test('积分试算失败只读回滚，未迁移来源账不开放抵扣；试算不能保证之后余额未改变', async () => {
   const absent = fixture({ ledgerInstalled: false, pointsConfig: redemptionConfig })
   const quote = await absent.service.quote(request(), actor)
@@ -674,11 +744,11 @@ test('积分试算失败只读回滚，未迁移来源账不开放抵扣；试�
 
 test('试算权限与隐藏金额在服务前拒绝，不新增私有扣分权限，沿用实际销售动作', async () => {
   const access = { async getDeniedWrite(id, body, map) { return body?.total_amount !== undefined && map.total_amount ? map.total_amount : null } }
-  const controller = new Controller({ service: { quote() { assert.fail('隐藏金额不能进入试算') } }, phoneAccess: access, goodsAccess: access })
+  const controller = new Controller({ permissionCheck: async () => true, service: { quote() { assert.fail('隐藏金额不能进入试算') } }, phoneAccess: access, goodsAccess: access })
   const res = { status(code) { this.code = code; return this }, json(value) { this.body = value; return this } }
   await controller.quote({ user: actor, body: request() }, res)
   assert.equal(res.code, 403)
-  const f = fixture({ denied: ['accessories:create'] })
+  const f = fixture({ denied: ['accessories:sell'] })
   await assert.rejects(f.service.quote(request(), actor), { statusCode: 403 })
   assert.deepEqual(f.events, [])
 })
@@ -719,6 +789,47 @@ test('共同结算冻结实际销售员商品提成：收费SN按件、赠品不
   assert.deepEqual(f.state.items.filter(row => row.type === 'accessory'), saved)
 })
 
+for (const method of ['quote', 'checkout']) {
+  test(`共同结算${method}事务启动失败销毁连接，不进入业务或自动重试`, async () => {
+    const f = fixture({ transactionFailure: 'begin' })
+    await assert.rejects(f.service[method](request(), actor), /begin-failed/)
+    assert.deepEqual(f.events.slice(-3), ['begin', 'destroy', 'release'])
+    assert.equal(f.events.filter(event => event === 'begin').length, 1)
+    assert.deepEqual(f.state, f.initial)
+  })
+
+  test(`共同结算${method}回滚失败只尝试一次并销毁连接`, async () => {
+    const f = fixture({ transactionFailure: 'rollback', ...(method === 'checkout' ? { failAt: 'item' } : {}) })
+    await assert.rejects(f.service[method](request(), actor), /rollback-failed/)
+    assert.deepEqual(f.events.slice(-3), ['rollback', 'destroy', 'release'])
+    assert.equal(f.events.filter(event => event === 'begin').length, 1)
+    assert.equal(f.events.filter(event => event === 'rollback').length, 1)
+    assert.equal(f.events.includes('commit'), false)
+  })
+}
+
+test('共同结算死锁的回滚失败不能在该连接重试', async () => {
+  const f = fixture({ deadlocks: 1, transactionFailure: 'rollback' })
+  await assert.rejects(f.service.checkout(request(), actor), /rollback-failed/)
+  assert.deepEqual(f.events, ['prepare', 'begin', 'rollback', 'destroy', 'release'])
+  assert.deepEqual(f.state, f.initial)
+})
+
+test('共同结算提交失败但回滚成功仍释放可复用连接，全部交易事实还原', async () => {
+  const f = fixture({ transactionFailure: 'commit' })
+  await assert.rejects(f.service.checkout(request(), actor), /commit-failed/)
+  assert.deepEqual(f.events.slice(-3), ['commit', 'rollback', 'release'])
+  assert.equal(f.events.includes('destroy'), false)
+  assert.deepEqual(f.state, f.initial)
+})
+
+test('共同结算试算业务拒绝后正常回滚，不销毁可复用连接', async () => {
+  const f = fixture({ phoneStore: 3 })
+  await assert.rejects(f.service.quote(request(), actor), { statusCode: 403, code: 'STORE_SCOPE_DENIED' })
+  assert.deepEqual(f.events, ['begin', 'rollback', 'release'])
+  assert.deepEqual(f.state, f.initial)
+})
+
 test('同单积分抵扣行与未知历史成本不产生商品提成，损坏工资规则使整单回滚', async () => {
   const enabled = { enabled: true, type: 'fixed', fixed_amount: 2.5, percentage: 10 }
   const f = fixture({ goodsCommissionRule: enabled })
@@ -744,4 +855,36 @@ test('同单积分抵扣行与未知历史成本不产生商品提成，损坏�
 
 test('延迟手机发分只允许调用方持有事务，不能成为独立销售的禁发积分入口', async () => {
   await assert.rejects(new SalesPhoneService().sell({ deferPoints: true }), /共同结算事务/)
+})
+
+test('具体商品范围贯穿合单自动试算和正式事务，移除该商品即拒绝抵扣并回滚', async () => {
+  const rules = ids => ({ ...redemptionConfig, redemption: { ...redemptionConfig.redemption,
+    all_accessory_categories: false, category_ids: [1], accessory_ids: ids } })
+  const allowed = fixture({ trackedPoints: 10, pointsConfig: rules([5]) })
+  const preview = await allowed.service.quote({ ...redeemRequest(), auto_redeem: true }, actor)
+  assert.equal(preview.points_used, 10)
+  await allowed.service.checkout(redeemRequest(), actor)
+  assert.equal(allowed.state.orders.length, 1)
+  const denied = fixture({ trackedPoints: 10, pointsConfig: rules([6]) })
+  const noPoints = await denied.service.quote({ ...redeemRequest(), auto_redeem: true }, actor)
+  assert.equal(noPoints.points_used, 0)
+  const before = structuredClone(denied.state)
+  await assert.rejects(denied.service.checkout(redeemRequest(), actor), /不符合积分抵扣范围/)
+  assert.deepEqual(denied.state, before)
+})
+
+
+test('综合查询独立商品动作可完成真实结算，缺销售或赠送动作在事务前拒绝', async () => {
+  const denied = ['accessories:view', 'accessories:sell', 'accessories:gift']
+  const granted = ['query:view', 'query:goods-view', 'query:goods-sell', 'query:goods-gift']
+  const f = fixture({ denied, granted })
+  await f.service.checkout(request(), actor)
+  assert.equal(f.state.orders.length, 1)
+  assert.equal(f.state.sales.length, 2)
+  for (const missing of ['query:goods-sell', 'query:goods-gift', 'query:goods-view']) {
+    const rejected = fixture({ denied, granted: granted.filter(permission => permission !== missing) })
+    await assert.rejects(rejected.service.checkout(request(), actor), { statusCode: 403 })
+    assert.deepEqual(rejected.state, rejected.initial)
+    assert.deepEqual(rejected.events, [])
+  }
 })

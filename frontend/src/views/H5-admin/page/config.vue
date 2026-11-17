@@ -83,8 +83,7 @@
                   v-if="configs.shop_logo && canEdit"
                   plain
                   type="danger"
-                  size="small"
-                  class="delete-image-btn btn-sm"
+                  class="delete-image-btn"
                   @click="handleDeleteImage('shop_logo')"
                 >
                   <i class="fas fa-trash mr-1" />删除
@@ -254,14 +253,12 @@
           <div class="integration-entry-list">
             <el-button
               v-if="canViewField('integration.map_provider')"
-              class="btn-sm"
               @click="showMapSettingsDialog = true"
             >
               地图接口
             </el-button>
             <el-button
               v-if="canViewField('integration.payment_provider')"
-              class="btn-sm"
               @click="showPaymentSettingsDialog = true"
             >
               支付接口
@@ -316,8 +313,6 @@
             :loading="saving"
             plain
             type="primary"
-            size="default"
-            class="btn-sm"
             @click="handleSave"
           >
             <i class="fas fa-save mr-1" />保存
@@ -409,7 +404,6 @@
               />
               <el-button
                 v-if="showOperations && configs.map_provider === 'tencent'"
-                class="btn-sm"
                 plain
                 type="primary"
                 @click="openMapPicker"
@@ -425,14 +419,12 @@
         <template #footer>
           <div class="tf-dialog-actions">
             <el-button
-              class="btn-sm"
               @click="showMapSettingsDialog = false"
             >
               关闭
             </el-button>
             <el-button
               v-if="canEdit"
-              class="btn-sm"
               plain
               type="primary"
               :loading="saving"
@@ -503,7 +495,6 @@
                   </el-upload>
                   <el-button
                     v-if="configs.wechat_qrcode && canEdit"
-                    class="btn-sm"
                     plain
                     type="danger"
                     @click="handleDeleteImage('wechat_qrcode')"
@@ -548,7 +539,6 @@
                   </el-upload>
                   <el-button
                     v-if="configs.alipay_qrcode && canEdit"
-                    class="btn-sm"
                     plain
                     type="danger"
                     @click="handleDeleteImage('alipay_qrcode')"
@@ -601,7 +591,6 @@
                   </el-upload>
                   <el-button
                     v-if="configs.other_qrcode && canEdit"
-                    class="btn-sm"
                     plain
                     type="danger"
                     @click="handleDeleteImage('other_qrcode')"
@@ -841,14 +830,12 @@
         <template #footer>
           <div class="tf-dialog-actions">
             <el-button
-              class="btn-sm"
               @click="showPaymentSettingsDialog = false"
             >
               关闭
             </el-button>
             <el-button
               v-if="canEdit"
-              class="btn-sm"
               plain
               type="primary"
               :loading="saving"
@@ -912,7 +899,6 @@
         <template #footer>
           <div class="tf-dialog-actions">
             <el-button
-              class="btn-sm"
               @click="cancelMapLocation"
             >
               取消
@@ -921,7 +907,6 @@
               v-if="canEdit"
               plain
               type="primary"
-              class="btn-sm"
               @click="confirmMapLocation"
             >
               确定
@@ -934,6 +919,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { ref, computed, onMounted, onActivated, nextTick, inject, onUnmounted, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 
@@ -1674,6 +1660,11 @@ onUnmounted(() => {
   if (clearHeaderActions) {
     clearHeaderActions()
   }
+})
+
+usePageShortcuts('/H5-admin/page/config', {
+  'shop-map-settings': { open: () => { showMapSettingsDialog.value = true }, allowed: () => canViewField('integration.map_provider') },
+  'shop-payment-settings': { open: () => { showPaymentSettingsDialog.value = true }, allowed: () => canViewField('integration.payment_provider') }
 })
 </script>
 

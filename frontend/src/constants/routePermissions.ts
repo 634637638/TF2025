@@ -1,5 +1,3 @@
-import { PermissionMapper, PermissionUtils } from '@/utils/permissionMapper'
-
 export const ROUTE_PERMISSION_MAP: Record<string, string[]> = {
   '/dashboard': ['dashboard:view'],
   '/suppliers': ['suppliers:view'],
@@ -95,28 +93,12 @@ export function getRoutePermissions(path: string): string[] | null {
 
 export interface RoutePermissionChecker {
   hasPermission: (permission: string) => boolean
-  userPermissions?: string[]
 }
 
 export function canAccessRoutePath(path: string, checker: RoutePermissionChecker): boolean {
   const requiredPermissions = getRoutePermissions(path)
   if (!requiredPermissions || requiredPermissions.length === 0) {
     return true
-  }
-
-  if (Array.isArray(checker.userPermissions)) {
-    const normalizedUserPermissions = checker.userPermissions
-      .filter(permission => typeof permission === 'string' && permission)
-      .map(permission => PermissionMapper.normalizePermission(permission))
-      .filter(Boolean)
-
-    if (normalizedUserPermissions.includes('*')) {
-      return true
-    }
-
-    return requiredPermissions.some(permission =>
-      PermissionUtils.hasPermission(normalizedUserPermissions, permission)
-    )
   }
 
   return requiredPermissions.some(permission => checker.hasPermission(permission))

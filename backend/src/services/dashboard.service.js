@@ -1,3 +1,4 @@
+const { resolveStoreScope } = require('../utils/store-scope')
 /**
  * 仪表板业务逻辑层
  * 处理所有仪表板相关的业务逻辑和数据验证
@@ -5,10 +6,23 @@
 const DashboardRepository = require('../repositories/dashboard.repository')
 const _ApiResponse = require('../utils/response')
 const log = require('../utils/log')
+const AccessoryService = require('./accessory.service')
+const FieldAccessService = require('./field-access.service')
+const { hasUnifiedPermission } = require('../middleware/unified-auth')
+
+const ACCESSORY_WARNING_FIELDS = ['basic_info.name', 'stock_info.min_stock', 'stock_info.total_quantity']
 
 class DashboardService {
-  constructor() {
-    this.dashboardRepository = new DashboardRepository()
+  constructor({
+    dashboardRepository = new DashboardRepository(),
+    accessoryService = new AccessoryService(),
+    accessoryFields = new FieldAccessService({ moduleKey: 'accessories_accessoriesview', strict: true }),
+    permissionCheck = hasUnifiedPermission
+  } = {}) {
+    this.dashboardRepository = dashboardRepository
+    this.accessoryService = accessoryService
+    this.accessoryFields = accessoryFields
+    this.permissionCheck = permissionCheck
   }
 
   /**
@@ -196,7 +210,7 @@ class DashboardService {
    * 获取综合预警信息
    * 包含：手机库存预警、配件库存预警、销售预警、入库预警
    */
-  async getComprehensiveWarnings(filters = {}) {
+  async getComprehensiveWarnings(filters = {}, actor) {
     try {
       const { phone_threshold = 3, page_size = 10 } = filters
 
@@ -214,8 +228,35 @@ class DashboardService {
 
       const warnings = await this.dashboardRepository.getComprehensiveWarnings({
         phone_threshold: thresholdNum,
-        page_size: pageSizeNum
+        page_size: pageSizeNum,
+        scope: resolveStoreScope(actor)
       })
+
+      const accessoryVisible = actor?.id &&
+        (await this.permissionCheck(actor, 'accessories:view') || await this.permissionCheck(actor, 'dashboard:goods-warning'))
+      if (accessoryVisible) {
+        const permissions = await this.accessoryFields.getPermissions(actor.id)
+        const hiddenFields = new Set(permissions.hiddenFields || [])
+        if (ACCESSORY_WARNING_FIELDS.every(field => !hiddenFields.has(field))) {
+          const result = await this.accessoryService.getLowStockWarnings({}, actor)
+          if (!result.success) throw Object.assign(new Error(result.message), { code: result.code })
+          const rows = result.data.warnings.map(row => {
+            const stock = Number(row.total_quantity)
+            const minStock = Number(row.min_stock_threshold)
+            return {
+              name: row.name,
+              stock,
+              min_stock: minStock,
+              status: stock === 0 ? '已缺货' : '库存不足'
+            }
+          }).slice(0, pageSizeNum)
+          warnings.accessories = { warnings: rows, count: rows.length }
+        }
+      }
+
+      const accessoryCount = Number(warnings.accessories?.count || 0)
+      warnings.summary.total_warnings = Number(warnings.summary?.total_warnings || 0) + accessoryCount
+      warnings.summary.has_warnings = warnings.summary.total_warnings > 0
 
       return this.createSuccessResponse('获取综合预警成功', warnings)
     } catch (error) {
@@ -227,7 +268,7 @@ class DashboardService {
   /**
    * 获取手机库存预警
    */
-  async getPhoneStockWarnings(filters = {}) {
+  async getPhoneStockWarnings(filters = {}, actor) {
     try {
       const { threshold = 3, page_size = 20 } = filters
 
@@ -242,7 +283,7 @@ class DashboardService {
         return this.createErrorResponse('限制数量必须在1-100之间', 'INVALID_LIMIT')
       }
 
-      const warnings = await this.dashboardRepository.getPhoneStockWarnings(thresholdNum, pageSizeNum)
+      const warnings = await this.dashboardRepository.getPhoneStockWarnings(thresholdNum, pageSizeNum, { scope: resolveStoreScope(actor) })
 
       return this.createSuccessResponse('获取手机库存预警成功', {
         warnings,
@@ -258,7 +299,7 @@ class DashboardService {
   /**
    * 获取机型库存预警详情
    */
-  async getModelStockWarnings(filters = {}) {
+  async getModelStockWarnings(filters = {}, actor) {
     try {
       const { threshold = 3, page_size = 20 } = filters
 
@@ -273,7 +314,7 @@ class DashboardService {
         return this.createErrorResponse('限制数量必须在1-100之间', 'INVALID_LIMIT')
       }
 
-      const warnings = await this.dashboardRepository.getModelStockWarnings(thresholdNum, pageSizeNum)
+      const warnings = await this.dashboardRepository.getModelStockWarnings(thresholdNum, pageSizeNum, { scope: resolveStoreScope(actor) })
 
       return this.createSuccessResponse('获取机型库存预警成功', {
         warnings,
@@ -289,11 +330,11 @@ class DashboardService {
   /**
    * 获取销售预警信息
    */
-  async getSalesWarnings() {
+  async getSalesWarnings(actor) {
     try {
       const [todaySales, salesTrend] = await Promise.all([
-        this.dashboardRepository.getTodaySalesWarnings(),
-        this.dashboardRepository.getSalesTrendWarnings()
+        this.dashboardRepository.getTodaySalesWarnings(resolveStoreScope(actor)),
+        this.dashboardRepository.getSalesTrendWarnings(resolveStoreScope(actor))
       ])
 
       // 计算平均日销量
@@ -316,9 +357,9 @@ class DashboardService {
   /**
    * 获取入库预警信息
    */
-  async getPurchaseWarnings() {
+  async getPurchaseWarnings(actor) {
     try {
-      const warnings = await this.dashboardRepository.getPurchaseWarnings()
+      const warnings = await this.dashboardRepository.getPurchaseWarnings(resolveStoreScope(actor))
 
       return this.createSuccessResponse('获取入库预警成功', warnings)
     } catch (error) {

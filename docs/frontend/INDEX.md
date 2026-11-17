@@ -8,7 +8,7 @@
 
 - [后台卡片与表格](admin-table-standards.md) — 手机双击记录查看，业务操作统一在详情底部，禁止行内按钮展开
 - [后台统计卡片颜色](admin-stat-card-color-standard.md)
-- [按钮](button-standards.md)
+- [按钮](button-standards.md) — 业务按钮省略尺寸声明，默认读取公共响应式规格；标杆页保留明确标记的尺寸演示
 - [全局颜色令牌与语义色](color-token-standard.md)
 - [公共组件采用与例外](component-adoption-standard.md)
 - [CRUD 与数据刷新](crud-standards.md)
@@ -20,18 +20,18 @@
 - [数据实时刷新](data-freshness-standard.md)
 - [对话框与手机媒体预览](dialog-standards.md) — 复用专用详情或公共 RecordDetailDialog，短字段两列、长字段整行
 - [空状态](empty-state-standard.md)
-- [全局加载](global-loading-standard.md)
+- [全局加载](global-loading-standard.md) — 区块默认全宽，区域覆盖层铺满当前宽高，手机提示文字统一单行省略
 - [字段一致性](field-consistency-standards.md)
 - [表单控件](form-control-standards.md) — 手机短字段两列、长字段整行及公共地区布局；公共金额输入、按字段语义防脏数据、中文输入法/粘贴及前后端校验验收；实现缺口见 T23
 - [最新请求处理](latest-request-standard.md)
 - [菜单图标管理](menu-icon-management-standard.md)
-- [后台导航与面包屑视觉](navigation-standards.md)
+- [后台导航与面包屑视觉](navigation-standards.md) — 含首页可配置快捷方式、全站页面目录、按页面分组的功能目录及受控跳转
 - [型号搜索](model-search-standard.md)
 - [通知](notification-standards.md)
 - [页面结构](page-structure-standards.md)
 - [分页](pagination-standards.md)
 - [支付方式](payment-method-standard.md)
-- [页面权限能力](permission-capability-standards.md)
+- [页面权限能力](permission-capability-standards.md) — 母子页面归属、独立鉴权、模块与动作登记及验证步骤
 - [提醒](reminder-standards.md)
 - [搜索与筛选](search-standards.md)
 - [安全与运行时审计](security-runtime-standards.md)

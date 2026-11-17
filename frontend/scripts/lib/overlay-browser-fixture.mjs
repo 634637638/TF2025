@@ -29,11 +29,13 @@ import '/src/views/price-list/page/PublicPriceQuery.vue?vue&type=style&index=2&l
 import '/src/views/price-list/page/SalesPriceDisplay.vue?vue&type=style&index=2&lang.scss';
 // 页面按路由懒加载，兜底组件样式在全局样式后注入；保留真实的级联顺序。
 const {default:TableLoadingRow}=await import('/src/components/TableLoadingRow.vue');
+const {default:SectionLoading}=await import('/src/components/SectionLoading.vue');
+const {default:LoadingOverlay}=await import('/src/components/LoadingOverlay.vue');
 normalizeSafariPhoneViewportMeta();applyDeviceRootClass();
 const faults=[];
 window.addEventListener('error',event=>{if(event.error)faults.push(event.message)});
 window.addEventListener('unhandledrejection',event=>faults.push(String(event.reason)));
-const state=reactive({view:'dialog',base:false,child:false,media:false,name:'测试姓名',saved:[],failSave:false,index:0,actions:false,saving:false,submits:0,selectedStores:[],tableLoading:false,rows:[]});
+const state=reactive({view:'dialog',base:false,child:false,media:false,name:'测试姓名',saved:[],failSave:false,index:0,actions:false,saving:false,submits:0,selectedStores:[],tableLoading:false,loadingText:'正在刷新设备查询结果...',narrowRegion:false,sectionSize:'normal',rows:[]});
 const image='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200"><rect width="900" height="1200" fill="#426fa3"/></svg>');
 const items=Array.from({length:30},(_,index)=>({url:image+'#'+index,type:'image',label:'很长的测试素材文件名重复内容'+index}));
 let promptName,confirmDelete,prompting;
@@ -43,7 +45,10 @@ const app=createApp({setup(){
   promptName=()=>promptCustomerName(state.name,async name=>{await new Promise(resolve=>setTimeout(resolve,40));if(state.failSave)throw new Error('模拟保存失败');state.name=name;state.saved.push(name)});
   confirmDelete=()=>confirm('测试删除确认','确认');
   return ()=>h('main',[
-    state.view==='table'?withDirectives(h(ElTable,{data:state.rows,class:'fixture-table'}, {default:()=>h(ElTableColumn,{prop:'name',label:'设备'}),empty:()=>state.tableLoading?h(TableLoadingRow,{mode:'block',text:'正在读取设备查询结果...'}):h('div','暂无数据')}),[[vTFLoading,{active:state.tableLoading,text:'正在刷新设备查询结果...'}]]):null,
+    state.view==='table'?withDirectives(h(ElTable,{data:state.rows,class:'fixture-table'}, {default:()=>h(ElTableColumn,{prop:'name',label:'设备'}),empty:()=>state.tableLoading?h(TableLoadingRow,{mode:'block',text:'正在读取设备查询结果...'}):h('div','暂无数据')}),[[vTFLoading,{active:state.tableLoading,text:state.loadingText}]]):null,
+    state.view==='loading-region'?withDirectives(h('div',{class:'fixture-loading-region',style:{height:'240px',width:state.narrowRegion?'min(100%, 200px)':'100%'}},'已有客户贴膜记录'),[[vTFLoading,{active:state.tableLoading,text:state.loadingText}]]):null,
+    state.view==='section-loading'?h(ElForm,{class:'tf-dialog-form fixture-loading-form',labelPosition:'top',style:{width:state.narrowRegion?'min(100%, 200px)':'100%'}},()=>h(ElFormItem,{label:'选择商品'},()=>h(SectionLoading,{text:state.loadingText,size:state.sectionSize}))):null,
+    state.view==='loading-overlay'?h(LoadingOverlay,{class:'fixture-loading-overlay',loading:true,text:state.loadingText,style:{height:'240px',width:state.narrowRegion?'min(100%, 200px)':'100%'}},()=>h('p','已有商品数据')):null,
     state.view==='dialog'?h(MobileDialog,{modelValue:state.base,'onUpdate:modelValue':value=>state.base=value,title:'公共明细测试',dialogClass:'fixture-base',width:'800px'},()=>[h(ElForm,{class:'tf-dialog-form'},()=>h(ElFormItem,{label:'表单标签'},()=>h(ElInput,{modelValue:'测试内容'}))),...Array.from({length:30},(_,i)=>h('p','长内容 '+i))]):null,
     state.view==='dialog'?h(MobileDialog,{modelValue:state.child,'onUpdate:modelValue':value=>state.child=value,title:'嵌套测试',dialogClass:'fixture-child'},()=>h('p','上层内容')):null,
     state.view==='name'?h(CustomerNameLockInput,{modelValue:state.name,selected:true,onUnlock:promptName}):null,
@@ -72,6 +77,40 @@ const escape=()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape
 // 合成触摸事件验证真实组件的手势分支，不冒充物理手指或系统输入法。
 const touch=(target,type,points,changed=points)=>{const event=new Event(type,{bubbles:true,cancelable:true});Object.defineProperties(event,{touches:{value:points.map(([clientX,clientY])=>({clientX,clientY}))},changedTouches:{value:changed.map(([clientX,clientY])=>({clientX,clientY}))}});target.dispatchEvent(event)};
 const unlock=()=>document.querySelector('.customer-name-lock-input input').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));
+const checkLoadingLayout=(region,singleLine)=>{
+  const spinner=region.querySelector('.tf2025-loading-spinner'),text=spinner.querySelector('span'),icon=spinner.querySelector('.tf2025-loading-spinner__icon');
+  const host=boundary(region,'加载区域'),box=spinner.getBoundingClientRect(),label=text.getBoundingClientRect(),ring=icon.getBoundingClientRect();
+  const availableWidth=region.clientWidth,availableLeft=host.left+region.clientLeft,availableHeight=region.clientHeight,availableTop=host.top+region.clientTop;
+  check(Math.abs(box.width-availableWidth)<1&&Math.abs(box.left-availableLeft)<1&&Math.abs(box.height-availableHeight)<1&&Math.abs(box.top-availableTop)<1,'区域加载提示未铺满当前宽高 '+JSON.stringify({region:region.className,host:{width:availableWidth,height:availableHeight},box:{width:box.width,height:box.height}}));
+  check(Math.abs((label.top+label.bottom)/2-(box.top+box.bottom)/2)<1,'区域加载提示未垂直居中');
+  const overlay=region.querySelector('.tf2025-loading-overlay').getBoundingClientRect();
+  check(Math.abs(overlay.width-box.width)<1&&Math.abs(overlay.height-box.height)<1,'背景遮罩与反馈区域边界不一致');
+  check(label.left>=box.left&&label.right<=box.right+1,'加载文字撑破提示框');
+  check(Math.abs(ring.width-ring.height)<1&&ring.width>0,'加载圆环被挤压变形');
+  const range=document.createRange();range.selectNodeContents(text);
+  const lines=new Set([...range.getClientRects()].map(rect=>Math.round(rect.top))).size;
+  check(singleLine||innerWidth<=767?lines===1:lines>1,'加载提示换行策略错误');
+  check(text.title===text.textContent,'加载提示没有保留完整文案');
+  check(innerWidth<=767?getComputedStyle(text).textOverflow==='ellipsis':text.scrollWidth<=text.clientWidth+1,'加载文字未按响应式规则处理溢出');
+  check(document.documentElement.scrollWidth<=document.documentElement.clientWidth+1,'加载导致页面横向溢出');
+};
+const runLoadingLayoutCase=async()=>{
+  for(const view of ['table','loading-region']){
+    state.tableLoading=false;state.narrowRegion=false;state.view=view;state.rows=[{name:'已有设备数据'}];await settle();
+    state.tableLoading=true;
+    for(const text of ['正在刷新客户贴膜记录...','正在刷新商品库存列表...','正在读取供应商入库记录...']){
+      state.loadingText=text;await nextTick();checkLoadingLayout(one(view==='table'?'.fixture-table':'.fixture-loading-region'),true);
+    }
+    for(const text of ['正在刷新客户贴膜记录，请稍候核对历史服务资料。'.repeat(8),'LongLoadingTask'.repeat(24)]){
+      state.loadingText=text;await nextTick();checkLoadingLayout(one(view==='table'?'.fixture-table':'.fixture-loading-region'),false);
+    }
+    if(view==='loading-region'){
+      state.narrowRegion=true;state.loadingText='正在刷新客户贴膜记录...';await nextTick();checkLoadingLayout(one('.fixture-loading-region'),false);
+    }
+    state.tableLoading=false;await settle();check(!one('.tf2025-loading-spinner'),'切换文案后加载提示未清理');
+  }
+  state.narrowRegion=false;state.loadingText='正在刷新设备查询结果...';
+};
 const runTableLoadingCase=async(theme)=>{
   document.documentElement.dataset.theme=theme;state.view='table';state.rows=[];state.tableLoading=true;await settle();
   check(all('.tf2025-loading-spinner,.inline-loading').length===1,'首载等待重复');check(all('.tf2025-loading-spinner').length===0,'首载误显示刷新遮罩');
@@ -81,8 +120,34 @@ const runTableLoadingCase=async(theme)=>{
   state.tableLoading=false;state.rows=[{name:'已有设备数据'}];await settle();
   state.tableLoading=true;await settle();check(one('.fixture-table').textContent.includes('已有设备数据'),'刷新清空旧数据');check(all('.tf2025-loading-spinner,.inline-loading').length===1,'有数据刷新等待重复');
   state.tableLoading=false;state.rows=[];await settle();check(all('.tf2025-loading-spinner,.inline-loading').length===0,'失败/空结果结束后等待残留');
+  await runLoadingLayoutCase();
+  state.view='section-loading';
+  for(const size of ['compact','normal','large']){
+    state.sectionSize=size;
+    for(const narrow of [false,true]){
+      state.narrowRegion=narrow;
+      for(const text of ['正在读取适配商品...','正在读取供应商商品资料，请稍候核对。'.repeat(6),'LongLoadingTask'.repeat(20)]){
+        state.loadingText=text;await nextTick();
+        const content=one('.fixture-loading-form .el-form-item__content'),section=one('.fixture-loading-form .section-loading'),label=section.querySelector('.inline-loading__text'),icon=section.querySelector('.inline-loading__spinner');
+        const host=content.getBoundingClientRect(),box=section.getBoundingClientRect(),copy=label.getBoundingClientRect(),ring=icon.getBoundingClientRect();
+        check(Math.abs(box.width-host.width)<1&&Math.abs(box.left-host.left)<1,'区块加载未铺满表单可用宽度 '+JSON.stringify({size,narrow,host:host.width,section:box.width}));
+        check(copy.left>=box.left&&copy.right<=box.right+1,'区块加载文字溢出');
+        check(label.title===text,'区块加载没有保留完整文案');
+        check(innerWidth<=767?getComputedStyle(label).whiteSpace==='nowrap'&&getComputedStyle(label).textOverflow==='ellipsis':label.scrollWidth<=label.clientWidth+1,'区块加载文字未按响应式规则处理溢出');
+        check(Math.abs(ring.width-ring.height)<1&&ring.width>0,'区块加载圆环变形');
+        check(document.documentElement.scrollWidth<=document.documentElement.clientWidth+1,'区块加载导致横向溢出');
+      }
+    }
+  }
+  state.view='loading-overlay';state.loadingText='正在刷新商品库存列表...';await nextTick();
+  for(const narrow of [false,true]){
+    state.narrowRegion=narrow;await nextTick();
+    const host=one('.fixture-loading-overlay').getBoundingClientRect(),cover=one('.loading-overlay-region__cover').getBoundingClientRect(),section=one('.loading-overlay-region__cover .section-loading').getBoundingClientRect();
+    check([cover,section].every(box=>Math.abs(box.width-host.width)<1&&Math.abs(box.height-host.height)<1&&Math.abs(box.left-host.left)<1&&Math.abs(box.top-host.top)<1),'公共覆盖层的背景或反馈未铺满当前宽高');
+  }
+  state.narrowRegion=false;state.loadingText='正在刷新设备查询结果...';
   state.view='dialog';await settle();
-  return {theme,case:'真实表格首载/空表刷新/保留数据刷新/失败结束仅一个可见等待'};
+  return {theme,case:'表格等待互斥、区域背景及反馈铺满宽高、区块全宽、手机单行省略及圆环边界'};
 };
 window.runLoadingSmoke=async()=>({ok:true,results:[await runTableLoadingCase('light'),await runTableLoadingCase('dark')],width:innerWidth,height:innerHeight,standalone:matchMedia('(display-mode: standalone)').matches,userAgent:navigator.userAgent});
 window.runInputSmoke=async()=>{

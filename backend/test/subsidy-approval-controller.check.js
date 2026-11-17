@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -67,11 +69,11 @@ test('subsidy approval service maps status and clears cache only after updating 
     invalidateCache(key) { calls.push(['cache', key]) }
   })
 
-  assert.equal(await service.approve('0007', true), false)
-  assert.deepEqual(calls, [['update', '0007', 'approved']])
+  assert.equal(await service.approve('0007', true, scopedActor), false)
+  assert.deepEqual(calls, [['update', '0007', 'approved', { allStores: false, requestedStoreId: null, storeIds: scopedActor.store_ids }]])
   updated = true
-  assert.equal(await service.approve('8', false), true)
-  assert.deepEqual(calls.slice(1), [['update', '8', 'rejected'], ['cache', '/subsidy']])
+  assert.equal(await service.approve('8', false, scopedActor), true)
+  assert.deepEqual(calls.slice(1), [['update', '8', 'rejected', { allStores: false, requestedStoreId: null, storeIds: scopedActor.store_ids }], ['cache', '/subsidy']])
 })
 
 test('subsidy approval repository binds status and original record ID', async () => {

@@ -309,7 +309,6 @@
                 <!-- 待支付状态：显示"查看"和"取消" -->
                 <template v-if="row.status === 'pending'">
                   <el-button
-                    size="small"
                     type="info"
                     link
                     @click.stop="viewOrder(row)"
@@ -318,7 +317,6 @@
                   </el-button>
                   <el-button
                     v-if="canEdit"
-                    size="small"
                     type="danger"
                     link
                     @click.stop="cancelOrder(row)"
@@ -330,7 +328,6 @@
                 <!-- 待审核状态：显示"查看"、"通过"、"拒绝"、"取消" -->
                 <template v-if="row.status === 'paid'">
                   <el-button
-                    size="small"
                     type="info"
                     link
                     @click.stop="viewOrder(row)"
@@ -339,7 +336,6 @@
                   </el-button>
                   <el-button
                     v-if="canEdit"
-                    size="small"
                     type="success"
                     link
                     @click.stop="confirmOrder(row)"
@@ -348,7 +344,6 @@
                   </el-button>
                   <el-button
                     v-if="canEdit"
-                    size="small"
                     type="warning"
                     link
                     @click.stop="rejectOrder(row)"
@@ -357,7 +352,6 @@
                   </el-button>
                   <el-button
                     v-if="canEdit"
-                    size="small"
                     type="danger"
                     link
                     @click.stop="cancelOrder(row)"
@@ -369,7 +363,6 @@
                 <!-- 待发货状态：显示"查看"和"发货" -->
                 <template v-if="row.status === 'confirmed'">
                   <el-button
-                    size="small"
                     type="info"
                     link
                     @click.stop="viewOrder(row)"
@@ -378,7 +371,6 @@
                   </el-button>
                   <el-button
                     v-if="canEdit"
-                    size="small"
                     type="primary"
                     link
                     @click.stop="shipOrder(row)"
@@ -390,7 +382,6 @@
                 <!-- 已发货状态：显示"查看"和"完成" -->
                 <template v-if="row.status === 'shipped'">
                   <el-button
-                    size="small"
                     type="info"
                     link
                     @click.stop="viewOrder(row)"
@@ -399,7 +390,6 @@
                   </el-button>
                   <el-button
                     v-if="canEdit"
-                    size="small"
                     type="success"
                     link
                     @click.stop="completeOrder(row)"
@@ -411,7 +401,6 @@
                 <!-- 已完成/已取消状态：只显示"查看" -->
                 <template v-if="['completed', 'cancelled'].includes(row.status)">
                   <el-button
-                    size="small"
                     type="info"
                     link
                     @click.stop="viewOrder(row)"

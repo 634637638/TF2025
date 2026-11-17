@@ -13,13 +13,14 @@ class RentalCreateController {
 
   async create(req, res) {
     try {
-      const result = await this.service.create({ body: req.body || {}, operatorId: req.user.id })
+      const result = await this.service.create({ body: req.body || {}, operatorId: req.user.id, actor: req.user })
       return ApiResponse.created(
         res,
         result.billing_mode === 'buyout' ? '买断合同已创建，销售订单已生成' : '按天租赁合同已创建',
         await this.maskRentalItem({ id: result.id, contract_number: result.contract_number }, req)
       )
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('创建租赁合同失败:', error)
       const status = error.statusCode === 400 || /不存在|停用|不在库|请选择|不正确|成本/.test(error.message || '') ? 400 : 500
       return ApiResponse.error(res, error.message || '创建租赁合同失败', status)

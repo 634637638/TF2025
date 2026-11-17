@@ -8,7 +8,6 @@
 import { DEFAULT_CACHE_TTL, useCachedRequest } from '@/composables/usePageCache'
 import { unifiedApi } from '@/utils/unified-api'
 import type { ApiResponse, BusinessScope } from '@/types'
-import { useAuthStore } from '@/stores/auth'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 
 export interface ReferenceRecord {
@@ -63,6 +62,11 @@ export interface ReferenceSearchParams {
   strict_scope?: boolean
 }
 
+export interface StoreOptions {
+  /** 严格按当前账号绑定范围返回业务可用门店。 */
+  strictScope?: boolean
+}
+
 export interface ModelOptionsParams {
   brandId?: number | string
   keyword?: string
@@ -84,6 +88,7 @@ export interface PhoneOptionsPayload {
 }
 
 export interface AccessoryEntryOptions {
+  film_ready?: boolean
   default_store_id?: number | null
   categories: ReferenceRecord[]
   units: ReferenceRecord[]
@@ -130,18 +135,8 @@ const sortOptionGroups = <T extends object>(groups: T): T => Object.fromEntries(
   ])
 ) as T
 
-const currentUserCacheScope = () => {
-  try {
-    const user = useAuthStore().user as { id?: number | string } | null
-    return user?.id ? String(user.id) : 'anonymous'
-  } catch {
-    return 'anonymous'
-  }
-}
-
 export const getCachedQueryOptions = () => {
-  const scope = currentUserCacheScope()
-  return cachedGet<QueryOptionsPayload>(`/query/options:user:${scope}`, '/query/options').then(response => ({
+  return unifiedApi.get<QueryOptionsPayload>('/query/options', { useCache: false }).then(response => ({
     ...response,
     data: response.data ? sortOptionGroups(response.data) : response.data
   }))
@@ -192,7 +187,7 @@ export const searchColors = (params: ReferenceSearchParams = {}) =>
 export const searchMemories = (params: ReferenceSearchParams = {}) =>
   sortResponseRecords(unifiedApi.get<ReferenceRecord[]>('/memories', { params }))
 
-export const getCachedPhoneOptions = () => cachedGet<PhoneOptionsPayload>('/options/phone-options', '/options/phone-options').then(response => ({
+export const getCachedPhoneOptions = () => unifiedApi.get<PhoneOptionsPayload>('/options/phone-options', { useCache: false }).then(response => ({
   ...response,
   data: response.data ? sortOptionGroups(response.data) : response.data
 }))
@@ -201,14 +196,17 @@ export const getCachedSuppliers = () => sortResponseRecords(
   cachedGet<ReferenceRecord[]>('/suppliers?all=true', '/suppliers?all=true')
 )
 
-export const getCachedStores = (strictScope = false) => {
-  const scope = currentUserCacheScope()
-  const suffix = strictScope ? ':strict' : ':all-scope'
-  return sortResponseRecords(cachedGet<ReferenceRecord[]>(
-    `/stores?all=true:user:${scope}${suffix}`,
-    strictScope ? '/stores?all=true&strict_scope=true' : '/stores?all=true'
-  ))
-}
+/**
+ * 门店公共入口。
+ * 业务表单使用 strictScope=true；权限绑定和管理场景使用默认完整范围。
+ * 门店范围与当前账号相关，禁止缓存，避免不同账号之间串用候选数据。
+ */
+export const getStores = ({ strictScope = false }: StoreOptions = {}) => sortResponseRecords(
+  unifiedApi.get<ReferenceRecord[]>('/stores', {
+    params: { all: true, strict_scope: strictScope },
+    useCache: false
+  })
+)
 
 export const getCachedBrands = () => sortResponseRecords(
   cachedGet<ReferenceRecord[]>('/brands?status=1&all=true&business_scope=phone', '/brands?status=1&all=true&business_scope=phone')

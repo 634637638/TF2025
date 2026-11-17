@@ -3,7 +3,9 @@ const router = express.Router()
 const QueryController = require('../controllers/query.controller')
 const QueryGoodsController = require('../controllers/query-goods.controller')
 const FilmServiceController = require('../controllers/film-service.controller')
-const { unifiedAuth, requirePermission, _requireAnyPermission } = require('../middleware/unified-auth')
+const SalesCheckoutController = require('../controllers/sales-checkout.controller')
+const AccessoryController = require('../controllers/accessory.controller')
+const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const { cacheMiddleware } = require('../middleware/cache')
 const { CACHE_TTL } = require('../config/constants')
 
@@ -11,20 +13,35 @@ const { CACHE_TTL } = require('../config/constants')
 const queryController = new QueryController()
 const queryGoodsController = new QueryGoodsController()
 const filmServiceController = new FilmServiceController()
+const salesCheckoutController = new SalesCheckoutController()
+const accessoryController = new AccessoryController()
 
 // 所有路由都需要身份验证
 router.use(unifiedAuth)
 
 router.get('/customers/:customerId/film-services', requirePermission('query:view'), requirePermission('query:film'),
-  requirePermission('accessories:view'), filmServiceController.context.bind(filmServiceController))
+  filmServiceController.context.bind(filmServiceController))
 
-router.get('/goods', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.list.bind(queryGoodsController))
-router.get('/customers/:customerId/goods', requirePermission('customers:view'), requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.customerHistory.bind(queryGoodsController))
-router.get('/goods/:id', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.detail.bind(queryGoodsController))
-router.get('/goods/:id/order', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.goodsOrder.bind(queryGoodsController))
-router.get('/sales/:saleId/order', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.phoneOrder.bind(queryGoodsController))
-router.get('/goods/:id/aftersales', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.aftersales.bind(queryGoodsController))
-router.get('/sales/:saleId/accessories', requirePermission('query:view'), requirePermission('accessories:view'), queryGoodsController.phoneReceipt.bind(queryGoodsController))
+// 贴膜能力与商品管理菜单隔离；服务内重新校验客户、设备、适配商品及门店库存。
+router.get('/customers/:customerId/film-services/products', requirePermission('query:view'), requirePermission('query:film'), filmServiceController.products.bind(filmServiceController))
+router.get('/customers/:customerId/film-services/customer-summary', requirePermission('query:view'), requirePermission('query:film'), salesCheckoutController.filmCustomerSummary.bind(salesCheckoutController))
+router.post('/film-services/checkout/quote', requirePermission('query:view'), requirePermission('query:film'), salesCheckoutController.filmQuote.bind(salesCheckoutController))
+router.post('/film-services/checkout', requirePermission('query:view'), requirePermission('query:film'), salesCheckoutController.filmCheckout.bind(salesCheckoutController))
+
+router.get('/goods/sale-options', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift', 'accessories:sell', 'accessories:gift']), accessoryController.querySaleOptions.bind(accessoryController))
+
+// 复用原结算事务与动作权限；字段明确归综合查询商品模式。
+router.get('/goods/checkout/customer-summary', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift']), salesCheckoutController.queryGoodsSummary.bind(salesCheckoutController))
+router.post('/goods/checkout/quote', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift']), salesCheckoutController.queryGoodsQuote.bind(salesCheckoutController))
+router.post('/goods/checkout', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift']), salesCheckoutController.queryGoodsCheckout.bind(salesCheckoutController))
+
+router.get('/goods', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.list.bind(queryGoodsController))
+router.get('/customers/:customerId/goods', requirePermission('customers:view'), requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.customerHistory.bind(queryGoodsController))
+router.get('/goods/:id', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.detail.bind(queryGoodsController))
+router.get('/goods/:id/order', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.goodsOrder.bind(queryGoodsController))
+router.get('/sales/:saleId/order', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.phoneOrder.bind(queryGoodsController))
+router.get('/goods/:id/aftersales', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.aftersales.bind(queryGoodsController))
+router.get('/sales/:saleId/accessories', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.phoneReceipt.bind(queryGoodsController))
 
 /**
  * @route GET /api/query/comprehensive
@@ -123,6 +140,6 @@ router.post('/:id/return-to-stock', requirePermission('query:return-to-stock', '
  * @access Private
  * @param {string} params.id - 手机ID
  */
-router.delete('/:id', requirePermission('inventory:delete', 'business'), queryController.deletePhoneRecord.bind(queryController))
+router.delete('/:id', requirePermission('query:delete', 'business'), queryController.deletePhoneRecord.bind(queryController))
 
 module.exports = router

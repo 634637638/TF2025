@@ -1,5 +1,6 @@
 'use strict'
 
+const { invalidateAuthProfiles } = require('../middleware/unified-auth')
 const { getDatabase } = require('../config/database')
 const UserStoreRepository = require('../repositories/user-store.repository')
 const PermissionLogsService = require('./permission-logs.service')
@@ -87,8 +88,12 @@ class UserStoreService extends BaseService {
     }
 
     const previousStores = await this.repository.getUserStores(userId)
-    if (replaceExisting) await this.repository.removeAllUserStores(userId)
-    const result = await this.repository.assignStoresToUser(userId, storeIds, assignedBy, isPrimary ? 1 : 0)
+    let result
+    try {
+      result = await this.repository.assignStoresToUser(userId, storeIds, assignedBy, isPrimary ? 1 : 0, replaceExisting)
+    } finally {
+      invalidateAuthProfiles([userId])
+    }
     const currentStores = await this.repository.getUserStores(userId)
     await this.logStoreBindingChange(context, userId, previousStores, currentStores, '更新用户门店绑定')
     return { data: result, message: result.message }
@@ -99,7 +104,12 @@ class UserStoreService extends BaseService {
     const { user_id, store_id } = body
     if (!user_id || !store_id) throw this.createError('用户ID和门店ID不能为空', 400)
     const previousStores = await this.repository.getUserStores(user_id)
-    const result = await this.repository.setPrimaryStore(user_id, store_id)
+    let result
+    try {
+      result = await this.repository.setPrimaryStore(user_id, store_id)
+    } finally {
+      invalidateAuthProfiles([user_id])
+    }
     const currentStores = await this.repository.getUserStores(user_id)
     await this.logStoreBindingChange(context, user_id, previousStores, currentStores, '设置用户主门店', {
       primary_store_id: Number(store_id)
@@ -112,7 +122,12 @@ class UserStoreService extends BaseService {
     const { user_id, store_id } = body
     if (!user_id || !store_id) throw this.createError('用户ID和门店ID不能为空', 400)
     const previousStores = await this.repository.getUserStores(user_id)
-    const result = await this.repository.removeUserStore(user_id, store_id)
+    let result
+    try {
+      result = await this.repository.removeUserStore(user_id, store_id)
+    } finally {
+      invalidateAuthProfiles([user_id])
+    }
     const currentStores = await this.repository.getUserStores(user_id)
     await this.logStoreBindingChange(context, user_id, previousStores, currentStores, '移除用户门店绑定')
     return { data: result, message: result.message }
@@ -123,7 +138,12 @@ class UserStoreService extends BaseService {
     const { user_id } = params
     if (!user_id) throw this.createError('用户ID不能为空', 400)
     const previousStores = await this.repository.getUserStores(user_id)
-    const result = await this.repository.removeAllUserStores(user_id)
+    let result
+    try {
+      result = await this.repository.removeAllUserStores(user_id)
+    } finally {
+      invalidateAuthProfiles([user_id])
+    }
     if (result.affectedRows > 0) {
       await this.logStoreBindingChange(context, user_id, previousStores, [], '清空用户门店绑定')
     }

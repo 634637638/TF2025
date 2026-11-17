@@ -81,20 +81,27 @@
                 type="info"
                 class="btn tf-button--topbar tf-button--manage btn-lock"
                 :title="isLocked ? '解锁屏幕' : '锁定屏幕'"
+                :aria-label="isLocked ? '解锁屏幕' : '锁定屏幕'"
                 @click="toggleScreenLock"
               >
-                <i :class="isLocked ? 'fas fa-unlock' : 'fas fa-lock'" />
-                <span>{{ isLocked ? '解锁' : '锁定' }}</span>
+                <el-icon aria-hidden="true">
+                  <Unlock v-if="isLocked" />
+                  <Lock v-else />
+                </el-icon>
+                <span class="topbar-button-label">{{ isLocked ? '解锁' : '锁定' }}</span>
               </el-button>
               <el-button
                 native-type="button"
                 type="danger"
                 class="btn tf-button--topbar tf-button--danger logout-btn"
                 title="退出登录"
+                aria-label="退出登录"
                 @click="handleLogout"
               >
-                <i class="fas fa-power-off" />
-                <span class="btn-text">退出登录</span>
+                <el-icon aria-hidden="true">
+                  <SwitchButton />
+                </el-icon>
+                <span class="topbar-button-label">退出登录</span>
               </el-button>
             </div>
           </div>
@@ -124,6 +131,7 @@
 <script setup lang="ts">
 import { confirmAction } from '@/utils/message-box'
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { Lock, Unlock, SwitchButton } from '@element-plus/icons-vue'
 import ResponsiveMenu from '@/components/ResponsiveMenu.vue'
 import SimpleSidebar from '@/components/SimpleSidebar.vue'
 import NotificationContainer from '@/components/NotificationContainer.vue'

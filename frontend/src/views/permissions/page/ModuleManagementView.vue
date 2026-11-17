@@ -106,40 +106,27 @@
               <div class="section-title-actions">
                 <el-button
                   v-if="canCreate"
-                  type="primary"
-                  size="small"
+                  class="tf-button--create"
                   @click="showAddModuleDialog = true"
                 >
                   <i class="fas fa-plus" />
-                  手动添加模块
-                </el-button>
-                <el-button
-                  v-else
-                  type="primary"
-                  size="small"
-                  title="您没有创建模块的权限"
-                  disabled
-                >
-                  <i class="fas fa-plus" />
-                  手动添加模块
+                  添加模块
                 </el-button>
                 <div
                   v-if="!isMobile"
                   class="view-toggles"
                 >
                   <el-button
-                    :type="viewMode === 'list' ? 'primary' : 'default'"
-                    size="small"
-                    class="view-toggle-button"
+                    :class="viewMode === 'list' ? 'tf-button--primary' : 'tf-button--neutral'"
+                    :aria-pressed="viewMode === 'list'"
                     @click="viewMode = 'list'"
                   >
                     <i class="fas fa-list" />
                     列表
                   </el-button>
                   <el-button
-                    :type="viewMode === 'grid' ? 'primary' : 'default'"
-                    size="small"
-                    class="view-toggle-button"
+                    :class="viewMode === 'grid' ? 'tf-button--primary' : 'tf-button--neutral'"
+                    :aria-pressed="viewMode === 'grid'"
                     @click="viewMode = 'grid'"
                   >
                     <i class="fas fa-th" />
@@ -168,7 +155,6 @@
                 v-if="searchText || filterCategory || nameStatus || activeStatus"
                 type="primary"
                 plain
-                size="small"
                 @click="clearFilters"
               >
                 清除筛选条件
@@ -192,28 +178,6 @@
                 @row-dblclick="mobileDetailDoubleClick"
               >
                 <el-table-column
-                  label="状态"
-                  width="76"
-                  align="center"
-                >
-                  <template #default="{ row }">
-                    <span
-                      class="status-badge"
-                      :class="row.is_active ? 'active' : 'inactive'"
-                    >{{ row.is_active ? '启用' : '禁用' }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column
-                  label="模块标识"
-                  :min-width="getModuleColumnWidth('key')"
-                  align="center"
-                  class-name="complete-text-column"
-                >
-                  <template #default="{ row }">
-                    <code class="module-key">{{ row.key }}</code>
-                  </template>
-                </el-table-column>
-                <el-table-column
                   label="模块名称"
                   :min-width="getModuleColumnWidth('name')"
                   align="center"
@@ -230,6 +194,16 @@
                         {{ row.description }}
                       </div>
                     </div>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  label="模块标识"
+                  :min-width="getModuleColumnWidth('key')"
+                  align="center"
+                  class-name="complete-text-column"
+                >
+                  <template #default="{ row }">
+                    <code class="module-key">{{ row.key }}</code>
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -250,7 +224,10 @@
                   align="center"
                 >
                   <template #default="{ row }">
-                    <span class="permission-count">{{ row.permission_count || 0 }}</span>
+                    <span
+                      class="permission-count"
+                      title="模块支持的业务动作数，不含菜单查看"
+                    >{{ row.permission_count ?? '—' }}</span>
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -263,6 +240,18 @@
                       class="name-status-badge"
                       :class="row.is_custom_name ? 'custom' : 'auto'"
                     >{{ row.name_status }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  label="状态"
+                  width="76"
+                  align="center"
+                >
+                  <template #default="{ row }">
+                    <span
+                      class="status-badge"
+                      :class="row.is_active ? 'active' : 'inactive'"
+                    >{{ row.is_active ? '启用' : '禁用' }}</span>
                   </template>
                 </el-table-column>
                 <el-table-column
@@ -287,7 +276,6 @@
                       <el-button
                         v-if="canEdit"
                         :type="isProtectedModule(row) ? 'info' : (row.is_active ? 'warning' : 'success')"
-                        size="small"
                         :disabled="isProtectedModule(row) && Number(row.is_active) === 1"
                         :title="isProtectedModule(row) ? '权限管理核心模块不能禁用' : (row.is_active ? '禁用模块' : '启用模块')"
                         @click.stop="toggleModuleStatus(row)"
@@ -296,7 +284,6 @@
                       </el-button><el-button
                         v-if="canEdit"
                         type="primary"
-                        size="small"
                         :title="row.is_custom_name === 1 ? '编辑自定义名称' : '设为自定义名称'"
                         @click.stop="editModuleName(row)"
                       >
@@ -304,14 +291,12 @@
                       </el-button><el-button
                         v-if="canEdit && row.is_custom_name === 1"
                         type="warning"
-                        size="small"
                         title="恢复原始名称"
                         @click.stop="restoreModuleName(row)"
                       >
                         <i class="fas fa-undo" /><span>恢复</span>
                       </el-button><el-button
                         type="info"
-                        size="small"
                         title="详情"
                         @click.stop="showModuleDetails(row)"
                       >
@@ -378,7 +363,10 @@
                   <div class="module-info">
                     <div class="info-item info-chip-card">
                       <label>权限数量</label>
-                      <span class="permission-count">{{ module.permission_count || 0 }} 个</span>
+                      <span
+                        class="permission-count"
+                        title="模块支持的业务动作数，不含菜单查看"
+                      >{{ module.permission_count ?? '—' }} 个</span>
                     </div>
                     <div class="info-item info-chip-card">
                       <label>名称状态</label>
@@ -407,7 +395,6 @@
                     <el-button
                       v-if="canEdit"
                       :type="isProtectedModule(module) ? 'info' : (module.is_active ? 'warning' : 'success')"
-                      size="small"
                       :disabled="isProtectedModule(module) && Number(module.is_active) === 1"
                       :title="isProtectedModule(module) ? '权限管理核心模块不能禁用' : (module.is_active ? '禁用模块' : '启用模块')"
                       @click="toggleModuleStatus(module)"
@@ -417,7 +404,6 @@
                     </el-button>
                     <el-button
                       type="info"
-                      size="small"
                       @click="showModuleDetails(module)"
                     >
                       <i class="fas fa-eye" />
@@ -426,7 +412,6 @@
                     <el-button
                       v-if="canEdit"
                       type="primary"
-                      size="small"
                       @click="editModuleName(module)"
                     >
                       <i class="fas fa-edit" />
@@ -435,7 +420,6 @@
                     <el-button
                       v-if="canEdit && module.is_custom_name === 1"
                       type="warning"
-                      size="small"
                       @click="restoreModuleName(module)"
                     >
                       <i class="fas fa-undo" />
@@ -678,7 +662,7 @@
                 <h4>权限信息</h4>
                 <div class="detail-row">
                   <span class="label">权限数量：</span>
-                  <span class="value">{{ selectedModule.permission_count || 0 }} 个</span>
+                  <span class="value">{{ selectedModule.permission_count ?? '—' }} 个</span>
                 </div>
                 <div class="detail-row tf-detail-field--wide">
                   <span class="label">描述：</span>
@@ -720,10 +704,10 @@
           </template>
         </MobileDialog>
 
-        <!-- 手动添加模块对话框 -->
+        <!-- 添加模块对话框 -->
         <MobileDialog
           v-model="showAddModuleDialog"
-          title="手动添加模块"
+          title="添加模块"
           width="760px"
           dialog-class="module-management-dialog module-management-dialog-wide"
           :show-default-footer="false"
@@ -913,6 +897,7 @@ import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
 import { usePageState } from '@/composables/usePageState'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -935,7 +920,11 @@ export default {
   },
   setup() {
     // 权限检查 - 使用 module-management 映射到 permissions_modulemanagementview
-    const { canView, canCreate, canEdit, canDelete } = usePagePermissions('module-management')
+    const { canView, canCreate: canCreateModule, canEdit, canDelete: canDeleteModule } = usePagePermissions('module-management')
+    const authStore = useAuthStore()
+    const canAdminPermissions = computed(() => authStore.isAdmin)
+    const canCreate = computed(() => canCreateModule.value && canAdminPermissions.value)
+    const canDelete = computed(() => canDeleteModule.value && canAdminPermissions.value)
     const showModuleActionField = computed(() => shouldShowActionColumn(
       fieldPermissions.isFieldVisible('permissions_modulemanagementview', 'system_info.operations'),
       [canEdit.value, canDelete.value]
@@ -953,7 +942,7 @@ export default {
       setError,
       clearError,
       handleApiError
-    } = usePageState(24)
+    } = usePageState({ initialPageSize: 24 })
 
     // 响应式数据
     const modules = ref([])
@@ -991,7 +980,7 @@ export default {
     const detailsDialogVisible = ref(false)
     const selectedModule = ref(null)
 
-    // 手动添加模块对话框
+    // 添加模块对话框
     const showAddModuleDialog = ref(false)
     const newModule = reactive({
       key: '',
@@ -1087,7 +1076,7 @@ export default {
       const values = paginatedModules.value.map(module => {
         if (field === 'name') return `${module.name || '-'} ${module.description || ''}`
         if (field === 'category') return getCategoryName(module.category)
-        if (field === 'permission_count') return `${module.permission_count || 0} 个`
+        if (field === 'permission_count') return `${module.permission_count ?? '—'} 个`
         if (field === 'created_at') return formatDate(module.created_at)
         return module[field] || '-'
       })
@@ -1293,8 +1282,10 @@ export default {
       }
     }
 
-    // 手动添加模块
+    // 添加模块
     const handleAddModule = async () => {
+      if (!canCreate.value || isSubmitting.value) return
+
       // 验证表单
       formErrors.value = {}
 
@@ -1321,7 +1312,7 @@ export default {
       }
 
       try {
-        isSubmitting.value = true
+        setSubmitLoading(true)
 
         const response = await unifiedApi.post('/modules/manual-create', {
           key: newModule.key.trim().toLowerCase(),
@@ -1358,7 +1349,7 @@ export default {
           showError('添加模块失败，请稍后重试')
         }
       } finally {
-        isSubmitting.value = false
+        setSubmitLoading(false)
       }
     }
 
@@ -1442,12 +1433,6 @@ export default {
 </script>
 
 <style scoped>
-/* 按钮禁用样式 */
-.btn.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .module-management {
   padding: 0;
   min-height: 0;
@@ -1542,7 +1527,9 @@ export default {
 .section-title-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+  min-width: 0;
 }
 
 .record-count {
@@ -1552,7 +1539,11 @@ export default {
 
 .view-toggles {
   display: flex;
-  gap: 5px;
+  gap: var(--tf-space-1);
+}
+
+.view-toggles > .el-button + .el-button {
+  margin-left: 0;
 }
 
 </style>
@@ -2076,10 +2067,6 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
-  }
-
-  .view-toggles {
-    margin-top: 12px;
   }
 
   .module-grid {

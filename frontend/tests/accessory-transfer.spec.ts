@@ -12,20 +12,20 @@ vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFiel
 const Dialog = { props: { modelValue: Boolean }, template: '<div><slot /><slot name="footer" /></div>' }
 const Pagination = { props: { current: Number, total: Number }, emits: ['change'], template: '<button @click="$emit(\'change\', 2)">第二页</button>' }
 const wrappers: ReturnType<typeof mount>[] = []
-const scrollHandlers = new Map<HTMLElement, () => Promise<void>>()
-const infiniteScroll = {
-  mounted(element: HTMLElement, binding: { value: () => Promise<void> }) { scrollHandlers.set(element, binding.value) },
-  unmounted(element: HTMLElement) { scrollHandlers.delete(element) }
-}
 const scrollSerials = async () => {
-  const handler = scrollHandlers.values().next().value
-  expect(handler).toBeDefined()
-  await handler?.()
+  const select = wrappers.at(-1)!.findAllComponents(ElSelect)[2]
+  const wrap = select.vm.scrollbarRef?.wrapRef
+  expect(wrap).toBeDefined()
+  Object.defineProperties(wrap!, {
+    clientHeight: { configurable: true, value: 200 },
+    scrollHeight: { configurable: true, value: 1000 }
+  })
+  select.vm.$emit('popup-scroll', { scrollTop: 800, scrollLeft: 0 })
   await flushPromises()
 }
 const render = async (tracking = 0) => {
   const wrapper = mount(AccessoryTransferModal, { props: { modelValue: true, accessory: { id: 56, template_id: 55, name: '通用充电宝', serial_tracking: tracking } },
-    global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog }, directives: { permission: {}, 'tf-loading': {}, 'infinite-scroll': infiniteScroll } } })
+    global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog }, directives: { permission: {}, 'tf-loading': {} } } })
   wrappers.push(wrapper)
   await flushPromises()
   return wrapper
@@ -132,13 +132,13 @@ describe('配件跨店库存划拨', () => {
     expect(select.findAllComponents({ name: 'ElOption' }).map(option => option.props('label'))).toEqual(['NEW'])
     let resolvePage: ((value: unknown) => void) | undefined
     mocks.get.mockImplementationOnce(() => new Promise(resolve => { resolvePage = resolve }))
-    const page = scrollSerials()
+    await scrollSerials()
     await flushPromises()
     const calls = mocks.get.mock.calls.length
     await scrollSerials()
     expect(mocks.get).toHaveBeenCalledTimes(calls)
     resolvePage?.({ data: { data: [{ serial_number: 'NEW2' }], pagination: { total: 2 } } })
-    await page
+    await flushPromises()
     expect(select.findAllComponents({ name: 'ElOption' }).map(option => option.props('label'))).toEqual(['NEW', 'NEW2'])
   })
   it('更换来源店或关闭时取消SN请求并清空选择，迟到响应不得恢复旧店SN', async () => {

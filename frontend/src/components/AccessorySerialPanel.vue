@@ -11,22 +11,23 @@
       <el-form-item label="SN序列号">
         <el-input
           v-model="keyword"
+          v-identifier-input="'accessory-serial'"
           clearable
           maxlength="100"
           placeholder="输入或扫描SN序列号"
           @clear="searchSerials"
         />
       </el-form-item>
-      <el-form-item>
+      <el-form-item class="tf-dialog-toolbar">
         <el-button
-          class="btn btn-primary"
+          type="primary"
           native-type="submit"
           :disabled="loading"
         >
           搜索
         </el-button>
         <el-button
-          class="btn btn-secondary"
+          class="tf-button--refresh"
           :disabled="loading"
           @click="loadSerials"
         >
@@ -51,12 +52,14 @@
       <el-table-column
         prop="serial_number"
         label="SN序列号"
-        min-width="170"
+        :min-width="getIdentifierColumnMinWidth(['SN序列号', ...rows.map(row => row.serial_number)], { minWidth: 0 })"
+        class-name="identifier-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('status')"
         label="状态"
-        min-width="90"
+        :min-width="getTextColumnMinWidth(['状态', ...rows.map(row => statusText(row.status))], { minWidth: 0 })"
+        class-name="complete-text-column"
       >
         <template #default="{ row }">
           {{ statusText(row.status) }}
@@ -66,24 +69,28 @@
         v-if="canViewAccessoryField('distribution')"
         prop="store_name"
         label="门店"
-        min-width="110"
+        :min-width="getTextColumnMinWidth(['门店', ...rows.map(row => row.store_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('batch_no')"
         prop="batch_no"
         label="入库单号"
-        min-width="180"
+        :min-width="getIdentifierColumnMinWidth(['入库单号', ...rows.map(row => row.batch_no)], { minWidth: 0 })"
+        class-name="identifier-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('supplier_name')"
         prop="supplier_name"
         label="供应商"
-        min-width="110"
+        :min-width="getTextColumnMinWidth(['供应商', ...rows.map(row => row.supplier_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('purchase_cost')"
         label="进价"
-        min-width="90"
+        :min-width="getTextColumnMinWidth(['进价', ...rows.map(row => formatAmount(row.purchase_cost))], { minWidth: 0 })"
+        class-name="complete-text-column"
       >
         <template #default="{ row }">
           {{ formatAmount(row.purchase_cost) }}
@@ -92,7 +99,8 @@
       <el-table-column
         v-if="canViewAccessoryField('inventory_time')"
         label="入库时间"
-        min-width="160"
+        :min-width="getTextColumnMinWidth(['入库时间', ...rows.map(row => formatDateTime(row.inventory_time, TIME_FORMATS.DATETIME_MINUTE))], { minWidth: 0 })"
+        class-name="complete-text-column"
       >
         <template #default="{ row }">
           {{ formatDateTime(row.inventory_time, TIME_FORMATS.DATETIME_MINUTE) }}
@@ -102,35 +110,41 @@
         v-if="canViewAccessoryField('operator_name')"
         prop="inventory_operator_name"
         label="入库员"
-        min-width="100"
+        :min-width="getTextColumnMinWidth(['入库员', ...rows.map(row => row.inventory_operator_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         prop="sale_no"
         label="销售/赠送单号"
-        min-width="180"
+        :min-width="getIdentifierColumnMinWidth(['销售/赠送单号', ...rows.map(row => row.sale_no)], { minWidth: 0 })"
+        class-name="identifier-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('customer_name')"
         prop="customer_name"
         label="客户姓名"
-        min-width="110"
+        :min-width="getTextColumnMinWidth(['客户姓名', ...rows.map(row => row.customer_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('customer_phone')"
         prop="customer_phone"
         label="客户手机号"
-        min-width="140"
+        :min-width="getTextColumnMinWidth(['客户手机号', ...rows.map(row => row.customer_phone)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('operator_name')"
         prop="operator_name"
         label="出库员"
-        min-width="100"
+        :min-width="getTextColumnMinWidth(['出库员', ...rows.map(row => row.operator_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('created_at')"
         label="出库时间"
-        min-width="160"
+        :min-width="getTextColumnMinWidth(['出库时间', ...rows.map(row => formatDateTime(row.sale_time, TIME_FORMATS.DATETIME_MINUTE))], { minWidth: 0 })"
+        class-name="complete-text-column"
       >
         <template #default="{ row }">
           {{ formatDateTime(row.sale_time, TIME_FORMATS.DATETIME_MINUTE) }}
@@ -170,6 +184,7 @@ import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
 import { unifiedApi } from '@/utils/unified-api'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatAmount, formatDateTime } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import { canViewAccessoryField } from './accessory-field-permissions'
@@ -185,7 +200,7 @@ const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 const requests = useLatestRequest()
-const statusText = (status: AccessorySerialRecord['status']) => status === 'in_stock' ? '在库' : status === 'sold' ? '已销售' : status === 'gifted' ? '已赠送' : '-'
+const statusText = (status: AccessorySerialRecord['status']) => status === 'in_stock' ? '在库' : status === 'sold' ? '已销售' : status === 'gifted' ? '已赠送' : status === 'voided' ? '更正作废' : '-'
 const loadSerials = async () => {
   if (!canViewAccessoryField('serial_number')) return
   const request = requests.nextRequest()

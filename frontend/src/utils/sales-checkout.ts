@@ -9,11 +9,21 @@ import type { CheckoutCustomerForm, CheckoutGoodsDraft, CheckoutPhone, CheckoutQ
 export const isCheckoutSubmissionRejected = (error: unknown): boolean => {
   const status = getRequestErrorStatus(error), payload = getRequestErrorPayload(error)
   if (payload?.success !== false || typeof payload.code !== 'string') return false
-  return status === 400 && ['CHECKOUT_INVALID', 'CHECKOUT_RETURN_INVALID', 'POINTS_AVAILABLE_INSUFFICIENT'].includes(payload.code) ||
+  return (status === 400 || status === 409) && ['FILM_SERVICE_INVALID', 'FILM_DEVICE_REQUIRED', 'FILM_TEMPLATE_OVERLAP', 'FILM_TEMPLATE_REQUIRED', 'FILM_STOCK_AMBIGUOUS', 'FILM_STOCK_INSUFFICIENT', 'FILM_PRODUCT_REQUIRED', 'FILM_SERVICE_NOT_READY'].includes(payload.code) ||
+    status === 400 && ['CHECKOUT_INVALID', 'CHECKOUT_RETURN_INVALID', 'POINTS_AVAILABLE_INSUFFICIENT'].includes(payload.code) ||
     status === 409 && ['CHECKOUT_RETURN_QUOTE_CHANGED', 'CHECKOUT_RETURN_PAYMENT_REQUIRED'].includes(payload.code)
 }
 
 export const createCheckoutKey = () => [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, '0')).join('')
+/** 日期、备注及收款渠道可在外层完善；积分依据只绑定客户、门店和实际交易明细。 */
+export const checkoutPointsContext = (input: SalesCheckoutInput) => JSON.stringify({
+  store_id: input.store_id, customer_phone: input.customer_info.phone, phones: input.phones,
+  quick_phone: input.quick_phone, accessories: input.accessories.map(row => ({
+    key: row.key, accessory_id: row.accessory_id, quantity: row.quantity, unit_price: row.unit_price,
+    sale_type: row.sale_type, linked_phone_id: row.linked_phone_id, serial_numbers: row.serial_numbers,
+    gift_return_unit_price: row.gift_return_unit_price, redeem_points: row.redeem_points || 0
+  }))
+})
 const nonnegativeInteger = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value))
 const serialList = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string' && item.length > 0) && new Set(value).size === value.length
@@ -36,6 +46,7 @@ export const isPhoneReturnSource = (value: unknown, phoneId: number): value is P
     if (!record(item) || !positiveId(item.item_id) || ids.has(item.item_id) ||
       !(item.accessory_id === null || positiveId(item.accessory_id)) || !positiveId(item.accessory_sale_id) ||
       !(typeof item.name === 'string' || item.name === null) || !(item.sale_type === null || item.sale_type === 'sale' || item.sale_type === 'gift') ||
+      !(item.unit === undefined || item.unit === null || typeof item.unit === 'string') ||
       !['quantity', 'returned_quantity', 'remaining_quantity'].every(key => nullableInteger(item[key])) ||
       !['unit_price', 'total_amount', 'gift_return_unit_price', 'gift_return_total', 'remaining_gift_return_total'].every(key => nullableMoney(item[key])) ||
       !(item.gift_agreement_state === null || item.gift_agreement_state === 'recorded' || item.gift_agreement_state === 'not_recorded') ||
@@ -163,8 +174,11 @@ export const buildCheckoutGoods = (drafts: CheckoutGoodsDraft[], phones: Checkou
     if (new Set(numbers).size !== numbers.length) throw new Error('同一单存在重复SN')
     const quantity = row.serial_mode ? numbers.length : row.quantity
     if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999999) throw new Error('请填写正整数数量或录入实际SN')
-    const used = (quantities.get(row.option.id) || 0) + quantity
-    quantities.set(row.option.id, used)
+    // 精确SN候选的库存为该件1件；不能把同商品其他SN累计后与这1件比较。
+    const pickedSerial = row.option.serial_number
+    if (pickedSerial && (!row.serial_mode || quantity !== 1 || numbers[0] !== normalizeAccessorySerial(pickedSerial))) throw new Error('请选择候选对应的实际在库SN')
+    const used = pickedSerial ? quantity : (quantities.get(row.option.id) || 0) + quantity
+    if (!pickedSerial) quantities.set(row.option.id, used)
     if (used > Number(row.option.quantity)) throw new Error('商品数量超过所选门店库存，请重新核对')
     if (phones.length && !phones.some(item => item.phone_id === row.linked_phone_id)) throw new Error('每条搭售或赠品必须选择关联手机')
     const price = row.sale_type === 'gift' ? 0 : cents(row.unit_price)
@@ -179,11 +193,11 @@ export const buildCheckoutGoods = (drafts: CheckoutGoodsDraft[], phones: Checkou
   })
 }
 
-export const buildCheckoutInput = (form: CheckoutCustomerForm, phones: CheckoutPhone[], drafts: CheckoutGoodsDraft[], key: string, quickPhone?: CheckoutQuickPhone): SalesCheckoutInput => {
+export const buildCheckoutInput = (form: CheckoutCustomerForm, phones: CheckoutPhone[], drafts: CheckoutGoodsDraft[], key: string, quickPhone?: CheckoutQuickPhone, allowMissingPhone = false): SalesCheckoutInput => {
   if (quickPhone && (phones.length !== 1 || phones[0].phone_id !== 1 || phones[0].sale_price !== quickPhone.sale_price)) throw new Error('快速出库设备与整单内容不一致，请重新打开结算')
   const phone = normalizePhoneDigits(form.customer_phone)
   const name = normalizePersonName(form.customer_name, 50)
-  if (name.length < 2 || !isValidMobilePhone(phone)) throw new Error('请填写客户姓名和有效手机号')
+  if (name.length < 2 || !allowMissingPhone && !isValidMobilePhone(phone)) throw new Error('请填写客户姓名和有效手机号')
   if (!Number.isSafeInteger(Number(form.store_id)) || Number(form.store_id) < 1 || !Number.isSafeInteger(Number(form.operator_id)) || Number(form.operator_id) < 1) throw new Error('请选择销售门店和销售员')
   if (!form.sale_time || !form.payment_method) throw new Error('请选择销售日期和支付方式')
   let total = 0

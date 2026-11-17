@@ -1,4 +1,5 @@
 import type { AccessorySaleDetail } from './accessory'
+import type { GiftReturnAgreement } from './sales-checkout'
 
 export interface ReceiptItem {
   /** 原手机销售ID，用于精确关联本次随单配件。 */
@@ -37,4 +38,4 @@ export interface SearchPhoneResult {
 /** 原手机凭证的配件只读投影，不返回采购成本或供应商。 */
 export type PhoneReceiptAccessory = Pick<AccessorySaleDetail, 'id' | 'name' | 'brand_name' | 'product_model' |
   'color_name' | 'unit' | 'quantity' | 'unit_price' | 'total_price' | 'sale_type' |
-  'points_used' | 'deduction_amount' | 'serial_numbers'>
+  'points_used' | 'deduction_amount' | 'serial_numbers'> & GiftReturnAgreement

@@ -41,13 +41,11 @@ class AnalyticsSalesRepository {
         AVG(so.final_amount) as averageOrderValue
       FROM stores st
       LEFT JOIN sales_orders so ON st.id = so.store_id AND so.order_status = 'completed'
-      ${startDate || endDate ? `WHERE ${whereConditions.filter(condition => !condition.includes('store_id')).join(' AND ')}` : ''}
+      ${whereClause}
       GROUP BY st.id, st.name
       ORDER BY totalSales DESC
     `
-    const storeSalesParams = []
-    if (startDate) storeSalesParams.push(startDate)
-    if (endDate) storeSalesParams.push(endDate)
+    const storeSalesParams = [...queryParams]
     const topProductsQuery = `
       SELECT p.id, p.imei, m.name as model_name, b.name as brand_name,
         COUNT(s.id) as quantity, SUM(p.sale_price) as revenue, p.status as stock_status
@@ -58,7 +56,7 @@ class AnalyticsSalesRepository {
       WHERE s.status = 'completed'
       ${startDate ? 'AND DATE(s.sale_time) >= ?' : ''}
       ${endDate ? 'AND DATE(s.sale_time) <= ?' : ''}
-      ${storeId !== null ? 'AND p.store_id = ?' : ''}
+      ${storeId !== null ? 'AND s.store_id = ?' : ''}
       ${supplierId !== null ? 'AND p.supplier_id = ?' : ''}
       GROUP BY p.id, m.name, b.name, p.status
       ORDER BY quantity DESC

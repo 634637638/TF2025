@@ -4,6 +4,7 @@
 const SalaryTemplateRepository = require('../repositories/salary-template.repository')
 const log = require('../utils/log')
 const { normalizeGoodsCommissionRule } = require('../utils/goods-commission')
+const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const { validId } = require('../utils/sale-input')
 
 const writable = new Set(['name', 'description', 'base_salary', 'commission_type', 'commission_fixed',
@@ -33,6 +34,15 @@ const readTemplate = row => row && ({ ...row,
 class SalaryTemplateService {
   constructor({ repository = new SalaryTemplateRepository() } = {}) {
     this.repository = repository
+  }
+
+  async assertEmployeeTemplateWrite(data, actor, permissionCheck = hasUnifiedPermission) {
+    if (Object.hasOwn(data, 'salary_template_id') &&
+      !await permissionCheck(actor, 'salary-templates:edit')) {
+      throw Object.assign(new Error('修改员工工资模板需要工资模板编辑权限'), {
+        statusCode: 403, code: 'INSUFFICIENT_PERMISSIONS'
+      })
+    }
   }
 
   async getTemplates(filters, options) {

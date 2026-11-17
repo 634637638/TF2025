@@ -13,7 +13,7 @@
       >
         <template #actions>
           <el-button
-            type="info"
+            class="tf-button--refresh"
             :loading="loading || warehouseLoading"
             @click="refreshSettings"
           >
@@ -64,15 +64,7 @@
                 label="类型名称"
                 min-width="180"
               />
-              <el-table-column
-                v-if="filmReady"
-                label="用于贴膜"
-                min-width="100"
-              >
-                <template #default="{ row }">
-                  {{ Number(row.film_enabled) === 1 ? '是' : '否' }}
-                </template>
-              </el-table-column>
+
               <el-table-column
                 prop="description"
                 label="说明"
@@ -107,8 +99,7 @@
                 <template #default="{ row }">
                   <div class="action-buttons table-actions">
                     <el-button
-                      size="small"
-                      type="primary"
+                      class="table-action table-action--edit"
                       @click.stop="openEdit('category', row)"
                     >
                       <i class="fas fa-edit" />编辑
@@ -199,8 +190,7 @@
                 <template #default="{ row }">
                   <div class="action-buttons table-actions">
                     <el-button
-                      size="small"
-                      type="primary"
+                      class="table-action table-action--edit"
                       @click.stop="openEdit('unit', row)"
                     >
                       <i class="fas fa-edit" />编辑
@@ -326,12 +316,7 @@
               show-word-limit
             />
           </el-form-item>
-          <el-form-item
-            v-if="editingKind === 'category' && filmReady"
-            label="用于贴膜"
-          >
-            <el-switch v-model="form.film_enabled" />
-          </el-form-item>
+
           <el-form-item label="排序">
             <el-input-number
               v-model="form.sort_order"
@@ -374,6 +359,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { computed } from 'vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
@@ -410,9 +396,8 @@ const editingKind = ref<AccessoryCatalogKind>('category')
 const editingId = ref<number | null>(null)
 const categories = ref<AccessoryCatalogItem[]>([])
 const units = ref<AccessoryCatalogItem[]>([])
-const filmReady = ref(false)
 const formRef = ref<FormInstance>()
-const form = reactive({ name: '', description: '', sort_order: 0, status: 1, film_enabled: false })
+const form = reactive({ name: '', description: '', sort_order: 0, status: 1 })
 const rules: FormRules = { name: [{ required: true, message: '请输入名称', trigger: 'blur' }] }
 
 const loadCatalog = async () => {
@@ -423,7 +408,6 @@ const loadCatalog = async () => {
     if (!request.isLatest()) return
     categories.value = response.data?.categories || []
     units.value = response.data?.units || []
-    filmReady.value = response.data?.film_ready === true
   } catch (error) {
     if (!request.isLatest() || catalogRequest.isCanceledError(error)) return
     logger.error('加载设置失败', error)
@@ -469,7 +453,7 @@ const openCreate = (kind: AccessoryCatalogKind) => {
   if (!requirePermission('create')) return
   editingKind.value = kind
   editingId.value = null
-  Object.assign(form, { name: '', description: '', sort_order: 0, status: 1, film_enabled: false })
+  Object.assign(form, { name: '', description: '', sort_order: 0, status: 1 })
   dialogVisible.value = true
 }
 
@@ -478,8 +462,7 @@ const openEdit = (kind: AccessoryCatalogKind, item: AccessoryCatalogItem) => {
   if (!requirePermission('edit')) return
   editingKind.value = kind
   editingId.value = item.id
-  Object.assign(form, { name: item.name, description: item.description || '', sort_order: item.sort_order, status: item.status,
-    film_enabled: Number(item.film_enabled) === 1 })
+  Object.assign(form, { name: item.name, description: item.description || '', sort_order: item.sort_order, status: item.status })
   dialogVisible.value = true
 }
 
@@ -493,8 +476,7 @@ const saveCatalogItem = async () => {
       ? `/accessories/catalog/${editingKind.value}/${editingId.value}`
       : `/accessories/catalog/${editingKind.value}`
     const data = { name: form.name, sort_order: form.sort_order, status: form.status,
-      ...(editingKind.value === 'category' ? { description: form.description,
-        ...(filmReady.value ? { film_enabled: form.film_enabled } : {}) } : {}) }
+      ...(editingKind.value === 'category' ? { description: form.description } : {}) }
     const response = editingId.value
       ? await unifiedApi.put(url, data, { showError: false })
       : await unifiedApi.post(url, data, { showError: false })
@@ -534,7 +516,6 @@ const categoryDetailFields = computed<RecordDetailField[]>(() => {
   if (!row) return []
   return [
     { key: 'name', label: '名称', value: row.name, visible: canView.value },
-    { key: 'film_enabled', label: '用于贴膜', value: Number(row.film_enabled) === 1 ? '是' : '否', visible: canView.value && filmReady.value },
     { key: 'description', label: '说明', value: row.description, visible: canView.value, wide: true },
     { key: 'sort_order', label: '排序', value: row.sort_order, visible: canView.value },
     { key: 'status', label: '状态', value: row.status === 1 ? '启用' : '停用', visible: canView.value }
@@ -553,6 +534,12 @@ const unitDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'sort_order', label: '排序', value: row.sort_order, visible: canView.value },
     { key: 'status', label: '状态', value: row.status === 1 ? '启用' : '停用', visible: canView.value }
   ]
+})
+
+usePageShortcuts('/accessories/catalog', {
+  'goods-type-create': { open: () => { activeTab.value = 'categories'; openCreate('category') } },
+  'goods-unit-create': { open: () => { activeTab.value = 'units'; openCreate('unit') } },
+  'goods-warehouse-settings': { open: () => { activeTab.value = 'warehouse' }, allowed: () => canViewAccessoryField('distribution') }
 })
 </script>
 

@@ -202,6 +202,25 @@ describe('公共只读详情字段及底部操作', () => {
     await nextTick()
     expect(descriptions.props()).toMatchObject({ column: 3, direction: 'horizontal' })
   })
+  it('紧凑描述列表手机标签与内容同行，长字段跨列，撤销紧凑参数后恢复默认布局', async () => {
+    vi.stubGlobal('innerWidth', 390)
+    const wrapper = mount(RecordDescriptions, {
+      props: { column: 2, compact: true }, attrs: { border: true },
+      slots: { default: () => [
+        h(ElDescriptionsItem, { label: '商品类型' }, () => '充电头'),
+        h(ElDescriptionsItem, { label: '品牌' }, () => '苹果'),
+        h(ElDescriptionsItem, { label: '配件型号', span: 2 }, () => 'MWVW3CH')
+      ] }
+    })
+    wrappers.push(wrapper)
+    await nextTick()
+    expect(wrapper.findComponent(ElDescriptions).props()).toMatchObject({ column: 2, direction: 'horizontal', size: 'small' })
+    const label = wrapper.findAll('.el-descriptions__label').find(cell => cell.text() === '配件型号')!
+    expect(label.element.nextElementSibling?.textContent).toBe('MWVW3CH')
+    expect(label.element.nextElementSibling?.getAttribute('colspan')).toBe('3')
+    await wrapper.setProps({ compact: false })
+    expect(wrapper.findComponent(ElDescriptions).props('direction')).toBe('vertical')
+  })
   it('权限隐藏字段不泄露，零和 false 保留，长字段整行，无动作不创建 footer', async () => {
     const fields = shallowRef<RecordDetailField[]>([
       { key: 'name', label: '名称', value: '只读记录', visible: true },

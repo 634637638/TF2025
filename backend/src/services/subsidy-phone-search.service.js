@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
 const SubsidyPhoneSearchRepository = require('../repositories/subsidy-phone-search.repository')
 
 class SubsidyPhoneSearchService {
@@ -7,10 +9,10 @@ class SubsidyPhoneSearchService {
     this.repository = repository
   }
 
-  async search(identifier, onProgress = () => {}) {
+  async search(identifier, onProgress = () => {}, actor) {
     const trimmedIdentifier = identifier.trim()
     const searchPattern = `%${trimmedIdentifier}%`
-    const phones = await this.repository.findSoldPhones(searchPattern)
+    const phones = await this.repository.findSoldPhones(searchPattern, resolveStoreScope(actor))
     onProgress('phones query completed', { matchCount: phones.length })
     if (phones.length === 0) return []
 

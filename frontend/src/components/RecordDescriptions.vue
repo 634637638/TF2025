@@ -1,6 +1,8 @@
 <script lang="ts">
 import { cloneVNode, defineComponent, Fragment, h, isVNode, type PropType, type VNode, type VNodeChild } from 'vue'
 import { ElDescriptions, type DescriptionProps } from 'element-plus'
+// render 函数中的组件不会触发模板按需样式解析，公共入口负责加载描述列表样式。
+import 'element-plus/es/components/descriptions/style/css'
 import { useMobile } from '@/composables/mobile'
 
 // 展开 v-if/v-for 的 Fragment，不引入无内容的占位字段。
@@ -19,15 +21,17 @@ export default defineComponent({
   inheritAttrs: false,
   props: {
     column: { type: Number, default: 3 },
+    compact: { type: Boolean, default: false },
     direction: { type: String as PropType<DescriptionProps['direction']>, default: 'horizontal' }
   },
   setup(props, { attrs, slots }) {
     const { isMobile } = useMobile()
     return () => h(ElDescriptions, {
       ...attrs,
-      class: ['tf-record-descriptions', attrs.class],
+      class: ['tf-record-descriptions', { 'tf-record-descriptions--compact': props.compact }, attrs.class],
       column: isMobile.value ? 2 : props.column,
-      direction: isMobile.value ? 'vertical' : props.direction
+      direction: props.compact ? 'horizontal' : isMobile.value ? 'vertical' : props.direction,
+      ...(props.compact ? { size: 'small' } : {})
     }, {
       ...slots,
       default: () => {

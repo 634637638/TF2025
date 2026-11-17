@@ -8,7 +8,6 @@
         v-if="canWholesalePermission"
         :type="operationMode === 'wholesale' ? 'success' : 'default'"
         class="sales-mode-tab"
-        size="small"
         @click="emit('wholesale')"
       >
         <i class="fas fa-boxes" />
@@ -22,7 +21,6 @@
         v-if="canProxyTransferPermission"
         :type="operationMode === 'proxy' ? 'warning' : 'default'"
         class="sales-mode-tab"
-        size="small"
         @click="emit('proxy')"
       >
         <i class="fas fa-exchange-alt" />
@@ -39,7 +37,6 @@
         :type="viewMode === 'summary' ? 'primary' : 'default'"
         class="sales-mode-tab"
         title="对库"
-        size="small"
         @click="emit('set-view-mode', 'summary')"
       >
         <i class="fas fa-table" />
@@ -49,7 +46,6 @@
         :type="viewMode === 'grid' ? 'primary' : 'default'"
         class="sales-mode-tab"
         title="图文模式"
-        size="small"
         @click="emit('set-view-mode', 'grid')"
       >
         <i class="fas fa-th" />
@@ -59,7 +55,6 @@
         :type="viewMode === 'table' ? 'primary' : 'default'"
         class="sales-mode-tab"
         title="表格模式"
-        size="small"
         @click="emit('set-view-mode', 'table')"
       >
         <i class="fas fa-list" />
@@ -70,7 +65,6 @@
         class="sales-mode-tab"
         type="primary"
         title="保存为图片"
-        size="small"
         :loading="savingInventorySummary"
         :disabled="inventorySummaryLoading || summaryCount === 0"
         @click="emit('save-summary')"
@@ -89,7 +83,6 @@
         type="primary"
         class="sales-mode-tab"
         :disabled="!canSell"
-        size="small"
         @click="emit('batch-sale')"
       >
         <i class="fas fa-edit" />
@@ -99,7 +92,6 @@
         type="info"
         plain
         class="sales-mode-tab"
-        size="small"
         @click="emit('clear-selection')"
       >
         <i class="fas fa-times" />
@@ -126,7 +118,6 @@
         v-if="selectedCount > 0"
         :type="operationMode === 'wholesale' ? 'success' : 'warning'"
         :disabled="operationMode === 'wholesale' ? !canWholesale : !canProxy"
-        size="small"
         @click="emit('open-wholesale')"
       >
         确认

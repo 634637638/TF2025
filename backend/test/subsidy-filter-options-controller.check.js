@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -63,7 +65,7 @@ test('subsidy filter options service omits fields hidden by the user field polic
     } }
   })
 
-  assert.deepEqual(await service.getFilterOptions(42), {
+  assert.deepEqual(await service.getFilterOptions(42, scopedActor), {
     brands: ['A'],
     colors: ['C'],
     memories: ['256G']

@@ -2,6 +2,8 @@
 
 ## 公共入口
 
+销售凭证独立打印文档复用 `frontend/src/utils/print.ts` 的 `printElement`；仅复制已经授权展示的DOM与现有样式，由调用方提供专属纸张布局。手机销售凭证和商品收银后的整单销售凭证共用此入口。
+
 全局打印规则由 `frontend/src/styles/components/_print.scss` 提供，并通过 `frontend/src/styles.scss` 加载。
 
 | 用途 | class |

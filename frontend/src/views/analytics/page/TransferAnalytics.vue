@@ -289,7 +289,6 @@
                 </el-select>
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportData"
                 >
                   导出

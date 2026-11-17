@@ -3,8 +3,9 @@
 class RentalFinishRepository {
   async getForUpdate(connection, rentalId) {
     const [rows] = await connection.execute(
-      `SELECT id,status,billing_mode,phone_id,unit_price,start_date
-       FROM rentals WHERE id=? FOR UPDATE`,
+      `SELECT r.id,r.status,r.billing_mode,r.phone_id,r.unit_price,r.start_date,
+              COALESCE(s.store_id,p.store_id) AS store_id, p.store_id AS source_store_id
+       FROM rentals r JOIN phones p ON p.id=r.phone_id LEFT JOIN sales s ON s.id=r.sale_id WHERE r.id=? FOR UPDATE`,
       [rentalId]
     )
     return rows[0] || null

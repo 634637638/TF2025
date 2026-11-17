@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
 const dataMaskingService = require('./data-masking.service')
 const SubsidyFilterOptionsRepository = require('../repositories/subsidy-filter-options.repository')
 
@@ -17,10 +19,10 @@ class SubsidyFilterOptionsService {
     this.masking = masking
   }
 
-  async getFilterOptions(userId) {
+  async getFilterOptions(userId, actor) {
     const permissions = await this.masking.getUserFieldPermissions(userId, 'subsidy_subsidyview')
     const hiddenFields = new Set(permissions.hiddenFields || [])
-    const options = await this.repository.getFilterOptions()
+    const options = await this.repository.getFilterOptions(resolveStoreScope(actor))
     const visible = key => !hiddenFields.has(FILTER_FIELDS[key])
 
     return {

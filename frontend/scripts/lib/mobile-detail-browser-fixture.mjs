@@ -1,3 +1,8 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { parse } from '@vue/compiler-sfc'
+
 // 真实页面、公共详情及实际CSS；所有服务读取仅使用内存样本，写入直接拒绝。
 export const mobileDetailEntry = `
 import {createApp,h,nextTick,defineAsyncComponent,reactive} from 'vue';
@@ -7,7 +12,7 @@ import ElementPlus from 'element-plus';
 import * as icons from '@element-plus/icons-vue';
 import {vTableDoubleTap} from '/src/directives/table-double-tap.ts';
 import {vPermission} from '/src/directives/permission.ts';
-import {getTextColumnMinWidth,getAdaptiveActionColumnWidth,getNumberColumnMinWidth} from '/src/utils/table-layout.ts';
+import {getTextColumnMinWidth,getActionColumnMinWidth,getNumberColumnMinWidth} from '/src/utils/table-layout.ts';
 import {applyDeviceRootClass} from '/src/utils/device-detection.ts';
 import 'element-plus/dist/index.css';
 import '/src/styles.scss';import '/src/styles/admin-layout.css';import '/src/styles/responsive.scss';
@@ -25,6 +30,11 @@ const product={id:1,template_id:1,brand_id:1,brand_name:'演示品牌',model_id:
 const phone={id:1,is_new:true,status:'in_stock',brand:'演示品牌',model:'演示型号',color:'黑色',memory:'128G',imei:'012345678901234',inventory_time:date,purchase_cost:1999};
 const duplicateCheck={total:2,duplicate_groups:1,duplicates:[{key:'演示品牌',primary:{id:1,name:'演示品牌',sort_order:1},duplicates:[{id:2,name:'演示品牌',sort_order:2}],count:2}]};
 const datasets={
+ '/query/returngoods':[
+  {id:'aftersale:1:1',record_source:'sales_aftersale',phone_id:1,original_sale_id:21,original_sale_type:'retail',model:'原单联合退货手机',imei:'000000000000001',return_reason:'客户退货',return_type:'申请换货',handle_method:'返厂维修',refund_amount:120,collection_amount:0,reversal_date:date,created_at:date},
+  {id:'aftersale:2:2',record_source:'sales_aftersale',phone_id:2,original_sale_id:22,original_sale_type:'retail',model:'原单联合补款手机',return_reason:'客户退货',return_type:'退货处理',handle_method:'重新入库',refund_amount:0,collection_amount:20,reversal_date:date,created_at:date},
+  {id:1,record_source:'legacy',phone_id:3,model:'旧退库手机',return_reason:'客户退货',return_type:'退货处理',handle_method:'重新入库',refund_amount:10,reversal_date:date,created_at:date}],
+ '/users/operators':[],
  '/shop/banners':[{id:1,title:'隔离轮播',image_url:image,images:[image],link_type:'none',sort_order:1,status:'active',interval:3000}],
  '/home/sections':[{id:1,section_key:'test',section_name:'测试区域',section_type:'products',is_enabled:true,sort_order:1,product_limit:10,product_count:0}],
  '/home/sections/1/products':[product],'/home/products/search':[product],
@@ -39,6 +49,7 @@ const datasets={
  '/accessories/1/stock':{stores:[{store_id:1,store_name:'演示仓库',quantity:5,serial_quantity:2,plain_quantity:3}]},
  '/accessories/1/transfers':{data:[transfer],pagination:{total:1}},
  '/screen-lock':{},'/screen-lock/query-users':[{id:1,name:'演示查询账号',is_active:true,remarks:'隔离备注'}],
+ '/system/dashboard-shortcuts/admin':[],
  '/data-check/statistics':{brands:2},'/data-check/check/all':{details:{brands:duplicateCheck}},
  '/dashboard/warnings/comprehensive':{phones:{warnings:[{brand_name:'演示品牌',model_name:'演示型号',color_name:'黑色',memory_name:'128G',current_stock:1,threshold:3}],count:1},accessories:{warnings:[{name:'演示配件',current_stock:1,min_stock:3}],count:1},purchases:{no_recent:[{supplier_name:'演示供应商',last_purchase_date:date,days_since_purchase:8}],recent:[]}}
 };
@@ -54,7 +65,7 @@ window.renderMobileCase=async(file,readonly=false)=>{
  for(const[name,icon]of Object.entries(icons))app.component(name,icon);
  for(const name of globals){const key=Object.keys(imports).find(key=>key.endsWith('/'+name+'.vue'));if(key)app.component(name,defineAsyncComponent(imports[key]));}
  app.directive('table-double-tap',vTableDoubleTap);app.directive('permission',vPermission);app.directive('tf-loading',{});
- Object.assign(app.config.globalProperties,{$getNumberColumnWidth:getNumberColumnMinWidth,$getTextColumnWidth:getTextColumnMinWidth,$getActionColumnWidth:getAdaptiveActionColumnWidth});
+ Object.assign(app.config.globalProperties,{$getNumberColumnWidth:getNumberColumnMinWidth,$getTextColumnWidth:getTextColumnMinWidth,$getActionColumnWidth:getActionColumnMinWidth});
  app.provide('registerHeaderActions',()=>{});app.provide('clearHeaderActions',()=>{});applyDeviceRootClass();app.mount('#app');await nextTick();
 };
 window.fixtureReady=true;
@@ -74,3 +85,54 @@ export function mobileDetailMocks(root) {
     [module('utils/temp-file-cleaner.ts'), 'export const deleteTempFiles=async files=>{if(files.length)window.fixtureWrite(\'deleteTempFiles\',files);return true};']
   ])
 }
+
+// 提取真实考勤详情模板与样式，仅替换数据和权限来源，不挂载业务页面或访问接口。
+export function attendanceDetailFixture(root) {
+  const file = join(root, 'src/views/attendance/AttendanceView.vue')
+  const { descriptor } = parse(readFileSync(file, 'utf8'), { filename: file })
+  const findDetail = node => node.type === 1 && node.tag === 'MobileDialog' && node.props.some(prop => prop.type === 6 && prop.name === 'title' && prop.value?.content === '考勤详情')
+    ? node : (node.children || []).map(findDetail).find(Boolean)
+  const detail = findDetail(descriptor.template.ast)
+  assert.ok(detail, '考勤查看弹窗模板不存在')
+  return `<template>${detail.loc.source}</template>
+<script setup>
+import {ref,computed,nextTick} from 'vue';
+import MobileDialog from '/src/components/MobileDialog.vue';
+import RecordDescriptions from '/src/components/RecordDescriptions.vue';
+import {ElDescriptionsItem,ElTag} from 'element-plus';
+import 'element-plus/es/components/tag/style/css';
+import 'element-plus/es/components/dialog/style/css';
+import 'element-plus/es/components/button/style/css';
+import {useMobile} from '/src/composables/mobile.ts';
+import {formatAttendanceTableDateRange,formatAttendanceLeaveReason} from '/src/utils/attendance-leave-allocation.ts';
+const {isMobile}=useMobile();
+const detailDialogVisible=ref(false),currentRecord=ref(null),activeTab=ref('my'),hidden=ref([]);
+const attendanceDetailModuleKey=computed(()=>activeTab.value==='all'?'attendance_attendanceview':'attendance_myattendanceview');
+const canViewAttendanceField=(module,field)=>!hidden.value.includes(module+':'+field);
+const canEdit=false,canDelete=false,canApprove=false;
+const isAggregatedAttendanceRow=row=>(row.source_records?.length||0)>1;
+const getAttendanceRowIds=row=>row.source_record_ids?.join('、')||row.id||'-';
+const formatAttendanceQuantity=value=>Number(value)||0;
+const getAttendanceRecordDateText=row=>formatAttendanceTableDateRange(row.record_date,row.record_type,row.record_type==='monthly_leave'?row.monthly_leave_days:row.leave_days);
+const getReasonText=row=>row.record_type==='leave'?formatAttendanceLeaveReason(row.leave_reason,row.leave_days):row.record_type==='overtime'?row.overtime_reason||'-':'休假 '+formatAttendanceQuantity(row.monthly_leave_days)+' 天';
+window.renderAttendanceDetail=async(options={})=>{
+ activeTab.value=options.tab||'my';hidden.value=options.hidden||[];
+ currentRecord.value={id:1,employee_name:'演示员工',record_type:'leave',record_date:'2026-10-17',leave_type:'事假',leave_days:2,monthly_leave_days:'0',overtime_hours:'0',leave_reason:'有事',status:'approved',...options.record};
+ detailDialogVisible.value=true;await nextTick();await new Promise(requestAnimationFrame);
+ await Promise.all(document.getAnimations().filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity).map(animation=>animation.finished.catch(()=>{})));
+};
+window.fixtureReady=true;
+</script>
+${descriptor.styles.map(style => `<style scoped>${readFileSync(join(file, '..', style.src), 'utf8')}</style>`).join('\n')}`
+}
+
+export const attendanceDetailEntry = `
+import {createApp} from 'vue';
+import Detail from '/__attendance-detail.vue';
+import '/src/styles.scss';
+import '/src/styles/responsive.scss';
+import '/src/styles/components/_dialog.scss';
+import '/src/styles/components/_dialog-actions.scss';
+// 不导入 Element Plus 全量 CSS，回归公共描述组件自身的按需样式依赖。
+createApp(Detail).directive('permission',{}).directive('table-double-tap',{}).mount('#app');
+`

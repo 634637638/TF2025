@@ -31,12 +31,27 @@ test('批次查询严格校验参数和授权店铺，非法输入不得取得�
   const { service, calls } = fixture()
   for (const id of [true, [], null, '', '1 OR 1=1', 0]) await assert.rejects(service.getInventoryBatches(actor, id), { statusCode: 400 })
   for (const query of [{ page: true }, { page: ['1'] }, { page: 1000001 }, { page: 1.5 }, { page_size: 101 },
-    { page_size: 0 }, { store_id: '' }, { store_id: [1] }, { store_id: false }, { supplier_id: 2 }, { include_variants: false }]) {
+    { page_size: 0 }, { store_id: '' }, { store_id: [1] }, { store_id: false }, { supplier_id: 2 }, { include_variants: false },
+    { include_zero: '1' }, { include_zero: [] }, { include_zero: 1 }]) {
     await assert.rejects(service.getInventoryBatches(actor, '31', query), { statusCode: 400 })
   }
   await assert.rejects(service.getInventoryBatches(actor, 31, { store_id: 3 }), { statusCode: 403 })
   await assert.rejects(service.getInventoryBatches(null, 31))
   assert.deepEqual(calls, [])
+})
+
+test('含零批次须显式开启，并保留相同门店范围和只读快照', async () => {
+  for (const include_zero of [true, 'true', false, 'false']) {
+    const { service, calls } = fixture()
+    await service.getInventoryBatches(actor, 31, { include_zero, store_id: '2' })
+    const input = calls.find(call => call[0] === 'read')[1]
+    assert.equal(input.includeZero === true, include_zero === true || include_zero === 'true')
+    assert.deepEqual(input.scope.storeIds, [2])
+    assert.deepEqual(calls.slice(-2), [['rollback'], ['release']])
+  }
+  const { service, calls } = fixture()
+  await service.getInventoryBatches(actor, 31, { include_zero: true })
+  assert.deepEqual(calls.find(call => call[0] === 'read')[1].scope.storeIds, [1, 2])
 })
 
 test('批次余额与总数在同连接只读RR快照读取，结束回滚且不接续历史', async () => {
@@ -95,6 +110,8 @@ test('真实批次按原成本、用途、SN方式与当前店分组；仅剩余
     assert.doesNotMatch(sql, /FOR UPDATE|INSERT|UPDATE |DELETE|CREATE|ALTER/)
   }
   assert.match(calls[1].sql, /supplier.id = si.supplier_id/)
+  assert.match(calls[1].sql, /JSON_EXTRACT\(si.product_snapshot, '\$\.product_model'\)/)
+  assert.match(calls[1].sql, /WHEN si.product_snapshot IS NULL THEN IF\(a.template_id IS NULL, a.product_model, t.product_model\)/)
   assert.doesNotMatch(calls[1].sql, /a.purchase_cost|a.supplier_id/)
 })
 
@@ -116,6 +133,35 @@ test('余额核对覆盖负批次、采购来源丢失、SN数差异和孤立流
 })
 
 const response = () => ({ status(code) { this.code = code; return this }, json(body) { this.body = body; return this } })
+test('云端BIGINT字符串在批次HTTP输出为数字编号，保留金额精度且不修改仓储原值', async () => {
+  const { service, inventory } = fixture()
+  const original = { ...row(), accessory_id: '31', store_id: '2', stock_in_id: '11', quantity: '50', purchase_cost: '11.00' }
+  inventory.currentBatches = async () => ({ data: [original], pagination: { page: 1, page_size: 20, total: 1 } })
+  const controller = new AccessoryController({ service,
+    masking: { async getUserFieldPermissions() { return { hiddenFields: [] } }, filterSensitiveFields: rows => rows } })
+  const res = response()
+  await controller.listInventoryBatches({ user: actor, params: { id: '31' }, query: {} }, res)
+  assert.equal(res.body.success, true)
+  const result = res.body.data.data[0]
+  assert.equal(result.accessory_id, 31)
+  assert.equal(result.store_id, 2)
+  assert.equal(result.quantity, '50')
+  assert.equal(result.purchase_cost, '11.00')
+  assert.equal(Object.hasOwn(result, 'stock_in_id'), false)
+  assert.equal(original.accessory_id, '31')
+  assert.equal(original.store_id, '2')
+  assert.equal(original.stock_in_id, '11')
+})
+
+test('无效或越界的批次编号不得被强转为有效响应，失败后释放只读快照', async () => {
+  for (const field of ['accessory_id', 'store_id']) for (const value of [null, undefined, '', true, [], {}, '2x', '0', '1.5', '9007199254740993']) {
+    const { service, inventory, calls } = fixture()
+    inventory.currentBatches = async () => ({ data: [{ ...row(), [field]: value }], pagination: { page: 1, page_size: 20, total: 1 } })
+    await assert.rejects(service.getInventoryBatches(actor, 31), { statusCode: 500, code: 'INVALID_BATCH_RESPONSE' })
+    assert.deepEqual(calls.slice(-2), [['rollback'], ['release']])
+  }
+})
+
 test('批次HTTP复用严格公共字段权限，采购/SN/品牌/时间/人员脱敏且不返回原采购内部ID', async () => {
   let permissionOptions
   const controller = new AccessoryController({ service: { async getInventoryBatches() { return { data: [row()] } } },

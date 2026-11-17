@@ -28,6 +28,7 @@
           <div class="search-box-input-only">
             <el-input
               v-model="searchIdentifier"
+              v-identifier-input="'device-serial'"
               type="text"
               class="search-input-lg"
               placeholder="输入IMEI或序列号..."
@@ -273,6 +274,7 @@
                   <div class="info-value">
                     <el-input
                       v-model="applyForm.imei2"
+                      v-identifier-input="'imei'"
                       type="text"
                       class="form-input-inline"
                       placeholder="请输入IMEI2"
@@ -378,7 +380,6 @@
                     >
                       <el-button
                         type="primary"
-                        size="small"
                         class="photo-upload-btn"
                       >
                         <i class="fas fa-camera" />

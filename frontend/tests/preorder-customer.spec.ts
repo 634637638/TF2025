@@ -1,11 +1,18 @@
-import { defineComponent, type PropType } from 'vue'
+import { computed, reactive, defineComponent, type PropType } from 'vue'
 import { flushPromises, shallowMount } from '@vue/test-utils'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PreorderFormModal from '@/views/preorders/page/PreorderFormModal.vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import CustomerSearchDropdown from '@/components/common/CustomerSearchDropdown.vue'
 import { unifiedApi } from '@/utils/unified-api'
 import type { PreorderFormDraft } from '@/types'
+
+const customerRights = reactive({ create: true, edit: true })
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({
+  canCreate: computed(() => customerRights.create), canEdit: computed(() => customerRights.edit),
+  requirePermission: (action: 'create' | 'edit') => customerRights[action]
+}) }))
+beforeEach(() => { customerRights.create = customerRights.edit = true })
 
 const feedback = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), warning: vi.fn() }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => feedback }))
@@ -14,7 +21,7 @@ vi.mock('@/views/preorders/preorder-field-permissions', () => ({
   canViewPreorderField: () => true,
   pickVisiblePreorderFields: (value: Record<string, unknown>) => value
 }))
-vi.mock('@/utils/unified-api', () => ({ unifiedApi: { put: vi.fn() } }))
+vi.mock('@/utils/unified-api', () => ({ unifiedApi: { put: vi.fn(), post: vi.fn() } }))
 
 const FormStub = defineComponent({
   props: { model: { type: Object as PropType<PreorderFormDraft>, required: true } },

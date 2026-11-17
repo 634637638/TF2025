@@ -8,6 +8,8 @@ const sourceRoot = join(root, 'src')
 const findings = []
 const sharedFormControlsPath = join(sourceRoot, 'styles/components/_form-controls.scss')
 const sharedFormControls = readFileSync(sharedFormControlsPath, 'utf8')
+const sharedStateSelectorPath = join(sourceRoot, 'styles/components/_tabs.scss')
+const sharedStateSelector = readFileSync(sharedStateSelectorPath, 'utf8')
 const variablesSource = readFileSync(join(sourceRoot, 'styles/_variables.scss'), 'utf8')
 const globalStylesSource = readFileSync(join(sourceRoot, 'styles.scss'), 'utf8')
 const scrollbarStylesSource = readFileSync(join(sourceRoot, 'styles/components/_scrollbars.scss'), 'utf8')
@@ -102,10 +104,17 @@ if (!sharedFormControls.includes('.el-input-number .el-input-number__increase')
   findings.push('公共表单控件样式必须统一维护数字步进按钮和文本域手动拉伸行为')
 }
 
-if (!sharedFormControls.includes('.tf-segment .el-radio-button__inner')
-  || !/\.tf-segment \.el-radio-button__inner\s*\{[^}]*height:\s*var\(--input-height-default\)/.test(sharedFormControls)
-  || !/\.tf-segment \.el-radio-button\.is-active \.el-radio-button__original-radio:checked \+ \.el-radio-button__inner\s*\{[^}]*background:\s*var\(--tf-button-primary-bg\)/.test(sharedFormControls)) {
-  findings.push('分段单选控件（tf-segment）必须由 _form-controls.scss 统一维护高度与选中态主色，页面不得复制 __inner 规格')
+if (!/\.tf-state-selector \.el-radio-button__inner\s*\{[^}]*height:\s*var\(--tf-tabs-height\)/.test(sharedStateSelector)
+  || !/\.tf-state-selector \.el-radio-button__original-radio:checked \+ \.el-radio-button__inner\s*\{[^}]*background:\s*var\(--tf-tab-active-bg\)/.test(sharedStateSelector)
+  || !/\.tf-state-selector\.el-radio-group/.test(sharedStateSelector)) {
+  findings.push('互斥切换控件必须由 _tabs.scss 的唯一 tf-state-selector 入口统一维护高度与选中态')
+}
+
+if (!/\.tf-control-display\s*\{[^}]*box-sizing:\s*border-box;[^}]*height:\s*var\(--input-height-default\)/.test(sharedFormControls)) {
+  findings.push('同行只读信息必须复用 tf-control-display，与公共输入框及分段筛选等高且边框计入高度')
+}
+if (!/\.tf-control-display\.tf-control-display--compact\s*\{[^}]*height:\s*var\(--admin-data-table-badge-height\)/.test(sharedFormControls)) {
+  findings.push('紧凑单号必须复用公共徽章高度，不得放大小号状态标签')
 }
 
 if (!/--input-height-default\s*:\s*30px\s*;/.test(variablesSource)
@@ -265,6 +274,19 @@ let nativeTextCount = 0
 for (const file of walk(sourceRoot)) {
   const relativeFile = relative(root, file)
   const source = readFileSync(file, 'utf8')
+  if (file.endsWith('.vue')) {
+    for (const match of source.matchAll(/<el-radio-group\b[\s\S]*?>[\s\S]*?<\/el-radio-group>/gi)) {
+      if (!/\bclass\s*=\s*["'][^"']*\btf-state-selector\b[^"']*["']/i.test(match[0].slice(0, match[0].indexOf('>') + 1))) {
+        findings.push(`${relativeFile}:${source.slice(0, match.index).split('\n').length} el-radio-group 必须接入唯一公共切换样式 tf-state-selector`)
+      }
+    }
+    for (const match of source.matchAll(/<el-segmented\b/gi)) {
+      findings.push(`${relativeFile}:${source.slice(0, match.index).split('\n').length} 禁止使用未接入统一视觉的 el-segmented，请改为 tf-state-selector`)
+    }
+    if (/\btf-segment(?:ed)?\b/.test(source)) {
+      findings.push(`${relativeFile} 不得维护或使用第二套切换样式 tf-segment/tf-segmented`)
+    }
+  }
   if (file.endsWith('.vue')) {
     findings.push(...auditAmountInputs(source).map(message => `${relativeFile} ${message}`))
     findings.push(...auditPhoneInputs(source).map(message => `${relativeFile} ${message}`))

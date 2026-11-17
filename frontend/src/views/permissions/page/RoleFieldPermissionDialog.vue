@@ -29,6 +29,7 @@
               class="tf-button--content module-item-grid"
               :aria-pressed="selectedModuleKey === getModuleKey(module)"
               :title="module.name"
+              :disabled="saving"
               @click="emit('selectModule', module)"
             >
               <div class="module-icon">
@@ -49,7 +50,7 @@
         <div class="field-group-nav">
           <div class="section-title section-title--compact">
             <i class="fas fa-sitemap" />
-            子页面 / 分组
+            字段分组
           </div>
           <SectionLoading
             v-if="loadingGroups"
@@ -91,13 +92,31 @@
 
         <div class="field-config-area">
           <div class="field-config-toolbar">
+            <el-radio-group
+              v-if="getModuleKey(selectedModule) === 'query_queryview'"
+              :model-value="selectedModule.field_scope || 'phone'"
+              class="tf-state-selector"
+              :aria-label="`${selectedModule.name}字段模式`"
+              :disabled="saving"
+              @change="emit('selectModule', { ...selectedModule, field_scope: $event === 'goods' ? 'goods' : undefined })"
+            >
+              <el-radio-button
+                v-for="scope in queryScopes"
+                :key="scope.name"
+                :value="scope.scope || 'phone'"
+              >
+                {{ scope.name }}
+              </el-radio-button>
+            </el-radio-group>
             <div class="field-config-heading">
               <div class="field-config-heading__main">
                 <h3 class="field-config-title">
-                  {{ selectedModule.name }}
+                  {{ selectedModule.name }}{{ getModuleKey(selectedModule) === 'query_queryview' ? ` / ${selectedModule.field_scope === 'goods' ? '商品模式' : '手机模式'}` : '' }}
                 </h3>
                 <div class="selection-summary">
-                  已选择 {{ selectedFields.length }} 个字段隐藏
+                  隐藏 {{ selectedFields.length }} 项，
+                  只读 {{ readonlyFieldCount }} 项，
+                  可编辑 {{ editableFieldCount }} 项
                 </div>
               </div>
             </div>
@@ -105,9 +124,9 @@
             <div class="field-actions">
               <el-button
                 v-if="fieldGroups.length > 0"
-                size="small"
                 type="warning"
                 plain
+                :disabled="saving || !configReady"
                 @click="toggleModuleFields"
               >
                 <i class="fas fa-eye-slash" />
@@ -115,9 +134,9 @@
               </el-button>
               <el-button
                 v-if="currentGroup"
-                size="small"
                 type="primary"
                 plain
+                :disabled="saving || !configReady"
                 @click="toggleGroupFields(currentGroup)"
               >
                 <i class="fas fa-sliders-h" />
@@ -151,7 +170,8 @@
                   'field-switch-item',
                   {
                     'field-sensitive': isFieldSensitive(field),
-                    'field-hidden': selectedFieldSet.has(field.id)
+                    'field-hidden': selectedFieldSet.has(field.id),
+                    'field-switch-item--tri-state': true
                   }
                 ]"
               >
@@ -173,16 +193,26 @@
                       </div>
                     </div>
                     <div class="field-switch-action">
-                      <span :class="['field-visibility-text', isFieldVisible(field.id) ? 'visible' : 'hidden']">
-                        {{ isFieldVisible(field.id) ? '已显示' : '已隐藏' }}
-                      </span>
-                      <el-switch
-                        :model-value="isFieldVisible(field.id)"
-                        inline-prompt
-                        active-text="开"
-                        inactive-text="关"
-                        @change="setFieldVisibility(field.id, $event)"
-                      />
+                      <el-radio-group
+                        :model-value="getFieldState(field)"
+                        class="tf-state-selector"
+                        :aria-label="`${field.name}字段权限`"
+                        :disabled="saving || !configReady"
+                        @change="setFieldState(field.id, $event)"
+                      >
+                        <el-radio-button value="hidden">
+                          隐藏
+                        </el-radio-button>
+                        <el-radio-button value="readonly">
+                          只读
+                        </el-radio-button>
+                        <el-radio-button
+                          value="editable"
+                          :disabled="!field.editable"
+                        >
+                          编辑
+                        </el-radio-button>
+                      </el-radio-group>
                     </div>
                   </div>
                   <div class="field-description">
@@ -198,7 +228,7 @@
             class="no-module-selected"
           >
             <i class="fas fa-hand-pointer" />
-            <p>请选择左侧子页面后再配置字段权限</p>
+            <p>请选择左侧字段分组后再配置字段权限</p>
           </div>
         </div>
       </div>
@@ -208,7 +238,7 @@
         class="no-module-selected"
       >
         <i class="fas fa-hand-pointer" />
-        <p>请选择左侧母页面后再配置字段权限</p>
+        <p>请选择页面模块后再配置字段权限</p>
       </div>
     </div>
 
@@ -222,7 +252,7 @@
         </el-button>
         <el-button
           type="primary"
-          :disabled="saving || !selectedModule"
+          :disabled="saving || loadingGroups || !selectedModule || !configReady"
           :loading="saving"
           @click="emit('save')"
         >
@@ -245,6 +275,7 @@ import SectionLoading from '@/components/SectionLoading.vue'
 import type { FieldDefinition, FieldGroup, RoleFieldModule } from '../types'
 
 const props = defineProps<{
+  configReady?: boolean
   fieldGroups: FieldGroup[]
   getFieldTypeLabel: (_type: string) => string
   getSensitivityLabel: (_sensitivity: string) => string
@@ -257,6 +288,8 @@ const props = defineProps<{
   saving: boolean
   selectedFieldGroupName: string
   selectedFields: string[]
+  readonlyFields?: string[]
+  editableFields?: string[]
   selectedModule: RoleFieldModule | null
 }>()
 
@@ -267,7 +300,13 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'update:selectedFieldGroupName': [value: string]
   'update:selectedFields': [value: string[]]
+  'update:readonlyFields': [value: string[]]
+  'update:editableFields': [value: string[]]
 }>()
+
+const queryScopes: { name: string; scope: RoleFieldModule['field_scope'] }[] = [
+  { name: '手机模式', scope: undefined }, { name: '商品模式', scope: 'goods' }
+]
 
 const activeGroupName = computed({
   get: () => props.selectedFieldGroupName,
@@ -281,13 +320,41 @@ const selected = computed({
 
 const selectedFieldSet = computed(() => new Set(props.selectedFields))
 const selectedModuleKey = computed(() => props.selectedModule ? getModuleKey(props.selectedModule) : '')
+const getFieldState = (field: FieldDefinition) => {
+  if (selectedFieldSet.value.has(field.id)) return 'hidden'
+  if (!field.editable || props.readonlyFields?.includes(field.id) ||
+    (props.editableFields !== undefined && !props.editableFields.includes(field.id))) return 'readonly'
+  return 'editable'
+}
+const allFields = computed(() => props.fieldGroups.flatMap(group => group.fields))
+const editableFieldCount = computed(() => allFields.value.filter(field => getFieldState(field) === 'editable').length)
+const readonlyFieldCount = computed(() => allFields.value.filter(field => getFieldState(field) === 'readonly').length)
+const setFieldState = (fieldId: string, state: string | number | boolean | undefined) => {
+  const nextState = state === 'hidden' || state === 'readonly' || state === 'editable' ? state : 'readonly'
+  setFieldVisibility(fieldId, nextState !== 'hidden')
+  if (nextState === 'hidden') return
+
+  const readonly = new Set(props.readonlyFields || [])
+  const editable = new Set(props.editableFields ?? props.fieldGroups
+    .flatMap(group => group.fields)
+    .filter(field => field.editable)
+    .map(field => field.id))
+  if (nextState === 'readonly') {
+    readonly.add(fieldId)
+    editable.delete(fieldId)
+  } else {
+    readonly.delete(fieldId)
+    editable.add(fieldId)
+  }
+  emit('update:readonlyFields', [...readonly])
+  emit('update:editableFields', [...editable])
+}
 const currentGroup = computed(() => {
   return props.fieldGroups.find(group => group.name === activeGroupName.value) || props.fieldGroups[0] || null
 })
 
 const getModuleKey = (module: RoleFieldModule) => module.module_key || module.key || ''
 const getHiddenCount = (group: FieldGroup) => group.fields.filter(field => selectedFieldSet.value.has(field.id)).length
-const isFieldVisible = (fieldId: string) => !selectedFieldSet.value.has(fieldId)
 const isGroupHidden = (group: FieldGroup) => {
   return group.fields.length > 0 && group.fields.every(field => selectedFieldSet.value.has(field.id))
 }

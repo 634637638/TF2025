@@ -101,6 +101,7 @@
           v-tf-loading="{ active: loading, text: '正在刷新退库记录...' }"
           class="data-table devices-table compact-fit-table base-data-table returngoods-data-table"
           :data="records"
+          row-key="id"
           border
           stripe
           table-layout="fixed"
@@ -203,7 +204,7 @@
             min-width="110"
           >
             <template #default="{ row }">
-              {{ row.refund_amount === null || row.refund_amount === undefined ? '-' : formatAmount(row.refund_amount) }}
+              {{ settlementText(row) }}
             </template>
           </el-table-column>
           <el-table-column
@@ -243,8 +244,14 @@
           >
             <template #default="{ row }">
               <div class="table-actions">
+                <el-text
+                  v-if="!isLegacyRecord(row)"
+                  type="info"
+                >
+                  只读
+                </el-text>
                 <el-button
-                  v-if="canEdit"
+                  v-if="canEdit && isLegacyRecord(row)"
                   type="primary"
                   link
                   @click.stop="openEditDialog(row)"
@@ -252,7 +259,7 @@
                   编辑
                 </el-button>
                 <el-button
-                  v-if="canDelete"
+                  v-if="canDelete && isLegacyRecord(row)"
                   type="danger"
                   link
                   @click.stop="handleDelete(row)"
@@ -268,11 +275,11 @@
           title="退库记录详情"
           :record="mobileDetailRow"
           :fields="mobileDetailFields"
-          :has-actions="canEdit || canDelete"
+          :has-actions="Boolean(mobileDetailRow && isLegacyRecord(mobileDetailRow) && (canEdit || canDelete))"
         >
           <template #actions="{ row }">
             <el-button
-              v-if="canEdit"
+              v-if="canEdit && isLegacyRecord(row)"
               type="primary"
               link
               @click.stop="mobileDetailRunAction(() => openEditDialog(row))"
@@ -280,7 +287,7 @@
               编辑
             </el-button>
             <el-button
-              v-if="canDelete"
+              v-if="canDelete && isLegacyRecord(row)"
               type="danger"
               link
               @click.stop="mobileDetailRunAction(() => handleDelete(row))"
@@ -677,7 +684,22 @@ const searchOperatorOptions = async (keyword = '') => {
   }
 }
 
+const isLegacyRecord = (record: ReturnGoodsRecord): record is ReturnGoodsRecord & { id: number } =>
+  record.record_source !== 'sales_aftersale' && typeof record.id === 'number' && Number.isSafeInteger(record.id) && record.id > 0
+
+const settlementText = (record: ReturnGoodsRecord) => {
+  if (record.record_source === 'sales_aftersale') {
+    if (record.collection_amount === null || record.collection_amount === undefined ||
+      record.refund_amount === null || record.refund_amount === undefined) return '-'
+    return Number(record.collection_amount) > 0
+      ? `整单补款 ${formatAmount(record.collection_amount)}`
+      : `整单退款 ${formatAmount(record.refund_amount)}`
+  }
+  return record.refund_amount === null || record.refund_amount === undefined ? '-' : formatAmount(record.refund_amount)
+}
+
 const openEditDialog = (record: ReturnGoodsRecord) => {
+  if (!isLegacyRecord(record)) return
   editForm.id = record.id
   editForm.original_sale_id_display = record.original_sale_id ? String(record.original_sale_id) : '-'
   editForm.original_sale_type = normalizePhoneStatus(record.original_sale_type)
@@ -753,6 +775,7 @@ const handleSave = async () => {
 }
 
 const handleDelete = async (record: ReturnGoodsRecord) => {
+  if (!isLegacyRecord(record)) return
   if (!canDelete.value) {
     handleNoPermission('delete')
     return
@@ -835,7 +858,7 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'sale_type', label: '销售类型', value: getSaleTypeText(row.original_sale_type), visible: canViewField('record.sale_info') },
     { key: 'sale_operator', label: '销售员', value: row.original_sale_operator_name, visible: canViewField('record.sale_info') },
     { key: 'reversal_date', label: '退库时间', value: formatDateTime(row.reversal_date), visible: canViewField('record.reversal_date'), wide: true },
-    { key: 'refund_amount', label: '退款金额', value: row.refund_amount === null || row.refund_amount === undefined ? undefined : formatAmount(row.refund_amount), visible: canViewField('record.refund_amount') },
+    { key: 'refund_amount', label: '退款金额', value: settlementText(row), visible: canViewField('record.refund_amount') },
     ...visibleReturnSelectFields.value.map(field => ({ key: field.field, label: field.label, value: row[field.field], visible: true })),
     { key: 'refund_method', label: '退款方式', value: [getPaymentMethodLabel(row.refund_method), row.refund_channel ? getPaymentMethodLabel(row.refund_channel) : ''].filter(Boolean).join(' / '), visible: canViewField('record.refund_method') },
     { key: 'created_at', label: '操作时间', value: formatDateTime(row.created_at), visible: canViewField('record.created_at'), wide: true },

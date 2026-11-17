@@ -13,7 +13,7 @@
         <span>新增</span>
       </el-button>
       <el-button
-        v-if="activeTab === 'payout' && canViewSalaryRecords"
+        v-if="activeTab === 'payout' && canEditSalaryRecords"
         type="warning"
         :disabled="payoutLoading"
         @click="emit('bulk-recalculate')"
@@ -41,6 +41,7 @@ defineProps<{
   activeTab: string
   canCreateSalaryTemplate: boolean
   canViewSalaryRecords: boolean
+  canEditSalaryRecords?: boolean
   payoutLoading: boolean
   refreshing: boolean
 }>()

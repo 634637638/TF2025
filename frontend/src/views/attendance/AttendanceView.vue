@@ -461,7 +461,6 @@
                           </el-tag>
                           <el-button
                             v-if="!isMobile && canApprove && row.status === 'pending' && !isAggregatedAttendanceRow(row)"
-                            size="small"
                             plain
                             type="success"
                             class="table-action table-action--manage"
@@ -491,7 +490,6 @@
                       <template #default="{ row }">
                         <div class="action-buttons">
                           <el-button
-                            size="small"
                             plain
                             type="primary"
                             class="table-action table-action--view"
@@ -502,7 +500,6 @@
                           </el-button>
                           <el-button
                             v-if="canEdit && !isAggregatedAttendanceRow(row)"
-                            size="small"
                             plain
                             type="primary"
                             class="table-action table-action--edit"
@@ -513,7 +510,6 @@
                           </el-button>
                           <el-button
                             v-if="canDelete && !isAggregatedAttendanceRow(row)"
-                            size="small"
                             type="danger"
                             class="table-action table-action--delete"
                             title="删除"
@@ -825,7 +821,6 @@
                       <template #default="{ row }">
                         <div class="action-buttons">
                           <el-button
-                            size="small"
                             plain
                             type="primary"
                             class="table-action table-action--view"
@@ -836,7 +831,6 @@
                           </el-button>
                           <el-button
                             v-if="row.status === 'pending' && !isAggregatedAttendanceRow(row)"
-                            size="small"
                             type="danger"
                             class="table-action table-action--warning"
                             title="撤销"
@@ -958,6 +952,7 @@
               />
               <el-radio-group
                 v-model="formData.record_type"
+                class="tf-state-selector"
                 :disabled="!canEditAttendanceField('attendance_attendanceview', 'record_type') || salaryTemplateBound !== true"
                 @change="handleRecordTypeChange"
               >
@@ -1265,12 +1260,13 @@
           <RecordDescriptions
             v-if="currentRecord"
             :column="2"
+            direction="vertical"
             border
             class="attendance-detail-descriptions"
           >
             <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'record_type')"
-              label="类型"
+              v-if="canViewAttendanceField(attendanceDetailModuleKey, 'record_type')"
+              label="考勤类型"
             >
               <el-tag
                 v-if="currentRecord.record_type === 'monthly_leave'"
@@ -1298,55 +1294,8 @@
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'record_date')"
-              label="日期"
-            >
-              {{ currentRecord.record_type === 'monthly_leave'
-                ? formatAttendanceTableDateRange(currentRecord.record_date, currentRecord.record_type, currentRecord.monthly_leave_days)
-                : currentRecord.record_type === 'leave'
-                  ? formatAttendanceTableDateRange(currentRecord.record_date, currentRecord.record_type, currentRecord.leave_days)
-                  : formatAttendanceTableDateRange(currentRecord.record_date, currentRecord.record_type) }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="isAggregatedAttendanceRow(currentRecord)"
-              label="原记录 ID"
-            >
-              {{ getAttendanceRowIds(currentRecord) }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'leave_type') && currentRecord.leave_type"
-              label="请假类型"
-            >
-              {{ currentRecord.leave_type }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'leave_days') && currentRecord.leave_days"
-              label="请假天数"
-            >
-              请假 {{ formatAttendanceQuantity(currentRecord.leave_days) }} 天
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'monthly_leave_days') && currentRecord.monthly_leave_days"
-              label="休假天数"
-            >
-              休假 {{ formatAttendanceQuantity(currentRecord.monthly_leave_days) }} 天
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'overtime_hours') && currentRecord.overtime_hours"
-              label="加班时长"
-            >
-              {{ formatAttendanceQuantity(currentRecord.overtime_hours) }} 小时
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'reason')"
-              label="原因"
-              :span="2"
-            >
-              {{ getReasonText(currentRecord) }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'status')"
-              label="状态"
+              v-if="canViewAttendanceField(attendanceDetailModuleKey, 'status')"
+              label="审批状态"
             >
               <el-tag
                 v-if="currentRecord.status === 'pending'"
@@ -1361,18 +1310,69 @@
                 已通过
               </el-tag>
               <el-tag
-                v-else
+                v-else-if="currentRecord.status === 'rejected'"
                 type="danger"
               >
                 已拒绝
               </el-tag>
+              <span v-else>-</span>
             </el-descriptions-item>
             <el-descriptions-item
-              v-if="canViewAttendanceField('attendance_attendanceview', 'approval_note') && currentRecord.approval_note"
+              v-if="canViewAttendanceField(attendanceDetailModuleKey, 'employee_name') && currentRecord.employee_name"
+              label="员工姓名"
+            >
+              {{ currentRecord.employee_name }}
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="canViewAttendanceField(attendanceDetailModuleKey, 'record_date')"
+              label="考勤日期"
+            >
+              {{ getAttendanceRecordDateText(currentRecord) }}
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="currentRecord.record_type === 'leave' && canViewAttendanceField(attendanceDetailModuleKey, 'leave_type') && currentRecord.leave_type"
+              label="请假类型"
+            >
+              {{ currentRecord.leave_type }}
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="currentRecord.record_type === 'leave' && canViewAttendanceField(attendanceDetailModuleKey, 'leave_days')"
+              label="请假天数"
+            >
+              {{ formatAttendanceQuantity(currentRecord.leave_days) }} 天
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="currentRecord.record_type === 'monthly_leave' && canViewAttendanceField(attendanceDetailModuleKey, 'monthly_leave_days')"
+              label="休假天数"
+            >
+              {{ formatAttendanceQuantity(currentRecord.monthly_leave_days) }} 天
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="currentRecord.record_type === 'overtime' && canViewAttendanceField(attendanceDetailModuleKey, 'overtime_hours')"
+              label="加班时长"
+            >
+              {{ formatAttendanceQuantity(currentRecord.overtime_hours) }} 小时
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="canViewAttendanceField(attendanceDetailModuleKey, 'reason')"
+              label="原因"
+              :span="2"
+            >
+              {{ getReasonText(currentRecord) }}
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="canViewAttendanceField(attendanceDetailModuleKey, 'approval_note') && currentRecord.approval_note"
               label="审批备注"
               :span="2"
             >
               {{ currentRecord.approval_note }}
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="canViewAttendanceField(attendanceDetailModuleKey, 'id') && isAggregatedAttendanceRow(currentRecord)"
+              label="原记录 ID"
+              :span="2"
+            >
+              {{ getAttendanceRowIds(currentRecord) }}
             </el-descriptions-item>
           </RecordDescriptions>
 
@@ -1427,7 +1427,6 @@
                     <el-button
                       v-if="canEdit"
                       v-permission="'attendance:edit'"
-                      size="small"
                       type="primary"
                       @click.stop="handleEdit(row)"
                     >
@@ -1437,7 +1436,6 @@
                     <el-button
                       v-if="canDelete"
                       v-permission="'attendance:delete'"
-                      size="small"
                       type="danger"
                       @click.stop="handleDelete(row)"
                     >
@@ -1447,7 +1445,6 @@
                     <el-button
                       v-if="canApprove && row.status === 'pending'"
                       v-permission="'attendance:approve'"
-                      size="small"
                       type="success"
                       @click.stop="handleApprove(row)"
                     >
@@ -1457,7 +1454,6 @@
                   </template>
                   <el-button
                     v-else-if="row.status === 'pending'"
-                    size="small"
                     type="danger"
                     @click.stop="handleCancel(row)"
                   >
@@ -1531,6 +1527,7 @@
             >
               <el-radio-group
                 v-model="approveForm.status"
+                class="tf-state-selector"
                 :disabled="!canEditAttendanceField('attendance_attendanceview', 'status')"
               >
                 <el-radio value="approved">
@@ -1587,6 +1584,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
@@ -1705,6 +1703,10 @@ const approveDialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref<FormInstance>()
 const activeTab = ref<AttendanceTab>('my')
+const attendanceDetailModuleKey = computed(() => (
+  activeTab.value === 'all' ? 'attendance_attendanceview' : 'attendance_myattendanceview'
+))
+const shortcutPageReady = ref(false)
 
 // 搜索相关状态
 const searchExpanded = ref(false)
@@ -1746,8 +1748,8 @@ const approveForm = reactive({
   note: ''
 })
 
-// 具备页面查看能力且拥有任一管理动作时，可管理全员考勤记录。
-const canManageAttendanceRecords = computed(() => canViewAllAttendance.value)
+// 查看范围与新增对象分别鉴权；本人申请不能借团队查看权限替他人建单。
+const canManageAttendanceRecords = computed(() => canViewAllAttendance.value && (formData.id ? canEdit.value : canCreatePermission.value))
 
 const canViewTeamAttendance = computed(() => canViewAllAttendance.value)
 const canApprove = computed(() => canApprovePermission.value)
@@ -1783,11 +1785,15 @@ const canEditAttendanceField = (moduleKey: string, fieldName: string) => {
     return false
   }
 
+  if (!fieldPermissions.isFieldEditable(moduleKey, getAttendanceFieldKey(fieldName), { allowUnconfigured: true })) {
+    return false
+  }
+
   if (canCreatePermission.value || canEdit.value || canApprove.value) {
     return true
   }
 
-  return fieldPermissions.isFieldEditable(moduleKey, getAttendanceFieldKey(fieldName))
+  return false
 }
 const attendanceStatsModuleKey = computed(() => (
   canViewTeamAttendance.value ? 'attendance_attendanceview' : 'attendance_myattendanceview'
@@ -2609,6 +2615,10 @@ const handleSubmit = async () => {
         formData.employee_id = authStore.user?.id
       }
 
+      if (!formData.id && Number(formData.employee_id) !== Number(authStore.user?.id) && !canCreatePermission.value) {
+        handleAttendanceNoPermission('create')
+        return
+      }
       if (salaryTemplateBound.value !== true) {
         globalNotifications.warning('请先为员工绑定工资模板，再申请或登记休假、请假、加班')
         return
@@ -3036,6 +3046,7 @@ onMounted(async () => {
   if (!canAccessPage.value) {
     loading.value = false
     myLoading.value = false
+    shortcutPageReady.value = true
     return
   }
 
@@ -3056,6 +3067,7 @@ onMounted(async () => {
   if (canViewAllAttendance.value) {
     await loadEmployees()
   }
+  shortcutPageReady.value = true
 })
 
 const { doubleTapOptions: allDetailTapOptions, handleRowDoubleClick: allDetailDoubleClick } = useMobileTableDetail<AttendanceTableRow>({
@@ -3076,6 +3088,12 @@ const runAttendanceDetailAction = (action: (row: AttendanceTableRow) => unknown)
   closeMobileDetail()
   return action(row)
 }
+
+usePageShortcuts('/attendance', {
+  'attendance-create': { open: showCreateDialog, ready: () => shortcutPageReady.value },
+  'attendance-all': { open: () => { activeTab.value = 'all' }, allowed: () => canViewAllAttendance.value, ready: () => shortcutPageReady.value },
+  'attendance-my': { open: () => { activeTab.value = 'my' }, allowed: () => canViewOwnAttendance.value, ready: () => shortcutPageReady.value }
+})
 </script>
 
 <style scoped src="./styles/attendance-view/desktop.css"></style>

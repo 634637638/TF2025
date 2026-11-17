@@ -43,8 +43,12 @@ onBeforeUnmount(() => loadingStore.stopLocalLoading())
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 132px;
-  padding: 24px;
+  padding: var(--tf-space-6);
   color: var(--tf-loading-surface-text, var(--tf-color-slate-700));
   background:
     radial-gradient(circle at 50% 36%, var(--tf-loading-surface-glow, rgba(14, 165, 233, 0.14)), transparent 36%),
@@ -77,7 +81,7 @@ onBeforeUnmount(() => loadingStore.stopLocalLoading())
 
 .section-loading--large {
   min-height: 220px;
-  padding: 32px;
+  padding: var(--tf-space-7);
 }
 
 .section-loading--page {

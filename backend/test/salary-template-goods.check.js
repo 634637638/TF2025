@@ -18,6 +18,30 @@ const masking = (hiddenFields = []) => ({
   filterSensitiveFields(rows) { return rows }
 })
 
+test('工资模板只读字段不可写入，商品规则、底薪、嵌套涨薪及设为默认均在业务前拒绝', async () => {
+  const readonlyFields = ['template.goods_commission_rule', 'template.base_salary', 'template.auto_raise_amount', 'template.is_default']
+  const controller = new Controller({ masking: {
+    async getUserFieldPermissions() { return { hiddenFields: [], readonlyFields } },
+    filterSensitiveFields: rows => rows
+  }, service: {
+    async createTemplate() { assert.fail('不可新增受限字段') },
+    async updateTemplate() { assert.fail('不可更新受限字段') },
+    async setAsDefault() { assert.fail('不可设置只读默认状态') }
+  } })
+  for (const body of [{ goods_commission_rule: rule() }, { goods_commission_rule: null },
+    { base_salary: 0 }, { auto_raise_rule: JSON.stringify({ amount: 10 }) }, { auto_raise_rule: null }, { auto_raise_rule: { amount: 10 } }]) {
+    for (const method of ['createTemplate', 'updateTemplate']) {
+      const res = response()
+      await controller[method]({ user: { id: 7 }, params: { id: 4 }, body }, res)
+      assert.equal(res.statusCode, 403)
+      assert.equal(res.body.code, 'FIELD_PERMISSION_DENIED')
+    }
+  }
+  const res = response()
+  await controller.setAsDefault({ user: { id: 7 }, params: { id: 4 } }, res)
+  assert.equal(res.statusCode, 403)
+})
+
 test('工资模板列表/详情/默认及保存响应统一返回商品规则对象，保留关闭和零值', async () => {
   const raw = { id: 4, name: '模板甲', goods_commission_rule: JSON.stringify(rule({ enabled: false, fixed_amount: 0 })) }
   const repository = {

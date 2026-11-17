@@ -72,7 +72,10 @@ class ModuleScanner {
     await this.ensureConfiguredModulesRegistered()
     const modules = await this.repository.getRegisteredModules()
     log.debug(`🔍 已注册模块查询结果: ${modules.length}个模块`)
-    return modules
+    return modules.map(module => ({
+      ...module,
+      permission_count: getModulePermissionTypes(module.key).length
+    }))
   }
 
   async getModuleNameStatus(moduleKey) {
@@ -163,9 +166,9 @@ class ModuleScanner {
 
       const moduleInfo = {
         key: moduleKey,
-        name: this.generateModuleName(moduleName),
+        name: this.generateModuleName(moduleName, moduleKey),
         category: this.determineCategory(category),
-        description: `${this.generateModuleName(moduleName)}管理模块`,
+        description: `${this.generateModuleName(moduleName, moduleKey)}管理模块`,
         path: `/${category}/${moduleName}`,
         route_path: `/${category}/${moduleName}`,
         filename: path.basename(normalizedPath),
@@ -180,7 +183,7 @@ class ModuleScanner {
         ...(getModulePermissionMetadata(moduleKey) || {})
       }
     } catch (error) {
-      log.error(`分析文件失败 ${category}/${filename}:`, error)
+      log.error(`分析文件失败 ${relativePath}:`, error)
       return null
     }
   }
@@ -307,66 +310,9 @@ class ModuleScanner {
   /**
    * 生成模块显示名称（使用中文映射）
    */
-  generateModuleName(moduleName) {
-    // 中文模块名称映射
-    const chineseNames = {
-      // 用户管理相关
-      'UsersView': '用户管理',
-      'PermissionsView': '权限管理',
-      'EmployeesView': '员工管理',
-      'LoginView': '登录页面',
-      'RegisterView': '注册页面',
-
-      // 业务相关
-      'SalesView': '销售管理',
-      'PhoneSaleView': '手机销售',
-      'EditPhoneView': '手机编辑',
-      'InventoryView': '库存管理',
-      'StockInPage': '入库管理',
-      'AccessoriesView': '配件管理',
-      'CustomersView': '客户管理',
-      'SuppliersView': '供应商列表',
-      'SupplierManagementView': '供应商管理',
-      'RepairsView': '维修管理',
-      'RentalsView': '租赁管理',
-      'PhonesView': '手机管理',
-      'SubsidyView': '国补管理',
-
-      // 商品相关
-      'BrandsView': '品牌管理',
-      'ModelsView': '型号管理',
-      'ColorsView': '颜色管理',
-      'MemoriesView': '内存管理',
-      'ProductsView': '商品管理',
-      'QueryView': '查询管理',
-      'ReminderView': '待办提醒',
-      'SharedView': '经验分享',
-
-      // 系统相关
-      'DashboardView': '仪表盘',
-      'SystemView': '系统管理',
-      'MenuManagementView': '菜单管理',
-      'StoresView': '门店管理',
-      'AnalyticsView': '数据分析',
-      'GitManagement': 'Git管理',
-      'Returngoods': '退库管理',
-      'SyncLogView': '同步日志',
-      'IconDemo': '图标演示',
-
-      // H5 相关
-      'H5-adminView': 'H5商城管理',
-      'H5-mobileView': 'H5移动端商城',
-      'templatesView': 'H5模板管理',
-      'configView': 'H5商城配置',
-      'home-sectionsView': 'H5首页推荐',
-      'bannersView': 'H5轮播图管理',
-      'ordersView': 'H5订单管理'
-    }
-
-    // 首先尝试中文映射
-    if (chineseNames[moduleName]) {
-      return chineseNames[moduleName]
-    }
+  generateModuleName(moduleName, moduleKey) {
+    const metadata = getModulePermissionMetadata(moduleKey)
+    if (metadata) return metadata.name
 
     // 如果没有映射，使用英文格式化
     return moduleName

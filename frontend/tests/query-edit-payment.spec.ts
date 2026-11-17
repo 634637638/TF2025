@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { computed, defineComponent, h } from 'vue'
 import ElementPlus, { ElForm } from 'element-plus'
 import QueryEditModal from '@/components/query/QueryEditModal.vue'
 import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
@@ -19,8 +19,12 @@ vi.mock('@/composables/useNotification', () => {
 vi.mock('@/services/reference-options', () => ({
   getModels: vi.fn().mockResolvedValue({ success: true, data: [{ id: 2, name: '测试型号', brand_id: 1 }] }),
   getCachedBrands: vi.fn(), getCachedColors: vi.fn(), getCachedMemories: vi.fn(),
-  getCachedStores: vi.fn(), getCachedSuppliers: vi.fn(), searchEmployees: vi.fn()
+  getStores: vi.fn(), getCachedSuppliers: vi.fn(), searchEmployees: vi.fn()
 }))
+
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({
+  canCreate: computed(() => true), canEdit: computed(() => true), requirePermission: () => true
+}) }))
 
 const options: QueryOperationOptions = {
   brands: [{ id: 1, name: '测试品牌' }], models: [{ id: 2, name: '测试型号', brand_id: 1 }],

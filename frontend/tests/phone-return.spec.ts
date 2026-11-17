@@ -5,24 +5,24 @@ import ElementPlus, { ElCheckbox, ElForm, ElInput, ElInputNumber, ElSelect } fro
 import Form from '@/components/query/PhoneReturnForm.vue'
 import { PaymentMethodSelect, PaymentChannelSelect } from '@/components/payment'
 import { isPhoneReturnQuote } from '@/utils/sales-checkout'
-import type { PhoneReturnChecklist, PhoneReturnInput, PhoneReturnQuote } from '@/types/sales-checkout'
+import type { PhoneReturnAccessoryDraft, PhoneReturnChecklist, PhoneReturnInput, PhoneReturnQuote } from '@/types/sales-checkout'
 
 const mocks = vi.hoisted(() => ({ quote: vi.fn(), submit: vi.fn(), stores: vi.fn(), warning: vi.fn(), success: vi.fn(), hidden: new Set<string>() }))
 const permissions = reactive({ query: true, goods: true, gift: true })
 vi.mock('@/api/sales-checkout', () => ({ quotePhoneReturn: mocks.quote, submitPhoneReturn: mocks.submit }))
-vi.mock('@/services/reference-options', () => ({ getCachedStores: mocks.stores }))
+vi.mock('@/services/reference-options', () => ({ getStores: mocks.stores }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => module === 'query' ? permissions.query : permissions.goods),
-  hasPermission: (action: string) => module === 'query' ? permissions.query : action === 'gift' ? permissions.gift : permissions.goods }) }))
+  hasPermission: (action: string) => module === 'query' ? action === 'goods-view' ? permissions.goods : action.startsWith('goods-') ? false : permissions.query : action === 'gift' ? permissions.gift : permissions.goods }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFieldVisible: (_module: string, field: string) => !mocks.hidden.has(field) } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: ref(false) }) }))
 
 const checklist = (): PhoneReturnChecklist => ({ order_id: 10, order_no: 'SO-ORIGINAL', store_id: 1,
   phone: { item_id: 50, sale_id: 20, phone_id: 30, total_amount: 100, points_awarded: 10 },
-  accessories: [{ item_id: 51, accessory_id: 5, accessory_sale_id: 1, sale_type: 'sale', name: '收费商品', quantity: 3,
+  accessories: [{ item_id: 51, accessory_id: 5, accessory_sale_id: 1, sale_type: 'sale', name: '收费商品', unit: '根', quantity: 3,
     returned_quantity: 0, remaining_quantity: 3, serial_numbers: [], available_serial_numbers: [], unit_price: 20, total_amount: 60,
     gift_return_unit_price: null, gift_return_total: null, remaining_gift_return_total: null, gift_agreement_state: null },
-  { item_id: 52, accessory_id: 6, accessory_sale_id: 2, sale_type: 'gift', name: '原赠品', quantity: 3,
+  { item_id: 52, accessory_id: 6, accessory_sale_id: 2, sale_type: 'gift', name: '原赠品', unit: '个', quantity: 3,
     returned_quantity: 1, remaining_quantity: 2, serial_numbers: ['SN1', 'SN2', 'SN3'], available_serial_numbers: ['SN2', 'SN3'],
     unit_price: 0, total_amount: 0, gift_return_unit_price: 5, gift_return_total: 15, remaining_gift_return_total: 10, gift_agreement_state: 'recorded' }] })
 const quote = (input: PhoneReturnInput): PhoneReturnQuote => {
@@ -39,15 +39,25 @@ const quote = (input: PhoneReturnInput): PhoneReturnQuote => {
 }
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async (source = checklist()) => {
-  const wrapper = mount(Form, { props: { checklist: source }, global: { plugins: [ElementPlus], directives: { permission: {} },
+  const accessories: PhoneReturnAccessoryDraft[] = source.accessories.map(item => ({ item_id: item.item_id,
+    quantity: item.sale_type === 'gift' ? item.remaining_quantity || 0 : 0,
+    serial_numbers: item.sale_type === 'gift' ? [...item.available_serial_numbers || []] : [] }))
+  const wrapper = mount(Form, { props: { checklist: source, accessories }, global: { plugins: [ElementPlus], directives: { permission: {} },
     components: { PaymentMethodSelect, PaymentChannelSelect }, stubs: { SectionLoading: true, DataEmptyState: { emits: ['action'], template: '<button @click="$emit(\'action\')">读取失败，重试</button>' } } } })
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
 type Wrapper = Awaited<ReturnType<typeof render>>
 const button = (wrapper: Wrapper, text: string) => wrapper.findAll('button').find(item => item.text() === text)!
+const selectByLabel = (wrapper: Wrapper, label: string) => wrapper.findAllComponents(ElSelect).find(item => item.props('ariaLabel') === label)!
+const setAccessory = async (wrapper: Wrapper, itemId: number, patch: Partial<PhoneReturnAccessoryDraft>) => {
+  const accessories = (wrapper.props('accessories') as PhoneReturnAccessoryDraft[]).map(row => ({ ...row, serial_numbers: [...row.serial_numbers] }))
+  const row = accessories.find(item => item.item_id === itemId)!
+  Object.assign(row, patch)
+  await wrapper.setProps({ accessories })
+}
 const complete = async (wrapper: Wrapper) => {
-  wrapper.findAllComponents(ElSelect)[1].vm.$emit('update:modelValue', '客户退货')
-  wrapper.findAllComponents(ElCheckbox).find(item => item.text().includes('已核验手机'))!.vm.$emit('update:modelValue', true)
+  selectByLabel(wrapper, '退货原因').vm.$emit('update:modelValue', '客户退货')
+  wrapper.findAllComponents(ElCheckbox).find(item => item.text().includes('已核对被退回'))!.vm.$emit('update:modelValue', true)
   await flushPromises()
 }
 const calculate = async (wrapper: Wrapper) => { await complete(wrapper); await button(wrapper, '核对退款').trigger('click'); await flushPromises() }
@@ -64,11 +74,22 @@ beforeEach(() => {
 })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.resetAllMocks() })
 
+it('退货门店表单不再重复展示商品、数量或SN输入', async () => {
+  const wrapper = await render()
+  expect(wrapper.text()).toContain('商品退货门店')
+  expect(wrapper.text()).not.toContain('收费商品')
+  expect(wrapper.text()).not.toContain('原赠品')
+  expect(wrapper.findComponent(ElInputNumber).exists()).toBe(false)
+  expect(wrapper.findAllComponents(ElSelect).some(item => String(item.props('ariaLabel')).includes('退回SN'))).toBe(false)
+})
+
 it('收费商品默认保留、赠品默认退回，仅按原可退SN选择；人工核验后一次试算手机和全部关联商品', async () => {
   const wrapper = await render()
-  expect(wrapper.text()).toContain('SO-ORIGINAL')
-  expect(wrapper.findComponent(ElInputNumber).props('modelValue')).toBe(0)
-  expect(wrapper.findAllComponents(ElSelect)[2].props('modelValue')).toEqual(['SN2', 'SN3'])
+  expect(wrapper.find('h3').text()).toBe('商品退货门店')
+  expect(wrapper.text()).not.toContain('SO-ORIGINAL')
+  expect(wrapper.text()).not.toContain('收费配件可保留或退回')
+  expect(wrapper.findComponent(ElInputNumber).exists()).toBe(false)
+  expect(wrapper.findAllComponents(ElSelect).some(item => String(item.props('ariaLabel')).includes('退回SN'))).toBe(false)
   await button(wrapper, '核对退款').trigger('click'); await flushPromises()
   expect(mocks.quote).not.toHaveBeenCalled()
   await calculate(wrapper)
@@ -81,14 +102,11 @@ it('收费商品默认保留、赠品默认退回，仅按原可退SN选择；�
 
 it('未退赠品明确按原约定扣款；部分退回与收费商品一起返库，支付渠道和资金确认后才提交', async () => {
   const wrapper = await render()
-  wrapper.findAllComponents(ElSelect)[0].vm.$emit('update:modelValue', 2)
-  wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 1)
-  wrapper.findAllComponents(ElSelect)[2].vm.$emit('update:modelValue', ['SN3'])
+  selectByLabel(wrapper, '接收门店').vm.$emit('update:modelValue', 2)
+  await setAccessory(wrapper, 51, { quantity: 1 })
+  await setAccessory(wrapper, 52, { serial_numbers: ['SN3'] })
   await flushPromises()
   await calculate(wrapper)
-  expect(mocks.quote).not.toHaveBeenCalled()
-  wrapper.findAllComponents(ElCheckbox).find(item => item.text().includes('按原单约定扣款'))!.vm.$emit('update:modelValue', true)
-  await flushPromises(); await button(wrapper, '核对退款').trigger('click'); await flushPromises()
   const input = mocks.quote.mock.calls[0][2]
   expect(input.accessories[1]).toMatchObject({ quantity: 1, serial_numbers: ['SN3'], charge_missing: true, charge_confirmed: true })
   await pay(wrapper, 'mobile')
@@ -104,10 +122,10 @@ it('原单未约定不得输入现价补算，缺赠品权限只允许退回赠�
     const source = checklist(); source.accessories[1].gift_return_unit_price = agreement
     permissions.gift = false
     const wrapper = await render(source)
-    wrapper.findAllComponents(ElSelect)[2].vm.$emit('update:modelValue', [])
+    await setAccessory(wrapper, 52, { serial_numbers: [] })
     await calculate(wrapper)
     expect(mocks.quote).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain(agreement === null ? '原单未约定' : '没有赠品未退扣款确认权限')
+    expect(mocks.warning).toHaveBeenCalled()
     wrapper.unmount()
   }
   for (const hidden of ['basic_info.sale_price', 'stock_info.total_quantity', 'price_info.unit_price', 'basic_info.serial_number']) {
@@ -127,7 +145,7 @@ it('表单改动废弃旧试算、资金方式及确认；晚返回、撤权和�
   mocks.quote.mockImplementationOnce(() => new Promise(done => { resolve = done }))
   await button(wrapper, '核对退款').trigger('click'); await flushPromises()
   const input = mocks.quote.mock.calls.at(-1)![2], signal = mocks.quote.mock.calls.at(-1)![3] as AbortSignal
-  wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 1); await flushPromises()
+  await setAccessory(wrapper, 51, { quantity: 1 }); await flushPromises()
   expect(signal.aborted).toBe(true)
   resolve({ success: true, data: quote(input) }); await flushPromises()
   expect(wrapper.findComponent(PaymentMethodSelect).exists()).toBe(false)
@@ -197,7 +215,7 @@ it('补款使用公共销售支付方式；0金额不要求资金方式，损坏
   mocks.quote.mockImplementation(async (_o, _s, input) => ({ success: true, data: { ...quote(input), points_recovery_amount: 110, refund_amount: 0, collection_amount: 10 } }))
   const wrapper = await render(); await calculate(wrapper)
   expect(wrapper.findComponent(PaymentMethodSelect).props('variant')).toBe('sale')
-  expect(wrapper.text()).toContain('确认已收取客户需补差价')
+  expect(wrapper.text()).toContain('确认已收取客户补差价')
   const input = mocks.quote.mock.calls[0][2], valid = quote(input)
   expect(isPhoneReturnQuote(valid, checklist(), input)).toBe(true)
   for (const invalid of [{ ...valid, phone_id: 31 }, { ...valid, refund_amount: 99 }, { ...valid, gift_charge_amount: NaN },
@@ -225,4 +243,23 @@ it('手机退货先断网再收到报价变化时，仍冻结原内容并允许�
   expect(mocks.submit.mock.calls[1][2]).toEqual(mocks.submit.mock.calls[0][2])
   expect(mocks.submit.mock.calls[2][2]).toEqual(mocks.submit.mock.calls[0][2])
   expect(wrapper.emitted('success')).toHaveLength(1)
+})
+
+
+it('带商品手机退库保留退货类型及处理方式，变更意向须重新核对，提交完整保存', async () => {
+  const wrapper = await render()
+  const select = (label: string) => selectByLabel(wrapper, label)
+  expect(select('退货类型').props('modelValue')).toBe('退货处理')
+  expect(select('处理方式').props('modelValue')).toBe('重新入库')
+  await calculate(wrapper)
+  select('退货类型').vm.$emit('update:modelValue', '申请换货')
+  select('处理方式').vm.$emit('update:modelValue', '返厂维修')
+  await flushPromises()
+  expect(button(wrapper, '确认退货').attributes('disabled')).toBeDefined()
+  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await pay(wrapper)
+  await button(wrapper, '确认退货').trigger('click'); await flushPromises()
+  expect(mocks.submit.mock.calls[0][2]).toMatchObject({ return_type: '申请换货', handle_method: '返厂维修', restock_confirmed: true })
+  expect(wrapper.text()).not.toContain('处理方式仅登记后续处理意向')
+  expect(wrapper.text()).toContain('已核对被退回的手机及商品')
 })

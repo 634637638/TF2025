@@ -15,7 +15,7 @@ import type { PhoneReturnSource } from '@/types/sales-checkout'
 const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), success: vi.fn(), error: vi.fn(), hidden: new Set<string>() }))
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: { get: mocks.get, post: mocks.post } }))
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({
-  canView: computed(() => module === 'query' ? permissionState.queryAllowed : permissionState.goodsAllowed), hasPermission: () => permissionState.queryAllowed
+  canView: computed(() => module === 'query' ? permissionState.queryAllowed : permissionState.goodsAllowed), hasPermission: (action: string) => action === 'goods-view' ? permissionState.goodsAllowed : permissionState.queryAllowed
 }) }))
 vi.mock('@/components/accessory-field-permissions', () => ({ canViewAccessoryField: (field: string) => !mocks.hidden.has(field) }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.success, error: mocks.error }) }))
@@ -34,7 +34,7 @@ const render = () => {
     props: { modelValue: true, deviceInfo: { id: 12 } },
     global: { plugins: [ElementPlus], directives: { permission: {} }, components: { DataEmptyState },
       stubs: { MobileDialog: DialogStub, SectionLoading: { template: '<div>核对中</div>' },
-        PhoneReturnForm: { props: ['checklist'], emits: ['cancel', 'success', 'busy'], template: '<div>共同售后办理<button @click="$emit(\'cancel\')">取消</button></div>' } } }
+        PhoneReturnForm: { props: ['checklist', 'accessories'], emits: ['cancel', 'success', 'busy'], template: '<div>共同售后办理<button @click="$emit(\'cancel\')">取消</button></div>' } } }
   })
   wrappers.push(wrapper)
   return wrapper
@@ -157,15 +157,135 @@ const deferredSource = () => {
 }
 
 describe('手机退库原单核对', () => {
-  it('打开即读取原单；共同单显示准确已退与剩余SN，无法提交旧删除式退库', async () => {
+  it('标题按收费及赠送类型简洁展示，类型隐藏时不从标题反推', async () => {
+    for (const types of [['sale'], ['gift'], ['sale', 'gift'], []] as const) {
+      const data = commonSource()
+      if (data.mode !== 'checkout') throw new Error('fixture')
+      const original = data.accessories[0]
+      data.accessories = types.map((type, index) => ({ ...original, item_id: 4 + index, sale_type: type,
+        ...(type === 'sale' ? { unit_price: 20, total_amount: 40, gift_return_unit_price: null,
+          gift_return_total: null, remaining_gift_return_total: null, gift_agreement_state: null } : {}) }))
+      mocks.get.mockResolvedValue({ success: true, data })
+      const wrapper = render(); await flushPromises()
+      const expected = types.includes('sale') && types.includes('gift') ? '存在收费-赠送商品' :
+        types.includes('sale') ? '存在收费商品' : types.includes('gift') ? '存在赠送商品' : '关联商品'
+      expect(wrapper.find('h3').text()).toBe(expected)
+      expect(wrapper.text()).not.toContain('SO-8')
+      expect(wrapper.text()).not.toContain('数量已扣除此前')
+      wrapper.unmount(); mocks.hidden.add('usage_type')
+      const masked = render(); await flushPromises()
+      expect(masked.find('h3').text()).toBe('关联商品')
+      masked.unmount(); mocks.hidden.clear()
+    }
+  })
+
+  it('原单核对表用收费和赠送文案及语义颜色区分类型', async () => {
+    const data = commonSource()
+    if (data.mode !== 'checkout') throw new Error('fixture')
+    const gift = data.accessories[0]
+    data.accessories = [
+      { ...gift, item_id: 4, sale_type: 'sale', unit_price: 20, total_amount: 20, gift_return_unit_price: null,
+        gift_return_total: null, remaining_gift_return_total: null, gift_agreement_state: null },
+      { ...gift, item_id: 5, sale_type: 'gift' }
+    ]
+    mocks.get.mockResolvedValue({ success: true, data })
+    const wrapper = render(); await flushPromises()
+    const labels = wrapper.findAllComponents({ name: 'ElText' }).filter(item => ['收费', '赠送'].includes(item.text()))
+    expect(labels.map(item => [item.text(), item.props('type')])).toEqual([['收费', 'success'], ['赠送', 'danger']])
+  })
+
+  it('用商品卡片按行控制退回，同名收费和赠送商品分别保留数量及SN', async () => {
+    const data = commonSource()
+    if (data.mode !== 'checkout') throw new Error('fixture')
+    const original = data.accessories[0]
+    data.accessories = [
+      { ...original, item_id: 40, name: '同名商品', sale_type: 'sale', serial_numbers: [], available_serial_numbers: [],
+        unit_price: 30, total_amount: 30, gift_return_unit_price: null, gift_return_total: null,
+        remaining_gift_return_total: null, gift_agreement_state: null },
+      { ...original, item_id: 41, name: '同名商品', sale_type: 'gift', remaining_quantity: 2,
+        returned_quantity: 0, serial_numbers: ['G1', 'G2'], available_serial_numbers: ['G1', 'G2'],
+        gift_return_total: 40, remaining_gift_return_total: 40 }
+    ]
+    mocks.get.mockResolvedValue({ success: true, data })
+    const wrapper = render(); await flushPromises()
+    const cards = wrapper.findAll('.return-accessory-card')
+    expect(cards).toHaveLength(2)
+    expect(cards.map(card => card.text())).toEqual(expect.arrayContaining([expect.stringContaining('同名商品')]))
+    const quantity = wrapper.findComponent(ElInputNumber)
+    expect(quantity.exists(), wrapper.html()).toBe(true)
+    expect(quantity.props('modelValue')).toBe(0)
+    expect(wrapper.text()).toContain('退回数量 0')
+    expect(wrapper.findAll('.return-accessory-card .status-badge').map(item => [item.text(), item.classes().includes('returned')]))
+      .toEqual([['已退 1', true], ['已退 0', false]])
+    expect(wrapper.findAll('.return-accessory-card__return')).toHaveLength(2)
+    quantity.vm.$emit('update:modelValue', 1)
+    const giftSelect = wrapper.findAllComponents(ElSelect).find(item => item.props('ariaLabel') === '同名商品本次退回SN')!
+    expect(giftSelect.props('modelValue')).toEqual(['G1', 'G2'])
+    giftSelect.vm.$emit('update:modelValue', ['G2'])
+    await flushPromises()
+    const form = wrapper.findComponent(PhoneReturnForm)
+    expect(form.props('accessories')).toEqual([
+      { item_id: 40, quantity: 1, serial_numbers: [] },
+      { item_id: 41, quantity: 2, serial_numbers: ['G2'] }
+    ])
+    expect(wrapper.findAll('th')).toHaveLength(0)
+  })
+
+  it('商品卡片显示原单单价，赠品不显示剩余总额，缺历史价格不按零元补造', async () => {
+    for (const price of [null, 0, 20]) {
+      const data = commonSource()
+      if (data.mode !== 'checkout') throw new Error('fixture')
+      const gift = data.accessories[0]
+      Object.assign(gift, { returned_quantity: 0, remaining_quantity: 2, available_serial_numbers: [...gift.serial_numbers!],
+        gift_return_unit_price: price, gift_return_total: price === null ? null : price * 2,
+        remaining_gift_return_total: price === null ? null : price * 2, gift_agreement_state: price === null ? 'not_recorded' : 'recorded' })
+      data.accessories.push({ ...gift, item_id: 7, sale_type: 'sale', unit_price: 30, total_amount: 60,
+        gift_return_unit_price: null, gift_return_total: null, remaining_gift_return_total: null, gift_agreement_state: null })
+      mocks.get.mockResolvedValue({ success: true, data })
+      const wrapper = render(); await flushPromises()
+      const cards = wrapper.findAll('.return-accessory-card')
+      expect(cards[0].text()).toContain(`价格 ${price === null ? '未记录' : `0×${price}元=0元`}`)
+      expect(cards[1].text()).toContain('价格 30元')
+      expect(cards[0].text()).not.toContain('剩余赠品约定金额')
+      wrapper.unmount()
+    }
+  })
+
+  it('商品卡片显示原商品全部串码，空SN明确展示无SN，脱敏未知不冒充无SN', async () => {
+    for (const serials of [['SN001', 'SN002'], [], null]) {
+      const data = commonSource()
+      if (data.mode !== 'checkout') throw new Error('fixture')
+      Object.assign(data.accessories[0], { serial_numbers: serials, available_serial_numbers: serials === null ? null : serials.slice(0, 1) })
+      mocks.get.mockResolvedValue({ success: true, data })
+      const wrapper = render(); await flushPromises()
+      const row = wrapper.find('.return-accessory-card').text()
+      if (serials?.length) expect(row).toContain('SN001、SN002')
+      else expect(row.includes('SN 无')).toBe(serials !== null)
+      wrapper.unmount()
+    }
+  })
+
+  it('原单位允许旧接口缺失和脱敏，非文本单位拒绝进入退货表单', () => {
+    for (const unit of [undefined, null, '根', 1, {}, []]) {
+      const data = commonSource()
+      if (data.mode !== 'checkout') throw new Error('fixture')
+      Object.assign(data.accessories[0], { unit })
+      expect(isPhoneReturnSource(data, 12)).toBe(unit === undefined || unit === null || typeof unit === 'string')
+    }
+  })
+
+  it('打开即读取原单；共同单显示准确已退量与原SN，可退SN独立传入办理表单', async () => {
     mocks.get.mockResolvedValue({ success: true, data: commonSource() })
     const wrapper = render()
     await flushPromises()
     expect(mocks.get).toHaveBeenCalledWith('/sales/checkout/phones/12/return-checklist', expect.objectContaining({ useCache: false, showLoading: false, signal: expect.any(AbortSignal) }))
-    expect(wrapper.text()).toContain('SO-8')
+    expect(wrapper.find('h3').text()).toBe('存在赠送商品')
+    expect(wrapper.text()).not.toContain('SO-8')
     expect(wrapper.text()).toContain('原单充电头')
     expect(wrapper.text()).toContain('SN001')
-    expect(wrapper.text()).not.toContain('SN002')
+    expect(wrapper.text()).toContain('SN002')
+    expect(wrapper.find('.status-badge.returned').text()).toBe('已退 1')
+    expect(wrapper.findComponent(PhoneReturnForm).props('checklist').accessories[0].available_serial_numbers).toEqual(['SN001'])
     expect(wrapper.findComponent(ElFormItem).exists()).toBe(false)
     expect(wrapper.findComponent(PhoneReturnForm).props('checklist')).toMatchObject({ order_id: 8 })
     expect(wrapper.findAll('button').some(button => button.text() === '确认退库')).toBe(false)
@@ -265,10 +385,11 @@ describe('手机退库原单核对', () => {
     mocks.get.mockResolvedValue({ success: true, data })
     const wrapper = render()
     await flushPromises()
-    expect(wrapper.text()).toContain('SO-8')
+    expect(wrapper.findComponent(PhoneReturnForm).props('checklist').order_no).toBe('SO-8')
     expect(wrapper.text()).not.toContain('原单核对失败')
-    expect(wrapper.text()).not.toContain('未退 SN')
-    expect(wrapper.text()).not.toContain('剩余赠品约定金额')
+    expect(wrapper.findAll('th').map(cell => cell.text())).not.toContain('SN')
+    expect(wrapper.text()).not.toContain('无SN')
+    expect(wrapper.findAll('th').map(cell => cell.text())).not.toContain('商品价格')
   })
 
   it('运行时守卫拒绝错手机、重复明细、不守恒数量、SN错配、非法金额和未知模式', () => {
@@ -324,9 +445,9 @@ describe('手机退库原单核对', () => {
     mocks.get.mockResolvedValue({ success: true, data })
     const wrapper = render()
     await flushPromises()
-    expect(wrapper.text()).toContain('SO-8')
+    expect(wrapper.findComponent(PhoneReturnForm).props('checklist').order_no).toBe('SO-8')
     expect(wrapper.text()).not.toContain('原数量')
-    expect(wrapper.text()).not.toContain('剩余赠品约定金额')
+    expect(wrapper.find('.return-accessory-card').text()).toContain('价格')
     expect(wrapper.text()).not.toContain('原单充电头')
   })
 })

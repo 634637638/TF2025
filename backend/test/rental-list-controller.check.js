@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -87,8 +89,9 @@ test('rental list service enforces hidden filters and preserves pagination, sche
     }
   })
 
-  const result = await service.list({ page: 2, page_size: 1000, keyword: '  13800138000  ', billing_mode: 'buyout' }, 9)
+  const result = await service.list({ page: 2, page_size: 1000, keyword: '  13800138000  ', billing_mode: 'buyout' }, 9, scopedActor)
   assert.deepEqual(calls[0], {
+    scope: { allStores: false, requestedStoreId: null, storeIds: scopedActor.store_ids },
     page: 2,
     pageSize: 100,
     keyword: '13800138000',
@@ -125,7 +128,7 @@ test('rental list service enforces hidden filters and preserves pagination, sche
     repository: { async list() { assert.fail('hidden filter must not query') } },
     masking: { async getUserFieldPermissions() { return { hiddenFields: ['status_info.status'] } } }
   })
-  assert.equal((await denied.list({ status: 'active' }, 9)).forbidden, '不能使用已隐藏的状态筛选字段')
+  assert.equal((await denied.list({ status: 'active' }, 9, scopedActor)).forbidden, '不能使用已隐藏的状态筛选字段')
 })
 
 test('rental list repository parameterizes filters and returns rows, attachments, payments, count and summary', async () => {

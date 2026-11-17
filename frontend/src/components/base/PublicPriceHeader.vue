@@ -99,6 +99,9 @@ const actionStyle = computed(() => {
   }
 
   .price-header-actions {
+    --tf-button-height: var(--tf-button-small-base-height);
+    --tf-button-padding-x: var(--tf-button-small-base-padding-x);
+    --tf-button-font-size: var(--tf-button-small-base-font-size);
     display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
@@ -159,10 +162,10 @@ const actionStyle = computed(() => {
 
 }
 
-.public-price-header[data-action-size='small'] .price-header-actions {
-  --tf-button-height: var(--tf-button-small-base-height);
-  --tf-button-padding-x: var(--tf-button-small-base-padding-x);
-  --tf-button-font-size: var(--tf-button-small-base-font-size);
+.public-price-header[data-action-size='default'] .price-header-actions {
+  --tf-button-height: inherit;
+  --tf-button-padding-x: inherit;
+  --tf-button-font-size: inherit;
 }
 
 .public-price-header[data-action-size='large'] .price-header-actions {
@@ -193,7 +196,7 @@ const actionStyle = computed(() => {
     padding: 0 var(--tf-space-3);
   }
 
-  .public-price-header[data-action-size='small'] .price-header-actions {
+  .notice-section .price-header-actions {
     --tf-button-padding-x: var(--tf-space-1);
   }
 

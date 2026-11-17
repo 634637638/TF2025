@@ -42,7 +42,7 @@ afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
 async function render() {
   wrapper = mount(DashboardView, { global: { stubs: {
     PermissionGate: { template: '<div><slot /></div>' }, PageHeader: true, SectionLoading: true,
-    ComprehensiveWarnings: true, PendingApprovals: true, RichContent: true,
+    ComprehensiveWarnings: true, PendingApprovals: true, RichContent: true, DashboardQuickAccess: true,
     ElButton: true, ElTag: { template: '<span><slot /></span>' }
   } } })
   await flushPromises()

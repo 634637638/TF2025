@@ -257,7 +257,6 @@
                   >¥{{ formatMoney(row.payable_rent) }}</strong>
                   <el-button
                     v-if="!isMobile && canEdit && row.status === 'active'"
-                    size="small"
                     plain
                     type="success"
                     class="table-action table-action--manage"
@@ -291,7 +290,6 @@
                   </el-tag>
                   <el-button
                     v-if="!isMobile && canEdit && row.billing_mode === 'daily' && ['active','overdue'].includes(row.status)"
-                    size="small"
                     type="warning"
                     class="table-action table-action--warning"
                     @click.stop="finishRental(row)"
@@ -310,7 +308,6 @@
                 <template #default="{ row }">
                   <div class="action-buttons">
                     <el-button
-                      size="small"
                       plain
                       type="primary"
                       class="table-action table-action--view"
@@ -319,8 +316,7 @@
                       查看
                     </el-button>
                     <el-button
-                      v-if="canEdit"
-                      size="small"
+                      v-if="canEditRental(row)"
                       plain
                       type="primary"
                       class="table-action table-action--edit"
@@ -381,7 +377,7 @@
                   <div class="customer-empty">
                     <span>{{ customerKeyword.length >= 2 ? '未检索到对应客户' : '请输入至少2个字或手机号' }}</span>
                     <el-button
-                      v-if="customerKeyword.length >= 2 && canCreateCustomerProfile"
+                      v-if="customerKeyword.length >= 2 && canCreateCustomerProfile && customerPermissions.canCreate.value"
                       link
                       type="primary"
                       @click.stop="startManualCustomer"
@@ -401,7 +397,7 @@
                   {{ customerMode === 'selected' ? '客户信息' : '新增客户资料' }}
                 </el-tag>
                 <el-button
-                  v-if="customerMode === 'selected' && canCreateCustomerProfile"
+                  v-if="customerMode === 'selected' && canCreateCustomerProfile && customerPermissions.canCreate.value"
                   link
                   type="primary"
                   @click="startManualCustomer"
@@ -416,6 +412,7 @@
                 >
                   <el-input
                     v-model="customerDraft.name"
+                    :readonly="customerMode === 'selected' && !customerPermissions.canEdit.value"
                     maxlength="100"
                   />
                 </el-form-item>
@@ -425,6 +422,7 @@
                 >
                   <el-input
                     v-model="customerDraft.phone"
+                    :readonly="customerMode === 'selected' && !customerPermissions.canEdit.value"
                   />
                 </el-form-item>
                 <el-form-item
@@ -434,12 +432,14 @@
                 >
                   <el-input
                     v-model="customerDraft.id_card"
+                    :readonly="customerMode === 'selected' && !customerPermissions.canEdit.value"
                     maxlength="18"
                   />
                 </el-form-item>
               </div>
               <el-button
-                v-if="canCreateCustomerProfile"
+                v-if="canCreateCustomerProfile && (form.customer_id ? customerPermissions.canEdit.value : customerPermissions.canCreate.value)"
+                v-permission="form.customer_id ? 'customers:edit' : 'customers:create'"
                 plain
                 type="primary"
                 :disabled="customerMode === 'selected' && !customerDirty"
@@ -510,7 +510,6 @@
                     placeholder="统一价格"
                   />
                   <el-button
-                    size="small"
                     plain
                     type="primary"
                     :disabled="Number(bulkDailySalePrice) <= 0"
@@ -541,11 +540,19 @@
                 class="contract-mode-row"
               >
                 <span class="contract-mode-label">合同类型</span>
-                <el-segmented
+                <el-radio-group
                   v-model="form.billing_mode"
-                  :options="billingOptions"
-                  @change="handleBillingModeChange"
-                />
+                  class="tf-state-selector"
+                  @change="handleBillingModeSelection"
+                >
+                  <el-radio-button
+                    v-for="option in billingOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </el-radio-button>
+                </el-radio-group>
               </div>
               <el-form-item
                 v-if="form.billing_mode !== 'daily' && canViewRentalField('sale_price')"
@@ -1063,7 +1070,7 @@
             </el-button>
 
             <el-button
-              v-if="canEdit"
+              v-if="selected && canEditRental(selected)"
               v-permission="'rentals:edit'"
               type="primary"
               @click.stop="runMobileDetailAction((row) => openEdit(row))"
@@ -1139,6 +1146,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { formatAmount } from '@/utils/format'
 import { confirmAction } from '@/utils/message-box'
@@ -1182,7 +1190,9 @@ interface RentalListResponseMeta {
 }
 interface RentalPaymentScheduleResponse { schedule?: ScheduleItem[] }
 
-const { canView, canCreate, canEdit, handleNoPermission } = usePagePermissions('rentals')
+const { canView, canCreate, canEdit, hasFullPermission, handleNoPermission } = usePagePermissions('rentals')
+const canEditRental = (row: Rental) => canEdit.value && (row.status === 'active' || hasFullPermission('rentals:edit-history'))
+const customerPermissions = usePagePermissions('customers')
 const { loading } = useLoadingState()
 const { isMobile } = useMobile()
 const rentals = ref<Rental[]>([])
@@ -1344,6 +1354,7 @@ function rememberSaleOperator(id:number|null){selectedSalesOperator.value=salesO
 function openCreateDialog(){if(!canCreate.value)return handleNoPermission('create');if(!canCreateRentalBase.value)return globalNotifications.warning('创建合同所需字段已被隐藏');resetForm();formVisible.value=true;searchDevices('');loadSalesOptions()}
 function openEdit(row:Rental){
   if(!canEdit.value)return handleNoPermission('edit')
+  if(!canEditRental(row))return handleNoPermission('edit-history')
   resetForm()
   editingId.value=row.id
   form.billing_mode=row.billing_mode==='daily'?'daily':'buyout'
@@ -1360,15 +1371,23 @@ function openDetail(row:Rental){selected.value={ ...row };detailVisible.value=tr
 async function searchCustomers(keyword:string){customerKeyword.value=keyword.trim();customerMode.value='search';form.customer_id=null;if(!showCustomerSelector.value||customerKeyword.value.length<2){customerOptions.value=[];return}customerLoading.value=true;try{customerOptions.value=await searchCustomerOptions(customerKeyword.value,'rentals')}finally{customerLoading.value=false}}
 function selectCustomer(id:number|null){const item=customerOptions.value.find(c=>c.id===id);if(!item)return resetCustomerSelection();customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft)}
 function resetCustomerSelection(){form.customer_id=null;customerMode.value='search';Object.assign(customerDraft,{ name:'',phone:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
-function startManualCustomer(){if(!canCreateCustomerProfile.value)return;const keyword=customerKeyword.value;form.customer_id=null;customerMode.value='manual';Object.assign(customerDraft,{ name:/^1[3-9]\d{9}$/.test(keyword)?'':keyword,phone:/^1[3-9]\d{9}$/.test(keyword)?keyword:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
-async function persistCustomer(){if(customerMode.value==='search')throw new Error('请先检索并选择客户，或手动新增客户');if(form.customer_id&&!customerDirty.value)return form.customer_id;if(!canCreateCustomerProfile.value)throw new Error('客户资料字段权限不足');const payload=pickVisibleRentalFields(customerDraft,{ name:'customer_name',phone:'customer_phone',id_card:'customer_id_card' });customerSaving.value=true;try{const res=form.customer_id?await unifiedApi.put(`/rentals/customers/${form.customer_id}`,payload):await unifiedApi.post('/rentals/customers',payload);const item=res.data as CustomerOption;form.customer_id=item.id;customerOptions.value=[item];customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft);return item.id}finally{customerSaving.value=false}}
+function startManualCustomer(){if(!customerPermissions.requirePermission('create')||!canCreateCustomerProfile.value)return;const keyword=customerKeyword.value;form.customer_id=null;customerMode.value='manual';Object.assign(customerDraft,{ name:/^1[3-9]\d{9}$/.test(keyword)?'':keyword,phone:/^1[3-9]\d{9}$/.test(keyword)?keyword:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
+async function persistCustomer(){if(customerMode.value==='search')throw new Error('请先检索并选择客户，或手动新增客户');if(form.customer_id&&!customerDirty.value)return form.customer_id;if(!customerPermissions.requirePermission(form.customer_id?'edit':'create'))throw new Error('缺少客户资料操作权限');if(!canCreateCustomerProfile.value)throw new Error('客户资料字段权限不足');const payload=pickVisibleRentalFields(customerDraft,{ name:'customer_name',phone:'customer_phone',id_card:'customer_id_card' });customerSaving.value=true;try{const res=form.customer_id?await unifiedApi.put(`/rentals/customers/${form.customer_id}`,payload):await unifiedApi.post('/rentals/customers',payload);const item=res.data as CustomerOption;form.customer_id=item.id;customerOptions.value=[item];customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft);return item.id}finally{customerSaving.value=false}}
 async function saveCustomerProfile(){try{await persistCustomer();globalNotifications.success('客户资料已保存并选择')}catch(error){globalNotifications.error(error instanceof Error?error.message:'客户资料保存失败')}}
 async function searchDevices(keyword:string){if(!showDeviceSelector.value){deviceOptions.value=[];return}deviceLoading.value=true;try{const res=await unifiedApi.get('/rentals/devices',{ params:{ keyword:keyword.trim()||undefined } });const rows=Array.isArray(res.data)?res.data:[];const selectedIds=new Set([...(form.phone_ids||[]),form.phone_id].filter((id):id is number=>Boolean(id)));const selectedOptions=deviceOptions.value.filter(item=>selectedIds.has(item.id));deviceOptions.value=[...rows,...selectedOptions.filter(item=>!rows.some(row=>row.id===item.id))]}finally{deviceLoading.value=false}}
 function selectBuyoutDevice(id:number|null){const device=deviceOptions.value.find(item=>item.id===id);if(device&&canViewRentalField('purchase_cost'))form.purchase_cost=Number(device.purchase_cost||0)}
 function handleBillingModeChange(mode:BillingMode){if(mode==='buyout'){form.deposit=0;form.monitoring_lock=true;if(!form.phone_id&&form.phone_ids.length)form.phone_id=form.phone_ids[0]}else if(form.phone_id&&!form.phone_ids.length){form.phone_ids=[form.phone_id]}}
+function handleBillingModeSelection(value: string | number | boolean | undefined) {
+  if (value === 'buyout' || value === 'daily') handleBillingModeChange(value)
+}
 function syncDailySalePrices(ids:number[]){ids.forEach(id=>{if(!(id in dailySalePrices))dailySalePrices[id]=null});Object.keys(dailySalePrices).forEach(key=>{if(!ids.includes(Number(key)))delete dailySalePrices[Number(key)]})}
 function applyBulkDailySalePrice(){if(Number(bulkDailySalePrice.value)<=0)return;form.phone_ids.forEach(id=>{dailySalePrices[id]=Number(bulkDailySalePrice.value)})}
 async function saveRental(){
+  if(editingId.value){
+    const current=rentals.value.find(row=>row.id===editingId.value)
+    if(!canEdit.value)return handleNoPermission('edit')
+    if(!current||!canEditRental(current))return handleNoPermission('edit-history')
+  }else if(!canCreate.value)return handleNoPermission('create')
   const phoneIds=editingId.value?[0]:form.billing_mode==='daily'?form.phone_ids:[form.phone_id].filter((id):id is number=>Boolean(id))
   if(!canSubmitRental.value)return globalNotifications.warning('保存合同所需字段已被隐藏')
   if(!editingId.value&&!phoneIds.length)return globalNotifications.warning('请选择在库设备')
@@ -1496,6 +1515,10 @@ const runMobileDetailAction = (action: (row: Rental) => unknown) => {
   detailVisible.value = false
   return action(row)
 }
+
+usePageShortcuts('/rentals', {
+  'rental-create': { open: openCreateDialog }
+})
 </script>
 
 <style scoped>
@@ -1507,7 +1530,7 @@ const runMobileDetailAction = (action: (row: Rental) => unknown) => {
 .form-section--customer .form-section-icon{background:var(--tf-button-primary-soft-bg);color:var(--tf-button-primary-soft-color)}
 .form-section--device .form-section-icon{background:var(--tf-button-success-soft-bg);color:var(--tf-button-success-soft-color)}
 .form-section--sales .form-section-icon{background:var(--tf-button-warning-soft-bg);color:var(--tf-button-warning-soft-color)}
-.contract-mode-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;margin-bottom:14px}.contract-mode-label{flex:0 0 auto;font-size:var(--tf-type-scale-14);font-weight:600;color:var(--el-text-color-regular);white-space:nowrap}.contract-mode-row :deep(.el-segmented){flex:1;min-width:0}.contract-mode-row :deep(.el-segmented__group){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.contract-mode-row :deep(.el-segmented__item){justify-content:center;min-width:0}
-@media(max-width: 767px){.form-section{padding:12px;border-radius:7px}.form-section-head{margin-bottom:12px}.contract-mode-row{gap:8px}.contract-mode-label{font-size:var(--tf-type-scale-13)}.contract-mode-row :deep(.el-segmented__item-label){padding-inline:6px;white-space:nowrap}}
+.contract-mode-row{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;margin-bottom:14px}.contract-mode-label{flex:0 0 auto;font-size:var(--tf-type-scale-14);font-weight:600;color:var(--el-text-color-regular);white-space:nowrap}.contract-mode-row :deep(.tf-state-selector){flex:1;min-width:0}.contract-mode-row :deep(.tf-state-selector .el-radio-button){flex:1 1 0}
+@media(max-width: 767px){.form-section{padding:12px;border-radius:7px}.form-section-head{margin-bottom:12px}.contract-mode-row{gap:8px}.contract-mode-label{font-size:var(--tf-type-scale-13)}}
 .daily-device-prices{display:flex;flex-direction:column;gap:6px;margin:0 0 14px;padding:8px;border:1px solid var(--el-border-color-lighter);border-radius:6px;background:var(--el-fill-color-lighter)}.daily-device-price-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 2px 6px;color:var(--el-text-color-regular);font-size:var(--tf-type-scale-13);font-weight:600}.daily-device-bulk-price{display:flex;align-items:center;gap:6px}.daily-device-bulk-price :deep(.el-input-number){width:120px}.daily-device-price-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;padding:8px 10px;background:var(--el-bg-color);border:1px solid var(--el-border-color-lighter);border-radius:5px}.daily-device-price-info{display:flex;flex-direction:column;gap:2px;min-width:0}.daily-device-price-info strong,.daily-device-price-info small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.daily-device-price-row :deep(.el-input-number){width:150px;flex:0 0 150px}.daily-device-price-row :deep(.el-input__inner){text-align:right}@media(max-width: 479px){.daily-device-price-toolbar{align-items:stretch;flex-direction:column;gap:6px}.daily-device-bulk-price :deep(.el-input-number){flex:1;width:auto}.daily-device-bulk-price :deep(.el-button){flex:0 0 auto}.daily-device-price-row{gap:8px;padding:7px 8px}.daily-device-price-row :deep(.el-input-number){width:112px;flex-basis:112px}.daily-device-price-info strong{font-size:var(--tf-type-scale-13)}.daily-device-price-info small{font-size:var(--tf-type-scale-11)}}
 </style>

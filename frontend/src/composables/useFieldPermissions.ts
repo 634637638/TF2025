@@ -7,6 +7,8 @@ import { logger } from '@/utils/logger'
 interface ModuleFieldPermissions {
   hidden_fields: string[]
   editable_fields: string[]
+  readonly_fields?: string[]
+  has_editable_scope?: boolean
 }
 
 interface FieldPermissionsResponse {
@@ -41,6 +43,7 @@ export function useFieldPermissions() {
     }
 
     normalizedKeys.add(rawKey)
+    if (rawKey === 'query_goods') return [rawKey]
 
     const compactKey = rawKey.replace(/^\/+|\/+$/g, '')
     normalizedKeys.add(compactKey)
@@ -62,7 +65,9 @@ export function useFieldPermissions() {
   const mergeModuleFieldPermissions = (moduleKey: string) => {
     const merged = {
       hidden_fields: new Set<string>(),
-      editable_fields: new Set<string>()
+      editable_fields: new Set<string>(),
+      readonly_fields: new Set<string>(),
+      has_editable_scope: false
     }
 
     const moduleKeyVariants = getNormalizedModuleKeys(moduleKey)
@@ -74,7 +79,7 @@ export function useFieldPermissions() {
     // the permission API returns the registered key (`subsidy_subsidyview`).
     // Only use reverse alias matching when no direct variant was found, so a
     // specific child page cannot accidentally inherit a sibling page's rules.
-    if (matchedPermissions.length === 0) {
+    if (matchedPermissions.length === 0 && moduleKey !== 'query_goods') {
       const requestedVariants = new Set(moduleKeyVariants)
       matchedPermissions = Object.entries(permissions.value)
         .filter(([configuredKey]) => (
@@ -84,13 +89,17 @@ export function useFieldPermissions() {
     }
 
     matchedPermissions.forEach((modulePerms) => {
+      if (modulePerms.has_editable_scope) merged.has_editable_scope = true
+      modulePerms.readonly_fields?.forEach(field => merged.readonly_fields.add(field))
       modulePerms.hidden_fields.forEach((field) => merged.hidden_fields.add(field))
       modulePerms.editable_fields.forEach((field) => merged.editable_fields.add(field))
     })
 
     return {
       hidden_fields: Array.from(merged.hidden_fields),
-      editable_fields: Array.from(merged.editable_fields)
+      editable_fields: Array.from(merged.editable_fields),
+      readonly_fields: Array.from(merged.readonly_fields),
+      has_editable_scope: merged.has_editable_scope
     }
   }
 
@@ -105,7 +114,7 @@ export function useFieldPermissions() {
   }
 
   // 检查字段是否可编辑
-  const isFieldEditable = (moduleKey: string, fieldKey: string) => {
+  const isFieldEditable = (moduleKey: string, fieldKey: string, { allowUnconfigured = false } = {}) => {
     if (!isFieldVisible(moduleKey, fieldKey)) {
       return false
     }
@@ -113,6 +122,8 @@ export function useFieldPermissions() {
     // 获取模块的字段权限配置
     const modulePerms = mergeModuleFieldPermissions(moduleKey)
     const editable_fields = modulePerms.editable_fields || []
+    if (modulePerms.readonly_fields.includes(fieldKey)) return false
+    if (allowUnconfigured && !modulePerms.has_editable_scope) return true
 
     // 支持多种格式匹配：
     // 1. 完整字段 ID：customer_info.customer_idcard（直接使用 fieldKey）
@@ -153,7 +164,9 @@ export function useFieldPermissions() {
           const modulePerm = rawPermissions[key]
           processedPermissions[key] = {
             hidden_fields: modulePerm.hidden_fields || [],
-            editable_fields: modulePerm.editable_fields || []
+            editable_fields: modulePerm.editable_fields || [],
+            readonly_fields: modulePerm.readonly_fields || [],
+            has_editable_scope: modulePerm.has_editable_scope === true
           }
         })
 

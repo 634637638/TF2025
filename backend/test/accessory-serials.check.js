@@ -23,6 +23,8 @@ function fixture({ tracking = 1, failEvent = false } = {}) {
   const product = { id: 5, status: 1, serial_tracking: tracking, sale_price: 20, purchase_cost: 10 }
   const check = executor => assert.equal(executor, connection)
   const repository = {
+    async lockFilmConfiguration() { return false },
+    async assertUniqueFreeFilms() {},
     async withConnection(callback) {
       const previous = tail
       let release
@@ -32,6 +34,7 @@ function fixture({ tracking = 1, failEvent = false } = {}) {
     },
     async getAccessoryById(id, executor) { check(executor); return id === 5 ? product : null },
     async lockAccessory(id, executor) { check(executor); return product },
+    async syncProductProfileSnapshots(id, rootId, executor) { check(executor); assert.equal(id, 5); assert.equal(rootId, 5) },
     async countStockSerials(id, store, executor) { check(executor); return state.serials.filter(item => item.accessory_id === id && item.store_id === store && item.status === 'in_stock').length },
     async lockStoreStock(id, store, executor) { check(executor); return { quantity: state.quantity } },
     async lockSerials(numbers, executor) { check(executor); return state.serials.filter(item => numbers.includes(item.serial_number)) },

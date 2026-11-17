@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 describe('库存商城修改后的读取缓存', () => {
-  it('共同结算后刷新配件、手机库存和客户销售缓存，保留无关门店缓存', async () => {
+  it.each(['/sales/checkout', '/query/film-services/checkout'])('%s 后刷新库存和客户销售缓存，保留无关门店缓存', async endpoint => {
     let revision = 1
     const adapter: AxiosAdapter = async config => ({
       config, status: 200, statusText: 'OK', headers: {},
@@ -25,11 +25,11 @@ describe('库存商城修改后的读取缓存', () => {
     unifiedApi.getInstance().defaults.adapter = adapter
     const config = { showLoading: false, showError: false, cacheTTL: 60_000 }
     const read = (url: string) => unifiedApi.get<{ revision: number }>(url, config)
-    const urls = ['/accessories', '/accessories/sale-options', '/inventory', '/phones', '/query', '/customers', '/sales']
+    const urls = ['/accessories', '/accessories/sale-options', '/query', '/customers', '/sales', ...(endpoint === '/sales/checkout' ? ['/inventory', '/phones'] : [])]
     for (const url of [...urls, '/stores']) expect((await read(url)).data?.revision).toBe(1)
     revision = 2
     expect((await read('/accessories')).data?.revision).toBe(1)
-    await unifiedApi.post('/sales/checkout', {}, config)
+    await unifiedApi.post(endpoint, {}, config)
     for (const url of urls) expect((await read(url)).data?.revision).toBe(2)
     expect((await read('/stores')).data?.revision).toBe(1)
   })

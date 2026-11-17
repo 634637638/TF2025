@@ -795,6 +795,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -1856,6 +1857,10 @@ const recordFields = computed<RecordDetailField[]>(() => {
   ] : []
 })
 
+
+usePageShortcuts('/H5-admin/page/templates', {
+  'shop-template-create': { open: openCreateDialog }
+})
 </script>
 
 <style scoped src="./styles/templates/overview.css"></style>

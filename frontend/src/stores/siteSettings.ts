@@ -164,6 +164,8 @@ export const useSiteSettingsStore = defineStore('siteSettings', () => {
         const response = await unifiedApi.get(endpoint, {
           showLoading: false,
           showError: false,
+          // 站点设置是可选的品牌信息；数据库暂时不可用时使用本地默认值，避免重复上报同一已处理降级。
+          reportError: false,
           // 强制刷新用于公开报价页和设置页保存后的回读，不能命中旧的3秒GET缓存。
           useCache: !forceReload,
           ...(forceReload ? { params: { _t: Date.now() } } : {})

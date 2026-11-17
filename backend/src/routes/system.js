@@ -6,6 +6,7 @@ const BrandSettingsController = require('../controllers/brand-settings.controlle
 const BrandImageController = require('../controllers/brand-image.controller')
 const SiteSettingsController = require('../controllers/site-settings.controller')
 const SiteAnnouncementController = require('../controllers/site-announcement.controller')
+const DashboardShortcutsController = require('../controllers/dashboard-shortcuts.controller')
 const _mysql = require('mysql2/promise')
 const multer = require('multer')
 const path = require('path')
@@ -18,6 +19,7 @@ const brandSettingsController = new BrandSettingsController()
 const brandImageController = new BrandImageController()
 const siteSettingsController = new SiteSettingsController()
 const siteAnnouncementController = new SiteAnnouncementController()
+const dashboardShortcutsController = new DashboardShortcutsController()
 const systemHealthController = new SystemHealthController()
 
 const BRAND_IMAGE_ALLOWED_MIME_TYPES = {
@@ -97,6 +99,12 @@ router.get('/site-settings', siteSettingsController.getPublic.bind(siteSettingsC
 
 // 管理后台读取完整站点设置；公开路由只返回展示和公开报价所需字段。
 router.get('/site-settings/admin', unifiedAuth, requirePermission('system:view'), siteSettingsController.getAdmin.bind(siteSettingsController))
+
+router.get('/dashboard-shortcuts', unifiedAuth, requirePermission('dashboard:view'), dashboardShortcutsController.list.bind(dashboardShortcutsController))
+router.get('/dashboard-shortcuts/admin', unifiedAuth, requirePermission('system:view'), dashboardShortcutsController.listAdmin.bind(dashboardShortcutsController))
+router.post('/dashboard-shortcuts', unifiedAuth, requirePermission('system:edit'), dashboardShortcutsController.create.bind(dashboardShortcutsController))
+router.put('/dashboard-shortcuts/:id', unifiedAuth, requirePermission('system:edit'), dashboardShortcutsController.update.bind(dashboardShortcutsController))
+router.delete('/dashboard-shortcuts/:id', unifiedAuth, requirePermission('system:delete'), dashboardShortcutsController.remove.bind(dashboardShortcutsController))
 
 router.get('/announcements', unifiedAuth, siteAnnouncementController.listPublished.bind(siteAnnouncementController))
 router.get('/announcements/admin', unifiedAuth, requirePermission('system:view'), siteAnnouncementController.listAdmin.bind(siteAnnouncementController))

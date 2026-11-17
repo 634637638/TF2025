@@ -45,6 +45,7 @@ interface UseSalesCheckoutOptions {
   loadAvailablePhones: () => unknown
   showError: (_message: string) => unknown
   showSuccess: (_message: string) => unknown
+  submitAdditionalGoods?: (_mode: 'single' | 'batch') => Promise<boolean>
 }
 
 export const useSalesCheckout = ({
@@ -70,7 +71,8 @@ export const useSalesCheckout = ({
   resetCustomerForm,
   loadAvailablePhones,
   showError,
-  showSuccess
+  showSuccess,
+  submitAdditionalGoods
 }: UseSalesCheckoutOptions) => {
   const currentPreorderInfo = ref<{ preorder_id: string; advance_payment: number } | null>(null)
   const isPreorderDelivery = computed(() => currentPreorderInfo.value !== null)
@@ -372,6 +374,7 @@ export const useSalesCheckout = ({
       return
     }
 
+    if (submitAdditionalGoods && await submitAdditionalGoods('batch')) return
     submitting.value = true
     try {
       const operator = operators.value.find(item => String(item.id) === batchSaleForm.operator_id)
@@ -467,6 +470,7 @@ export const useSalesCheckout = ({
       return
     }
 
+    if (submitAdditionalGoods && await submitAdditionalGoods('single')) return
     submitting.value = true
     try {
       const operator = operators.value.find(item => String(item.id) === saleForm.operator_id)

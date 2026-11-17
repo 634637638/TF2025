@@ -161,7 +161,6 @@
       <div class="detail-actions">
         <el-button
           type="primary"
-          size="small"
           @click="goToAttendance()"
         >
           查看全部

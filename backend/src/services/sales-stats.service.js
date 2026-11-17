@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
 const SalesStatsRepository = require('../repositories/sales-stats.repository')
 
 class SalesStatsService {
@@ -10,9 +12,10 @@ class SalesStatsService {
     this.repository = repository
   }
 
-  async getStats() {
-    const phoneCounts = await this.repository.getPhoneCounts()
-    const monthSales = await this.repository.getCurrentMonthSales()
+  async getStats(actor) {
+    const scope = resolveStoreScope(actor)
+    const phoneCounts = await this.repository.getPhoneCounts(scope)
+    const monthSales = await this.repository.getCurrentMonthSales(scope)
     return {
       ...phoneCounts,
       sold_this_month: monthSales.sold_this_month,

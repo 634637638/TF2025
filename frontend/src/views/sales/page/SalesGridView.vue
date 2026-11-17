@@ -150,7 +150,6 @@
               type="success"
               :disabled="!isPhoneSaleActionAvailable(phone)"
               :title="isPhoneSaleActionAvailable(phone) ? '销售出库' : '当前状态不可销售出库'"
-              size="small"
               @click.stop="isPhoneSaleActionAvailable(phone) && emit('sale', phone)"
             >
               <i class="fas fa-shopping-cart" />
@@ -160,7 +159,6 @@
               v-if="canEdit"
               type="primary"
               title="编辑设备信息"
-              size="small"
               @click.stop="emit('edit', phone)"
             >
               <i class="fas fa-edit" />
@@ -170,7 +168,6 @@
               v-if="canDelete"
               type="danger"
               title="删除设备"
-              size="small"
               @click.stop="emit('delete', phone)"
             >
               <i class="fas fa-trash" />

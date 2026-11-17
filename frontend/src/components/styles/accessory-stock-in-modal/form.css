@@ -3,7 +3,7 @@
 .dialog-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--tf-space-4);
 }
 
 /* 扫码和图片区域 */
@@ -103,91 +103,11 @@
   flex: 1;
 }
 
-/* 信息卡片 */
-.info-card {
-  background: var(--color-bg-white);
-  border: 1px solid var(--color-border-light);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
-  background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-  color: white;
-}
-
-.card-icon {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  font-size: var(--tf-type-scale-14);
-}
-
-.card-title {
-  margin: 0;
-  font-size: var(--tf-type-scale-15);
-  font-weight: 600;
-}
-
-.card-content {
-  padding: 16px;
-}
-
-/* 表单样式 */
-.accessory-form :deep(.el-form-item__label) {
-  font-weight: 500;
-  color: var(--color-text-regular);
-}
-
 .full-width {
   width: 100%;
 }
 
 /* 商品模板是可复用资料编辑器，采购字段留在入库模式。 */
-.template-editor {
-  gap: var(--tf-space-5);
-}
-
-.template-editor .info-card {
-  overflow: visible;
-  border: 0;
-  border-top: 1px solid var(--tf-color-border-cool);
-  border-radius: 0;
-  background: transparent;
-}
-
-.template-editor .card-header {
-  gap: var(--tf-space-3);
-  padding: var(--tf-space-4) 0 var(--tf-space-2);
-  background: transparent;
-  color: var(--color-text-primary);
-}
-
-.template-editor .card-icon {
-  width: var(--tf-space-7);
-  height: var(--tf-space-7);
-  flex: 0 0 var(--tf-space-7);
-  background: var(--tf-color-surface-green);
-  color: var(--tf-color-green-material-700);
-}
-
-.template-editor .card-title {
-  font-size: var(--tf-font-section);
-  font-weight: 600;
-}
-
-.template-editor .card-content {
-  padding: 0 0 var(--tf-space-3);
-}
-
 .template-editor .scan-image-section {
   grid-template-columns: minmax(0, 1fr) calc(var(--tf-space-8) * 2);
   align-items: start;
@@ -207,20 +127,12 @@
 }
 
 .template-editor .image-placeholder {
-  background: var(--tf-color-surface-neutral);
-  color: var(--color-text-secondary);
+  background: var(--tf-dialog-surface-soft);
+  color: var(--tf-dialog-body-text);
 }
 
 .template-editor .image-placeholder i {
   color: var(--tf-color-green-material-700);
-}
-
-.template-editor .accessory-form :deep(.el-form-item) {
-  margin-bottom: var(--tf-space-4);
-}
-
-.template-editor .accessory-form :deep(.el-form-item__label) {
-  color: var(--color-text-regular);
 }
 
 .accessory-form :deep(.el-select),
@@ -228,7 +140,60 @@
   width: 100%;
 }
 
+.profile-correction-preview {
+  display: grid;
+  gap: var(--tf-space-1);
+  margin-block: var(--tf-space-3);
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-cool);
+  border-radius: var(--tf-radius-card);
+  background: var(--tf-dialog-surface-soft);
+}
+
+.profile-correction-preview__header,
+.profile-correction-preview__row {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.8fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--tf-space-2);
+  align-items: center;
+}
+
+.profile-correction-preview__header {
+  color: var(--tf-dialog-body-text);
+  font-size: var(--tf-font-caption);
+}
+
+.profile-correction-preview__row {
+  min-height: calc(var(--tf-space-5) + var(--tf-space-1));
+  padding-block: var(--tf-space-1);
+  border-top: 1px solid var(--tf-color-border-cool);
+  color: var(--tf-dialog-body-text);
+  font-size: var(--tf-font-body);
+}
+
+.profile-correction-preview__row span:last-child {
+  color: var(--tf-color-green-700);
+  font-weight: 600;
+}
+
+.profile-correction-preview__row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* SN仅维护业务行布局，控件外观沿用公共入口。 */
-.serial-toolbar { display: flex; flex-wrap: wrap; gap: var(--tf-space-2); margin-block: var(--tf-space-3); }
-.serial-entry-row { display: flex; align-items: center; gap: var(--tf-space-2); width: 100%; }
+.serial-toolbar { margin-block: var(--tf-space-3); }
 .serial-entry-row > .el-input { flex: 1; min-width: 0; }
+
+/* 逐色数量/SN只维护布局，输入控件沿用公共表单。 */
+.color-stock-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-2);
+  min-width: 0;
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-cool);
+  border-radius: var(--tf-radius-card);
+  background: var(--tf-dialog-surface-soft);
+  overflow-wrap: anywhere;
+}

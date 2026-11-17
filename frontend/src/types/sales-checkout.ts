@@ -1,3 +1,4 @@
+import type { ReturnStockDetails } from './return-stock'
 import type { AccessoryUsageType } from './accessory'
 import type { CustomerPointsSource } from './customer-points'
 
@@ -25,11 +26,22 @@ export interface CheckoutGoodsOption {
   id: number
   name: string
   brand_name: string | null
+  category?: string | null
+  color_name?: string | null
+  unit?: string | null
   product_model: string | null
   barcode: string | null
   sale_price: number | string | null
+  purchase_cost?: number | string | null
   quantity: number
   serial_quantity: number | null
+  serial_number?: string | null
+}
+export interface CheckoutCustomerSummary {
+  available_points: number | null
+  member_number: string | null
+  points: number | null
+  balance: number | null
 }
 export interface CheckoutGoodsItem {
   key: string
@@ -66,6 +78,15 @@ export interface CheckoutCustomerForm {
   transaction_no: string
   remarks: string
 }
+
+/** 附加商品确认仅保存草稿；外层手机销售确认时才提交共同结算。 */
+export interface CheckoutAdditionalGoodsDraft {
+  remarks?: string
+  goods: CheckoutGoodsDraft[]
+  store_id: number
+  points_quote: CheckoutPointsQuote | null
+  points_context: string
+}
 export interface SalesCheckoutInput {
   request_key: string
   store_id: number
@@ -73,7 +94,7 @@ export interface SalesCheckoutInput {
   customer_info: { name: string; phone: string; apple_id?: string }
   phones: Array<Pick<CheckoutPhone, 'phone_id' | 'sale_price'>>
   quick_phone?: CheckoutQuickPhone
-  film_service?: { customer_id: number }
+  film_service?: { customer_id: number; phone_id: number; mode: 'free'; quantity: number; accessory_id?: number } | { customer_id: number; phone_id: number; mode: 'paid' }
   accessories: CheckoutGoodsItem[]
   sale_time: string
   remarks?: string
@@ -94,11 +115,16 @@ export interface SalesCheckoutResult {
 }
 
 export interface FilmServiceContext {
+  device?: { phone_id: number; model_id: number; model_name: string } | null
   customer_id: number
   eligible_for_free: boolean
   service_count: number
   film_quantity: number | null
-  data: Array<{ id: number; order_id: number | null; order_no: string | null; quantity: number | null;
+  free_count: number | null
+  paid_count: number | null
+  device_service_count: number | null
+  device_film_quantity: number | null
+  data: Array<{ phone_id?: number | null; model_id?: number | null; phone_model_name?: string | null; id: number; order_id: number | null; order_no: string | null; quantity: number | null;
     store_id: number | null; store_name: string | null; operator_id: number | null; operator_name: string | null;
     business_time: string | null; created_at: string | null;
     items: Array<{ name: string | null; sale_type: AccessoryUsageType | null; quantity: number | null; total_amount: number | string | null }> }>
@@ -190,12 +216,21 @@ export interface GoodsExchangeResult extends GoodsExchangeQuote {
   exchange_credit_amount: number
 }
 
-export interface PhoneReturnAccessoryCheck {
+/** 原单赠品未退约定；null 与明确零元分别保留。 */
+export interface GiftReturnAgreement {
+  gift_return_unit_price: number | null
+  gift_return_total: number | null
+  gift_agreement_state: 'recorded' | 'not_recorded' | null
+}
+
+export interface PhoneReturnAccessoryCheck extends GiftReturnAgreement {
   item_id: number
   accessory_id: number | null
   accessory_sale_id: number
   sale_type: AccessoryUsageType | null
   name: string | null
+  /** 原销售快照单位；旧接口可缺失，未知或字段脱敏为 null。 */
+  unit?: string | null
   quantity: number | null
   returned_quantity: number | null
   remaining_quantity: number | null
@@ -203,10 +238,7 @@ export interface PhoneReturnAccessoryCheck {
   available_serial_numbers: string[] | null
   unit_price: number | null
   total_amount: number | null
-  gift_return_unit_price: number | null
-  gift_return_total: number | null
   remaining_gift_return_total: number | null
-  gift_agreement_state: 'recorded' | 'not_recorded' | null
 }
 
 export interface PhoneReturnChecklist {
@@ -217,11 +249,18 @@ export interface PhoneReturnChecklist {
   accessories: PhoneReturnAccessoryCheck[]
 }
 
+export interface PhoneReturnAccessoryDraft {
+  item_id: number
+  quantity: number
+  serial_numbers: string[]
+}
+
 export type PhoneReturnSource =
   | { mode: 'standalone'; phone_id: number; sale_id: number }
   | ({ mode: 'checkout' } & PhoneReturnChecklist)
 
-export interface PhoneReturnInput extends Omit<GoodsReturnInput, 'quantity' | 'serial_numbers'> {
+export interface PhoneReturnInput extends Omit<GoodsReturnInput, 'quantity' | 'serial_numbers'>,
+  Partial<Pick<ReturnStockDetails, 'return_type' | 'handle_method'>> {
   accessories: Array<{ item_id: number; quantity: number; serial_numbers: string[]; charge_missing: boolean; charge_confirmed: boolean }>
 }
 export interface PhoneReturnQuote extends Pick<GoodsReturnQuote, 'order_id' | 'store_id' | 'base_refund_amount' |
@@ -234,7 +273,7 @@ export interface PhoneReturnQuote extends Pick<GoodsReturnQuote, 'order_id' | 's
 export interface PhoneReturnResult extends PhoneReturnQuote { aftersale_id: number }
 
 /** 原共同结算的只读投影；null表示原值未知或字段不可见，不能补为0。 */
-export interface CheckoutOrderItem {
+export interface CheckoutOrderItem extends GiftReturnAgreement {
   id: number
   item_type: 'phone' | 'accessory'
   sale_no: string | null

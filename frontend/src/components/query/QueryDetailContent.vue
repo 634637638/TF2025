@@ -95,15 +95,15 @@
 
     <div class="tf-dialog-actions">
       <el-button
-        v-if="detailItem.销售信息?.sale_id"
-        v-permission="{ permission: ['query:view', 'accessories:view'], mode: 'all' }"
+        v-if="detailItem.销售信息?.sale_id && detailItem.销售信息.has_checkout_order === true"
+        v-permission="{ permission: ['query:view', 'query:goods-view'], mode: 'all' }"
         type="primary"
         @click="$emit('order')"
       >
         整单明细
       </el-button>
       <el-button
-        v-permission="{ permission: ['query:view', 'query:film', 'accessories:view'], mode: 'all' }"
+        v-permission="{ permission: ['query:view', 'query:film'], mode: 'all' }"
         type="primary"
         @click="$emit('film')"
       >

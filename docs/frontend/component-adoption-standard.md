@@ -25,7 +25,7 @@ H5 登录与注册复用 `frontend/src/views/H5-mobile/components/H5AuthLayout.v
 
 所有前端页面和公共组件禁止使用原生 `<button>`，不设业务、H5、登录、公开报价、分页、关闭、菜单、标签页、锁屏、媒体预览、扫描器或权限开关例外。所有可点击按钮统一使用 Element Plus `<el-button>`，普通 HTML 表单语义通过 `native-type="submit"` 或 `native-type="button"` 保留。
 
-按钮的颜色、尺寸、圆角、Loading、焦点和响应式行为必须接入 `button-standards.md` 及 `_buttons.scss`。专用控件可以增加语义 class，但不得恢复原生标签或在页面中复制第二套按钮样式。选择项、拖动区域等非按钮交互应使用对应的 Element Plus 组件或现有公共组件。
+按钮的颜色、尺寸、圆角、Loading、焦点和响应式行为必须接入 `button-standards.md` 及 `_buttons.scss`。业务按钮、按钮组及包装调用不再重复声明 `size`、`action-size`、`data-size` 或旧尺寸类；表单等非按钮组件的尺寸不受影响，规范预览仅保留明确标记的尺寸演示。专用控件可以增加语义 class，但不得恢复原生标签或在页面中复制第二套按钮样式。选择项、拖动区域等非按钮交互应使用对应的 Element Plus 组件或现有公共组件。
 
 `frontend/scripts/check-component-adoption.mjs` 对所有 Vue 页面和公共组件执行零容忍扫描：发现任意 `<button>` 立即失败，不接受注释、文件登记或数量基线绕过。迁移后的按钮必须继续通过 `check:buttons`、`check:dialog-actions` 和类型检查。
 
@@ -60,7 +60,7 @@ cd frontend
 npm run check:component-adoption
 ```
 
-该审计扫描所有 Vue 页面和公共组件，禁止任何原生 `<button>`，并检查公共组件入口存在。它还会拦截已移除的 `<BaseButton>` 和 `<ConfirmDialog>` 标签及同名组件文件，避免自动组件注册悄然恢复旧入口。
+该审计扫描所有 Vue 页面和公共组件，禁止任何原生 `<button>`，并检查公共组件入口存在。它还会拦截已移除的 `<BaseButton>` 和 `<ConfirmDialog>` 标签及同名组件文件，避免自动组件注册悄然恢复旧入口。已弃用的 `v-infinite-scroll` 同样禁止回流；下拉分页通过 Select 内置滚动事件和公共 composable 接入，具体边界见[下拉列表滚动](form-control-standards.md#下拉列表滚动)。
 
 `check:dialogs` 已移除全部 6 个历史例外；原 12 处提醒、备份、分享及媒体工作台均迁入 `MobileDialog`。审计拦截业务直接 `el-dialog`、`el-image-viewer`、原生弹框与私有外壳视觉/间距令牌。SCSS 检查包含嵌套父级声明，内容网格、正文提示换行和滚动继续由业务维护。
 

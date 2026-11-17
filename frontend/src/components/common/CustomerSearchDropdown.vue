@@ -50,10 +50,11 @@
 
         <el-button
           v-if="showEmptyCreate"
+          v-permission="'customers:create'"
           native-type="button"
           class="customer-search-dropdown__create"
           @mousedown.prevent
-          @click="$emit('create')"
+          @click="handleCreate"
         >
           <i class="fas fa-user-plus" />
           <span class="customer-search-dropdown__create-text">{{ emptyCreateText }}</span>
@@ -66,6 +67,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import InlineLoading from '@/components/InlineLoading.vue'
+import { usePagePermissions } from '@/composables/usePagePermissions'
 
 export interface CustomerSearchDropdownItem {
   id: number
@@ -99,17 +101,23 @@ const props = withDefaults(defineProps<{
   floatingStyle: undefined
 })
 
-defineEmits<{
+const emit = defineEmits<{
   select: [customer: CustomerSearchDropdownItem]
   create: []
 }>()
 
+const customerPermissions = usePagePermissions('customers')
 const showEmptyCreate = computed(() =>
   props.allowCreate
+  && customerPermissions.canCreate.value
   && !props.loading
   && props.items.length === 0
   && props.keyword.trim().length >= (props.createMinQueryLength ?? props.minQueryLength)
 )
+
+const handleCreate = () => {
+  if (showEmptyCreate.value && customerPermissions.requirePermission('create')) emit('create')
+}
 
 const customerKey = (customer: CustomerSearchDropdownItem, index: number) =>
   `${String(customer.id || 'customer')}-${index}`

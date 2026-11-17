@@ -24,19 +24,32 @@
       :disabled="saving || !canManage"
       @submit.prevent="save"
     >
-      <div class="points-rules-grid tf-form-row tf-form-row--three">
+      <section
+        class="tf-query-modal-section"
+        aria-labelledby="points-earning-title"
+      >
+        <h3
+          id="points-earning-title"
+          class="tf-query-modal-section-title"
+        >
+          积分累计
+          <el-tag :type="form.enabled ? 'success' : 'info'">
+            {{ form.enabled ? '已开启' : '已关闭' }}
+          </el-tag>
+        </h3>
         <el-form-item
           label="自动累计"
-          class="points-rule-wide"
+          class="tf-form-field--inline"
         >
           <el-switch
             v-model="form.enabled"
             aria-label="自动累计积分"
           />
         </el-form-item>
-        <template
+        <div
           v-for="source in sources"
           :key="source.value"
+          class="tf-form-row"
         >
           <el-form-item :label="source.label + '累计'">
             <el-switch
@@ -46,11 +59,12 @@
             />
           </el-form-item>
           <el-form-item
-            :label="source.label + '每消费100元累计积分'"
+            label="每消费100元累计积分"
             :required="form.enabled && form[source.include]"
           >
             <el-input-number
               v-model="form[source.rate]"
+              :aria-label="source.label + '每消费100元累计积分'"
               :disabled="!form.enabled || !form[source.include]"
               :min="1"
               :max="100"
@@ -58,45 +72,67 @@
               :controls="false"
             />
           </el-form-item>
-        </template>
+        </div>
+        <el-alert
+          title="积分属于客户账户，全店通用。赠品、使用积分抵扣的商品明细不累计积分。"
+          type="info"
+          :closable="false"
+        />
+      </section>
+      <section
+        class="tf-query-modal-section"
+        aria-labelledby="points-redemption-title"
+      >
+        <h3
+          id="points-redemption-title"
+          class="tf-query-modal-section-title"
+        >
+          积分抵扣
+          <el-tag :type="form.redemption.enabled ? 'success' : 'info'">
+            {{ form.redemption.enabled ? '已开启' : '已关闭' }}
+          </el-tag>
+        </h3>
         <el-form-item
           label="积分抵扣"
-          class="points-rule-wide"
+          class="tf-form-field--inline"
         >
           <el-switch
             v-model="form.redemption.enabled"
             aria-label="积分抵扣"
           />
         </el-form-item>
-        <el-form-item
-          label="抵扣1元所需积分"
-          :required="form.redemption.enabled"
-        >
-          <el-input-number
-            v-model="pointsPerYuan"
-            :min="1"
-            :max="1000000"
-            :precision="0"
-            :controls="false"
-            placeholder="待配置"
-          />
-        </el-form-item>
-        <el-form-item
-          label="每件商品最高抵扣比例（%）"
-          :required="form.redemption.enabled"
-        >
-          <el-input-number
-            v-model="maxPercent"
-            :min="1"
-            :max="100"
-            :precision="0"
-            :controls="false"
-            placeholder="待配置"
-          />
-        </el-form-item>
+        <div class="tf-form-row">
+          <el-form-item
+            label="抵扣1元所需积分"
+            :required="form.redemption.enabled"
+          >
+            <el-input-number
+              v-model="pointsPerYuan"
+              aria-label="抵扣1元所需积分"
+              :min="1"
+              :max="1000000"
+              :precision="0"
+              :controls="false"
+              placeholder="待配置"
+            />
+          </el-form-item>
+          <el-form-item
+            label="单件抵扣上限（%）"
+            :required="form.redemption.enabled"
+          >
+            <el-input-number
+              v-model="maxPercent"
+              aria-label="单件抵扣上限（%）"
+              :min="1"
+              :max="100"
+              :precision="0"
+              :controls="false"
+              placeholder="待配置"
+            />
+          </el-form-item>
+        </div>
         <el-form-item
           label="可抵扣类型"
-          class="points-rule-wide"
           :required="form.redemption.enabled"
         >
           <el-checkbox-group v-model="form.redemption.sources">
@@ -104,26 +140,31 @@
               v-for="source in sources"
               :key="source.value"
               :value="source.value"
+              :disabled="source.value !== 'accessory'"
             >
-              {{ source.label }}
+              {{ source.label }}{{ source.value === 'accessory' ? '' : '（暂未接入）' }}
             </el-checkbox>
           </el-checkbox-group>
         </el-form-item>
         <template v-if="form.redemption.sources.includes('accessory')">
-          <el-form-item label="全部商品类型">
+          <el-form-item
+            label="全部商品参与"
+            class="tf-form-field--inline"
+          >
             <el-switch
               v-model="form.redemption.all_accessory_categories"
-              aria-label="允许全部商品类型抵扣"
+              aria-label="全部商品参与抵扣"
             />
           </el-form-item>
           <el-form-item
             v-if="!form.redemption.all_accessory_categories"
-            label="允许抵扣的商品类型"
+            label="选择商品类型"
             :required="form.redemption.enabled"
           >
             <el-select
               v-model="form.redemption.category_ids"
               multiple
+              collapse-tags
               filterable
               clearable
               placeholder="搜索并选择商品类型"
@@ -137,22 +178,93 @@
               />
             </el-select>
           </el-form-item>
+          <template v-if="!form.redemption.all_accessory_categories">
+            <el-form-item
+              label="选择参与商品"
+              :required="form.redemption.enabled"
+            >
+              <el-select
+                ref="productSelectRef"
+                :model-value="form.redemption.accessory_ids"
+                multiple
+                collapse-tags
+                filterable
+                remote
+                clearable
+                fit-input-width
+                :remote-method="searchProducts"
+                :loading="productsLoading"
+                :disabled="!form.redemption.category_ids.length || selectingAll"
+                placeholder="先选类型，再搜索或选择商品"
+                :no-data-text="productsFailed ? '商品读取失败，请重试' : '暂无匹配商品'"
+                @update:model-value="updateSelection"
+                @popup-scroll="onProductScroll"
+              >
+                <el-option
+                  v-for="product in productOptions"
+                  :key="product.id"
+                  :label="productLabel(product)"
+                  :value="product.id"
+                  :disabled="product.status !== 1"
+                />
+                <template #footer>
+                  <el-button
+                    v-if="productsFailed || productsHaveMore"
+                    :loading="productsLoading"
+                    @click="loadProducts(!productsFailed)"
+                  >
+                    {{ productsFailed ? '重新读取' : '加载更多' }}
+                  </el-button>
+                </template>
+              </el-select>
+            </el-form-item>
+            <div class="tf-dialog-toolbar">
+              <el-button
+                :loading="selectingAll"
+                :disabled="saving || !canManage || !form.redemption.category_ids.length"
+                @click="selectAllProducts"
+              >
+                全选所选类型商品
+              </el-button>
+              <el-button
+                :disabled="saving || !canManage || selectingAll || !form.redemption.accessory_ids?.length"
+                @click="updateSelection([])"
+              >
+                清空选择
+              </el-button>
+            </div>
+            <el-collapse v-if="selectedProducts.length">
+              <el-collapse-item :title="'已选商品（' + selectedProducts.length + '）'">
+                <ul
+                  class="points-selected-products tf-scrollbar-hidden"
+                  tabindex="0"
+                  aria-label="已选参与商品"
+                >
+                  <li
+                    v-for="product in selectedProducts"
+                    :key="product.id"
+                  >
+                    <el-text>{{ productLabel(product) }}</el-text>
+                    <el-button
+                      link
+                      type="danger"
+                      :disabled="saving || !canManage || selectingAll"
+                      :aria-label="'移除' + productLabel(product)"
+                      @click="updateSelection((form.redemption.accessory_ids || []).filter(id => id !== product.id))"
+                    >
+                      移除
+                    </el-button>
+                  </li>
+                </ul>
+              </el-collapse-item>
+            </el-collapse>
+          </template>
         </template>
-      </div>
+      </section>
       <el-alert
         v-if="validationMessage"
         :title="validationMessage"
         type="warning"
-        :closable="false"
-      />
-      <el-alert
-        title="积分属于客户账户，全店通用；只能使用结算前已有积分。使用抵扣的商品明细和赠品不累计积分。"
-        type="info"
-        :closable="false"
-      />
-      <el-alert
-        title="商品累计和抵扣规则为后续商品结算预先配置；当前销售入口尚未提供商品积分结算。"
-        type="info"
         :closable="false"
       />
     </el-form>
@@ -191,6 +303,7 @@ import { unifiedApi } from '@/utils/unified-api'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useNotification } from '@/composables/useNotification'
+import { usePointsProducts } from './usePointsProducts'
 import SectionLoading from '@/components/SectionLoading.vue'
 import type { CustomerPointsConfig, CustomerPointsSettingsData } from '@/types/customer-points'
 
@@ -203,6 +316,9 @@ const form = ref<CustomerPointsConfig | null>(null)
 const categories = ref<CustomerPointsSettingsData['categories']>([])
 const savedCategoryIds = ref<number[]>([])
 const loading = ref(false), saving = ref(false), failed = ref(false)
+const { options: productOptions, selected: selectedProducts, loading: productsLoading, selectingAll, failed: productsFailed, hasMore: productsHaveMore,
+  productLabel, loadProducts, searchProducts, updateSelection, selectAll: selectAllProducts, reset: resetProducts,
+  selectRef: productSelectRef, onPopupScroll: onProductScroll } = usePointsProducts(form, () => props.modelValue && canView.value && !!form.value && form.value.redemption.sources.includes('accessory'))
 const sources = [
   { value: 'new', label: '全新手机', include: 'include_new', rate: 'new_points_per_100' },
   { value: 'used', label: '二手手机', include: 'include_used', rate: 'used_points_per_100' },
@@ -220,10 +336,11 @@ const validationMessage = computed(() => {
   const rule = value.redemption
   if ((rule.points_per_yuan !== null && !validInteger(rule.points_per_yuan, 1000000)) || (rule.max_percent !== null && !validInteger(rule.max_percent, 100))) return '请填写有效兑换比例及最高抵扣比例'
   if (rule.enabled && (!rule.points_per_yuan || !rule.max_percent || !rule.sources.length ||
-    (rule.sources.includes('accessory') && !rule.all_accessory_categories && !rule.category_ids.length))) return '启用抵扣前，请填写兑换比例、单件上限和可抵扣范围'
+    (rule.sources.includes('accessory') && !rule.all_accessory_categories && (!rule.category_ids.length || !rule.accessory_ids?.length)))) return '启用抵扣前，请填写兑换比例、单件上限和可抵扣范围'
+  if ((rule.accessory_ids?.length || 0) > 1000) return '最多选择1000个参与商品'
   return ''
 })
-const canSave = computed(() => props.modelValue && canManage.value && !!form.value && !loading.value && !saving.value && !failed.value && !validationMessage.value)
+const canSave = computed(() => props.modelValue && canManage.value && !!form.value && !loading.value && !saving.value && !selectingAll.value && !failed.value && !validationMessage.value)
 const load = async () => {
   if (!props.modelValue || !canView.value || saving.value) return
   const request = requests.nextRequest()
@@ -232,7 +349,9 @@ const load = async () => {
     const response = await unifiedApi.get<CustomerPointsSettingsData>('/customers/points-config', { params: { include_options: 1 }, useCache: false, showLoading: false, signal: request.signal })
     if (!request.isLatest()) return
     if (response.success === false || !response.data?.config?.redemption || !Array.isArray(response.data.categories)) throw new Error('积分规则响应不完整')
+    resetProducts(response.data.products || [])
     form.value = structuredClone(response.data.config)
+    form.value.redemption.accessory_ids ??= []
     categories.value = response.data.categories
     savedCategoryIds.value = [...response.data.config.redemption.category_ids]
   } catch (error) {
@@ -254,23 +373,30 @@ const save = async () => {
 watch(() => [props.modelValue, canView.value] as const, ([open, allowed]) => {
   requests.cancelLatest(); loading.value = false
   if (open && allowed) void load()
-  else if (!saving.value) { form.value = null; categories.value = []; savedCategoryIds.value = [] }
+  else if (!saving.value) { resetProducts(); form.value = null; categories.value = []; savedCategoryIds.value = [] }
 }, { immediate: true })
 </script>
 
 <style scoped>
-.points-rules-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--tf-space-4);
+.points-selected-products {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tf-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: calc(var(--tf-space-8) * 4);
+  overflow-y: auto;
 }
-.points-rule-wide {
-  grid-column: 1 / -1;
-}
-.points-rules-grid :deep(.el-form-item),
-.points-rules-grid :deep(.el-input-number),
-.points-rules-grid :deep(.el-select) {
+.points-selected-products li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tf-space-2);
   min-width: 0;
-  width: 100%;
+}
+.points-selected-products .el-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 </style>

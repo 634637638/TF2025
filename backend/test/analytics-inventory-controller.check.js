@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_ids: [3, 4] }
+
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -32,7 +34,7 @@ test('inventory overview controller parses both filters and preserves response/e
   })
   const result = response()
   await controller.getOverview({ query: { store_id: '4', supplier_id: '9' } }, result)
-  assert.deepEqual(calls, [{ storeId: 4, supplierId: 9 }])
+  assert.deepEqual(calls, [{ actor: undefined, storeId: 4, supplierId: 9 }])
   assert.deepEqual(result.body.data, { total_products: 2, low_stock_items: 1 })
 
   const errors = []
@@ -52,7 +54,7 @@ test('inventory overview service preserves warning score, recommendations and ca
     connected: () => true,
     repository: {
       async getModelStockWarnings(...args) {
-        assert.deepEqual(args, [undefined, 500, { storeId: 3, supplierId: null }])
+        assert.deepEqual(args, [undefined, 500, { scope: { allStores: false, requestedStoreId: 3, storeIds: [3] }, storeId: 3, supplierId: null }])
         return [{ stock_count: '0', warning_threshold: '4', avg_cost: '25' }]
       }
     },
@@ -68,7 +70,7 @@ test('inventory overview service preserves warning score, recommendations and ca
       }
     }
   })
-  const result = await service.getOverview({ storeId: 3, supplierId: null })
+  const result = await service.getOverview({ actor: scopedActor, storeId: 3, supplierId: null })
   assert.equal(result.total_products, 10)
   assert.equal(result.total_value, 125.5)
   assert.equal(result.stock_turnover, 15)
@@ -99,7 +101,7 @@ test('low stock controller keeps bounded page_size, optional filters and respons
   const controller = new AnalyticsInventoryController({
     service: {
       async getLowStock(options) {
-        assert.deepEqual(options, { limit: 500, storeId: 4, supplierId: null })
+        assert.deepEqual(options, { actor: undefined, limit: 500, storeId: 4, supplierId: null })
         return [{ id: '1-0-0-all-0', current_stock: 0, stock_status: 'out_of_stock' }]
       }
     }
@@ -120,7 +122,7 @@ test('low stock service checks connectivity and maps warning rows to dashboard i
     connected: () => true,
     repository: {
       async getModelStockWarnings(...args) {
-        assert.deepEqual(args, [undefined, 25, { storeId: 4, supplierId: 9 }])
+        assert.deepEqual(args, [undefined, 25, { scope: { allStores: false, requestedStoreId: 4, storeIds: [4] }, storeId: 4, supplierId: 9 }])
         return [{
           model_id: 2, color_id: 3, memory_id: 4, warning_condition: 'used', brand_name: '品牌',
           model_name: '型号', color_name: null, memory_name: '256G', condition_label: '二手',
@@ -130,7 +132,7 @@ test('low stock service checks connectivity and maps warning rows to dashboard i
     }
   })
 
-  assert.deepEqual(await service.getLowStock({ limit: 25, storeId: 4, supplierId: 9 }), [{
+  assert.deepEqual(await service.getLowStock({ actor: scopedActor, limit: 25, storeId: 4, supplierId: 9 }), [{
     id: '2-3-4-used-0', brand: '品牌', model: '型号 256G · 二手', color: '默认', current_stock: 2,
     reorder_point: 3, unit_cost: 10.5, total_value: 21, last_sale_time: null, stock_status: 'low_stock'
   }])

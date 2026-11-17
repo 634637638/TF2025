@@ -336,7 +336,6 @@
                   <div class="action-buttons reminder-list-actions">
                     <el-button
                       type="primary"
-                      size="small"
                       title="查看"
                       @click.stop="openDetail(row)"
                     >
@@ -345,7 +344,6 @@
                     <el-button
                       v-if="canEdit"
                       type="success"
-                      size="small"
                       title="编辑"
                       @click.stop="openEditDialog(row)"
                     >
@@ -354,7 +352,6 @@
                     <el-button
                       v-if="canDelete"
                       type="danger"
-                      size="small"
                       title="删除"
                       @click.stop="deleteReminder(row)"
                     >
@@ -464,10 +461,18 @@
             label="接收范围"
             prop="target_mode"
           >
-            <el-segmented
+            <el-radio-group
               v-model="form.target_mode"
-              :options="targetModeOptions"
-            />
+              class="tf-state-selector"
+            >
+              <el-radio-button
+                v-for="option in targetModeOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </el-radio-button>
+            </el-radio-group>
           </el-form-item>
           <el-form-item
             v-if="canViewReminderField('target_mode') && canViewReminderField('target_users') && form.target_mode === 'specific'"
@@ -856,7 +861,6 @@
               <div class="action-buttons type-action-buttons">
                 <el-button
                   type="primary"
-                  size="small"
                   title="编辑"
                   @click.stop="openTypeForm(row)"
                 >
@@ -864,7 +868,6 @@
                 </el-button>
                 <el-button
                   type="danger"
-                  size="small"
                   title="删除"
                   @click.stop="deleteType(row)"
                 >
@@ -991,6 +994,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import type { RecordDetailField } from '@/types/component'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
@@ -1581,6 +1585,11 @@ const typeDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'field1', label: '默认提前', value: row.default_remind_days, visible: canViewReminderField('type_default_remind_days') },
     { key: 'sort_order', label: '排序', value: row.sort_order, visible: canViewReminderField('type_sort_order') }
   ]
+})
+
+usePageShortcuts('/reminders', {
+  'reminder-create': { open: openCreateDialog },
+  'reminder-types': { open: openTypeManager }
 })
 </script>
 

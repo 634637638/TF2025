@@ -6,21 +6,31 @@ const { parseBooleanFilter } = require('../utils/status')
 const FieldAccessService = require('../services/field-access.service')
 const log = require('../utils/log')
 
-const ruleField = 'template.goods_commission_rule'
-const writeFields = { goods_commission_rule: ruleField }
+const writeFields = Object.fromEntries([
+  'name', 'description', 'base_salary', 'commission_type', 'commission_new_fixed',
+  'commission_used_fixed', 'commission_percentage', 'goods_commission_rule',
+  'overtime_hourly_rate', 'rest_days', 'is_active', 'is_default'
+].map(field => [field, `template.${field}`]))
+writeFields.commission_fixed = 'template.commission_new_fixed'
+for (const field of ['enabled', 'months', 'amount', 'max_salary']) {
+  writeFields[`auto_raise_rule.${field}`] = `template.auto_raise_${field}`
+}
+const responseKeys = Object.fromEntries(Object.entries(writeFields).map(([key, field]) =>
+  [field, key.startsWith('auto_raise_rule.') ? ['auto_raise_rule'] : [key]]))
+responseKeys['template.commission_new_fixed'] = ['commission_new_fixed', 'commission_fixed']
 
 class SalaryTemplateController {
   constructor({ service: implementation = service, masking } = {}) {
     this.service = implementation
     this.fields = new FieldAccessService({ moduleKey: 'salary_salarytemplatesview',
-      responseKeys: { [ruleField]: ['goods_commission_rule'] }, strict: true, ...(masking ? { masking } : {}) })
+      responseKeys, strict: true, ...(masking ? { masking } : {}) })
   }
 
   async respond(req, res, operation, message, { write = false, status = 200 } = {}) {
     try {
       if (write) {
         const denied = await this.fields.getDeniedWrite(req.user.id, req.body, writeFields)
-        if (denied) return ApiResponse.error(res, '不能修改已隐藏的商品提成规则', 403, 'FIELD_PERMISSION_DENIED')
+        if (denied) return ApiResponse.error(res, '不能修改无编辑权限的工资模板字段', 403, 'FIELD_PERMISSION_DENIED')
       }
       const permissions = await this.fields.getPermissions(req.user.id)
       const result = await operation()
@@ -66,7 +76,7 @@ class SalaryTemplateController {
   }
 
   setAsDefault(req, res) {
-    return this.respond(req, res, () => this.service.setAsDefault(req.params.id), '设置默认模板成功')
+    return this.respond({ ...req, body: { is_default: true } }, res, () => this.service.setAsDefault(req.params.id), '设置默认模板成功', { write: true })
   }
 
   getActiveTemplates(req, res) {

@@ -221,7 +221,6 @@
             <el-button
               type="danger"
               plain
-              size="small"
               @click="errorMessage = ''"
             >
               <i class="fas fa-times" />
@@ -349,7 +348,6 @@
                   <el-button
                     v-if="canEdit"
                     type="primary"
-                    size="small"
                     @click.stop="showEditModal(row)"
                   >
                     <i class="fas fa-edit" /><span>编辑</span>
@@ -357,7 +355,6 @@
                   <el-button
                     v-if="canCreate"
                     type="success"
-                    size="small"
                     @click.stop="showAddModal(Number(row.id))"
                   >
                     <i class="fas fa-plus" /><span>子菜单</span>
@@ -365,7 +362,6 @@
                   <el-button
                     v-if="canDelete"
                     type="danger"
-                    size="small"
                     @click.stop="handleDelete(row)"
                   >
                     <i class="fas fa-trash" /><span>删除</span>
@@ -775,6 +771,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
@@ -1794,6 +1791,11 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'sort_order', label: '排序', value: row.sort_order, visible: canViewMenuField('sort_order') },
     { key: 'status', label: '状态', value: row.status ? '启用' : '禁用', visible: canViewMenuField('status') }
   ]
+})
+
+usePageShortcuts('/menu', {
+  'menu-create': { open: () => showAddModal(0) },
+  'menu-width': { open: openMenuWidthModal }
 })
 </script>
 

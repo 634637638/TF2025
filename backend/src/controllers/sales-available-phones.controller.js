@@ -51,7 +51,8 @@ class SalesAvailablePhonesController {
       const result = await this.service.getAvailablePhones(req.query, {
         page: requestedPage,
         pageSize: requestedPageSize,
-        preorderId: normalizedPreorderId
+        preorderId: normalizedPreorderId,
+        actor: req.user
       })
       const totalPages = Math.ceil(result.total / requestedPageSize)
       return res.json({
@@ -73,6 +74,7 @@ class SalesAvailablePhonesController {
         }
       })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
       if (error.statusCode === 404) return ApiResponse.notFound(res, error.message)
       this.logger.error('❌ 获取可销售手机列表失败:', error)
@@ -82,7 +84,7 @@ class SalesAvailablePhonesController {
 
   async exportAvailablePhones(req, res) {
     try {
-      const phones = await this.service.getAvailablePhonesForExport(req.query)
+      const phones = await this.service.getAvailablePhonesForExport(req.query, req.user)
       const rows = phones.map(phone => ({
         IMEI: phone.imei || '',
         序列号: phone.serial_number || '',
@@ -119,6 +121,7 @@ class SalesAvailablePhonesController {
       res.setHeader('X-Export-Total', String(rows.length))
       return res.send(buffer)
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 导出可销售手机列表失败:', error)
       return res.status(500).json({
         success: false,
@@ -130,9 +133,10 @@ class SalesAvailablePhonesController {
 
   async getStats(req, res) {
     try {
-      const data = await this.service.getStats(req.query)
+      const data = await this.service.getStats(req.query, req.user)
       return res.json({ success: true, message: '获取统计数据成功', data })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 获取统计数据失败:', error)
       return res.status(500).json({
         success: false,

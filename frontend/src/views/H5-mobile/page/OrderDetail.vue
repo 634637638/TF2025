@@ -363,7 +363,6 @@
           <el-button
             type="primary"
             :disabled="!selectedPaymentMethod"
-            size="large"
             @click="confirmPaymentMethod"
           >
             下一步
@@ -375,14 +374,12 @@
         >
           <el-button
             type="default"
-            size="large"
             @click="backToSelect"
           >
             返回
           </el-button>
           <el-button
             type="success"
-            size="large"
             @click="completePayment"
           >
             我已完成支付

@@ -11,9 +11,10 @@ class SubsidyApplyController {
 
   async create(req, res) {
     try {
-      const result = await this.service.create(req.body || {}, req.user.id)
+      const result = await this.service.create(req.body || {}, req.user.id, req.user)
       return res.status(result.status).json(result.body)
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 创建国补申请失败:', error)
       const statusCode = error.statusCode || 500
       return res.status(statusCode).json({

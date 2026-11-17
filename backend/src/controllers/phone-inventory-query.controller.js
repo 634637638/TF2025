@@ -3,6 +3,7 @@
 const PhoneInventoryQueryService = require('../services/phone-inventory-query.service')
 const QueryService = require('../services/query.service')
 const ApiResponse = require('../utils/response')
+const { resolveStoreScope, isStoreScopeError } = require('../utils/store-scope')
 const log = require('../utils/log')
 
 class PhoneInventoryQueryController {
@@ -28,6 +29,7 @@ class PhoneInventoryQueryController {
       const rows = await this.service.getUsedModels(keyword)
       return this.response.success(res, rows, '获取在库二手机型号成功')
     } catch (error) {
+      if (isStoreScopeError(error)) return this.response.error(res, error.message, error.statusCode, error.code)
       this.logger.error('获取在库二手机型号失败:', error)
       return this.response.serverError(res, '获取在库二手机型号失败', error)
     }
@@ -74,16 +76,18 @@ class PhoneInventoryQueryController {
       })
       return this.response.success(res, { total: data.length, data }, '查询在库最久商品成功')
     } catch (error) {
+      if (isStoreScopeError(error)) return this.response.error(res, error.message, error.statusCode, error.code)
       this.logger.error('查询在库最久商品失败:', error)
       return this.response.serverError(res, '查询在库最久商品失败', error)
     }
   }
 
-  async getSoldTimeline(_req, res) {
+  async getSoldTimeline(req, res) {
     try {
-      const rows = await this.service.getSoldTimeline()
+      const rows = await this.service.getSoldTimeline(req.user)
       return this.response.success(res, rows, '获取已销售手机时间线数据成功')
     } catch (error) {
+      if (isStoreScopeError(error)) return this.response.error(res, error.message, error.statusCode, error.code)
       this.logger.error('获取已销售手机时间线数据失败:', error)
       return this.response.serverError(res, '获取已销售手机时间线数据失败', error)
     }
@@ -95,7 +99,7 @@ class PhoneInventoryQueryController {
       if (!keyword) return this.response.badRequest(res, '搜索关键字不能为空')
 
       const searchKeyword = keyword.trim()
-      const { exact, fuzzy } = await this.service.searchByIdentifier(searchKeyword)
+      const { exact, fuzzy } = await this.service.searchByIdentifier(searchKeyword, req.user)
       if (exact) {
         return this.response.success(res, { ...exact, match_type: 'exact' }, '查询成功')
       }
@@ -105,6 +109,7 @@ class PhoneInventoryQueryController {
       }
       return this.response.success(res, [], `未找到匹配 "${searchKeyword}" 的商品，请检查IMEI或序列号`)
     } catch (error) {
+      if (isStoreScopeError(error)) return this.response.error(res, error.message, error.statusCode, error.code)
       this.logger.error('搜索商品失败:', error)
       return this.response.serverError(res, '搜索商品失败', error)
     }
@@ -112,7 +117,7 @@ class PhoneInventoryQueryController {
 
   async getPhoneDetails(req, res) {
     try {
-      const phones = await this.service.getPhoneDetails(req.params.id)
+      const phones = await this.service.getPhoneDetails(req.params.id, req.user)
       if (phones.length === 0) return this.response.notFound(res, '手机不存在')
 
       const phone = phones[0]
@@ -127,6 +132,7 @@ class PhoneInventoryQueryController {
         store_name: phone.sale_store_name || phone.inventory_store_name
       })
     } catch (error) {
+      if (isStoreScopeError(error)) return this.response.error(res, error.message, error.statusCode, error.code)
       this.logger.error('获取手机详情失败:', error)
       return this.response.serverError(res, '获取手机详情失败', error)
     }
@@ -134,9 +140,10 @@ class PhoneInventoryQueryController {
 
   async listInventoryPhones(req, res) {
     try {
-      const result = await this.service.listInventoryPhones(req.query)
+      const result = await this.service.listInventoryPhones(req.query, req.user)
       return this.response.success(res, result)
     } catch (error) {
+      if (isStoreScopeError(error)) return this.response.error(res, error.message, error.statusCode, error.code)
       this.logger.error('获取手机列表失败:', error)
       return this.response.serverError(res, '获取手机列表失败', error)
     }
@@ -144,10 +151,12 @@ class PhoneInventoryQueryController {
 
   async deleteInventoryPhone(req, res) {
     try {
-      const result = await this.deleteService.deletePhoneRecord(parseInt(req.params.id))
+      const result = await this.deleteService.deletePhoneRecord(parseInt(req.params.id), resolveStoreScope(req.user, req.query?.store_id), req.user)
       return this.response.success(res, result.data, '手机删除成功')
     } catch (error) {
+      if (isStoreScopeError(error)) return this.response.error(res, error.message, error.statusCode, error.code)
       this.logger.error('删除手机失败:', error)
+      if (error.statusCode === 403) return this.response.forbidden(res, error.message)
       if (error.statusCode === 400) return this.response.error(res, error.message, 400, error.code)
       return this.response.serverError(res, '删除手机失败', error)
     }

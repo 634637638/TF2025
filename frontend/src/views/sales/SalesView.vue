@@ -9,14 +9,12 @@
         :batch-mode="batchMode"
         :selected-count="selectedPhones.length"
         :can-sell="canSell"
-        :can-sell-goods="canSellGoods"
         :can-export="canExport"
         :export-loading="exportingAvailablePhones"
         :refreshing="refreshing"
         @toggle-batch-mode="toggleBatchMode"
         @export="exportAvailablePhones"
         @refresh="handleRefresh"
-        @sell-goods="openGoodsCheckout()"
       />
 
       <div class="content admin-page-content">
@@ -155,8 +153,8 @@
     <MobileDialog
       v-model="showSaleModal"
       :title="batchMode ? `批量销售出库 (${selectedPhones.length}台)` : '销售出库'"
-      width="880px"
       dialog-class="sales-sale-dialog tf-dialog-body-flush"
+      :before-close="beforeSaleClose"
       :show-default-footer="false"
       :close-on-click-modal="false"
     >
@@ -182,6 +180,7 @@
           <SalesCheckoutForm
             ref="saleCustomerNameInputRef"
             v-model:show-customer-search="showCustomerSearch"
+            :disabled="submitting || singleAdditionalGoods.locked.value"
             :form="saleForm"
             :selected-customer="selectedCustomer"
             :preorder-delivery="isPreorderDelivery"
@@ -196,6 +195,7 @@
             :profit="profit"
             :profit-margin="profitMargin"
             :profit-class="profitClass"
+            :additional-goods="singleAdditionalGoods.selection.value?.goods || []"
             :can-view-field="canViewSaleField"
             :can-view-price="canViewPrice"
             :is-current-user="isCurrentUser"
@@ -217,12 +217,18 @@
           />
         </div>
       </div>
+      <el-alert
+        v-if="singleAdditionalGoods.uncertain.value"
+        title="提交结果尚未确认，请保留原内容重试，或先到综合查询核对单据。"
+        type="warning"
+        :closable="false"
+      />
       <template #footer>
         <div class="tf-dialog-actions sale-dialog-footer">
           <el-button
             v-if="canSellGoods && !isPreorderDelivery"
-            v-permission="{ permission: ['accessories:create', 'accessories:gift'] }"
-            :disabled="submitting"
+            v-permission="{ permission: ['accessories:sell', 'accessories:gift'] }"
+            :disabled="submitting || singleAdditionalGoods.locked.value"
             @click="openGoodsCheckout('single')"
           >
             配件
@@ -230,6 +236,7 @@
           <el-button
             type="info"
             plain
+            :disabled="submitting"
             @click="closeSaleModal"
           >
             取消
@@ -251,14 +258,15 @@
     <MobileDialog
       v-model="showBatchSaleModal"
       :title="`批量销售出库 (${selectedPhones.length}台)`"
-      width="800px"
       dialog-class="sales-batch-sale-dialog tf-dialog-body-flush"
+      :before-close="beforeSaleClose"
       :show-default-footer="false"
       :close-on-click-modal="false"
     >
       <SalesBatchForm
         ref="batchCustomerNameInputRef"
         v-model:show-customer-search="showBatchCustomerSearch"
+        :disabled="batchAdditionalGoods.locked.value"
         :form="batchSaleForm"
         :selected-count="selectedPhones.length"
         :batch-items="batchSaleItems"
@@ -275,6 +283,7 @@
         :is-current-user="isCurrentUser"
         :total-cost="getTotalCost()"
         :total-profit="getTotalProfit"
+        :additional-goods="batchAdditionalGoods.selection.value?.goods || []"
         @clear-selection="clearBatchSelection"
         @continue-selection="showBatchSaleModal = false"
         @enable-name-edit="enableBatchCustomerNameEdit"
@@ -296,12 +305,18 @@
         }"
         @submit="debouncedSubmitBatchSale"
       />
+      <el-alert
+        v-if="batchAdditionalGoods.uncertain.value"
+        title="提交结果尚未确认，请保留原内容重试，或先到综合查询核对单据。"
+        type="warning"
+        :closable="false"
+      />
       <template #footer>
         <div class="tf-dialog-actions batch-sale-dialog-footer">
           <el-button
             v-if="canSellGoods"
-            v-permission="{ permission: ['accessories:create', 'accessories:gift'] }"
-            :disabled="submitting"
+            v-permission="{ permission: ['accessories:sell', 'accessories:gift'] }"
+            :disabled="submitting || batchAdditionalGoods.locked.value"
             @click="openGoodsCheckout('batch')"
           >
             配件
@@ -342,11 +357,10 @@
       v-model="showGoodsCheckout"
       :phones="goodsCheckoutPhones"
       :defaults="goodsCheckoutDefaults"
-      :initial-customer="goodsCheckoutCustomer"
+      :initial-selection="goodsCheckoutSelection"
       :phone-fields-allowed="goodsCheckoutPhoneFieldsAllowed"
       :phone-field-visible="canViewSaleField"
-      @success="completeGoodsCheckout"
-      @customer-updated="syncGoodsCheckoutCustomer"
+      @confirm="saveAdditionalGoods"
     />
 
     <SalesInventoryDetailDialog
@@ -395,6 +409,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -435,11 +450,12 @@ import { sortAvailableSalesPhones } from './sales-sort'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { useSalesBaseOptions } from './useSalesBaseOptions'
 import { useSalesCheckout } from './useSalesCheckout'
+import { useAdditionalGoodsCheckout } from '@/composables/useAdditionalGoodsCheckout'
+import { canViewAccessoryField } from '@/components/accessory-field-permissions'
 import { useSalesCustomers } from './useSalesCustomers'
 import { useSalesInventorySummary } from './useSalesInventorySummary'
 import { getSalesFieldKey } from './sales-field-permissions'
-import type { CheckoutCustomerForm, CheckoutPhone } from '@/types/sales-checkout'
-import type { CustomerOption } from '@/services/customer-options'
+import type { CheckoutAdditionalGoodsDraft, CheckoutCustomerForm, CheckoutPhone } from '@/types/sales-checkout'
 import {
   detectEditNoImeiMode as detectEditNoIMEIMode,
   findPhoneByRouteId,
@@ -491,11 +507,7 @@ const canEditSaleField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('sales_salesview', getSalesFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('sales_salesview', getSalesFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showStatsCards = computed(() => (
@@ -753,39 +765,55 @@ const batchSaleForm = reactive<BatchSaleFormData>({
 // 批量销售的客户、支付信息是公共字段，价格按设备独立维护。
 const batchSaleItems = ref<BatchSaleItem[]>([])
 const showGoodsCheckout = ref(false)
+const goodsCheckoutMode = ref<'single' | 'batch'>('single')
+const singleAdditionalGoods = useAdditionalGoodsCheckout(), batchAdditionalGoods = useAdditionalGoodsCheckout()
+const goodsCheckoutSelection = computed(() => (goodsCheckoutMode.value === 'single' ? singleAdditionalGoods : batchAdditionalGoods).selection.value)
+const saveAdditionalGoods = (draft: CheckoutAdditionalGoodsDraft | null) => {
+  const state = goodsCheckoutMode.value === 'single' ? singleAdditionalGoods : batchAdditionalGoods
+  if (state.locked.value) return
+  state.save(draft)
+  if (draft?.remarks !== undefined && canViewSaleField('remarks') && canViewAccessoryField('remarks')) {
+    (goodsCheckoutMode.value === 'single' ? saleForm : batchSaleForm).remarks = draft.remarks
+  }
+}
 const goodsCheckoutPhones = ref<CheckoutPhone[]>([])
-const goodsCheckoutDefaults = ref<Partial<CheckoutCustomerForm>>({})
-const goodsCheckoutCustomer = ref<Pick<CustomerOption, 'id' | 'name' | 'phone'> | null>(null)
+const goodsCheckoutDefaults = ref<CheckoutCustomerForm>({ customer_name: '', customer_phone: '', store_id: '', operator_id: '', sale_time: '', payment_method: '', payment_channel: '', transaction_no: '', remarks: '' })
 const goodsCheckoutPhoneFieldsAllowed = computed(() => !goodsCheckoutPhones.value.length ||
   ['customer_name', 'customer_phone', 'store_id', 'operator_id', 'sale_price', 'sale_time', 'payment_method'].every(canViewSaleField))
 
-const openGoodsCheckout = (mode?: 'single' | 'batch') => {
+const prepareGoodsCheckout = (mode: 'single' | 'batch') => {
   if (!canSellGoods.value) return
+  if (!['customer_name', 'customer_phone', 'store_id', 'operator_id', 'sale_price', 'sale_time', 'payment_method'].every(canViewSaleField)) {
+    showError('缺少共同结算所需的手机字段权限，请联系管理员'); return
+  }
   const batch = mode === 'batch'
   const source = batch ? batchSaleForm : saleForm
-  const phones = mode ? batch ? selectedPhones.value : selectedPhone.value ? [selectedPhone.value] : [] : []
-  if (mode && (!canSell.value || !phones.length || isPreorderDelivery.value)) return
-  if (mode && (batch ? batchCustomerNameEditing.value : customerNameEditing.value)) { showError('请先保存客户姓名，再添加搭售或赠送商品'); return }
+  const phones = batch ? selectedPhones.value : selectedPhone.value ? [selectedPhone.value] : []
+  if (!canSell.value || !phones.length || isPreorderDelivery.value) return
+  if (batch ? batchCustomerNameEditing.value : customerNameEditing.value) { showError('请先保存客户姓名，再添加搭售或赠送商品'); return }
   const entries = phones.map(phone => ({ phone_id: Number(phone.id),
     sale_price: Number(batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.sale_price : source.sale_price),
     label: [canViewSaleField('brand') ? phone.brand : '', canViewSaleField('model') ? phone.model : '',
       canViewSaleField('imei') ? phone.imei : ''].filter(Boolean).join(' · ') || `设备 #${phone.id}` }))
   if (entries.some(phone => !Number.isFinite(phone.sale_price) || phone.sale_price <= 0)) { showError('请先填写每台手机的销售价格'); return }
-  if (mode && !source.store_id) { showError('请先选择销售门店'); return }
-  if (mode && phones.some(phone => phone.store_id && Number(phone.store_id) !== Number(source.store_id))) { showError('合单的手机与商品须属于同一销售门店'); return }
-  if (mode && phones.some(phone => {
+  if (!source.store_id) { showError('请先选择销售门店'); return }
+  if (phones.some(phone => {
     const edited = batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.purchase_cost : saleForm.purchase_cost
     return edited !== '' && Number(edited) !== Number(phone.purchase_cost)
   })) { showError('合单使用原入库成本，请先恢复手机入库价格'); return }
   goodsCheckoutPhones.value = entries
-  const customer = mode ? batch ? selectedBatchCustomer.value : selectedCustomer.value : null
-  goodsCheckoutCustomer.value = customer ? { id: Number(customer.id), name: customer.name, phone: customer.phone } : null
-  goodsCheckoutDefaults.value = mode ? { customer_name: source.customer_name, customer_phone: source.customer_phone,
+  goodsCheckoutDefaults.value = { customer_name: source.customer_name, customer_phone: source.customer_phone,
     store_id: source.store_id, operator_id: source.operator_id, sale_time: source.sale_time,
     payment_method: source.payment_method, payment_channel: source.payment_channel,
     transaction_no: canViewSaleField('transaction_no') ? source.transaction_no : '',
     apple_id: canViewSaleField('customer_apple_id') ? batch ? batchSaleForm.apple_id : saleForm.customer_apple_id : undefined,
-    remarks: canViewSaleField('remarks') ? source.remarks : '' } : {}
+    remarks: canViewSaleField('remarks') ? source.remarks : '' }
+  return true
+}
+const openGoodsCheckout = (mode: 'single' | 'batch') => {
+  const state = mode === 'single' ? singleAdditionalGoods : batchAdditionalGoods
+  if (submitting.value || state.locked.value || !prepareGoodsCheckout(mode)) return
+  goodsCheckoutMode.value = mode
   showGoodsCheckout.value = true
 }
 const completeGoodsCheckout = async () => {
@@ -797,16 +825,23 @@ const completeGoodsCheckout = async () => {
   await loadAvailablePhones(true, false, true)
   todaySold.value += count
 }
-const syncGoodsCheckoutCustomer = (customer: Pick<CustomerOption, 'id' | 'name' | 'phone'>) => {
-  if (Number(selectedCustomer.value?.id) === customer.id && selectedCustomer.value) {
-    selectedCustomer.value.name = saleForm.customer_name = customer.name
+const beforeSaleClose = (done: () => void) => { if (!submitting.value) done() }
+const submitAdditionalGoods = async (mode: 'single' | 'batch') => {
+  const state = mode === 'single' ? singleAdditionalGoods : batchAdditionalGoods
+  if (!state.hasGoods.value) return false
+  if (!canSellGoods.value || state.selection.value?.goods.some(row => !goodsPermissions.hasPermission(row.sale_type === 'gift' ? 'gift' : 'create'))) {
+    showError('商品销售或赠送权限已变更，请重新核对附加商品'); return true
   }
-  if (Number(selectedBatchCustomer.value?.id) === customer.id && selectedBatchCustomer.value) {
-    selectedBatchCustomer.value.name = batchSaleForm.customer_name = customer.name
-  }
-  if (goodsCheckoutCustomer.value?.id === customer.id) goodsCheckoutCustomer.value = { ...customer }
+  if (showGoodsCheckout.value || !prepareGoodsCheckout(mode)) return true
+  submitting.value = true
+  try {
+    if (await state.submit(goodsCheckoutDefaults.value, goodsCheckoutPhones.value, undefined, canViewSaleField)) await completeGoodsCheckout()
+  } finally { submitting.value = false }
+  return true
 }
-
+watch(showSaleModal, visible => { if (!visible) singleAdditionalGoods.reset() })
+watch(showBatchSaleModal, visible => { if (!visible) batchAdditionalGoods.reset() })
+watch(() => selectedPhones.value.map(phone => phone.id).join(','), () => batchAdditionalGoods.reset())
 const syncBatchSaleItems = () => {
   const existingItems = new Map(batchSaleItems.value.map(item => [item.phone_id, item]))
   batchSaleItems.value = selectedPhones.value.map(phone => {
@@ -1030,7 +1065,8 @@ const {
   // 出库完成后必须绕过列表 GET 缓存，立即展示剩余商品。
   loadAvailablePhones: () => loadAvailablePhones(true, false, true),
   showError,
-  showSuccess
+  showSuccess,
+  submitAdditionalGoods
 })
 
 // 判断是否有活跃的筛选条件
@@ -1968,6 +2004,10 @@ onUnmounted(() => {
   disposeSalesCustomers()
   disposeInventorySummary()
   if (salesBaseDataWarmupTimer) clearTimeout(salesBaseDataWarmupTimer)
+})
+usePageShortcuts('/sales', {
+  'phone-sale-single': { open: () => { batchMode.value = false }, allowed: () => canSell.value },
+  'phone-sale-batch': { open: () => { batchMode.value = true }, allowed: () => canSell.value }
 })
 </script>
 

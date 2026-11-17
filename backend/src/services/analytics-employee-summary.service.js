@@ -59,7 +59,7 @@ class AnalyticsEmployeeSummaryService {
     return { months, salaries }
   }
 
-  async getEmployeeOverview({ startDate, endDate, storeId }) {
+  async getEmployeeOverview({ startDate, endDate, storeId, includeAttendance = false }) {
     if (hasValidQueryValue(startDate) && !parseOptionalDate(startDate)) {
       throw Object.assign(new Error('开始日期格式无效'), { statusCode: 400 })
     }
@@ -70,7 +70,7 @@ class AnalyticsEmployeeSummaryService {
     const dateRange = startDate && endDate
       ? { startDate, endDate }
       : this.monthRange(0)
-    const overview = await this.repository.getEmployeeOverview({ ...dateRange, storeId })
+    const overview = await this.repository.getEmployeeOverview({ ...dateRange, storeId, includeAttendance })
     const payrollResults = overview.payrollEmployeeIds.length > 0
       ? await this.salaryCalculator.batchCalculateSalary(
         overview.payrollEmployeeIds,
@@ -122,7 +122,7 @@ class AnalyticsEmployeeSummaryService {
       templateEmployeeCount: payroll.templateEmployeeCount,
       calculatedEmployeeCount: payroll.calculatedEmployeeCount,
       failedEmployeeCount: payroll.failedEmployeeCount,
-      avgAttendance: attendance.total > 0 ? Math.round((attendance.approved / attendance.total) * 100) : 0,
+      ...(includeAttendance ? { avgAttendance: attendance.total > 0 ? Math.round((attendance.approved / attendance.total) * 100) : 0 } : {}),
       storeCount: overview.stores.count || 0,
       newCount: overview.newPhoneSales.count || 0,
       usedCount: overview.usedPhoneSales.count || 0,
@@ -134,9 +134,9 @@ class AnalyticsEmployeeSummaryService {
     }
   }
 
-  async getAttendanceDistribution(storeId) {
+  async getAttendanceDistribution(storeId, employeeId = null) {
     this.assertConnected()
-    const rows = await this.repository.getAttendanceCounts(storeId)
+    const rows = await this.repository.getAttendanceCounts(storeId, employeeId)
     const stats = { normal: 0, late: 0, early: 0, absent: 0, leave: 0 }
 
     rows.forEach(item => {
@@ -169,7 +169,7 @@ class AnalyticsEmployeeSummaryService {
     ]
   }
 
-  async getAttendanceSummary({ startDate: requestedStartDate, endDate: requestedEndDate, storeId }) {
+  async getAttendanceSummary({ startDate: requestedStartDate, endDate: requestedEndDate, storeId, employeeId = null }) {
     if (hasValidQueryValue(requestedStartDate) && !parseOptionalDate(requestedStartDate)) {
       throw Object.assign(new Error('开始日期格式无效'), { statusCode: 400 })
     }
@@ -181,7 +181,8 @@ class AnalyticsEmployeeSummaryService {
     const { summaryRow = {}, records: recordRows = [], alerts: alertRows = [] } = await this.repository.getAttendanceSummary({
       startDate: requestedStartDate,
       endDate: requestedEndDate,
-      storeId
+      storeId,
+      employeeId
     })
     const records = recordRows.map(item => {
       let detail = '-'
@@ -227,7 +228,7 @@ class AnalyticsEmployeeSummaryService {
     }
   }
 
-  async getEmployeePerformance({ metric = 'totalSales', pageSize = 20, storeId = null }) {
+  async getEmployeePerformance({ metric = 'totalSales', pageSize = 20, storeId = null, includeAttendance = false }) {
     if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100) {
       throw Object.assign(new Error('每页数量无效'), { statusCode: 400 })
     }
@@ -255,7 +256,7 @@ class AnalyticsEmployeeSummaryService {
           })
       )
 
-      const attendanceResults = await this.repository.getAttendanceRates(employeeIds)
+      const attendanceResults = includeAttendance ? await this.repository.getAttendanceRates(employeeIds) : []
       attendanceData = Object.fromEntries(attendanceResults.map(item => [
         item.employee_id,
         item.total > 0 ? (item.approved / item.total) * 100 : 0
@@ -272,7 +273,7 @@ class AnalyticsEmployeeSummaryService {
         allocation_count: parseInt(employee.allocation_count) || 0,
         total_sales: sales,
         salary: Math.round(salaryData[employee.id] || 0),
-        attendance_rate: Math.round(attendanceData[employee.id] || 0),
+        ...(includeAttendance ? { attendance_rate: Math.round(attendanceData[employee.id] || 0) } : {}),
         trend: sales > 50000 ? 'up' : sales > 20000 ? 'stable' : 'down'
       }
     })

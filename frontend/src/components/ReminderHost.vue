@@ -88,7 +88,6 @@
           />
           <el-button
             type="primary"
-            size="small"
             :disabled="!customSnoozeUntil || processingOccurrence !== null"
             @click="confirmCustomSnooze"
           >

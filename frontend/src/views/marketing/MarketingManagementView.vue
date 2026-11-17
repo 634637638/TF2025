@@ -104,7 +104,6 @@
                       </div>
                     </div>
                     <el-button
-                      size="small"
                       :loading="previewLoadingType === item.type"
                       @click="refreshPreview(item.type)"
                     >

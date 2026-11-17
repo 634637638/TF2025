@@ -197,6 +197,7 @@
           :store-id="form.store_id"
           :phones="[]"
           :disabled="saving || uncertain"
+          field-source="query"
           :exchange-quantity="returnQuantity"
         />
       </template>
@@ -352,11 +353,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { getGoodsReturnContext, quoteGoodsReturn, submitGoodsReturn, getGoodsExchangeContext, quoteGoodsExchange, submitGoodsExchange } from '@/api/sales-checkout'
-import { getCachedStores, searchOperators, type ReferenceRecord } from '@/services/reference-options'
+import { getStores, searchOperators, type ReferenceRecord } from '@/services/reference-options'
+import { useGoodsPermissions } from '@/composables/useGoodsPermissions'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useNotification } from '@/composables/useNotification'
-import { canViewAccessoryField as visible, type AccessoryFieldName } from '@/components/accessory-field-permissions'
+import { canViewQueryGoodsField as visible, type AccessoryFieldName } from '@/components/accessory-field-permissions'
 import { createCheckoutKey, isCheckoutSubmissionRejected, buildCheckoutGoods, isGoodsReturnContext, isGoodsReturnQuote, isGoodsExchangeContext, isGoodsExchangeQuote, isGoodsExchangeResult } from '@/utils/sales-checkout'
 import SalesGoodsLine from '@/views/sales/page/SalesGoodsLine.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
@@ -369,12 +371,12 @@ import type { GoodsReturnContext, GoodsReturnInput, GoodsReturnQuote, GoodsExcha
 const props = withDefaults(defineProps<{ modelValue: boolean; sale: AccessorySaleRecord; mode?: 'return' | 'exchange' }>(), { mode: 'return' })
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; success: [] }>()
 const { canView, hasPermission } = usePagePermissions('query')
-const { canView: canGoods, hasPermission: hasGoodsPermission } = usePagePermissions('accessories')
+const { hasPermission: hasGoodsPermission } = useGoodsPermissions()
 const notifications = useNotification()
 const isExchange = computed(() => props.mode === 'exchange'), actionName = computed(() => isExchange.value ? '换货' : '退货')
 const actionPermission = computed(() => isExchange.value ? 'query:exchange' : 'query:return-to-stock')
 const necessary: AccessoryFieldName[] = ['name', 'usage_type', 'distribution', 'total_quantity', 'unit_price', 'total_price', 'serial_number', 'created_at', 'remarks']
-const allowed = computed(() => canView.value && canGoods.value && hasPermission(isExchange.value ? 'exchange' : 'return-to-stock') && necessary.every(visible) &&
+const allowed = computed(() => canView.value && hasPermission('goods-view') && hasPermission(isExchange.value ? 'exchange' : 'return-to-stock') && necessary.every(visible) &&
   (!isExchange.value || visible('operator_name')))
 const loading = ref(false), failed = ref(false), quoting = ref(false), saving = ref(false), uncertain = ref(false)
 const requests = useLatestRequest(), quotes = useLatestRequest(), sellers = useLatestRequest()
@@ -485,7 +487,7 @@ watch([() => props.modelValue, () => props.sale.id, () => props.mode, allowed], 
   const request = requests.nextRequest(); loading.value = true
   try {
     const getContext = isExchange.value ? getGoodsExchangeContext : getGoodsReturnContext
-    const results = await Promise.allSettled([getContext(Number(props.sale.order_id), Number(props.sale.order_item_id), request.signal), getCachedStores(true)])
+    const results = await Promise.allSettled([getContext(Number(props.sale.order_id), Number(props.sale.order_item_id), request.signal), getStores({ strictScope: true })])
     if (!request.isLatest()) return
     const [record, options] = results
     if (record.status !== 'fulfilled' || options.status !== 'fulfilled' || !record.value.success ||

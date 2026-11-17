@@ -23,7 +23,7 @@ class AnalyticsEmployeeSummaryRepository {
     return rows
   }
 
-  async getAttendanceCounts(storeId) {
+  async getAttendanceCounts(storeId, employeeId = null) {
     const [rows] = await this.database().query(`
       SELECT
         ar.record_type,
@@ -34,12 +34,13 @@ class AnalyticsEmployeeSummaryRepository {
       WHERE DATE(ar.created_at) >= DATE_FORMAT(NOW(), '%Y-%m-01')
         AND ar.status != 'cancelled'
         ${storeId !== null ? 'AND u.store_id = ?' : ''}
+        ${employeeId !== null ? 'AND ar.employee_id = ?' : ''}
       GROUP BY ar.record_type, ar.status
-    `, storeId !== null ? [storeId] : [])
+    `, [...(storeId !== null ? [storeId] : []), ...(employeeId !== null ? [employeeId] : [])])
     return rows
   }
 
-  async getAttendanceSummary({ startDate, endDate, storeId }) {
+  async getAttendanceSummary({ startDate, endDate, storeId, employeeId = null }) {
     const dateConditions = []
     const dateParams = []
     if (startDate) {
@@ -54,8 +55,9 @@ class AnalyticsEmployeeSummaryRepository {
     }
     const storeCondition = storeId !== null ? 'AND u.store_id = ?' : ''
     const storeParams = storeId !== null ? [storeId] : []
-    const attendanceWhere = `${dateConditions.join(' AND ')} ${storeCondition}`
-    const filters = [...dateParams, ...storeParams]
+    const employeeCondition = employeeId !== null ? 'AND ar.employee_id = ?' : ''
+    const attendanceWhere = `${dateConditions.join(' AND ')} ${storeCondition} ${employeeCondition}`
+    const filters = [...dateParams, ...storeParams, ...(employeeId !== null ? [employeeId] : [])]
     const database = this.database()
 
     const summaryQuery = `
@@ -170,7 +172,7 @@ class AnalyticsEmployeeSummaryRepository {
     return rows
   }
 
-  async getEmployeeOverview({ startDate, endDate, storeId }) {
+  async getEmployeeOverview({ startDate, endDate, storeId, includeAttendance = false }) {
     const storeFilter = storeId !== null ? 'AND store_id = ?' : ''
     const storeParams = storeId !== null ? [storeId] : []
     const phoneFilter = storeId !== null ? 'AND store_id = ?' : ''
@@ -207,7 +209,7 @@ class AnalyticsEmployeeSummaryRepository {
         AND ar.status != 'cancelled'
         ${storeId !== null ? 'AND u.store_id = ?' : ''}
     `
-    const [attendanceRows] = await database.query(attendanceQuery, rangeParams)
+    const [attendanceRows] = includeAttendance ? await database.query(attendanceQuery, rangeParams) : [[{ approved: 0, total: 0 }]]
 
     return {
       totalEmployees: totalEmployees[0][0],

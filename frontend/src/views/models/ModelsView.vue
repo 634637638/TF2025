@@ -203,7 +203,6 @@
                   description="暂无型号数据"
                 >
                   <el-button
-                    size="small"
                     type="info"
                     @click="loadModels()"
                   >
@@ -319,7 +318,6 @@
                       v-if="canEdit"
                       v-permission="'models:edit'"
                       type="primary"
-                      size="small"
                       @click.stop="editModel(row)"
                     >
                       <i class="fas fa-edit" /><span>编辑</span>
@@ -327,7 +325,6 @@
                       v-if="canDelete"
                       v-permission="'models:delete'"
                       type="danger"
-                      size="small"
                       @click.stop="deleteModel(row)"
                     >
                       <i class="fas fa-trash" /><span>删除</span>
@@ -447,6 +444,7 @@
             >
               <el-radio-group
                 v-model="formData.status"
+                class="tf-state-selector"
                 :disabled="!canEditField('status')"
               >
                 <el-radio :value="1">
@@ -486,6 +484,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import unifiedApi from '@/utils/unified-api'
@@ -549,11 +548,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('models_modelsview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('models_modelsview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const hasBrandFilter = computed(() => searchForm.value.brand_id !== null)
@@ -1117,6 +1112,10 @@ onMounted(async () => {
     loadBrands(),
     loadModels()
   ])
+})
+
+usePageShortcuts('/models', {
+  'model-create': { open: handleCreateModel }
 })
 </script>
 

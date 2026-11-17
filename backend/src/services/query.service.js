@@ -7,6 +7,16 @@ const { normalizePhoneStatus } = require('../utils/phone-status')
 const { isStoreScopeError } = require('../utils/store-scope')
 const { normalizeReturnStockInfo } = require('./return-stock-validation')
 const { parseInput } = require('../middleware/validation')
+const { validId } = require('../utils/sale-input')
+
+const legacyReturnGoodsId = value => {
+  if (typeof value === 'string' && value.startsWith('aftersale:')) {
+    throw Object.assign(new Error('联合退货凭据为只读记录，不能编辑或删除'), { statusCode: 400, code: 'RETURN_GOODS_READ_ONLY' })
+  }
+  if (!validId(value)) throw Object.assign(new Error('退库记录ID无效'), { statusCode: 400, code: 'INVALID_RETURN_GOODS_ID' })
+  return Number(value)
+}
+
 
 class QueryService {
   constructor() {
@@ -167,6 +177,7 @@ class QueryService {
           },
           sale_info: {
             sale_id: item.sale_id,
+            has_checkout_order: Number(item.has_checkout_order) === 1,
             sale_type: item.sale_type || '-',
             payment_method: item.payment_method || '-',
             payment_channel: item.payment_channel || '-',
@@ -280,16 +291,14 @@ class QueryService {
         stats: result.stats
       }
     } catch (error) {
-      if (isStoreScopeError(error)) throw error
+      if (isStoreScopeError(error) || [400, 409].includes(error.statusCode)) throw error
       throw new Error('退库记录查询失败: ' + error.message)
     }
   }
 
   async updateReturnGoodsRecord(recordId, payload = {}, storeScope = {}) {
     try {
-      if (!recordId) {
-        throw new Error('退库记录ID不能为空')
-      }
+      recordId = legacyReturnGoodsId(recordId)
 
       const details = normalizeReturnStockInfo(payload, { partial: true })
       const fields = { ...details }
@@ -320,9 +329,7 @@ class QueryService {
 
   async deleteReturnGoodsRecord(recordId, storeScope = {}) {
     try {
-      if (!recordId) {
-        throw new Error('退库记录ID不能为空')
-      }
+      recordId = legacyReturnGoodsId(recordId)
 
       await this.queryRepository.deleteReturnGoodsRecord(recordId, storeScope)
 
@@ -331,7 +338,7 @@ class QueryService {
         message: '退库记录删除成功'
       }
     } catch (error) {
-      if (isStoreScopeError(error)) throw error
+      if (isStoreScopeError(error) || [400, 409].includes(error.statusCode)) throw error
       throw new Error('退库记录删除失败: ' + error.message)
     }
   }
@@ -362,13 +369,13 @@ class QueryService {
   /**
    * 删除手机记录
    */
-  async deletePhoneRecord(phoneId, storeScope = {}) {
+  async deletePhoneRecord(phoneId, storeScope = {}, actor) {
     try {
       if (!phoneId) {
         throw new Error('手机ID不能为空')
       }
 
-      const result = await this.mutationService.deletePhoneRecord(phoneId, storeScope)
+      const result = await this.mutationService.deletePhoneRecord(phoneId, storeScope, actor)
 
       return {
         success: true,
@@ -376,7 +383,7 @@ class QueryService {
         data: result
       }
     } catch (error) {
-      if (isStoreScopeError(error)) throw error
+      if (isStoreScopeError(error) || error.statusCode === 403) throw error
       throw new Error('删除手机记录失败: ' + error.message)
     }
   }

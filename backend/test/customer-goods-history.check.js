@@ -29,7 +29,7 @@ const fixture = (hiddenFields = []) => {
 
 test('客户商品历史沿用三模块授权及门店范围，真实客户ID和分页在同一快照传入仓储', async () => {
   const f = fixture(), result = await f.service.customerHistory(actor, '8', { page: '7', page_size: '20' })
-  assert.deepEqual(f.permissions, ['query:view', 'accessories:view', 'customers:view'])
+  assert.deepEqual(f.permissions, ['query:view', 'query:goods-view', 'customers:view'])
   assert.deepEqual(f.reads[0].scope.storeIds, [1, 2])
   assert.deepEqual(f.reads[0].query, { page: 7, page_size: 20, customer_id: 8 })
   assert.deepEqual(f.reads[0].fields, [])
@@ -46,7 +46,7 @@ test('客户商品历史沿用三模块授权及门店范围，真实客户ID和
 })
 
 test('任一查看权限缺失和匿名均在租借连接前拒绝', async () => {
-  for (const denied of ['customers:view', 'query:view', 'accessories:view']) {
+  for (const denied of ['customers:view', 'query:view', 'query:goods-view']) {
     const service = new Service({ repository: { withConnection() { assert.fail('不得读取') } }, permissionCheck: async (_actor, permission) => permission !== denied })
     await assert.rejects(service.customerHistory(actor, 8), { statusCode: 403, code: 'PERMISSION_DENIED' })
   }

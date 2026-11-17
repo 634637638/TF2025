@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -70,7 +72,7 @@ test('补贴设备搜索 service 合并最新客户、国补状态并计算申�
     }
   })
 
-  const result = await service.search(' abc ', (label, details) => progress.push([label, details]))
+  const result = await service.search(' abc ', (label, details) => progress.push([label, details]), scopedActor)
   assert.deepEqual(calls, [['phones', '%abc%'], ['related', [1, 2, 3]]])
   assert.equal(result[0].sale_price, 6000)
   assert.equal(result[0].customer_name, '客户')

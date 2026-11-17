@@ -683,6 +683,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, defineAsyncComponent, shallowRef, watch } from 'vue'
 
@@ -694,7 +695,7 @@ import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState, useDebounce } from '@/composables'
 import { useCachedRequest } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
-import { getCachedStores } from '@/services/reference-options'
+import { getStores } from '@/services/reference-options'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
@@ -787,12 +788,8 @@ const canViewField = (fieldName: string): boolean => {
 // 检查字段是否可编辑
 const canEditField = (fieldName: string): boolean => {
   const fullFieldId = fieldIdMap[fieldName] || fieldName
-
-  if (canCreate.value || canEdit.value) {
-    return canViewField(fieldName)
-  }
-
-  return isFieldEditable(SUBSIDY_FIELD_MODULE_KEY, fullFieldId)
+  return (canCreate.value || canEdit.value) && canViewField(fieldName) &&
+    isFieldEditable(SUBSIDY_FIELD_MODULE_KEY, fullFieldId, { allowUnconfigured: true })
 }
 
 const showStatsCards = computed(() => {
@@ -1803,7 +1800,7 @@ const handlePageSizeChange = (page_size: number) => {
 // 加载店铺列表
 const fetchStores = async () => {
   try {
-    const response = await getCachedStores()
+    const response = await getStores({ strictScope: true })
     if (response.success && response.data) {
       // 当 all=true 时，API 直接返回数组
       const storeOptions = Array.isArray(response.data) ? response.data : []
@@ -1866,6 +1863,10 @@ const runDetailAction = (action: (row: NationalSubsidyRecord) => unknown) => {
   showDetailDialog.value = false
   return action(row)
 }
+
+usePageShortcuts('/subsidy', {
+  'subsidy-create': { open: openApplyDialog }
+})
 </script>
 
 <style lang="scss" scoped src="./styles/SubsidyView.scss"></style>

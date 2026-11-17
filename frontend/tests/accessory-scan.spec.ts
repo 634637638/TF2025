@@ -16,3 +16,13 @@ describe('配件SN扫码与手动录入', () => {
     expect(parseDeviceScanResult('serial', 'SABC123456', { serialProfile: 'accessory', appleSerialBarcode: true }).value).toBe('SABC123456')
   })
 })
+
+
+describe('收银商品条码扫码', () => {
+  it.each(['00000123', '00ab:+12', 'Sabc001', 'AbC 01', 'A'.repeat(100)])('保留完整商品编码，不套用手机/SN大小写和前缀规则：%s', value => {
+    expect(parseDeviceScanResult('serial', value, { serialProfile: 'product', appleSerialBarcode: true })).toEqual({ value, error: null })
+  })
+  it.each(['', '中文条码', 'ＡＢ１２', 'ABC\nDEF', 'A'.repeat(101)])('拒绝非法或超长商品编码且不截断后识别：%s', value => {
+    expect(parseDeviceScanResult('serial', value, { serialProfile: 'product' }).value).toBeNull()
+  })
+})

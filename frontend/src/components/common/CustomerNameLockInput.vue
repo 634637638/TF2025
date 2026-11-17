@@ -15,7 +15,7 @@
       :readonly="isReadonly"
       @update:model-value="handleUpdate"
       @dblclick="handleUnlock"
-      @touchend="emit('touchend', $event)"
+      @touchend="handleTouchEnd"
       @blur="emit('blur')"
       @keyup.enter="handleEnter"
     >
@@ -38,13 +38,14 @@
       class="customer-name-lock-input__controls"
     >
       <el-button
-        v-if="editing && !locked"
+        v-if="editing && !locked && canWrite"
+        v-permission="selected ? 'customers:edit' : 'customers:create'"
         native-type="button"
         class="customer-name-lock-input__status customer-name-lock-input__status--editing"
         title="保存姓名并重新锁定"
         aria-label="保存姓名并重新锁定"
         @mousedown.prevent
-        @click="emit('save')"
+        @click="handleEnter"
       >
         <i
           class="fas fa-lock-open"
@@ -54,9 +55,9 @@
       <span
         v-else-if="selected"
         class="customer-name-lock-input__status"
-        title="已锁定，双击姓名输入框可编辑"
+        :title="lockDescription"
         role="img"
-        aria-label="已锁定，双击姓名输入框可编辑"
+        :aria-label="lockDescription"
       >
         <i
           class="fas fa-lock"
@@ -65,7 +66,7 @@
       </span>
 
       <el-button
-        v-if="selected && clearable && !locked && !editing"
+        v-if="selected && clearable && !locked && (!editing || !canWrite)"
         native-type="button"
         class="customer-name-lock-input__change"
         title="更换客户"
@@ -82,6 +83,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { InputInstance } from 'element-plus'
+import { usePagePermissions } from '@/composables/usePagePermissions'
 
 defineOptions({ inheritAttrs: false })
 
@@ -117,25 +119,36 @@ const emit = defineEmits<{
 
 const inputRef = ref<InputInstance | null>(null)
 const input = computed<HTMLInputElement | null>(() => inputRef.value?.input || null)
+const customerPermissions = usePagePermissions('customers')
+const canWrite = computed(() => props.selected ? customerPermissions.canEdit.value : customerPermissions.canCreate.value)
+const lockDescription = computed(() => !props.locked && customerPermissions.canEdit.value
+  ? '已锁定，双击姓名输入框可编辑' : '客户姓名只读')
 
 const isReadonly = computed(() => {
-  if (props.locked) return true
+  if (props.locked || !canWrite.value) return true
   if (props.selected) return !props.editing
   return !(props.creating || props.allowUnselectedEdit)
 })
 
 const handleUpdate = (value: string) => {
+  if (isReadonly.value) return
   emit('update:modelValue', value)
   emit('input', value)
 }
 
 const handleUnlock = (event: MouseEvent) => {
-  if (!props.selected || props.locked || props.editing) return
+  if (!props.selected || props.locked || props.editing || !canWrite.value) return
   emit('unlock', event)
 }
 
+const handleTouchEnd = (event: TouchEvent) => {
+  if (props.selected && !props.locked && canWrite.value) emit('touchend', event)
+}
+
 const handleEnter = () => {
-  if (props.editing) emit('save')
+  if (!props.editing || props.locked || !canWrite.value) return
+  if (!props.selected && props.creating) emit('blur')
+  else emit('save')
 }
 
 defineExpose({ input, focus: () => input.value?.focus() })

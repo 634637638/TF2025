@@ -60,7 +60,7 @@
             >
               <el-radio-group
                 v-model="form.mode"
-                class="mode-group"
+                class="mode-group tf-state-selector"
               >
                 <el-radio value="fixed">
                   固定金额

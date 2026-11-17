@@ -450,7 +450,6 @@
                       <el-button
                         v-if="canEdit"
                         type="primary"
-                        size="small"
                         class="table-action table-action--edit"
                         @click.stop="editPreorder(row)"
                       >
@@ -460,7 +459,6 @@
                       <el-button
                         v-if="canMatch"
                         type="success"
-                        size="small"
                         class="table-action table-action--success"
                         @click.stop="openMatchModal(row)"
                       >
@@ -470,7 +468,6 @@
                       <el-button
                         v-if="canCancel"
                         type="danger"
-                        size="small"
                         class="table-action table-action--delete"
                         @click.stop="cancelPreorder(row)"
                       >
@@ -507,7 +504,7 @@
             <div class="filter-bar">
               <el-radio-group
                 v-model="matchedStatus"
-                class="tf-segment"
+                class="tf-state-selector"
                 @change="handleMatchedStatusChange"
               >
                 <el-radio-button value="all">
@@ -733,7 +730,6 @@
                         <el-button
                           v-if="canEdit"
                           type="primary"
-                          size="small"
                           class="table-action table-action--edit"
                           @click.stop="editMatchedPreorder(row)"
                         >
@@ -743,7 +739,6 @@
                         <el-button
                           v-if="canMatch"
                           type="success"
-                          size="small"
                           class="table-action table-action--success"
                           @click.stop="openMatchModal(row)"
                         >
@@ -753,7 +748,6 @@
                         <el-button
                           v-if="canCancel"
                           type="danger"
-                          size="small"
                           class="table-action table-action--delete"
                           @click.stop="cancelMatchedPreorder(row)"
                         >
@@ -765,7 +759,6 @@
                         <el-button
                           v-if="canEdit"
                           type="primary"
-                          size="small"
                           class="table-action table-action--edit"
                           @click.stop="editMatchedPreorder(row)"
                         >
@@ -775,7 +768,6 @@
                         <el-button
                           v-if="canMatch"
                           type="warning"
-                          size="small"
                           class="table-action table-action--warning"
                           @click.stop="openMatchModal(row)"
                         >
@@ -785,7 +777,6 @@
                         <el-button
                           v-if="canDeliver"
                           type="success"
-                          size="small"
                           class="table-action table-action--success"
                           @click.stop="deliverPreorder(row)"
                         >
@@ -795,7 +786,6 @@
                         <el-button
                           v-if="canCancel"
                           type="danger"
-                          size="small"
                           class="table-action table-action--delete"
                           @click.stop="cancelMatchedPreorder(row)"
                         >
@@ -807,7 +797,6 @@
                         <el-button
                           v-if="canEdit"
                           type="warning"
-                          size="small"
                           class="table-action table-action--warning"
                           @click.stop="restorePreorder(row)"
                         >
@@ -817,7 +806,6 @@
                         <el-button
                           v-if="canDelete"
                           type="danger"
-                          size="small"
                           class="table-action table-action--delete"
                           @click.stop="deletePreorder(row)"
                         >
@@ -1047,7 +1035,6 @@
                       <el-button
                         v-if="canDelete"
                         type="danger"
-                        size="small"
                         class="table-action table-action--delete"
                         @click.stop="deletePreorder(row)"
                       >
@@ -1234,6 +1221,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { TIME_FORMATS } from '@/utils/time'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
@@ -1979,6 +1967,13 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'remaining_amount', label: '尾款', value: row.remaining_amount === undefined ? undefined : formatAmount(row.remaining_amount), visible: canViewPreorderField('remaining_amount') },
     { key: 'operator_name', label: '销售员', value: row.sales_operator_name, visible: canViewPreorderField('operator_name') }
   ]
+})
+
+usePageShortcuts('/preorders', {
+  'preorder-create': { open: openCreateModal },
+  'preorder-new': { open: () => { activeTab.value = 'new' } },
+  'preorder-matched': { open: () => { activeTab.value = 'matched' } },
+  'preorder-delivered': { open: () => { activeTab.value = 'delivered' } }
 })
 </script>
 

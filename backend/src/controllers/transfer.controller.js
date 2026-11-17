@@ -45,6 +45,7 @@ class TransferController {
       }
 
       const result = await this.transferService.wholesaleToPeer({
+        actor: req.user,
         phone_ids: ids,
         customer_id,
         customer_name,
@@ -102,6 +103,7 @@ class TransferController {
       }
 
       const result = await this.transferService.proxyTransferForSupplier({
+        actor: req.user,
         phone_ids: ids,
         supplier_id,
         customer_id,
@@ -147,14 +149,14 @@ class TransferController {
         store_id: req.query.store_id
       }
 
-      const result = await this.transferService.getWholesaleRecords(filters)
+      const result = await this.transferService.getWholesaleRecords(filters, req.user)
 
       return ApiResponse.success(res, '查询成功', result.data, 200, {
         pagination: result.pagination
       })
     } catch (error) {
       log.error('TransferController: 查询记录失败:', error)
-      return ApiResponse.error(res, error.message || '查询记录失败', 500)
+      return ApiResponse.error(res, error.message || '查询记录失败', error.statusCode || 500)
     }
   }
 
@@ -171,12 +173,12 @@ class TransferController {
         supplier_id: req.query.supplier_id
       }
 
-      const stats = await this.transferService.getWholesaleStatistics(filters)
+      const stats = await this.transferService.getWholesaleStatistics(filters, req.user)
 
       return ApiResponse.success(res, '获取统计成功', stats)
     } catch (error) {
       log.error('TransferController: 获取统计失败:', error)
-      return ApiResponse.error(res, error.message || '获取统计失败', 500)
+      return ApiResponse.error(res, error.message || '获取统计失败', error.statusCode || 500)
     }
   }
 }

@@ -325,24 +325,12 @@
 
       <!-- 字段权限配置弹窗 -->
       <Teleport to="body">
-        <ModuleFieldPermissionDialog
-          v-model="showFieldPermissionDialog"
-          v-model:selected-fields="selectedFields"
-          :field-groups="fieldGroups"
-          :get-field-type-label="getFieldTypeLabel"
-          :get-sensitivity-label="getSensitivityLabel"
-          :is-field-sensitive="isFieldSensitive"
-          :module="selectedModule"
-          :saving="savingFieldPermissions"
-          :total-field-count="totalFieldCount"
-          @close="closeFieldPermissionDialog"
-          @save="saveFieldPermissions"
-        />
-
         <RoleFieldPermissionDialog
           v-model="roleFieldPermissionDialogVisible"
           v-model:selected-field-group-name="selectedRoleFieldGroupName"
           v-model:selected-fields="selectedRoleFields"
+          v-model:readonly-fields="selectedRoleReadonlyFields"
+          v-model:editable-fields="selectedRoleEditableFields"
           :field-groups="roleFieldGroups"
           :get-field-type-label="getFieldTypeLabel"
           :get-sensitivity-label="getSensitivityLabel"
@@ -353,6 +341,7 @@
           :role-name="selectedRoleForFieldPermission?.name"
           :saving="savingRoleFieldPermissions"
           :selected-module="selectedRoleModule"
+          :config-ready="roleFieldConfigReady"
           @close="closeRoleFieldPermissionDialog"
           @save="saveRoleFieldPermissions"
           @select-module="selectRoleModuleForField"
@@ -375,11 +364,12 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, watch, onActivated, nextTick, provide } from 'vue'
 import { User, Shop, Grid, Document, Avatar, Lock } from '@element-plus/icons-vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { getCachedStores } from '@/services/reference-options'
+import { getStores } from '@/services/reference-options'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -404,7 +394,6 @@ import RolePermissionsPage from './page/RolePermissionsPage.vue'
 import SharedSearchPanel from './page/SharedSearchPanel.vue'
 import RoleFormDialog from './page/RoleFormDialog.vue'
 import UserRoleAssignmentDialog from './page/UserRoleAssignmentDialog.vue'
-import ModuleFieldPermissionDialog from './page/ModuleFieldPermissionDialog.vue'
 import RoleFieldPermissionDialog from './page/RoleFieldPermissionDialog.vue'
 import StoreBindingDialog from './page/StoreBindingDialog.vue'
 import type { PermissionLog } from '@/types/system'
@@ -412,7 +401,6 @@ import { logger } from '@/utils/logger'
 import {
   getRequestErrorMessage,
   getRequestErrorName,
-  getRequestErrorPayload,
   getRequestErrorStatus
 } from '@/utils/api-response'
 import type {
@@ -444,7 +432,8 @@ provide(permissionsPageContextKey, permissionsPageContext)
 const { success, error, warning, info, handleApiError, confirm } = useNotification()
 
 // 角色相关状态
-const rolesLoading = ref(false)
+const rolesLoading = ref(true)
+const rolesRequest = useLatestRequest()
 const rolesData = ref<Role[]>([])
 // 角色表格是分页数据；角色分配、用户角色筛选使用独立的完整选项集。
 const roleOptions = ref<Role[]>([])
@@ -460,6 +449,7 @@ const roleSearchExpanded = ref(false)
 
 // 用户相关状态
 const usersLoading = ref(false)
+const usersRequest = useLatestRequest()
 const usersData = ref<PermissionUser[]>([])
 const usersPagination = reactive({
   page: 1,
@@ -525,12 +515,21 @@ const roleFieldModuleList = ref<RoleFieldModule[]>([])
 const selectedRoleModule = ref<RoleFieldModule | null>(null)
 const roleFieldGroups = ref<FieldGroup[]>([])
 const selectedRoleFields = ref<string[]>([])
+const selectedRoleReadonlyFields = ref<string[]>([])
+const selectedRoleEditableFields = ref<string[]>()
+const resetRoleFieldValues = () => {
+  selectedRoleFields.value = []
+  selectedRoleReadonlyFields.value = []
+  selectedRoleEditableFields.value = undefined
+}
 const selectedRoleFieldGroupName = ref('')
 const savingRoleFieldPermissions = ref(false)
 const loadingRoleFieldModules = ref(false)
 const loadingRoleFieldGroups = ref(false)
+const roleFieldConfigReady = ref(false)
+const roleFieldRequest = useLatestRequest()
+let roleFieldSelectionVersion = 0
 
-const roleFieldModuleListCache = ref<RoleFieldModule[] | null>(null)
 const fieldDefinitionsCache = new Map<string, FieldGroup[]>()
 
 // 角色搜索状态
@@ -728,18 +727,6 @@ const updatePaginationState = (
   }
 }
 
-// 字段权限相关状态
-const showFieldPermissionDialog = ref(false)
-const selectedModule = ref<RoleFieldModule | null>(null)
-const fieldGroups = ref<FieldGroup[]>([])
-const selectedFields = ref<string[]>([])
-const savingFieldPermissions = ref(false)
-
-// 字段权限计算属性
-const totalFieldCount = computed(() => {
-  return fieldGroups.value.reduce((total, group) => total + group.fields.length, 0)
-})
-
 const selectedDialogPermissionSet = computed(() => new Set(selectedDialogPermissions.value))
 const selectedDialogMenuPermissionMap = computed(() => {
   const map = new Map<string, boolean>()
@@ -785,9 +772,7 @@ const currentTabHeader = computed(() => {
     return {
       icon: 'fas fa-lock',
       title: '页面权限',
-      description: selectedRoleForPermission.value
-        ? `正在配置角色“${selectedRoleForPermission.value.name}”的页面权限`
-        : '请选择角色后再配置页面权限'
+      description: ''
     }
   }
 
@@ -938,12 +923,10 @@ const loadRoleOptions = async () => {
   }
 }
 
-const loadRoles = async (showLoading = true, showSuccess = false) => {
+const loadRoles = async () => {
+  const request = rolesRequest.nextRequest()
+  rolesLoading.value = true
   try {
-    if (showLoading) {
-      rolesLoading.value = true
-    }
-
     // 构建查询参数
     const params = new URLSearchParams()
     if (roleSearchForm.name) {
@@ -953,7 +936,11 @@ const loadRoles = async (showLoading = true, showSuccess = false) => {
     params.append('page_size', rolesPagination.page_size.toString())
 
     // 调用认证的API获取角色数据
-    const response = await unifiedApi.get(`/permissions/roles?${params.toString()}`)
+    const response = await unifiedApi.get(`/permissions/roles?${params.toString()}`, {
+      signal: request.signal,
+      showLoading: false
+    })
+    if (!request.isLatest()) return
 
     if (response.success) {
       // 修复：response.data 包含 roles 和分页信息
@@ -967,15 +954,6 @@ const loadRoles = async (showLoading = true, showSuccess = false) => {
         // 回退到客户端分页
         rolesPagination.total = responseData.roles?.length || 0
       }
-
-      // 静默刷新成功提示
-      if (showSuccess) {
-        const total = rolesData.value.length
-        success('角色数据已刷新', {
-          title: `加载了 ${total} 个角色`,
-          duration: 2000
-        })
-      }
     } else {
       error(response.message || '加载角色列表失败')
       rolesData.value = []
@@ -983,6 +961,7 @@ const loadRoles = async (showLoading = true, showSuccess = false) => {
       rolesPagination.page = 1
     }
   } catch (err) {
+    if (!request.isLatest() || rolesRequest.isCanceledError(err)) return
     // 检查是否是认证错误
     const status = getRequestErrorStatus(err)
     if (status === 401 || status === 403) {
@@ -997,17 +976,17 @@ const loadRoles = async (showLoading = true, showSuccess = false) => {
     rolesPagination.total = 0
     rolesPagination.page = 1
   } finally {
-    rolesLoading.value = false
+    if (request.isLatest()) rolesLoading.value = false
   }
 }
 
-const loadUsers = async (showLoading = true, showSuccess = false) => {
+const loadUsers = async () => {
+  const request = usersRequest.nextRequest()
+  usersLoading.value = true
   try {
-    if (showLoading) {
-      usersLoading.value = true
-    }
-
     const response = await unifiedApi.get('/permissions/users-with-roles', {
+      signal: request.signal,
+      showLoading: false,
       params: {
         page: usersPagination.page,
         page_size: usersPagination.page_size,
@@ -1015,18 +994,13 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
         role_id: userSearchForm.role_id || undefined
       }
     })
+    if (!request.isLatest()) return
 
     if (response.success) {
       // 修复：response.data 包含 users 和 pagination 信息
       const responseData = response.data || {}
       const users = responseData.users || []
 
-      // 仅在明确要求时显示成功提示，普通加载保持静默
-      if (showSuccess) {
-        success(`成功加载 ${users.length} 个用户`, {
-          duration: 2000
-        })
-      }
       const pagination = responseData.pagination || {}
 
       // 使用后端返回的分页信息
@@ -1062,12 +1036,13 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
       usersPagination.page = 1
     }
   } catch (err: unknown) {
+    if (!request.isLatest() || usersRequest.isCanceledError(err)) return
     error(`获取用户列表失败: ${getRequestErrorMessage(err)}`)
     usersData.value = []
     usersPagination.total = 0
     usersPagination.page = 1
   } finally {
-    usersLoading.value = false
+    if (request.isLatest()) usersLoading.value = false
   }
 }
 
@@ -1075,7 +1050,7 @@ const loadUsers = async (showLoading = true, showSuccess = false) => {
 const getPermissionIcon = (type: string): string => getPermissionMeta(type).icon
 
 // 获取权限名称（增强版）
-const getPermissionNameEnhanced = (type: string): string => getPermissionMeta(type).name || type
+const getPermissionNameEnhanced = (type: string): string => getPermissionMeta(type).name
 
 const loadPermissionMatrix = async (_showLoading = true, showSuccess = false) => {
   if (!selectedRoleId.value) return
@@ -1169,25 +1144,25 @@ const toggleLogSearch = () => {
 
 const searchRoles = () => {
   rolesPagination.page = 1
-  void loadRoles(false, false)
+  void loadRoles()
 }
 
 const resetRoleSearch = () => {
   roleSearchForm.name = ''
   rolesPagination.page = 1
-  void loadRoles(false, false)
+  void loadRoles()
 }
 
 const searchUsers = () => {
   usersPagination.page = 1
-  void loadUsers(false, false)
+  void loadUsers()
 }
 
 const resetUserSearch = () => {
   userSearchForm.username = ''
   userSearchForm.role_id = ''
   usersPagination.page = 1
-  void loadUsers(false, false)
+  void loadUsers()
 }
 
 const refreshCurrentPage = async () => {
@@ -1196,9 +1171,9 @@ const refreshCurrentPage = async () => {
   const promises = []
 
   if (activeTab.value === 'roles') {
-    promises.push(loadRoles(true, false))
+    promises.push(loadRoles())
   } else if (activeTab.value === 'userRoles') {
-    promises.push(loadUsers(true, false))
+    promises.push(loadUsers())
   } else if (activeTab.value === 'storeBindings') {
     promises.push(loadStoreList())
     promises.push(loadStoreBindings())
@@ -1711,12 +1686,15 @@ const toggleDialogActionAcrossModules = async (actionType: string, enabled: bool
 
 // 角色字段权限处理函数
 const handleRoleFieldPermissions = async (role: Role) => {
+  roleFieldSelectionVersion += 1
+  roleFieldRequest.cancelLatest()
+  roleFieldConfigReady.value = false
   selectedRoleForFieldPermission.value = role
   roleFieldPermissionDialogVisible.value = true
   roleFieldModuleList.value = []
   selectedRoleModule.value = null
   roleFieldGroups.value = []
-  selectedRoleFields.value = []
+  resetRoleFieldValues()
   selectedRoleFieldGroupName.value = ''
   await nextTick()
   void loadRoleFieldModules()
@@ -1725,17 +1703,14 @@ const handleRoleFieldPermissions = async (role: Role) => {
 // 加载角色字段权限的模块列表
 const loadRoleFieldModules = async () => {
   if (!selectedRoleForFieldPermission.value) return
+  const roleId = selectedRoleForFieldPermission.value.id
 
   try {
     loadingRoleFieldModules.value = true
 
-    if (roleFieldModuleListCache.value) {
-      roleFieldModuleList.value = roleFieldModuleListCache.value
-      return
-    }
-
     // 获取所有有字段映射的模块
-    const response = await unifiedApi.get('/permissions/module-mappings')
+    const response = await unifiedApi.get<RoleFieldModule[]>('/permissions/module-mappings', { useCache: false })
+    if (!roleFieldPermissionDialogVisible.value || selectedRoleForFieldPermission.value?.id !== roleId) return
 
     if (response.success) {
       const modules = response.data || []
@@ -1745,7 +1720,6 @@ const loadRoleFieldModules = async () => {
         name: module.name,
         icon: module.icon || getDefaultIcon(module.key || '', module.category)
       }))
-      roleFieldModuleListCache.value = roleFieldModuleList.value
     }
   } catch (err: unknown) {
     logger.error('加载模块列表失败:', err)
@@ -1757,6 +1731,12 @@ const loadRoleFieldModules = async () => {
 
 // 选择模块查看字段权限
 const selectRoleModuleForField = async (module: RoleFieldModule) => {
+  if (savingRoleFieldPermissions.value) return
+  const selection = ++roleFieldSelectionVersion
+  roleFieldRequest.cancelLatest()
+  roleFieldConfigReady.value = false
+  resetRoleFieldValues()
+  roleFieldGroups.value = []
   selectedRoleModule.value = module
   selectedRoleFieldGroupName.value = ''
 
@@ -1769,7 +1749,9 @@ const selectRoleModuleForField = async (module: RoleFieldModule) => {
       error('模块标识缺失')
       return
     }
-    roleFieldGroups.value = await getFieldDefinitionsForModule(moduleKey)
+    const groups = await getFieldDefinitionsForModule(module.field_scope === 'goods' ? 'query_goods' : moduleKey)
+    if (selection !== roleFieldSelectionVersion) return
+    roleFieldGroups.value = groups
     selectedRoleFieldGroupName.value = roleFieldGroups.value[0]?.name || ''
 
     // 加载该角色的字段权限配置
@@ -1779,7 +1761,7 @@ const selectRoleModuleForField = async (module: RoleFieldModule) => {
     error('加载字段权限失败')
     selectedRoleFieldGroupName.value = ''
   } finally {
-    loadingRoleFieldGroups.value = false
+    if (selection === roleFieldSelectionVersion) loadingRoleFieldGroups.value = false
   }
 }
 
@@ -1787,16 +1769,20 @@ const selectRoleModuleForField = async (module: RoleFieldModule) => {
 const loadRoleFieldPermissions = async (moduleKey: string) => {
   if (!selectedRoleForFieldPermission.value) return
 
+  const request = roleFieldRequest.nextRequest()
+  roleFieldConfigReady.value = false
   try {
-    // 重置选中字段
-    selectedRoleFields.value = []
+    resetRoleFieldValues()
 
     // 获取该角色的字段权限
     const response = await unifiedApi.get(`/permissions/field-permissions/${selectedRoleForFieldPermission.value.id}`, {
-      params: { module_key: moduleKey }
+      params: { module_key: moduleKey, ...(selectedRoleModule.value?.field_scope ? { field_scope: selectedRoleModule.value.field_scope } : {}) },
+      signal: request.signal, useCache: false, showLoading: false, showError: false
     })
 
+    if (!request.isLatest()) return
     if (response.success && response.data) {
+      roleFieldConfigReady.value = true
       // 处理可能为空的对象
       const fieldPermissions = response.data.field_permissions || {}
 
@@ -1804,20 +1790,23 @@ const loadRoleFieldPermissions = async (moduleKey: string) => {
         const fieldConfig = fieldPermissions[moduleKey].field_config
         const hiddenFieldKeys = fieldConfig.hidden_fields || []
         selectedRoleFields.value = hiddenFieldKeys
+        selectedRoleReadonlyFields.value = fieldConfig.readonly_fields || []
+        selectedRoleEditableFields.value = fieldConfig.editable_fields
       } else {
-        selectedRoleFields.value = []
+        resetRoleFieldValues()
       }
     } else {
-      selectedRoleFields.value = []
+      resetRoleFieldValues()
     }
   } catch (err: unknown) {
+    if (!request.isLatest() || roleFieldRequest.isCanceledError(err)) return
     const errorMessage = getRequestErrorMessage(err, '加载字段权限配置失败')
-    selectedRoleFields.value = []
+    resetRoleFieldValues()
 
     if (getRequestErrorStatus(err) === 404 && errorMessage.includes('角色不存在')) {
       warning('当前角色已不存在，已关闭字段权限弹窗并刷新角色列表')
       closeRoleFieldPermissionDialog()
-      await loadRoles(false)
+      await loadRoles()
       return
     }
 
@@ -1829,7 +1818,7 @@ const loadRoleFieldPermissions = async (moduleKey: string) => {
 const saveRoleFieldPermissions = async () => {
   if (savingRoleFieldPermissions.value) return
 
-  if (!selectedRoleForFieldPermission.value || !selectedRoleModule.value) return
+  if (!selectedRoleForFieldPermission.value || !selectedRoleModule.value || !roleFieldConfigReady.value) return
 
   try {
     savingRoleFieldPermissions.value = true
@@ -1842,12 +1831,18 @@ const saveRoleFieldPermissions = async () => {
 
     const hiddenFieldKeys = selectedRoleFields.value
 
-    const fieldConfig = {
-      hidden_fields: hiddenFieldKeys
+    const fieldConfig: Record<string, unknown> = { hidden_fields: hiddenFieldKeys }
+    if (selectedRoleReadonlyFields.value.length > 0 || selectedRoleEditableFields.value !== undefined) {
+      fieldConfig.readonly_fields = selectedRoleReadonlyFields.value
+      fieldConfig.editable_fields = selectedRoleEditableFields.value ?? roleFieldGroups.value
+        .flatMap(group => group.fields)
+        .filter(field => field.editable)
+        .map(field => field.id)
     }
 
     const response = await unifiedApi.put(`/permissions/field-permissions/${selectedRoleForFieldPermission.value.id}`, {
       module_key: moduleKey,
+      ...(selectedRoleModule.value.field_scope ? { field_scope: selectedRoleModule.value.field_scope } : {}),
       field_config: fieldConfig
     })
 
@@ -1872,13 +1867,20 @@ const saveRoleFieldPermissions = async () => {
 
 // 关闭角色字段权限弹窗
 const closeRoleFieldPermissionDialog = () => {
+  roleFieldSelectionVersion += 1
+  roleFieldRequest.cancelLatest()
+  roleFieldConfigReady.value = false
   roleFieldPermissionDialogVisible.value = false
   selectedRoleForFieldPermission.value = null
   selectedRoleModule.value = null
   roleFieldGroups.value = []
-  selectedRoleFields.value = []
+  resetRoleFieldValues()
   selectedRoleFieldGroupName.value = ''
 }
+
+watch(roleFieldPermissionDialogVisible, visible => {
+  if (!visible) closeRoleFieldPermissionDialog()
+})
 
 // 弹窗中的快速操作函数
 const selectAllDialogPermissions = async (select = true) => {
@@ -2138,11 +2140,11 @@ const searchLogs = () => {
 
 // 角色分页变化处理
 const handleRolesPaginationChange = (page: number, pageSize: number) =>
-  updatePaginationState(rolesPagination, page, pageSize, () => loadRoles(false, false))
+  updatePaginationState(rolesPagination, page, pageSize, loadRoles)
 
 // 用户分页变化处理
 const handleUsersPaginationChange = (page: number, pageSize: number) =>
-  updatePaginationState(usersPagination, page, pageSize, () => loadUsers(false, false))
+  updatePaginationState(usersPagination, page, pageSize, loadUsers)
 
 // 日志分页变化处理
 const handleLogsPaginationChange = (page: number, pageSize: number) =>
@@ -2246,109 +2248,10 @@ const getDefaultIcon = (moduleKey: string, category?: string): string => {
 }
 
 // 字段权限相关方法
-const closeFieldPermissionDialog = () => {
-  showFieldPermissionDialog.value = false
-  selectedModule.value = null
-  fieldGroups.value = []
-  selectedFields.value = []
-}
-
-const saveFieldPermissions = async () => {
-  if (savingFieldPermissions.value) return
-
-  if (!selectedModule.value || !selectedRoleId.value) {
-    error('缺少必要信息')
-    return
-  }
-
-  try {
-    savingFieldPermissions.value = true
-
-    // 标准化 module key - 与加载逻辑保持一致
-    let normalizedModuleKey = selectedModule.value.module_key || selectedModule.value.key
-    if (!normalizedModuleKey) {
-      error('模块标识缺失')
-      return
-    }
-
-    // 去掉视图后缀（如 subsidy_subsidyview -> subsidy）
-    // 但保留 query_queryview 这种格式
-    if (normalizedModuleKey.includes('_') && !normalizedModuleKey.endsWith('view')) {
-      const parts = normalizedModuleKey.split('_')
-      if (parts.length >= 2) {
-        normalizedModuleKey = parts.slice(0, -1).join('_')
-      }
-    } else if (normalizedModuleKey.endsWith('_view') || normalizedModuleKey.endsWith('View')) {
-      normalizedModuleKey = normalizedModuleKey.replace(/_view$/, '').replace(/View$/, '')
-    }
-
-    // 计算隐藏的字段（被选中的字段）
-    const hiddenFieldKeys = selectedFields.value
-
-    // 构建字段权限配置数据 - 直接使用完整的字段 ID（与综合查询一致）
-    const fieldConfig = {
-      hidden_fields: hiddenFieldKeys
-    }
-
-    // 调用真实的API，使用标准化的 module key
-    const response = await unifiedApi.post(`/permissions/field-permissions/${selectedRoleId.value}`, {
-      module_key: normalizedModuleKey,
-      field_config: fieldConfig
-    })
-
-    if (response.success) {
-      success('字段权限配置保存成功')
-
-      // 1. 同步更新本地显示状态：重新加载当前角色的字段权限配置
-      if (selectedModule.value) {
-        await loadRoleFieldPermissions(normalizedModuleKey)
-      }
-
-      // 2. 清除前端 API 缓存
-      if (window.__TF2025_CACHE__) {
-        window.__TF2025_CACHE__.clear()
-      }
-
-      // 3. 刷新全局字段权限（等待完成以确保权限数据已更新）
-      await fieldPermissions.fetchUserFieldPermissions()
-
-      // 4. 触发自定义事件，通知其他组件刷新
-      window.dispatchEvent(new CustomEvent('tf2025:permissions:updated', {
-        detail: {
-          module_key: normalizedModuleKey,
-          role_id: selectedRoleId.value,
-          field_config: fieldConfig
-        }
-      }))
-
-      closeFieldPermissionDialog()
-
-    } else {
-      throw new Error(response.message || '保存失败')
-    }
-
-  } catch (err: unknown) {
-    const errorMessage = getRequestErrorMessage(err, '保存字段权限配置失败')
-    error(errorMessage)
-    logger.error('❌ 保存字段权限配置失败:', err)
-    logger.error('  错误详情:', getRequestErrorPayload(err))
-  } finally {
-    savingFieldPermissions.value = false
-  }
-}
-
 // 获取模块字段定义
 const getFieldDefinitionsForModule = async (moduleKey: string) => {
   try {
-    // 处理模块key映射 - 移除可能的前端视图后缀
-    let normalizedModuleKey = moduleKey === 'system_returngoods' ? 'returngoods' : moduleKey
-    if (normalizedModuleKey.includes('_')) {
-      // 如果包含下划线，可能是后端模块格式，提取基础模块名
-      const parts = normalizedModuleKey.split('_')
-      if (parts.length >= 2) {
-        normalizedModuleKey = parts.slice(0, -1).join('_')
-      }
-    }
+    const normalizedModuleKey = moduleKey === 'system_returngoods' ? 'returngoods' : moduleKey
 
     const cachedFieldDefinitions = fieldDefinitionsCache.get(normalizedModuleKey)
     if (cachedFieldDefinitions) {
@@ -2371,6 +2274,7 @@ const getFieldDefinitionsForModule = async (moduleKey: string) => {
         name: field.name,
         type: field.type,
         required: field.required || false,
+        editable: field.editable === true,
         description: field.description || '',
         sensitivity: field.sensitivity,
         currency: field.currency || null,
@@ -2419,7 +2323,7 @@ const isFieldSensitive = (field: FieldDefinition) => {
 // 加载门店列表
 const loadStoreList = async () => {
   try {
-    const response = await getCachedStores()
+    const response = await getStores()
     if (response.success) {
       storeList.value = sortOptionsByOrder((Array.isArray(response.data) ? response.data : []).map(item => ({
         id: Number(item.id || 0),
@@ -2538,7 +2442,7 @@ const saveStoreBinding = async () => {
 const unbindStore = async (user: StoreBindingUser) => {
   try {
     await confirmAction(
-      `确定要解绑用户 "${user.username}" 的所有门店吗？解绑后该用户将可以查看所有门店的数据。`,
+      `确定要解绑用户 "${user.username}" 的所有门店吗？解绑后普通用户将无法查看或操作门店业务数据；完整系统管理授权的全店范围不受影响。`,
       '解绑确认',
       {
         confirmButtonText: '确定',
@@ -2667,11 +2571,11 @@ watch(activeTab, async (newTab) => {
 
   // 只在数据为空时加载（首次访问）
   if (newTab === 'roles' && rolesData.value.length === 0) {
-    await loadRoles(false, false)
+    await loadRoles()
   }
 
   if (newTab === 'userRoles' && usersData.value.length === 0) {
-    await Promise.all([loadUsers(false, false), loadRoleOptions()])
+    await Promise.all([loadUsers(), loadRoleOptions()])
   } else if (newTab === 'userRoles' && roleOptions.value.length === 0) {
     await loadRoleOptions()
   }
@@ -2702,16 +2606,20 @@ watch(activeTab, async (newTab) => {
 
 // 页面加载时获取数据（按需加载优化）
 onMounted(async () => {
-  await fieldPermissions.init()
+  try {
+    await fieldPermissions.init()
+  } catch (err) {
+    rolesLoading.value = false
+    handleApiError(err, '加载权限字段配置失败')
+    return
+  }
 
-  // 🚀 优化：加载基础统计数据 + 当前标签页的数据
+  // 角色首载与统计并行，表格独立维护公共加载反馈。
   await Promise.all([
+    loadRoles(),
     loadStats(),
     loadUnregisteredModules()
   ])
-
-  // 默认加载第一个标签页（角色管理）的数据
-  await loadRoles(false, false)
 })
 
 // 监听角色选择变化
@@ -2747,6 +2655,15 @@ onActivated(() => {
   ) {
     loadPermissionDialog()
   }
+})
+
+usePageShortcuts('/permissions', {
+  'role-create': { open: handleCreateRole },
+  'permissions-roles': { open: () => handleTabClick('roles') },
+  'permissions-userRoles': { open: () => handleTabClick('userRoles') },
+  'permissions-storeBindings': { open: () => handleTabClick('storeBindings') },
+  'permissions-logs': { open: () => handleTabClick('logs') },
+  'permissions-modules': { open: () => handleTabClick('modules'), allowed: () => canViewModuleManagement.value }
 })
 </script>
 

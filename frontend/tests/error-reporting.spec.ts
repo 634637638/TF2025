@@ -76,6 +76,44 @@ describe('统一请求与错误上报的提示隔离', () => {
     expect(globalErrorLogger.getLogs()[0].reported).toBe(false)
   })
 
+  it.each([
+    { label: '品牌', readPath: '/brands', writePath: '/brands' },
+    { label: '商品', readPath: '/accessories', writePath: '/accessories/stock-in' }
+  ])('$label列表503沿用公共GET有限重试，恢复后不弹错误也不重放写请求', async ({ readPath, writePath }) => {
+    let reads = 0
+    const writes: string[] = []
+    instance.defaults.adapter = async config => {
+      if (config.method === 'post') {
+        writes.push(config.url || '')
+        return { config, status: 200, statusText: 'OK', headers: new AxiosHeaders(), data: { success: true } }
+      }
+      reads++
+      if (reads === 1) return fail(config, 503, { success: false, code: 'DB_CONNECTION_ERROR' })
+      return { config, status: 200, statusText: 'OK', headers: new AxiosHeaders(), data: { success: true, data: [] } }
+    }
+    await unifiedApi.post(writePath, { name: '隔离测试资料' }, { showLoading: false, showError: false })
+    const result = await unifiedApi.get(readPath, { showLoading: false, showError: false, useCache: false })
+    expect(result.success).toBe(true)
+    expect(reads).toBe(2)
+    expect(writes).toEqual([writePath])
+    expect(feedback.error).not.toHaveBeenCalled()
+    expect(feedback.warning).not.toHaveBeenCalled()
+    expect(globalErrorLogger.getLogs()).toHaveLength(0)
+  })
+
+  it.each(['/brands', '/accessories'])('%s列表持续503仅尝试三次，最终静默交回页面且不无限重试', async readPath => {
+    let reads = 0
+    instance.defaults.adapter = async config => {
+      reads++
+      return fail(config, 503, { success: false, code: 'DB_CONNECTION_ERROR' })
+    }
+    await expect(unifiedApi.get(readPath, { showLoading: false, showError: false, useCache: false })).rejects.toBeInstanceOf(AxiosError)
+    expect(reads).toBe(3)
+    expect(feedback.error).not.toHaveBeenCalled()
+    expect(feedback.warning).not.toHaveBeenCalled()
+    expect(globalErrorLogger.getLogs()).toHaveLength(1)
+  })
+
   it.each([403, 404, 409, 422, 429, 500, 502, 503])('showError=false 时 HTTP %s 不弹全局业务消息，仍拒绝原请求', async status => {
     instance.defaults.adapter = async config => fail(config, status)
     await expect(unifiedApi.post('/backup/cloud/folders', {}, {
@@ -85,6 +123,25 @@ describe('统一请求与错误上报的提示隔离', () => {
     expect(feedback.warning).not.toHaveBeenCalled()
     expect(feedback.notification).not.toHaveBeenCalled()
     expect(globalErrorLogger.getLogs()).toHaveLength(1)
+  })
+
+  it.each([
+    'STOCK_CORRECTION_USED',
+    'STOCK_CORRECTION_PAID',
+    'STOCK_CORRECTION_DISTRIBUTION',
+    'STOCK_CORRECTION_UNTRACKED',
+    'STOCK_CORRECTION_STALE',
+    'INVENTORY_LEDGER_CONFLICT'
+  ])('批次更正业务冲突 %s 交给页面处理，不升级为技术错误', async code => {
+    instance.defaults.adapter = async config => fail(config, 409, {
+      success: false, code, message: '该批次已有后续业务，不能直接更正原入库'
+    })
+    await expect(unifiedApi.get('/accessories/stock-in/3/edit', {
+      showLoading: false, showError: false
+    })).rejects.toBeInstanceOf(AxiosError)
+    expect(feedback.error).not.toHaveBeenCalled()
+    expect(feedback.warning).not.toHaveBeenCalled()
+    expect(globalErrorLogger.getLogs()).toHaveLength(0)
   })
 
   it.each([403, 404, 429, 500, 502, 503])('普通 HTTP %s 失败只展示一次提示', async status => {

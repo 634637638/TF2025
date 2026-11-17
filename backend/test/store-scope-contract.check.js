@@ -18,7 +18,10 @@ test('comprehensive query rejects manually selected stores outside the user scop
   assert.match(storeScope, /if \(isSuperAdmin\(user\)\)/)
   assert.match(storeScope, /!userStoreIds\.includes\(requestedStoreId\)/)
   assert.match(storeScope, /无权访问该门店数据/)
-  assert.equal((controller.match(/validateRequestedStoreScope\(req, res\)/g) || []).length, 3)
+  for (const method of ['getComprehensiveQuery', 'getStatistics', 'exportToExcel', 'getPhoneDetail']) {
+    const body = controller.slice(controller.indexOf(`async ${method}(`)).split('\n  async ')[0]
+    assert.match(body, /validateRequestedStoreScope\(req, res\)/)
+  }
 })
 
 test('stock-in and return-goods mutations share the canonical store scope guard', () => {
@@ -63,18 +66,18 @@ test('analytics requires backend permission and an authorized store scope', () =
   assert.match(employeePage, /getSalesTrends\(\{[\s\S]*\.\.\.getStoreParams\(\)/)
   assert.match(salesPage, /sales-by-condition'[\s\S]*params/)
   assert.match(salesPage, /period: forecastPeriod\.value,[\s\S]*\.\.\.getStoreParams\(\)/)
-  assert.match(analyticsPage, /getCachedStores\(true\)/)
+  assert.match(analyticsPage, /getStores\(\{\s*strictScope:\s*true\s*\}\)/)
   assert.match(analyticsApi, /getCustomerSegments\(params\?: \{[\s\S]*store_id\?: number/)
 })
 
-test('strict store options remain separate from inventory and sales store access', () => {
+test('business store options use current scope without sharing management cache', () => {
   const storesController = read('src/services/store-management.service.js')
   const referenceOptions = read('../frontend/src/services/reference-options.ts')
   const queryController = read('src/controllers/query.controller.js')
 
   assert.match(storesController, /strict_scope/)
   assert.match(storesController, /if \(strictStoreScope && !this\.superAdminCheck\(actor\)\)/)
-  assert.match(referenceOptions, /strictScope \? '\/stores\?all=true&strict_scope=true' : '\/stores\?all=true'/)
+  assert.match(referenceOptions, /params: \{ all: true, strict_scope: strictScope \},\s*useCache: false/)
   assert.match(queryController, /storeIds: storeScope\.storeIds/)
   assert.match(queryController, /allStores: storeScope\.allStores/)
 })

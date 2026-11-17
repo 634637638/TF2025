@@ -3,7 +3,7 @@ import { normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { getAllPrices } from '@/api/price-list'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { sortOptionsByOrder } from '@/utils/option-sort'
-import { searchOperators, getCachedStores, getCachedSuppliers } from '@/services/reference-options'
+import { searchOperators, getStores, getCachedSuppliers } from '@/services/reference-options'
 import { searchCustomerOptions } from '@/services/customer-options'
 import type { User } from '@/types'
 import type { Store, Supplier } from '@/types/system'
@@ -307,7 +307,7 @@ export const loadWholesaleSuppliers = async (): Promise<Supplier[]> => {
 }
 
 export const loadWholesaleStores = async (): Promise<Store[]> => {
-  const response = await getCachedStores()
+  const response = await getStores({ strictScope: true })
 
   return response.success && Array.isArray(response.data)
     ? sortOptionsByOrder(response.data.map((item): Store => ({

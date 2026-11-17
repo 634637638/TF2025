@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const RentalScheduleRepository = require('../repositories/rental-schedule.repository')
 const dataMaskingService = require('./data-masking.service')
 const { ensureRentalSchema } = require('../utils/rental-schema')
@@ -24,10 +26,11 @@ class RentalScheduleService {
     this.databaseProvider = databaseProvider
   }
 
-  async getPaymentSchedule(rentalId, userId) {
+  async getPaymentSchedule(rentalId, userId, actor) {
     await this.ensureSchema()
     const rental = await this.repository.getRental(rentalId)
     if (!rental) return null
+    assertStoreInScope(resolveStoreScope(actor), rental.store_id)
     const payments = await this.repository.getPayments(rentalId)
     if (!isBuyoutMode(rental.billing_mode)) return []
 
@@ -62,7 +65,7 @@ class RentalScheduleService {
     }))
   }
 
-  async recordPayment(rentalId, body, userId) {
+  async recordPayment(rentalId, body, userId, actor) {
     rentalId = parseRentalId(rentalId)
     body = parseInput(body, {
       amount: { type: 'money', required: body?.amount !== undefined, min: 0.01, message: '请输入正确的收款金额' },
@@ -77,6 +80,7 @@ class RentalScheduleService {
         transactionStarted = true
         const rental = await this.repository.getPaymentRental(connection, rentalId)
         if (!rental) throw new Error('租赁合同不存在')
+        assertStoreInScope(resolveStoreScope(actor), rental.store_id)
         if (['returned', 'damaged', 'bought_out'].includes(rental.status)) throw new Error('该合同已经结束')
         const remarks = String(body?.remarks || '').trim() || null
         const inserted = []

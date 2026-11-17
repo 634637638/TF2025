@@ -20,13 +20,13 @@ const RETURN_GOODS_RESPONSE_KEYS = {
   'record.return_reason': ['return_reason'],
   'record.return_type': ['return_type'],
   'record.handle_method': ['handle_method'],
-  'record.refund_amount': ['refund_amount'],
+  'record.refund_amount': ['refund_amount', 'collection_amount'],
   'record.refund_method': ['refund_method', 'refund_channel'],
   'record.created_at': ['created_at'],
   'record.remarks': ['remarks']
 }
 const RETURN_GOODS_WRITE_FIELDS = Object.fromEntries(
-  Object.entries(RETURN_GOODS_RESPONSE_KEYS).flatMap(([fieldId, keys]) => keys.map(key => [key, fieldId]))
+  Object.entries(RETURN_GOODS_RESPONSE_KEYS).flatMap(([fieldId, keys]) => keys.filter(key => key !== 'collection_amount').map(key => [key, fieldId]))
 )
 
 const validateRequestedStoreScope = (req, res) => {
@@ -44,6 +44,11 @@ const validateRequestedStoreScope = (req, res) => {
 class QueryController {
   constructor({ service = new QueryService(), masking = dataMaskingService } = {}) {
     this.queryService = service
+    this.masking = masking
+    this.queryFields = new FieldAccessService({ moduleKey: 'query_queryview', masking, responseKeys: {
+      'basic_info.purchase_cost': ['total_purchase_cost'],
+      'basic_info.sale_price': ['total_sales_revenue']
+    } })
     this.returnGoodsAccess = new FieldAccessService({
       moduleKey: 'system_returngoods', responseKeys: RETURN_GOODS_RESPONSE_KEYS, masking
     })
@@ -80,7 +85,7 @@ class QueryController {
       if (result.data && result.data.length > 0) {
         const userId = req.user?.id || req.user?.userId
         if (userId) {
-          result.data = await dataMaskingService.maskDataList(result.data, userId, 'query_queryview')
+          result.data = await this.masking.maskDataList(result.data, userId, 'query_queryview')
         }
       }
 
@@ -108,6 +113,7 @@ class QueryController {
       const userStoreId = storeScope.requestedStoreId || null
       const userStoreIds = storeScope.allStores ? [] : storeScope.storeIds
 
+      const permissions = await this.queryFields.getPermissions(req.user.id)
       const result = await this.queryService.getStatistics(
         req.query,
         userStoreId,
@@ -115,7 +121,7 @@ class QueryController {
         storeScope.allStores
       )
 
-      return ApiResponse.success(res, result.message, result.data)
+      return ApiResponse.success(res, result.message, this.queryFields.maskPayload(result.data, permissions))
     } catch (error) {
       log.error('QueryController: 统计查询失败:', error)
       return ApiResponse.serverError(res, '统计查询失败', error)
@@ -140,6 +146,7 @@ class QueryController {
       if (isStoreScopeError(error)) {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
+      if (error.statusCode === 409) return ApiResponse.error(res, error.message, 409, error.code)
       log.error('QueryController: 退库记录查询失败:', error)
       return ApiResponse.serverError(res, '退库记录查询失败', error)
     }
@@ -156,6 +163,7 @@ class QueryController {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
       log.error('QueryController: 退库记录更新失败:', error)
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400, error.code)
       return ApiResponse.serverError(res, '退库记录更新失败', error)
     }
@@ -171,6 +179,8 @@ class QueryController {
       if (isStoreScopeError(error)) {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
+      if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400, error.code)
       log.error('QueryController: 退库记录删除失败:', error)
       return ApiResponse.serverError(res, '退库记录删除失败', error)
     }
@@ -202,6 +212,7 @@ class QueryController {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
       log.error('QueryController: 退库操作失败:', error)
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400, error.code)
       return ApiResponse.serverError(res, '退库操作失败', error)
     }
@@ -219,7 +230,7 @@ class QueryController {
         return ApiResponse.error(res, '手机ID不能为空', 400)
       }
 
-      const result = await this.queryService.deletePhoneRecord(id, storeScope)
+      const result = await this.queryService.deletePhoneRecord(id, storeScope, req.user)
 
       return ApiResponse.success(res, result.message, result.data)
     } catch (error) {
@@ -227,6 +238,7 @@ class QueryController {
         return ApiResponse.error(res, error.message, error.statusCode)
       }
       log.error('QueryController: 删除手机记录失败:', error)
+      if (error.statusCode === 403) return ApiResponse.forbidden(res, error.message)
       if (error.statusCode === 400) return ApiResponse.error(res, error.message, 400, error.code)
       return ApiResponse.serverError(res, '删除手机记录失败', error)
     }
@@ -256,7 +268,7 @@ class QueryController {
       const userId = req.user?.id || req.user?.userId
 
       if (exportData.length > 0 && userId) {
-        exportData = await dataMaskingService.maskDataList(exportData, userId, 'query_queryview')
+        exportData = await this.masking.maskDataList(exportData, userId, 'query_queryview')
       }
 
       const exportFile = this.queryService.buildExcelExport(exportData)
@@ -346,7 +358,7 @@ class QueryController {
       case 'delete':
         for (const phoneId of phone_ids) {
           try {
-            const result = await this.queryService.deletePhoneRecord(phoneId, storeScope)
+            const result = await this.queryService.deletePhoneRecord(phoneId, storeScope, req.user)
             results.push({ phone_id: phoneId, success: true, message: result.message })
           } catch (error) {
             results.push({ phone_id: phoneId, success: false, message: '操作失败' })
@@ -390,18 +402,21 @@ class QueryController {
       }
 
       // 使用综合查询获取单个手机详情
-      const userStoreId = req.user?.store_id || null
-      const userStoreIds = req.user?.store_ids || []
+      const storeScope = validateRequestedStoreScope(req, res)
+      if (!storeScope) return
+      const userStoreId = storeScope.requestedStoreId || null
+      const userStoreIds = storeScope.allStores ? [] : storeScope.storeIds
       const result = await this.queryService.getComprehensiveQuery({
         phone_id: id,
         page_size: 1
-      }, userStoreId, userStoreIds)
+      }, userStoreId, userStoreIds, storeScope.allStores)
 
       if (result.data.length === 0) {
         return ApiResponse.error(res, '手机记录不存在', 404)
       }
 
-      return ApiResponse.success(res, '获取手机详情成功', result.data[0])
+      const data = await this.masking.maskDataItem(result.data[0], req.user.id, 'query_queryview')
+      return ApiResponse.success(res, '获取手机详情成功', data)
     } catch (error) {
       log.error('QueryController: 获取手机详情失败:', error)
       return ApiResponse.serverError(res, '获取手机详情失败', error)

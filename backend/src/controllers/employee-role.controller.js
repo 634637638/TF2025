@@ -25,7 +25,7 @@ class EmployeeRoleController {
 
   async list(req, res) {
     try {
-      const result = await this.service.list()
+      const result = await this.service.list(req.user)
       return ApiResponse.success(res, result.data, result.message, 200, result.extra)
     } catch (error) {
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
@@ -38,7 +38,7 @@ class EmployeeRoleController {
 
   async create(req, res) {
     try {
-      const result = await this.service.create(req.body)
+      const result = await this.service.create(req.body, req)
       return ApiResponse.created(res, result.message, result.data)
     } catch (error) {
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
@@ -51,7 +51,7 @@ class EmployeeRoleController {
 
   async update(req, res) {
     try {
-      const result = await this.service.update(req.params, req.body)
+      const result = await this.service.update(req.params, req.body, req)
       return ApiResponse.success(res, result.data, result.message, 200, result.extra)
     } catch (error) {
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
@@ -64,7 +64,7 @@ class EmployeeRoleController {
 
   async delete(req, res) {
     try {
-      const result = await this.service.delete(req.params)
+      const result = await this.service.delete(req.params, req)
       return ApiResponse.success(res, result.data, result.message, 200, result.extra)
     } catch (error) {
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
@@ -77,7 +77,7 @@ class EmployeeRoleController {
 
   async assign(req, res) {
     try {
-      const result = await this.service.assign(req.params, req.body)
+      const result = await this.service.assign(req.params, req.body, req)
       return ApiResponse.success(res, result.data, result.message, 200, result.extra)
     } catch (error) {
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)
@@ -90,7 +90,7 @@ class EmployeeRoleController {
 
   async remove(req, res) {
     try {
-      const result = await this.service.remove(req.params)
+      const result = await this.service.remove(req.params, req)
       return ApiResponse.success(res, result.data, result.message, 200, result.extra)
     } catch (error) {
       if (error.statusCode === 400) return ApiResponse.badRequest(res, error.message)

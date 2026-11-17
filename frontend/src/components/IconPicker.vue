@@ -77,12 +77,19 @@
           />
         </el-select>
 
-        <el-segmented
+        <el-radio-group
           v-model="searchMode"
-          :options="searchModeOptions"
-          class="search-mode-toggle"
+          class="search-mode-toggle tf-state-selector"
           @change="handleSearchModeChange"
-        />
+        >
+          <el-radio-button
+            v-for="option in searchModeOptions"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </el-radio-button>
+        </el-radio-group>
       </div>
 
       <!-- 加载状态 -->
@@ -178,7 +185,7 @@
           <el-button
             native-type="button"
             :disabled="currentPage === 1"
-            class="btn btn-sm btn-outline-secondary"
+            class="btn btn-outline-secondary"
             @click.stop="prevPage"
           >
             <i class="fas fa-chevron-left" />
@@ -187,7 +194,7 @@
           <el-button
             native-type="button"
             :disabled="currentPage === totalPages"
-            class="btn btn-sm btn-outline-secondary"
+            class="btn btn-outline-secondary"
             @click.stop="nextPage"
           >
             <i class="fas fa-chevron-right" />
@@ -832,16 +839,6 @@ watch([searchQuery, selectedCategory], () => {
   min-width: 118px;
 }
 
-.icon-picker-search :deep(.el-segmented) {
-  --el-segmented-item-selected-bg-color: #0f766e;
-  --el-segmented-item-selected-color: #fff;
-  border-radius: 10px;
-}
-
-.icon-picker-search :deep(.el-segmented__item) {
-  min-width: 52px;
-}
-
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
@@ -947,10 +944,6 @@ watch([searchQuery, selectedCategory], () => {
   .category-filter,
   .search-mode-toggle {
     flex-basis: 100%;
-    width: 100%;
-  }
-
-  .search-mode-toggle :deep(.el-segmented) {
     width: 100%;
   }
 

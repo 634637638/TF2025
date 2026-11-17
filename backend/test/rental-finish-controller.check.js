@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -49,7 +51,7 @@ test('rental finish service commits return updates and rolls back invalid contra
     release() { events.push('release') }
   }
   const repository = {
-    async getForUpdate(_connection, id) { events.push(['lock', id]); return rental },
+    async getForUpdate(_connection, id) { events.push(['lock', id]); return rental && { store_id: 1, source_store_id: 1, ...rental } },
     async calculateTotalCost(_connection, id) { events.push(['cost', id]); return 48 },
     async finishRental(_connection, id, cost) { events.push(['finish', id, cost]) },
     async restorePhone(_connection, id) { events.push(['restore', id]) }
@@ -60,14 +62,14 @@ test('rental finish service commits return updates and rolls back invalid contra
     ensureSchema: async () => events.push('schema')
   })
 
-  assert.equal(await service.finish(7), 7)
+  assert.equal(await service.finish(7, scopedActor), 7)
   assert.deepEqual(events, [
     'schema', 'begin', ['lock', 7], ['cost', 7], ['finish', 7, 48], ['restore', 9], 'commit', 'release'
   ])
 
   events.length = 0
   rental = { ...rental, status: 'returned' }
-  await assert.rejects(service.finish(7), /该合同已经结束/)
+  await assert.rejects(service.finish(7, scopedActor), /该合同已经结束/)
   assert.deepEqual(events, ['schema', 'begin', ['lock', 7], 'rollback', 'release'])
 })
 
@@ -77,7 +79,7 @@ test('rental finish repository keeps row locking and conditional phone restore',
   const connection = {
     async execute(sql, params) {
       calls.push({ sql, params })
-      if (/SELECT id,status/.test(sql)) return [[{ id: 7 }]]
+      if (/SELECT r\.id,r\.status/.test(sql)) return [[{ id: 7 }]]
       if (/SELECT ROUND/.test(sql)) return [[{ cost: '48.00' }]]
       return [{ affectedRows: 1 }]
     }
@@ -86,7 +88,7 @@ test('rental finish repository keeps row locking and conditional phone restore',
   assert.equal(await repository.calculateTotalCost(connection, 7), 48)
   await repository.finishRental(connection, 7, 48)
   await repository.restorePhone(connection, 9)
-  assert.match(calls[0].sql, /WHERE id=\? FOR UPDATE/)
+  assert.match(calls[0].sql, /WHERE r\.id=\? FOR UPDATE/)
   assert.deepEqual(calls[0].params, [7])
   assert.match(calls[3].sql, /status='in_stock'.*status='rented'/)
   assert.deepEqual(calls[3].params, [9])

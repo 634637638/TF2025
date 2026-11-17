@@ -1,6 +1,6 @@
 # 路由权限与导航入口统一规范
 
-> 最后更新：2026-08-24
+> 最后核实日期：2026-11-16
 
 ## 目标
 
@@ -21,7 +21,7 @@ getRoutePermissions(path)
 canAccessRoutePath(path, authStore)
 ```
 
-`canAccessRoutePath` 会先去掉 `?query` 和 `#hash`，再匹配路由权限表，并复用 `PermissionUtils.hasPermission` 做前后端权限码兼容判断。新增导航入口时应调用它，不要在组件内重新拼权限规则。
+`canAccessRoutePath` 会先去掉 `?query` 和 `#hash`，再匹配路由权限表，并调用 `authStore.hasPermission` 同时核验认证就绪、账户状态及权限；权限码兼容由认证状态内部复用 `PermissionUtils` 处理。新增导航入口时应调用它，不要在组件内重新拼权限规则。即使原始缓存数组包含全局通配，也不能覆盖统一认证返回的拒绝结果。
 
 ## 已接入的位置
 
@@ -96,7 +96,7 @@ canAccessRoutePath(path, authStore)
 backend/src/config/module-permission-actions.js
 ```
 
-其中 `MODULE_PERMISSION_TYPES` 应只声明该模块真实存在的功能动作。新增页面功能时，需要同步补充这里的动作配置，再接入前端按钮控制和后端接口校验。
+其中模块动作、中文名称和说明为唯一权威定义；`module-permission-actions.js` 仅消费清单。新增页面功能时，需要同步补充清单，再接入前端按钮控制和后端接口校验。
 
 示例：Git 仓库当前只支持：
 

@@ -1,5 +1,6 @@
 'use strict'
 
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
 
@@ -10,6 +11,13 @@ class SubsidyApplyRepository {
 
   withConnection(operation) {
     return withConnection(this.getDb, operation)
+  }
+
+  async findSaleForUpdate(connection, phoneId) {
+    const [rows] = await connection.execute(`SELECT s.id, s.customer_id, s.store_id, p.store_id AS source_store_id
+      FROM phones p JOIN sales s ON s.id = (${getLatestActiveSaleIdSql('p')})
+      WHERE p.id = ? AND p.status = 'sold' FOR UPDATE`, [phoneId])
+    return rows[0] || null
   }
 
   async findByPhoneForUpdate(connection, phoneId) {

@@ -1,23 +1,38 @@
 import { unifiedApi } from '@/utils/unified-api'
 import type { PaginatedResponse } from '@/types'
-import type { CheckoutGoodsOption, CheckoutPointsQuote, SalesCheckoutInput, SalesCheckoutResult,
+import type { CheckoutCustomerSummary, CheckoutGoodsOption, CheckoutPointsQuote, SalesCheckoutInput, SalesCheckoutResult,
   GoodsReturnContext, GoodsReturnInput, GoodsReturnQuote, GoodsReturnResult, PhoneReturnSource,
   PhoneReturnInput, PhoneReturnQuote, PhoneReturnResult, GoodsExchangeContext, GoodsExchangeInput, GoodsExchangeQuote, GoodsExchangeResult, FilmServiceContext } from '@/types/sales-checkout'
 
-export const getCheckoutGoods = (params: { store_id: number; search: string; page: number; page_size: number; film_only?: boolean }, signal: AbortSignal) =>
-  unifiedApi.get<Pick<PaginatedResponse<CheckoutGoodsOption>, 'data'> & { pagination: Pick<PaginatedResponse['pagination'], 'total'> }>('/accessories/sale-options', {
+export const getCheckoutGoods = (params: { store_id: number; search: string; page: number; page_size: number; film_only?: boolean; film_free_only?: boolean; film_model_id?: number; search_mode?: 'regular' | 'serial'; match_mode?: 'exact'; source?: 'accessories' | 'query' }, signal: AbortSignal) => {
+  const { source, ...query } = params
+  return unifiedApi.get<Pick<PaginatedResponse<CheckoutGoodsOption>, 'data'> & { pagination: Pick<PaginatedResponse['pagination'], 'total'> }>(source === 'query' ? '/query/goods/sale-options' : '/accessories/sale-options', {
+    params: query, signal, useCache: false, showLoading: false, showError: false
+  })
+}
+
+export const getCheckoutCustomerSummary = (params: { phone: string; store_id: number; context?: 'phone' | 'goods' }, signal: AbortSignal, fieldSource: 'accessories' | 'query' = 'accessories') =>
+  unifiedApi.get<CheckoutCustomerSummary>(fieldSource === 'query' ? '/query/goods/checkout/customer-summary' : '/sales/checkout/customer-summary', { params, signal, useCache: false, showLoading: false, showError: false })
+
+export const getFilmCustomerSummary = (customerId: number, storeId: number, signal: AbortSignal) =>
+  unifiedApi.get<CheckoutCustomerSummary>(`/query/customers/${customerId}/film-services/customer-summary`, {
+    params: { customer_id: customerId, store_id: storeId }, signal, useCache: false, showLoading: false, showError: false
+  })
+
+export const checkoutSale = (input: SalesCheckoutInput, fieldSource: 'accessories' | 'query' = 'accessories') => unifiedApi.post<SalesCheckoutResult>(input.film_service ? '/query/film-services/checkout' : fieldSource === 'query' ? '/query/goods/checkout' : '/sales/checkout', input)
+
+export const getFilmProducts = (customerId: number, params: { phone_id: number; store_id: number; search: string; page: number; page_size: number; free_only?: boolean; search_mode?: 'regular' | 'serial' }, signal: AbortSignal) =>
+  unifiedApi.get<Pick<PaginatedResponse<CheckoutGoodsOption>, 'data'> & { pagination: Pick<PaginatedResponse['pagination'], 'total'> }>(`/query/customers/${customerId}/film-services/products`, {
     params, signal, useCache: false, showLoading: false, showError: false
   })
 
-export const checkoutSale = (input: SalesCheckoutInput) => unifiedApi.post<SalesCheckoutResult>('/sales/checkout', input)
-
-export const getFilmServiceContext = (customerId: number, page: number, pageSize: number, signal: AbortSignal) =>
+export const getFilmServiceContext = (customerId: number, page: number, pageSize: number, signal: AbortSignal, phoneId?: number, saleType?: 'sale' | 'gift') =>
   unifiedApi.get<FilmServiceContext>(`/query/customers/${customerId}/film-services`, {
-    params: { page, page_size: pageSize }, signal, useCache: false, showLoading: false, showError: false
+    params: { page, page_size: pageSize, ...(phoneId ? { phone_id: phoneId } : {}), ...(saleType ? { sale_type: saleType } : {}) }, signal, useCache: false, showLoading: false, showError: false
   })
 
-export const quoteCheckoutSale = (input: SalesCheckoutInput, signal: AbortSignal) =>
-  unifiedApi.post<CheckoutPointsQuote>('/sales/checkout/quote', input, { signal, showLoading: false })
+export const quoteCheckoutSale = (input: SalesCheckoutInput, signal: AbortSignal, autoRedeem = false, fieldSource: 'accessories' | 'query' = 'accessories') =>
+  unifiedApi.post<CheckoutPointsQuote>(input.film_service ? '/query/film-services/checkout/quote' : fieldSource === 'query' ? '/query/goods/checkout/quote' : '/sales/checkout/quote', autoRedeem ? { ...input, auto_redeem: true } : input, { signal, showLoading: false })
 
 const goodsReturnPath = (orderId: number, itemId: number) => `/sales/checkout/${orderId}/items/${itemId}/return`
 export const getGoodsReturnContext = (orderId: number, itemId: number, signal: AbortSignal) =>

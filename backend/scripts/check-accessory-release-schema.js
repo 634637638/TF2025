@@ -1,9 +1,11 @@
 'use strict'
 
-/** 仅核对本批T22结构；不替代权限、期初核对或业务验收，也不执行任何迁移。 */
+/** 仅核对登记的配件业务结构；不替代权限、期初核对或业务验收，也不执行任何迁移。 */
 const migrations = Object.freeze([
   { name: 'accessory-stock-in-requests', dependencies: [] },
   { name: 'accessory-purchase-snapshots', dependencies: [] },
+  { name: 'accessory-stock-corrections', dependencies: ['accessory-stock-in-requests', 'accessory-purchase-snapshots'] },
+  { name: 'accessory-inventory-adjustments', dependencies: ['accessory-stock-corrections'] },
   { name: 'sales-checkout', dependencies: [] },
   { name: 'customer-points-ledger', dependencies: [] },
   { name: 'customer-points-aftersales', dependencies: ['customer-points-ledger'] },
@@ -11,7 +13,10 @@ const migrations = Object.freeze([
   { name: 'sales-aftersales', dependencies: ['sales-checkout'] },
   { name: 'salary-goods-commission', dependencies: [] },
   { name: 'salary-goods-settlement', dependencies: [] },
-  { name: 'film-services', dependencies: ['sales-checkout'] }
+  { name: 'film-services', dependencies: ['sales-checkout'] },
+  { name: 'film-cancellations', dependencies: ['film-services', 'sales-aftersales'] },
+  { name: 'accessory-template-colors', dependencies: [] },
+  { name: 'film-template-matching', dependencies: ['film-services', 'accessory-template-colors'] }
 ])
 
 const failed = message => Object.assign(new Error(message), { code: 'ACCESSORY_SCHEMA_CHECK_INVALID' })

@@ -16,6 +16,7 @@ class EmployeeMutationController {
   }
 
   respondWithError(res, error, action) {
+    if (error.statusCode === 403) return this.response.forbidden(res, error.message)
     if (error.code === 'VALIDATION') return this.response.badRequest(res, error.message)
     if (error.code === 'NOT_FOUND') return this.response.notFound(res, error.message)
     this.logger.error(`${action}:`, error)
@@ -24,7 +25,7 @@ class EmployeeMutationController {
 
   async create(req, res) {
     try {
-      const employee = await this.service.createEmployee(req.body)
+      const employee = await this.service.createEmployee(req.body, req.user, req)
       return this.response.created(res, '员工创建成功', employee)
     } catch (error) {
       return this.respondWithError(res, error, '创建员工失败')
@@ -33,7 +34,7 @@ class EmployeeMutationController {
 
   async update(req, res) {
     try {
-      const { employee, passwordUpdated } = await this.service.updateEmployee(req.params.id, req.body)
+      const { employee, passwordUpdated } = await this.service.updateEmployee(req.params.id, req.body, req.user, req)
       if (passwordUpdated && parseInt(req.params.id) === req.user.id) {
         const authHeader = req.headers['authorization']
         const currentToken = authHeader && authHeader.split(' ')[1]
@@ -57,7 +58,7 @@ class EmployeeMutationController {
 
   async delete(req, res) {
     try {
-      const result = await this.service.deleteEmployee(req.params.id, req.user.id)
+      const result = await this.service.deleteEmployee(req.params.id, req.user.id, req.user)
       return this.response.success(res, result, '员工删除成功')
     } catch (error) {
       return this.respondWithError(res, error, '删除员工失败')
@@ -66,7 +67,7 @@ class EmployeeMutationController {
 
   async updateStatus(req, res) {
     try {
-      const result = await this.service.updateEmployeeStatus(req.params.id, req.body.status, req.user.id)
+      const result = await this.service.updateEmployeeStatus(req.params.id, req.body.status, req.user.id, req.user)
       return this.response.success(res, { id: result.id, status: result.status }, `员工${result.statusText}成功`)
     } catch (error) {
       return this.respondWithError(res, error, '更新员工状态失败')

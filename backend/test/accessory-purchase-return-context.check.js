@@ -6,7 +6,7 @@ const Controller = require('../src/controllers/accessory-purchase.controller')
 const PurchaseRepository = require('../src/repositories/accessory-purchase.repository')
 const InventoryRepository = require('../src/repositories/accessory-inventory.repository')
 const FieldAccessService = require('../src/services/field-access.service')
-const { parsePurchaseReturnSelection, allocatePurchaseReturn } = require('../src/utils/accessory-purchase-return')
+const { parsePurchaseReturnSelection, allocatePurchaseReturn, planPurchaseReturnSettlement } = require('../src/utils/accessory-purchase-return')
 const actor = { id: 7, store_ids: [1, 2] }
 const fixture = () => {
   const calls = []
@@ -32,7 +32,8 @@ const fixture = () => {
     pagination: { page: input.page, page_size: input.pageSize, total: 1 } } }
   }
   const service = new Service({ repository, inventory, tableExists: async (_table, executor) => { assert.equal(executor, connection); return true } })
-  const pay = (id, action = 'pay', extra = {}) => ({ id, action, stock_in_id: 8, supplier_id: 3, amount: '625.00', reference_event_id: action === 'pay' ? null : id - 1, ...extra })
+  const pay = (id, action = 'pay', extra = {}) => ({ id, action, stock_in_id: 8, supplier_id: 3, amount: '625.00',
+    reference_event_id: action === 'pay' ? null : id - 1, payment_method: 'bank_transfer', payment_time: '2026-11-13 12:13:14', ...extra })
   return { service, repository, inventory, purchase, events, calls, pay, connection }
 }
 
@@ -301,6 +302,66 @@ test('普通数量与SN混合试算按原采购单价以分计算，完整付款
   assert.deepEqual(selection.scope.storeIds, [1, 2]); assert.equal(selection.accessoryId, 31); assert.equal(selection.stockInId, 8)
   assert.match(f.calls[1][1], /READ ONLY/); assert.deepEqual(f.calls.slice(-2), [['rollback'], ['release']])
   assert.equal(f.calls.some(call => call[0] === 'serials'), false)
+})
+
+test('已付采购每次可选退款或留抵，未付只冲应付，资金试算按原数量原价且无业务写入', async () => {
+  for (const [paid, mode, amounts] of [
+    [true, 'supplier_refund', { payable_reduction: 0, refund_amount: 37.5, credit_amount: 0 }],
+    [true, 'supplier_credit', { payable_reduction: 0, refund_amount: 0, credit_amount: 37.5 }],
+    [false, 'reduce_payable', { payable_reduction: 37.5, refund_amount: 0, credit_amount: 0 }]
+  ]) {
+    const f = quoteFixture(); if (paid) f.events.push(f.pay(1))
+    const before = structuredClone({ purchase: f.purchase, events: f.events, selection: f.selection })
+    const result = await f.service.quoteReturn(actor, 8, { ...f.input, settlement_mode: mode })
+    assert.deepEqual(result.settlement, { mode, ...amounts })
+    assert.equal(result.preview_only, true); assert.equal(result.quantity, 3); assert.equal(result.total_amount, 37.5)
+    assert.deepEqual({ purchase: f.purchase, events: f.events, selection: f.selection }, before)
+    assert.deepEqual(f.calls.slice(-2), [['rollback'], ['release']])
+    assert.equal(f.calls.some(call => call[0] === 'commit'), false)
+  }
+})
+
+test('退供资金方式非法在租借前拒绝，付款状态变化须重新核对，不把退款与冲应付混用', async () => {
+  for (const settlement_mode of [null, undefined, '', 'refund', [], {}, true, 'supplier_credit\n']) {
+    const f = quoteFixture()
+    await assert.rejects(f.service.quoteReturn(actor, 8, { ...f.input, settlement_mode }), { statusCode: 400 })
+    assert.deepEqual(f.calls, [])
+  }
+  for (const [paid, mode] of [[false, 'supplier_refund'], [false, 'supplier_credit'], [true, 'reduce_payable']]) {
+    const f = quoteFixture(); if (paid) f.events.push(f.pay(1))
+    await assert.rejects(f.service.quoteReturn(actor, 8, { ...f.input, settlement_mode: mode }), { code: 'PURCHASE_RETURN_SETTLEMENT_CONFLICT' })
+    assert.deepEqual(f.calls.slice(-2), [['rollback'], ['release']])
+  }
+})
+
+test('退供资金规划只分配一个金额归属，零元和分币守恒，超限或坏状态不产生计划', () => {
+  for (const [status, mode, key] of [['unpaid', 'reduce_payable', 'payable_reduction'],
+    ['paid', 'supplier_refund', 'refund_amount'], ['paid', 'supplier_credit', 'credit_amount']]) {
+    for (const cents of [0, 29, 145, 9999999999]) {
+      const plan = planPurchaseReturnSettlement(status, mode, cents)
+      assert.equal(Math.round(plan[key] * 100), cents)
+      assert.equal(['payable_reduction', 'refund_amount', 'credit_amount'].reduce((sum, field) => sum + Math.round(plan[field] * 100), 0), cents)
+    }
+  }
+  for (const amount of [-1, 1.5, NaN, Infinity, '29', 10000000000]) {
+    assert.throws(() => planPurchaseReturnSettlement('paid', 'supplier_refund', amount), { code: 'PURCHASE_RETURN_SETTLEMENT_CONFLICT' })
+  }
+  assert.throws(() => planPurchaseReturnSettlement('unknown', 'supplier_refund', 29), { statusCode: 409 })
+})
+
+test('退供核对及试算共用完整付款方式时间核验，坏原登记或撤销不进入库存分配', async () => {
+  for (const extra of [{ payment_method: 'unknown' }, { payment_time: '2026-02-30 12:13:14' },
+    { payment_method: 'cash' }, { payment_time: '2026-11-13 12:13:15' }]) {
+    for (const operation of ['context', 'quote']) {
+      const f = quoteFixture()
+      f.events.push(f.pay(1), f.pay(2, 'cancel', extra))
+      const before = structuredClone(f.events)
+      await assert.rejects(operation === 'context' ? f.service.returnContext(actor, 8) : f.service.quoteReturn(actor, 8, f.input), { code: 'PURCHASE_PAYMENT_CONFLICT' })
+      assert.equal(f.calls.some(call => ['batches', 'selection'].includes(call[0])), false)
+      assert.deepEqual(f.events, before)
+      assert.deepEqual(f.calls.slice(-2), [['rollback'], ['release']])
+    }
+  }
 })
 
 test('候选已移走、跨采购或越权缺失、普通和SN数量不足、成本变动及用途歧义均拒绝试算', async () => {

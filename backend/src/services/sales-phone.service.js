@@ -1,5 +1,8 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
+const CustomerMutationAccessService = require('./customer-mutation-access.service')
 const SalesPhoneRepository = require('../repositories/sales-phone.repository')
 const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
 const { normalizeDateTime } = require('../utils/time')
@@ -21,8 +24,10 @@ class SalesPhoneService {
     inspectColumn = hasColumn,
     createMemberNumber = generateMemberNumber,
     getPointsConfig = getCustomerPointsConfig,
+    customerAccess = new CustomerMutationAccessService(),
     reconcilePoints = reconcileCustomerPointsForSale
   } = {}) {
+    this.customerAccess = customerAccess
     this.repository = repository
     this.normalizeDate = normalizeDate
     this.prepareInvoiceTransaction = prepareInvoiceTransaction
@@ -34,26 +39,34 @@ class SalesPhoneService {
   }
 
   /** 由调用方的销售事务管理客户资料，手机与商品结算复用同一入口。 */
-  async resolveCustomer(connection, customerInfo) {
+  async resolveCustomer(connection, customerInfo, actor) {
     const existing = await this.repository.findCustomerByPhone(connection, customerInfo.phone)
     if (existing) {
-      await this.repository.updateCustomer(connection, {
-        name: customerInfo.name, appleId: customerInfo.apple_id || null, customerId: existing.id
-      })
+      const nameChanged = customerInfo.name !== existing.name
+      const appleChanged = customerInfo.apple_id !== undefined && (customerInfo.apple_id || null) !== (existing.apple_id || null)
+      if (nameChanged || appleChanged) {
+        await this.customerAccess.require(actor, 'edit')
+        await this.repository.updateCustomer(connection, {
+          name: nameChanged ? customerInfo.name : null,
+          appleId: appleChanged ? customerInfo.apple_id || null : null, customerId: existing.id
+        })
+      }
       return existing.id
     }
+    await this.customerAccess.require(actor, 'create')
     const memberNumber = await this.createMemberNumber({ connection })
     return this.repository.createCustomer(connection, {
       name: customerInfo.name, phone: customerInfo.phone, appleId: customerInfo.apple_id || null, memberNumber
     })
   }
 
-  async accountSalePoints({ connection, saleId, customerId, salePrice, isNew, config }) {
+  async accountSalePoints({ connection, saleId, customerId, salePrice, isNew, config, hasAccessory = false }) {
     return this.reconcilePoints({ executor: connection, saleId, customerId, saleType: 'retail',
-      salePrice, isNew, config, initialize: true })
+      salePrice, isNew, config, initialize: true,
+      description: hasAccessory ? '购买手机+商品（自动生成）' : '购买手机（自动生成）' })
   }
 
-  async sell({ body = {}, userId, connection: transactionConnection, pointsConfig: transactionPointsConfig, deferPoints = false }) {
+  async sell({ body = {}, userId, actor, connection: transactionConnection, pointsConfig: transactionPointsConfig, deferPoints = false, hasAccessory = false }) {
     if (deferPoints && !transactionConnection) throw new Error('延迟积分必须使用共同结算事务')
     const {
       phone_id: phoneId,
@@ -119,19 +132,24 @@ class SalesPhoneService {
           await connection.beginTransaction()
           transactionStarted = true
         }
+        const scope = resolveStoreScope(actor)
+        const salesStoreId = assertStoreInScope(scope, body.store_id)
         const supportsPaymentChannel = await this.inspectColumn('sales', 'payment_channel', connection)
 
-        const customerId = await this.resolveCustomer(connection, customerInfo)
+        const customerId = await this.resolveCustomer(connection, customerInfo, actor)
 
         const phoneIds = phonesToSell.map(phone => phone.phone_id)
         const phoneChecks = await this.repository.findPhonesForSale(connection, phoneIds)
         if (phoneChecks.length !== phonesToSell.length) throw abort(404, '部分或全部设备不存在')
+
+        for (const phone of phoneChecks) assertStoreInScope(scope, phone.store_id)
 
         let preorder = null
         if (preorderId) {
           if (isBatchSale) throw abort(400, '预定交付只能销售一台已匹配设备')
           preorder = await this.repository.findPreorderForUpdate(connection, parseInt(preorderId))
           if (!preorder) throw abort(404, '预定单不存在')
+          assertStoreInScope(scope, preorder.store_id)
           if (preorder.status !== 'arrived') throw abort(400, '只有已匹配的预定单可以交付')
           if (Number(preorder.matched_phone_id) !== Number(phoneIds[0]) || Number(preorder.customer_id) !== Number(customerId)) {
             throw abort(400, '预定客户或交付设备与预定单不一致')
@@ -195,7 +213,7 @@ class SalesPhoneService {
             customerId,
             saleType: currentSaleType,
             operatorId: operatorId || userId,
-            storeId: body.store_id || null,
+            storeId: salesStoreId,
             salePrice: phone.sale_price,
             purchaseCost: phone.resolved_purchase_cost,
             paymentMethod: payment.payment_method,
@@ -271,7 +289,8 @@ class SalesPhoneService {
             customerId,
             salePrice: sale.phone.sale_price,
             isNew: sale.phone.is_new,
-            config: pointsConfig
+            config: pointsConfig,
+            hasAccessory
           })
           pointsEarned += points.points
           pointsEligibleAmount += points.eligibleAmount
@@ -306,6 +325,7 @@ class SalesPhoneService {
         }
       } catch (error) {
         if (transactionStarted) await connection.rollback()
+        if (error.statusCode === 403) return rejected(403, error.message)
         if (error.saleResult) return error.saleResult
         throw error
       }

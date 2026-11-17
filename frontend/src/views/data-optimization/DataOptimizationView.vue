@@ -34,7 +34,11 @@
                 <span>{{ tab.label }}</span>
               </span>
             </template>
-            <component :is="tab.component" />
+            <DataImportTab
+              v-if="tab.key === 'import'"
+              data-view-permission="data-import:view"
+            />
+            <DataCheckTab v-else />
           </el-tab-pane>
         </el-tabs>
         <DataEmptyState
@@ -49,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { computed, onMounted, ref, watch } from 'vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
@@ -61,6 +66,7 @@ const activeTab = ref('check')
 
 // 权限检查 - 使用 usePagePermissions
 const { canView } = usePagePermissions('data-optimization')
+const importPermissions = usePagePermissions('data-import')
 
 const optimizationTabs = [
   {
@@ -102,6 +108,7 @@ const canViewAnyOptimizationField = (fieldKeys: readonly string[]) => {
 
 const visibleOptimizationTabs = computed(() => {
   return optimizationTabs.filter(tab => (
+    (tab.key !== 'import' || importPermissions.canView.value) &&
     canViewOptimizationField(tab.accessField) &&
     canViewAnyOptimizationField(tab.contentFields)
   ))
@@ -124,6 +131,11 @@ onMounted(async () => {
   }
 
   await fieldPermissions.init()
+})
+
+usePageShortcuts('/data-optimization', {
+  'data-check': { open: () => { activeTab.value = 'check' }, allowed: () => visibleOptimizationTabs.value.some(tab => tab.key === 'check') },
+  'data-import': { open: () => { activeTab.value = 'import' }, allowed: () => visibleOptimizationTabs.value.some(tab => tab.key === 'import') }
 })
 </script>
 

@@ -257,7 +257,6 @@
                 >
                   已选择 {{ selectedCount }} 项
                   <el-button
-                    size="small"
                     @click="clearSelection"
                   >
                     清空选择
@@ -481,6 +480,7 @@
                       <div
                         v-if="canViewField('balance')"
                         class="table-info-line"
+                        @dblclick.stop="openAccountLedger(customer, 'balance')"
                       >
                         <span class="amount-label">余额</span>
                         <span class="amount-value">¥{{ formatAmount(customer.balance || 0) }}</span>
@@ -488,6 +488,7 @@
                       <div
                         v-if="canViewField('points')"
                         class="table-info-line"
+                        @dblclick.stop="openAccountLedger(customer, 'points')"
                       >
                         <span class="points-label">积分</span>
                         <span class="points-value">{{ customer.points || 0 }}</span>
@@ -591,7 +592,6 @@
                     <div class="action-buttons">
                       <el-button
                         type="info"
-                        size="small"
                         title="查看详情"
                         @click.stop="viewCustomerDetail(customer)"
                       >
@@ -601,7 +601,6 @@
                       <el-button
                         v-if="canEdit"
                         type="primary"
-                        size="small"
                         title="编辑客户"
                         @click.stop="requirePermission('edit', () => editCustomer(customer))"
                       >
@@ -611,7 +610,6 @@
                       <el-button
                         v-if="canDelete"
                         type="danger"
-                        size="small"
                         title="删除客户"
                         @click.stop="requirePermission('delete', () => deleteCustomer(customer))"
                       >
@@ -794,6 +792,7 @@
               >
                 <el-radio-group
                   v-model="customerForm.gender"
+                  class="tf-state-selector"
                   :disabled="!canEditField('gender')"
                 >
                   <el-radio value="male">
@@ -1032,6 +1031,164 @@
                 <template v-else>
                   {{ modalMode === 'add' ? '新增' : '保存' }}
                 </template>
+              </el-button>
+            </div>
+          </template>
+        </MobileDialog>
+
+        <MobileDialog
+          v-model="showAccountLedgerModal"
+          :title="`${accountLedgerKind === 'points' ? '积分' : '余额'}明细`"
+          dialog-class="crud-dialog-lg"
+          :show-default-footer="false"
+        >
+          <el-table
+            v-table-double-tap="accountLedgerTapOptions"
+            v-tf-loading="{ active: accountLedgerLoading, text: '正在读取账户明细...' }"
+            :data="accountLedgerRows"
+            row-key="id"
+            stripe
+            class="data-table admin-data-table"
+            @row-dblclick="accountLedgerDoubleClick"
+          >
+            <el-table-column
+              prop="created_at"
+              label="时间"
+              min-width="160"
+            >
+              <template #default="{ row }">
+                {{ formatDateTime(row.created_at, TIME_FORMATS.DATETIME) }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="变动"
+              min-width="100"
+              align="right"
+              header-align="right"
+            >
+              <template #default="{ row }">
+                <span :class="Number(row.delta) >= 0 ? 'text-success' : 'text-danger'">
+                  {{ Number(row.delta) >= 0 ? '+' : '' }}{{ accountLedgerKind === 'points' ? row.delta : `¥${formatAmount(row.delta)}` }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="source_type"
+              label="来源"
+              min-width="120"
+            />
+            <el-table-column
+              prop="note"
+              label="说明"
+              min-width="220"
+              class-name="wrapped-text-column"
+            />
+            <el-table-column
+              prop="operator_name"
+              label="操作人"
+              min-width="110"
+            />
+          </el-table>
+          <DataEmptyState
+            v-if="!accountLedgerLoading && !accountLedgerRows.length"
+            description="暂无账户变动明细"
+          />
+          <template
+            v-if="canManagePoints"
+            #footer
+          >
+            <div class="tf-dialog-actions">
+              <el-button
+                v-permission="'customers:manage'"
+                type="primary"
+                @click="openAccountAdjust"
+              >
+                <i class="fas fa-edit" />账户调整
+              </el-button>
+            </div>
+          </template>
+        </MobileDialog>
+
+        <RecordDetailDialog
+          v-if="showAccountLedgerModal"
+          v-model="accountLedgerDetailVisible"
+          title="账户流水详情"
+          :record="accountLedgerDetailRow"
+          :fields="accountLedgerDetailFields"
+          :has-actions="false"
+        />
+
+        <MobileDialog
+          v-model="showAccountAdjustModal"
+          title="账户调整"
+          dialog-class="crud-dialog-sm"
+          :close-on-click-modal="false"
+          :show-default-footer="false"
+        >
+          <el-form
+            class="tf-dialog-form tf-form-layout"
+            label-position="top"
+            :disabled="accountAdjustSaving"
+            @submit.prevent="submitAccountAdjust"
+          >
+            <el-form-item label="调整类型">
+              <el-radio-group
+                v-model="accountAdjustKind"
+                class="tf-state-selector"
+              >
+                <el-radio-button label="points">
+                  积分
+                </el-radio-button>
+                <el-radio-button label="balance">
+                  余额
+                </el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item
+              :label="accountAdjustKind === 'points' ? '积分变动' : '余额变动（元）'"
+              required
+            >
+              <AmountInput
+                v-if="accountAdjustKind === 'balance'"
+                v-model="accountAdjustDelta"
+                :step="0.01"
+              />
+              <el-input-number
+                v-else
+                v-model="accountAdjustDelta"
+                :step="1"
+                :controls="false"
+                class="w-full"
+              />
+            </el-form-item>
+            <el-form-item
+              label="变动说明"
+              required
+            >
+              <el-input
+                v-model="accountAdjustNote"
+                type="textarea"
+                class="tf-textarea"
+                :rows="3"
+                maxlength="500"
+                show-word-limit
+              />
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <div class="tf-dialog-actions">
+              <el-button
+                :disabled="accountAdjustSaving"
+                @click="showAccountAdjustModal = false"
+              >
+                取消
+              </el-button>
+              <el-button
+                type="primary"
+                :loading="accountAdjustSaving"
+                @click="submitAccountAdjust"
+              >
+                保存
               </el-button>
             </div>
           </template>
@@ -1523,7 +1680,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { usePageShortcuts } from '@/composables/useRouteDialog'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -1535,6 +1693,8 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { unifiedApi } from '@/utils/unified-api'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import { useLatestRequest } from '@/composables/useLatestRequest'
+import type { RecordDetailField } from '@/types/component'
 import { ElButton, ElTable } from 'element-plus'
 import Pagination from '../../components/Pagination.vue'
 import CustomerAddressFields from './page/CustomerAddressFields.vue'
@@ -1549,7 +1709,7 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { formatDate, formatAmount } from '@/utils/format'
+import { formatDate, formatAmount, formatDateTime } from '@/utils/format'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isValidPersonName, isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
@@ -1689,7 +1849,7 @@ const _router = useRouter()
 const { success, error, info, handleApiError, confirm } = useNotification({ debounce: true })
 const { refreshing, refresh } = useRefreshData()
 const { init: initFieldPermissions } = fieldPermissions
-const { isMobile } = useMobile()
+const { isMobile, isTablet } = useMobile()
 
 // 搜索高亮
 const { highlightText, isMatch, getMatchSnippet } = useSearchHighlight()
@@ -1758,11 +1918,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('customers_customersview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('customers_customersview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showSearchKeyword = computed(() => {
@@ -2023,6 +2179,24 @@ const stats = reactive<CustomerStatsState>({
 const showCustomerModal = ref(false)
 const showDetailModal = ref(false)
 const showPointsSettingsModal = ref(false)
+const showAccountLedgerModal = ref(false)
+const accountLedgerLoading = ref(false)
+interface CustomerAccountLedgerRow {
+  id: number
+  kind: 'balance' | 'points'
+  delta: number
+  source_type: string
+  note: string
+  operator_name: string | null
+  created_at: string
+}
+const accountLedgerRows = ref<CustomerAccountLedgerRow[]>([])
+const accountLedgerKind = ref<'balance' | 'points'>('points')
+const showAccountAdjustModal = ref(false)
+const accountAdjustSaving = ref(false)
+const accountAdjustKind = ref<'balance' | 'points'>('points')
+const accountAdjustDelta = ref<number | null>(null)
+const accountAdjustNote = ref('')
 const modalMode = ref<'add' | 'edit'>('add')
 const customerForm = ref<CustomerFormState>({
   id: null,
@@ -2053,6 +2227,87 @@ const customerForm = ref<CustomerFormState>({
   confirmPassword: ''
 })
 const selectedCustomer = ref<CustomerListItem | null>(null)
+const accountLedgerRequests = useLatestRequest()
+const canReadAccountLedger = computed(() => canView.value && canViewField(accountLedgerKind.value))
+const {
+  detailRow: accountLedgerDetailRow,
+  detailVisible: accountLedgerDetailVisible,
+  doubleTapOptions: accountLedgerTapOptions,
+  handleRowDoubleClick: accountLedgerDoubleClick
+} = useMobileTableDetail({
+  enabled: () => (isMobile.value || isTablet.value) && showAccountLedgerModal.value && canReadAccountLedger.value,
+  rows: accountLedgerRows,
+  getKey: row => row.id
+})
+const accountLedgerDetailFields = computed<RecordDetailField[]>(() => {
+  const row = accountLedgerDetailRow.value
+  if (!row || !canReadAccountLedger.value) return []
+  return [
+    { key: 'created_at', label: '时间', value: formatDateTime(row.created_at, TIME_FORMATS.DATETIME), visible: true, wide: true },
+    { key: 'delta', label: '变动', value: `${row.delta >= 0 ? '+' : ''}${accountLedgerKind.value === 'points' ? row.delta : `¥${formatAmount(row.delta)}`}`, visible: true },
+    { key: 'source_type', label: '来源', value: row.source_type, visible: true },
+    { key: 'operator_name', label: '操作人', value: row.operator_name, visible: true },
+    { key: 'note', label: '说明', value: row.note, visible: true, wide: true }
+  ]
+})
+watch([showAccountLedgerModal, canReadAccountLedger], ([open, allowed]) => {
+  if (open && allowed) return
+  accountLedgerRequests.cancelLatest()
+  accountLedgerRows.value = []
+  accountLedgerLoading.value = false
+  if (!allowed) showAccountLedgerModal.value = false
+})
+
+const openAccountLedger = async (customer: CustomerListItem, kind: 'balance' | 'points') => {
+  if (!canView.value || !canViewField(kind) || !customer?.id) return
+  const request = accountLedgerRequests.nextRequest()
+  accountLedgerRows.value = []
+  selectedCustomer.value = customer
+  accountLedgerKind.value = kind
+  showAccountLedgerModal.value = true
+  accountLedgerLoading.value = true
+  try {
+    const response = await unifiedApi.get<{ records: CustomerAccountLedgerRow[] }>(`/customers/${customer.id}/account-ledger`, {
+      params: { kind }, signal: request.signal, useCache: false, showLoading: false, showError: false
+    })
+    if (!request.isLatest() || !showAccountLedgerModal.value || !canReadAccountLedger.value) return
+    accountLedgerRows.value = Array.isArray(response.data?.records) ? response.data.records.map((row: CustomerAccountLedgerRow) => ({
+      ...row,
+      source_type: ({ phone_sale: '手机销售', phone_return: '手机退货', checkout_item: '商品销售', checkout_return: '商品退货', opening_balance: '历史期初', manual_adjustment: '人工调整', manual: '人工充值/调整' } as Record<string, string>)[row.source_type] || row.source_type
+    })) : []
+  } catch (err) {
+    if (!request.isLatest() || accountLedgerRequests.isCanceledError(err)) return
+    handleApiError(err, '加载账户明细失败')
+    accountLedgerRows.value = []
+  } finally {
+    if (request.isLatest()) accountLedgerLoading.value = false
+  }
+}
+const openAccountAdjust = () => {
+  accountAdjustKind.value = accountLedgerKind.value
+  accountAdjustDelta.value = null
+  accountAdjustNote.value = ''
+  showAccountAdjustModal.value = true
+}
+const submitAccountAdjust = async () => {
+  const delta = Number(accountAdjustDelta.value)
+  const note = accountAdjustNote.value.trim()
+  if (!selectedCustomer.value?.id || !Number.isFinite(delta) || delta === 0 || !note) {
+    error('请填写有效的变动数值和说明')
+    return
+  }
+  accountAdjustSaving.value = true
+  try {
+    const response = await unifiedApi.post(`/customers/${selectedCustomer.value.id}/account-adjustments`, { kind: accountAdjustKind.value, delta, note })
+    if (!response.success) throw new Error(response.message || '账户调整失败')
+    success('账户调整成功，已记录明细')
+    showAccountAdjustModal.value = false
+    await loadCustomers()
+    await openAccountLedger(selectedCustomer.value, accountAdjustKind.value)
+  } catch (err) {
+    handleApiError(err, '账户调整失败')
+  } finally { accountAdjustSaving.value = false }
+}
 // 表单验证错误
 const errors = ref<Record<string, string>>({})
 
@@ -2814,6 +3069,11 @@ const runMobileDetailAction = (action: 'edit' | 'delete') => {
   if (action === 'edit') editCustomer(row)
   else void deleteCustomer(row)
 }
+
+usePageShortcuts('/customers', {
+  'customer-create': { open: openAddModal },
+  'customer-points-settings': { open: openPointsSettings }
+})
 </script>
 
 <style lang="scss" scoped>

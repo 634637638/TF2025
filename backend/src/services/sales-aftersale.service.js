@@ -3,6 +3,7 @@
 const SalesCheckoutRepository = require('../repositories/sales-checkout.repository')
 const SalesGoodsReturnService = require('./sales-goods-return.service')
 const { validId, moneyCents } = require('../utils/sale-input')
+const { isIntegerInput } = require('../utils/input-values')
 const { resolveStoreScope } = require('../utils/store-scope')
 const { getActorId } = require('../types/actor')
 const { hasUnifiedPermission } = require('../middleware/unified-auth')
@@ -56,11 +57,11 @@ class SalesAftersaleService {
     const rows = await this.read(() => this.repository.returnChecklist(Number(orderId), Number(saleId), resolveStoreScope(actor, null)))
     if (!rows.length) reject('未找到可核对的当前手机原单，或无权访问该门店', 404, 'NOT_FOUND')
     const first = rows[0]
-    if (rows.some(row => row.item_id !== null && row.item_id !== undefined) && !await this.permissionCheck(actor, 'accessories:view')) {
+    if (rows.some(row => row.item_id !== null && row.item_id !== undefined) && !await this.permissionCheck(actor, 'query:goods-view')) {
       reject('无权查看关联商品，无法完成原单核对', 403, 'PERMISSION_DENIED')
     }
     const amount = moneyCents(first.phone_amount)
-    if (Number(first.phone_quantity) !== 1 || amount === null || !amount || !points(first.phone_points)) reject('手机原单金额或积分凭据异常')
+    if (!isIntegerInput(first.phone_item_id) || Number(first.phone_item_id) < 1 || Number(first.phone_quantity) !== 1 || amount === null || !amount || !points(first.phone_points)) reject('手机原单金额、标识或积分凭据异常')
     const replacements = new Map()
     const foreign = rows.filter(row => row.item_id !== null && row.item_id !== undefined &&
       row.goods_order_id !== undefined && Number(row.goods_order_id) !== Number(orderId))
@@ -77,6 +78,7 @@ class SalesAftersaleService {
     const accessories = []
     for (const row of rows) {
       if (row.item_id === null || row.item_id === undefined) continue
+      if (row.accessory_sale_id === null || row.accessory_sale_id === undefined || row.accessory_id === undefined) reject('关联商品原单标识缺失')
       if (!Array.isArray(row.return_history)) reject('关联商品缺少已退核对凭据')
       const plan = replacements.get(Number(row.item_id)) || planGoodsReturn(row, row.return_history, 0, [])
       const item = plan.item
@@ -86,7 +88,7 @@ class SalesAftersaleService {
           item.gift_return_unit_price === null ? null : moneyCents(item.gift_return_unit_price) * plan.remaining_quantity / 100 })
     }
     return { order_id: Number(first.order_id), order_no: first.order_no, store_id: Number(first.store_id),
-      phone: { item_id: first.phone_item_id, sale_id: Number(first.sale_id), phone_id: Number(first.phone_id),
+      phone: { item_id: Number(first.phone_item_id), sale_id: Number(first.sale_id), phone_id: Number(first.phone_id),
         total_amount: amount / 100, points_awarded: Number(first.phone_points) }, accessories }
   }
 }

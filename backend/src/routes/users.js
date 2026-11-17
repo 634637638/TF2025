@@ -38,7 +38,9 @@ router.get('/operators', unifiedAuth, requireAnyPermission([
   'sales:view',
   'inventory:view',
   'preorders:view',
-  'return-goods:view'
+  'return-goods:view',
+  'query:goods-sell',
+  'query:goods-gift'
 ]), auditUnpaginatedPersonnelSearch('users-operators'), userController.operators.bind(userController))
 
 /**

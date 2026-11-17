@@ -36,7 +36,6 @@
                 {{ getSensitivityLabel(group.sensitivity) }}
               </span>
               <el-button
-                size="small"
                 type="primary"
                 plain
                 @click="toggleGroup(group)"

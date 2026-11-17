@@ -13,7 +13,6 @@
       </h3>
       <div class="header-actions">
         <el-button
-          size="small"
           type="info"
           :loading="loading"
           @click="refreshWarnings"
@@ -22,7 +21,6 @@
           刷新
         </el-button>
         <el-button
-          size="small"
           @click="goToInventory"
         >
           <i class="fas fa-boxes" />
@@ -83,7 +81,7 @@
             </div>
             <div
               class="item-stock"
-              :class="getStockClass(item.stock_count)"
+              :class="getStockClass(item.stock_count, item.warning_threshold)"
             >
               <span class="stock-count">{{ item.stock_count }}</span>
               <span class="stock-label">台</span>
@@ -94,7 +92,7 @@
 
       <!-- 配件库存预警 -->
       <div
-        v-if="accessoryWarnings.length > 0"
+        v-if="visibleAccessoryWarnings.length > 0"
         class="warning-section accessory-warning"
       >
         <div class="section-header">
@@ -111,7 +109,7 @@
         </div>
         <div class="warning-list">
           <div
-            v-for="(item, index) in accessoryWarnings"
+            v-for="(item, index) in visibleAccessoryWarnings"
             :key="index"
             class="warning-item"
           >
@@ -125,7 +123,7 @@
             </div>
             <div
               class="item-stock"
-              :class="getStockClass(item.stock)"
+              :class="getStockClass(item.stock, item.min_stock)"
             >
               <span class="stock-count">{{ item.stock }}</span>
               <span class="stock-label">{{ item.status }}</span>
@@ -147,27 +145,33 @@ import { useAuthStore } from '@/stores/auth'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import type { AccessoryStockWarning, ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
 import { useNotification } from '@/composables/useNotification'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 const globalNotifications = useNotification()
 
 
 const router = useRouter()
 const authStore = useAuthStore()
+const accessoryPermissions = usePagePermissions('accessories')
 
 // 响应式数据
 const loading = ref(false)
 const phoneWarnings = ref<PhoneStockWarning[]>([])
 const accessoryWarnings = ref<AccessoryStockWarning[]>([])
 
-// 计算属性
-const total_warnings = computed(() => {
-  return phoneWarnings.value.length + accessoryWarnings.value.length
-})
-
+const canAccessDashboard = computed(() => canAccessRoutePath('/dashboard', authStore))
 const canAccessInventory = computed(() => canAccessRoutePath('/inventory', authStore))
+const canViewAccessoryWarnings = computed(() => accessoryPermissions.canView.value &&
+  ['basic_info.name', 'stock_info.min_stock', 'stock_info.total_quantity'].every(field =>
+    fieldPermissions.isFieldVisible('accessories_accessoriesview', field)))
+const visibleAccessoryWarnings = computed(() => canViewAccessoryWarnings.value ? accessoryWarnings.value : [])
+
+// 计算属性
+const total_warnings = computed(() => phoneWarnings.value.length + visibleAccessoryWarnings.value.length)
 
 // 获取预警数据
 const fetchWarnings = async () => {
-  if (!canAccessInventory.value) {
+  if (!canAccessDashboard.value) {
     phoneWarnings.value = []
     accessoryWarnings.value = []
     return
@@ -223,9 +227,9 @@ const goToInventory = () => {
 }
 
 // 获取库存状态样式
-const getStockClass = (stock: number) => {
+const getStockClass = (stock: number, threshold = 3) => {
   if (stock === 0) return 'stock-out'
-  if (stock <= 2) return 'stock-critical'
+  if (stock <= (threshold ?? 3)) return 'stock-critical'
   return 'stock-low'
 }
 

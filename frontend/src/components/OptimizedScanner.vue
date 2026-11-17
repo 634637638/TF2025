@@ -113,7 +113,7 @@
 import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
 
 import { scanOptimizer, type ScannerDeviceInfo } from '@/utils/scanOptimizer'
-import { parseDeviceScanResult } from '@/utils/device-scan-result'
+import { parseDeviceScanResult, type DeviceScanParseOptions } from '@/utils/device-scan-result'
 import zxingReaderWasmUrl from 'zxing-wasm/reader/zxing_reader.wasm?url'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 import type { CancelEmits, UpdateVisibleEmits, VisibleProps } from '@/types/component'
@@ -189,7 +189,7 @@ const getTorchCapabilities = (track: MediaStreamTrack): TorchMediaTrackCapabilit
 
 interface Props extends VisibleProps {
   scanType: 'imei' | 'serial'
-  serialProfile?: 'phone' | 'accessory'
+  serialProfile?: DeviceScanParseOptions['serialProfile']
   phone?: ScannerPhone
   showROIDisplay?: boolean
   enableAndroidOptimization?: boolean
@@ -229,7 +229,7 @@ const lastDecodedRaw = ref('')
 
 // 计算属性
 const title = computed(() => {
-  return props.scanType === 'imei' ? '扫码IMEI号' : '扫码序列号'
+  return props.scanType === 'imei' ? '扫码IMEI号' : props.serialProfile === 'product' ? '扫码商品条码 / SN' : '扫码序列号'
 })
 
 const dialogTitle = computed(() => (
@@ -241,7 +241,7 @@ const isAppleDevice = computed(() => /apple|iphone|ipad|苹果/i.test(props.phon
 const scanInstruction = computed(() => (
   props.scanType === 'imei'
     ? '将对应的IMEI条码横向对准蓝线'
-    : '将SN序列号条码横向对准蓝线'
+    : props.serialProfile === 'product' ? '将商品条码或SN横向对准蓝线' : '将SN序列号条码横向对准蓝线'
 ))
 
 const videoStyle = computed(() => {
@@ -481,7 +481,7 @@ const confirmScanResult = (value: string) => {
 
   navigator.vibrate?.(120)
   emit('success', value)
-  globalNotifications.success(`${props.scanType === 'imei' ? 'IMEI' : '序列号'}识别成功：${value}`)
+  globalNotifications.success(`${props.scanType === 'imei' ? 'IMEI' : props.serialProfile === 'product' ? '商品编码' : '序列号'}识别成功：${value}`)
 
   closeTimer = setTimeout(() => {
     emit('update:visible', false)

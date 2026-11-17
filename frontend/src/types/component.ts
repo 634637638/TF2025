@@ -327,7 +327,6 @@ export interface TableAction<T = Record<string, unknown>> {
   key: string
   label: string
   type?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'default'
-  size?: 'large' | 'default' | 'small'
   icon?: Component
   disabled?: (row: T) => boolean
   mobileOnly?: boolean

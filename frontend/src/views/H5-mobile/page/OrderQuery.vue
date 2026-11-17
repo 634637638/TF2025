@@ -65,7 +65,6 @@
           <el-form-item>
             <el-button
               type="primary"
-              size="large"
               :loading="verifying"
               class="w-full"
               @click="handleVerify"

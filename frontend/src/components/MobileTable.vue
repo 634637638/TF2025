@@ -69,7 +69,6 @@
                 v-for="action in actions"
                 :key="action.key"
                 :type="action.type || 'primary'"
-                :size="action.size || 'small'"
                 :icon="action.icon"
                 :disabled="action.disabled ? action.disabled(row) : false"
                 @click.stop="handleAction(action, row, $index)"

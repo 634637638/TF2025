@@ -1,6 +1,8 @@
 'use strict'
 
-const { getActiveSaleSql } = require('../utils/sale-status')
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
+const { getActiveSaleSql, getLatestActiveSaleIdSql } = require('../utils/sale-status')
 
 const { getDatabase } = require('../config/database')
 
@@ -9,7 +11,9 @@ class SubsidyPhoneSearchRepository {
     this.getDb = getDb
   }
 
-  async findSoldPhones(searchPattern) {
+  async findSoldPhones(searchPattern, scope) {
+    const conditions = ['1=1']; const scopeParams = []
+    appendStoreScopeCondition(scope, 'current_sale.store_id', conditions, scopeParams)
     const [rows] = await this.getDb().execute(`
       SELECT
         p.id as phone_id,
@@ -30,11 +34,12 @@ class SubsidyPhoneSearchRepository {
       LEFT JOIN models m ON p.model_id = m.id
       LEFT JOIN colors co ON p.color_id = co.id
       LEFT JOIN memories mem ON p.memory_id = mem.id
-      LEFT JOIN stores st ON p.store_id = st.id
-      WHERE p.status = 'sold'
+      JOIN sales current_sale ON current_sale.id = (${getLatestActiveSaleIdSql('p')})
+      LEFT JOIN stores st ON current_sale.store_id = st.id
+      WHERE p.status = 'sold' AND ${conditions.join(' AND ')}
         AND (p.imei LIKE ? OR p.serial_number LIKE ?)
       ORDER BY p.sale_time DESC
-    `, [searchPattern, searchPattern])
+    `, [...scopeParams, searchPattern, searchPattern])
     return rows
   }
 

@@ -7,6 +7,15 @@ class PhoneProductRepository {
     this.database = database
   }
 
+  async getResource(phoneId, imageId = null) {
+    const [rows] = await this.database().query(
+      `SELECT p.id, p.store_id FROM phones p WHERE p.id = ?
+       ${imageId === null ? '' : 'AND EXISTS (SELECT 1 FROM H5_images i WHERE i.id = ? AND i.phone_id = p.id)'}`,
+      imageId === null ? [phoneId] : [phoneId, imageId]
+    )
+    return rows[0] || null
+  }
+
   async getConfiguration(phoneId) {
     const [phones] = await this.database().query(
       `SELECT p.is_new, p.brand_id, p.model_id, p.color_id, h5.*

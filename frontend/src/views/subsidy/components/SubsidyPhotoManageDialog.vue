@@ -102,7 +102,6 @@
               <div class="photo-actions">
                 <el-button
                   type="primary"
-                  size="small"
                   title="查看照片"
                   aria-label="查看照片"
                   circle
@@ -113,7 +112,6 @@
                 <el-button
                   v-if="canUpload"
                   type="danger"
-                  size="small"
                   title="删除照片"
                   aria-label="删除照片"
                   circle

@@ -195,7 +195,6 @@
                   description="暂无供应商数据"
                 >
                   <el-button
-                    size="small"
                     type="info"
                     @click="loadSuppliers()"
                   >
@@ -339,7 +338,6 @@
                   <div class="action-buttons">
                     <el-button
                       type="success"
-                      size="small"
                       @click.stop="viewSupplier(row)"
                     >
                       <i class="fas fa-eye" /><span>查看</span>
@@ -347,7 +345,6 @@
                       v-if="canEdit"
                       v-permission="'suppliers:edit'"
                       type="primary"
-                      size="small"
                       @click.stop="editSupplier(row)"
                     >
                       <i class="fas fa-edit" /><span>编辑</span>
@@ -355,7 +352,6 @@
                       v-if="canDelete"
                       v-permission="'suppliers:delete'"
                       type="danger"
-                      size="small"
                       @click.stop="deleteSupplier(row)"
                     >
                       <i class="fas fa-trash" /><span>删除</span>
@@ -508,6 +504,7 @@
             >
               <el-radio-group
                 v-model="formData.status"
+                class="tf-state-selector"
                 :disabled="!canEditField('status')"
               >
                 <el-radio :value="1">
@@ -525,6 +522,7 @@
             >
               <el-radio-group
                 v-model="formData.business_scope"
+                class="tf-state-selector"
                 :disabled="!canEditField('business_scope')"
               >
                 <el-radio value="phone">
@@ -789,6 +787,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
@@ -864,11 +863,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('suppliers_suppliersview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('suppliers_suppliersview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
@@ -1586,6 +1581,10 @@ const runMobileDetailAction = (action: 'edit' | 'delete') => {
   if (action === 'edit') editSupplier(row)
   else void deleteSupplier(row)
 }
+
+usePageShortcuts('/suppliers', {
+  'supplier-create': { open: handleCreateSupplier }
+})
 </script>
 
 <style scoped src="./styles/suppliers-view/table.css"></style>

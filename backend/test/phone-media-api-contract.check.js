@@ -16,8 +16,8 @@ test('手机媒体只保留 canonical phones 路由并复用唯一控制器实�
     assert.doesNotMatch(shop, new RegExp(`phoneMediaController\\.${handler}`))
   }
 
-  assert.match(phones, /router\.post\('\/:id\/upload-image',\s*unifiedAuth,\s*requireAnyPermission\(PHONE_MEDIA_UPLOAD_PERMISSIONS\),\s*upload\.single\('image'\),\s*phoneMediaController\.uploadImage\s*\)/)
-  assert.match(phones, /router\.post\('\/:id\/upload-video',\s*unifiedAuth,\s*requireAnyPermission\(PHONE_MEDIA_UPLOAD_PERMISSIONS\),\s*videoUpload\.single\('video'\),\s*phoneMediaController\.uploadVideo\s*\)/)
+  assert.match(phones, /router\.post\('\/:id\/upload-image',\s*unifiedAuth,\s*requireAnyPermission\(PHONE_MEDIA_UPLOAD_PERMISSIONS\),\s*requirePhoneResourceAccess,\s*upload\.single\('image'\),\s*phoneMediaController\.uploadImage\s*\)/)
+  assert.match(phones, /router\.post\('\/:id\/upload-video',\s*unifiedAuth,\s*requireAnyPermission\(PHONE_MEDIA_UPLOAD_PERMISSIONS\),\s*requirePhoneResourceAccess,\s*videoUpload\.single\('video'\),\s*phoneMediaController\.uploadVideo\s*\)/)
 
   assert.doesNotMatch(shop, /migrationId|compatibilityId/)
   assert.doesNotMatch(shop, /router\.get\(\s*['"]\/phones\/:id\/images['"]/)

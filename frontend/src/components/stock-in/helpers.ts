@@ -7,7 +7,7 @@ import {
   getCachedColors,
   getCachedMemories,
   getModels,
-  getCachedStores,
+  getStores,
   getCachedSuppliers
 } from '@/services/reference-options'
 import type { Brand, Color, MemoryOption, Model } from '@/types'
@@ -407,7 +407,7 @@ export interface StockInDropdownData {
 export const loadStockInDropdownData = async (): Promise<StockInDropdownData> => {
   const results = await Promise.all([
     getCachedSuppliers(),
-    getCachedStores(),
+    getStores({ strictScope: true }),
     getCachedBrands(),
     getCachedColors(),
     getCachedMemories()

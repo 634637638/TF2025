@@ -12,7 +12,7 @@
 
 共同结算订单不沿用上文删除 `sales` 的旧撤销路径。旧手机入口仍返回保护错误；商品明细已接入[商品原单退货](../../guides/sales-transfer-transaction-standards.md#商品原单退货)，保留原订单、销售、明细、收款与采购事实，同事务追加商品返库、SN、积分与退款/补款确认凭据。综合查询商品模式支持分次、原SN及跨授权门店退回，显示原数量/已退/未退；资金不足追回优惠时展示客户补差价，不产生负退款。资金仅为线下确认记录，不执行第三方退款；原商品详情已接入[售后资金分页历史](../../guides/sales-transfer-transaction-standards.md#商品售后历史查询)。手机及其赠品联动退货改走[专用共同售后事务](../../guides/sales-transfer-transaction-standards.md#手机与关联商品退货)；商品换货已接独立办理，工资冲回仍未完成，不能将商品退货接入解释为放开手机旧删除路径。积分内部能力见[积分售后追加账](../../guides/customer-points-standard.md#积分售后追加账)，不能脱离完整业务事务单独提交。
 
-手机退库弹窗先通过[手机退货原单核对](../../guides/sales-transfer-transaction-standards.md#手机退货原单核对)确认当前销售来源，共同单展示配件原数量、已退/剩余及未退SN，仍禁止旧删除式提交；加载失败或结构未就绪不回退独立销售。核对成功后共同单嵌入 PhoneReturnForm，通过专用API同事务办理手机、关联配件、积分和一次退款/补款；原单保留，旧删除入口继续阻止。只读核对本身不写入；新结构未应用云端，不能把代码接通视为已上线。
+手机退库弹窗先通过[手机退货原单核对](../../guides/sales-transfer-transaction-standards.md#手机退货原单核对)确认当前销售来源，共同单展示配件原数量、已退/剩余及未退SN，仍禁止旧删除式提交；加载失败或结构未就绪不回退独立销售。核对成功后共同单嵌入 PhoneReturnForm，通过专用API同事务办理手机、关联配件、积分和一次退款/补款；原单保留，旧删除入口继续阻止。只读核对本身不写入；结构与实际验收状态以共同结算规范和 T22 为准，不能把代码接通视为已上线。数据库 BIGINT 明细ID须在服务边界核验为正安全整数后输出数字；前端保持严格原单契约，避免把正常字符串ID误报为“原单核对响应无效”。
 
 当前交易的定位和编辑/退库保护按最新未取消销售及真实 `sale_id` 关联，旧共同单不误关联后来的独立销售；永久删除仍检查全部共同历史。当前销售、返库门店、客户有效消费与原单历史的读取边界见[有效销售规范](../../backend/phone-status-standard.md#销售记录有效性与当前归属)。保留原销售的完整手机售后仍未开放，不能仅修改 `sales.status` 就视作库存、积分、资金和工资已结清。
 
@@ -48,6 +48,18 @@
 - `DELETE /api/query/returngoods/:id`：沿用 `return-goods:delete`；仅删除日志，不恢复原交易。
 
 全部接口复用统一JWT认证及服务端门店范围，前端动作隐藏不能替代后端检查。撤销成功清除综合查询与统计缓存。
+
+## 系统退库列表的联合售后记录
+
+`GET /api/query/returngoods` 合并旧 `sale_reversal_logs` 与 `sales_aftersales.operation_type=phone_return` 的手机凭据。列表、分页总数与统计在同连接只读 REPEATABLE READ 快照内读取；每条手机售后仅关联手机原明细，不能因多条关联商品重复计数。商品独立退换记录仍在综合查询商品售后中查看。本次不复制旧日志、不回填历史、不新增表。
+
+旧日志仍返回数字 `id`，联合售后使用 `aftersale:<售后ID>:<原手机明细ID>`，`record_source` 分别为 `legacy/sales_aftersale`。联合记录按原销售与接收门店双范围过滤，设备资料来自原共同明细快照，客户来自原共同订单，办理人及原销售员姓名来自当前用户资料，不冒充姓名历史快照。列表保留关键词、业务日期及稳定排序；原快照未知值保留空值。缺少售后结构返回409 `CHECKOUT_RETURN_NOT_READY`，不能吞成无记录。
+
+联合行的 `refund_amount/collection_amount` 表示整笔手机及关联商品的净资金，页面标明“整单退款/整单补款”，不当成单独手机退款。补款与退款共用 `record.refund_amount` 字段权限，隐藏时两者同时脱敏；补款不加入旧日志可写字段。联合凭据在电脑与手机详情均为只读，旧编辑/删除接口拒绝来源前缀ID（400 `RETURN_GOODS_READ_ONLY`）；其他非法ID返回400 `INVALID_RETURN_GOODS_ID`，防止数字前缀误操作同ID旧日志。原数字日志的授权编辑和删除保留。
+
+联合手机表单也保留公共“退货类型/处理方式”选项，默认“退货处理/重新入库”。两者仅记录线下后续处理意向；本次仍按用户实物确认返还库存，不执行返厂、维修、供应商退换、报废或另售新机。选项与校验复用原 `return-stock-options.json` 及 `normalizeReturnStockInfo`，在手机 `fact_snapshot` 保存，并参与原请求幂等摘要。前端修改后废弃报价、要求重新核对，结果未知时冻结；老客户端省略字段仍保持原请求摘要，历史未存字段按当时实际行为显示“退货处理/重新入库”，不回填数据库。
+
+正式回归：`backend/test/return-stock-details.check.js`、`backend/test/sales-phone-return.check.js`、`frontend/tests/returngoods-refresh.spec.ts`、`frontend/tests/phone-return.spec.ts`。隔离浏览器：`node frontend/scripts/test-mobile-record-details.mjs --returngoods-only` 覆盖手机只读详情、旧日志编辑与桌面动作；`node frontend/scripts/test-checkout-order.mjs --phone-return-only --viewports=360,375,390,430,767,768,1440` 覆盖选择保存、退款/补款、冻结与原键重试。真实云库只读验证不替代真实退款、返库或真机验收。
 
 ## 数据库升级与部署
 

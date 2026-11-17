@@ -24,7 +24,7 @@
 
 Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`、`el-cascader` 和 `el-time-picker` 自带内部输入框边框。即使历史组件需要传递 `.form-control` 以保持宽度，也只能由公共 `_form-controls.scss` 清除控件根节点的外层边框，最终保留一层内部边框；页面不得再次给这些组件添加外层边框。
 
-权限管理的模块管理页已移除五处下拉框的旧 `form-control` 及其重复外框、内边距和聚焦样式；手动添加模块的分类、图标与页面筛选共用全局选择框外观，`module-standard-select` 只维护布局宽度。
+权限管理的模块管理页已移除五处下拉框的旧 `form-control` 及其重复外框、内边距和聚焦样式；添加模块的分类、图标与页面筛选共用全局选择框外观，`module-standard-select` 只维护布局宽度。
 
 ## 手机表单字段布局
 
@@ -38,6 +38,8 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 - `v-if` 挂在实际字段上，权限隐藏后同组剩余字段自然补位，单字段铺满；`disabled`、字段权限、绑定和校验逻辑不因布局迁移改变。不要用空字段占位。
 - 间距读取 `--tf-space-*`；控件宽度随网格收缩，错误文案换行并占据正常文档流，不能压住下一行。开关、单选和复选仍保留公共控件外观。
 - 新页面和本次触及的存量表单必须接入；其他存量页面按改动范围逐步迁移，不代表仅更新公共样式就完成全站适配。只读详情的字段密度见[弹窗规范](dialog-standards.md#表单和正文)。
+
+用户明确要求短标签与单个短控件（数量或下拉选择）同行时，可在已有 `.tf-form-layout` 内的 `el-form-item` 显式添加 `.tf-form-field--inline`。公共 `_dialog.scss` 负责标签与控件同行、垂直居中及控件自适应剩余宽度，手机端也保留同行；不要在页面新增私有覆盖，不将此例外推广到默认置顶的其他字段。当前用于手机关联商品退货的“退回数量”和独立商品收银的“出库方式”“数量”“销售价”“现金收取”“找零”，验收须核对标签和控件不重叠、错误换行及手机边界；下拉框所在列须预留标签与选项的共同宽度。
 
 接入片段（位于已有表单中，`isMobile` 来自公共 `useMobile`）：
 
@@ -64,7 +66,11 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 
 客户新增/编辑及国补编辑已使用该公共行布局。验收须覆盖 375/430px、767/768px 相邻断点及桌面，分别检查长内容、字段权限隐藏、禁用、错误换行与正文滚动，静态审计不能替代浏览器检查。
 
+库存编辑复用 `.tf-form-row--three` 保留桌面三列，手机由公共入口收敛为两列；序列号与 IMEI 使用公共两列行组，备注跨列使用 `1 / -1`，不能用固定 `span 3` 在手机网格中生成额外列。手机状态移至编码下方，与入库价格按左/右两列同行，备注隐藏时也保留这组配对；顶部序列号与入库价格卡片同样两列，长序列号在卡片内完整换行。正式回归 `npm --prefix frontend run test:input-flows -- --inventory-edit` 加载真实组件及库存路由样式，覆盖320/375/430/767/768/1024/1440px明暗主题、完整及隐藏字段、只读和长内容边界；不访问业务接口，不替代物理设备验收。
+
 查看详情的旧分区容器接入 `.tf-detail-grid`，普通字段两列，地址、备注等长字段标记 `.tf-detail-field--wide`；公共 `RecordDetailDialog` 使用等价的 `wide` 字段属性。布局仅在手机断点调整，桌面原有分区和列数保留。描述列表统一使用 `RecordDescriptions`：手机两列且标签置顶，桌面保留调用方列数与方向；长字段 `span=2`，公共组件会补齐前一行短字段，避免 Element Plus 将长字段截到半行。不靠省略内容或缩小字号凑列数。所有网格子项须 `min-width:0` 且长值可换行，不能溢出弹窗。
+
+多选下拉使用公共最小高度，有标签时由 `_form-controls.scss` 的 `.el-select__wrapper:has(.el-select__selection .el-tag)` 允许内容自然撑高；不能固定高度后任标签溢出遮挡上下字段。大量选择优先使用 `collapse-tags`，需要核对完整内容时使用独立可滚动清单，不能展开全部标签覆盖其他设置。积分设置回归 `node frontend/scripts/test-customer-points-settings.mjs` 覆盖8类型/30商品长标签及320/375/430/767/768/1440px明暗主题的实际边界和保存。
 
 ## 输入内容与脏数据防护
 
@@ -86,6 +92,8 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 
 必填文本按字段允许的空白规则判断有效内容，纯空格不能通过；数字 `0` 与布尔 `false` 是否合法由字段契约决定，不得用真假值代替必填判断。缺省、`null`、空字符串和清空后的提交语义必须一致；可选空值不得静默变成 `0`，错误输入也不得转换为默认值后提交。
 
+商品收银编码输入沿用公共 `v-identifier-input="'serial-text'"` 阻止汉字，识别前由 `isValidProductCode` 校验1–100位可打印ASCII及非空内容；条码保留大小写、符号和前导零，不能先转成数字或大写。手机相机复用 `OptimizedScanner` 的 `serialProfile=product`，其解析器与手动录入使用同一校验；不套用手机包装SN前缀处理，也不截断超长条码。配件SN仍单独按原规则大写核对，普通商品名称/类型检索继续允许中文。正式回归见 `accessory-scan.spec.ts`、`sales-goods-checkout.spec.ts`；实际相机与扫码枪另验。
+
 ### 标准化与拒绝边界
 
 - 标准化只处理契约明示且不改变含义的格式，例如手机号约定的空格、短横线和国家区号；规则须与[客户检索规范](customer-search-standard.md#数据要求)一致。全角数字、大小写及首尾空格是否转换也必须明确，不能各页面自行决定。
@@ -98,7 +106,7 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 
 ### 输入、提交与后端兜底
 
-设备编码共用 `backend/src/config/input-validation.json` 的 `imei` / `phoneSerial`，前端唯一工具为 `utils/device-identifier.ts`，后端复用 `utils/imei.js`。标准 IMEI 为完整15位数字；手机 SN 为4–50位字母、数字、斜杠或连字符，分隔符须位于编码片段之间，保留前导零并转大写。无 IMEI 设备使用同一个合法 SN 作为 IMEI。入库、综合查询编辑、快速出库和导入不再删除非法字符或截短后提交；配件 SN 继续按其独立业务档位校验。扫码保留明确标签提取和 Apple 前缀选项，IMEI 扫码额外校验校验位，不能从超长或混入字符的字段提取有效前缀。手输与历史接口保持原有格式校验，不因本次统一新增 IMEI 校验位门槛。
+设备编码共用 `backend/src/config/input-validation.json` 的 `imei` / `phoneSerial`，前端唯一工具为 `utils/device-identifier.ts`，后端复用 `utils/imei.js`。标准 IMEI 为完整15位数字；手机 SN 为4–50位字母、数字、斜杠或连字符，分隔符须位于编码片段之间，保留前导零并转大写。无 IMEI 设备使用同一个合法 SN 作为 IMEI。入库、综合查询编辑、快速出库和导入不再删除非法字符或截短后提交；配件 SN 继续按其独立业务档位校验。编码文本框统一接入全局 `v-identifier-input`：键入、粘贴、拖放及中文输入法提交时主动阻止不符合字符集的内容，且不通过删除字符将错误值改造成合法值；规则仍在提交及服务端复核。扫码保留明确标签提取和 Apple 前缀选项，IMEI 扫码额外校验校验位，不能从超长或混入字符的字段提取有效前缀。手输与历史接口保持原有格式校验，不因本次统一新增 IMEI 校验位门槛。
 
 1. 输入阶段复用 Element Plus、`AmountInput` 和公共标准化工具，保留小数点、负号等合法编辑中间态。`inputmode`、`type`、`min/max` 及 `maxlength` 只改善输入体验，不能充当完整验证。
 2. 中文输入法组合输入期间不清洗、不截断正在组合的文字，也不重复提示；组合完成后统一处理。键盘、粘贴、拖入、自动填充、扫码和程序回填须遵守相同字段契约，不能只拦截 `keydown`。
@@ -116,7 +124,7 @@ Excel 导入同样在查询及业务写入前检查设备、姓名、手机号�
 | --- | --- |
 | 品牌、型号、颜色、内存、门店、供应商 | `backend/src/utils/reference-options.js` 的 `parseReferenceInput/Id/Order`；名称单行1–100字、状态0/1、排序为0至2147483647整数；排序整份预检，缺项或重复ID不得先更新部分记录。地址、电话及备注仍按各业务字段声明 |
 | 员工与用户 | `backend/src/utils/account-input.js`；用户名/姓名最多50字，姓名复用公共文字规则，手机号/邮箱共用公共校验；密码不转义、不裁剪或去空格。用户管理保留空姓名回退用户名、空密码不更新、关联编号0表示未分配的既有契约；员工角色数组复用 `normalizeRoleIds` |
-| 维修 | `backend/src/utils/repair-input.js`；费用为非负两位金额；型号100字、故障/备注1000字。现场维修和历史设备编码只按100字单行文本约束，不套用库存15位IMEI规则 |
+| 维修 | `backend/src/utils/repair-input.js`；费用为非负两位金额；型号100字、故障/备注1000字。现场维修和历史设备编码只按100字单行文本约束，不套用库存IMEI/SN完整格式；当前录入框仍主动阻止汉字，不改写已载入的历史值 |
 | 租赁 | `backend/src/utils/rental-input.js`；金额非负且最多两位、买断期数1–12、关联ID完整正整数、监管锁使用明确布尔值；还款及归还复用同一规则。前端先校验全部待提交合同，再保存客户；空成本不提交、显式零成本保留 |
 | 国补与销售设备编辑 | 复用 `subsidy-input.js` / `device-identifier.ts`，IMEI/SN非法内容不删除或截短；只校验实际有权提交的字段，隐藏历史值不阻止其他字段修改 |
 | 价目手工与Excel | `backend/src/utils/price-input.js`；金额非负两位、库存数量非负整数、状态0/1、品牌/型号必填且最多100字。Excel显式允许完整千分组 `1,234.50`，不删除百分号、单位或混输字符；按原逐行汇总机制拒绝非法行，不调用该行upsert |
@@ -184,23 +192,33 @@ Excel 导入同样在查询及业务写入前检查设备、姓名、手机号�
 
 ## 下拉列表滚动
 
+- 远程 `el-select` 分页统一通过公共 `frontend/src/composables/useSelectLoadMore.ts` 监听 `popup-scroll`，复用 Select 内置 Scrollbar 的实际高度判断触底，不嵌套第二个滚动容器。业务方保留加载中、失败及末页禁用判断，首次读取和手动重试仍由原业务入口处理；搜索取消旧请求继续使用 `useLatestRequest`。
+- 不再使用已弃用的 `v-infinite-scroll`，也不注册同名自定义指令或屏蔽弃用警告。`check:component-adoption` 检查旧指令回流；相关行为回归见 `frontend/tests/select-load-more.spec.ts`，商品入库下拉的真实滚动验证使用 `node frontend/scripts/test-accessory-stock-correction.mjs --template-search-only`。
 - 选择、级联、自动补全、日期时间和操作菜单下拉统一由 `frontend/src/styles/components/_scrollbars.scss` 隐藏可见滚动条，包含浏览器原生滚动条、上下滚动按钮和 Element Plus 的 `.el-scrollbar__bar`；页面不再单独维护。
 - 只隐藏滚动条的视觉元素，不删除滚动容器或设置 `overflow-y: hidden` / `overflow: clip`；列表原有最大高度、鼠标滚轮、触摸滑动和键盘定位能力保留，长列表仍可查看全部选项。
 - 公共客户检索结果沿用同一滚动条入口，继续遵守[客户检索统一规范](customer-search-standard.md)的滚动容器和高度豁免要求。
 - 自定义业务下拉的实际滚动容器必须添加公共语义 class `tf-dropdown-scroll`，复用同一原生滚动条隐藏规则，不在页面复制 CSS。商城首页型号、颜色、内存三个筛选列表已接入；保留各自的最大高度和滚动行为。
 - `check:form-controls` 检查公共样式导入、下拉类型覆盖、原生和组件滚动条隐藏规则及滚动能力边界。
 
-## 分段单选控件（tf-segment）
+## 互斥切换控件（tf-state-selector）
 
-互斥的短选项切换（如可见范围“公开/私有”、状态或条件类型）使用 `el-radio-group` + `el-radio-button` 的分段控件，属于表单控件语义，必须与同行输入框等高，不作为命令按钮或 TAB 另行维护。
+互斥选项统一使用 `el-radio-group.tf-state-selector`。按钮式切换使用 `el-radio-button`，常规表单单选可以使用 `el-radio`；两种语义由同一公共入口管理字号、颜色、布局和禁用态。互斥切换与页面导航 Tab 不同，不添加 Tab 外层容器，也不复用 `tf-page-tabs`。
 
-- 分段控件的唯一规格入口是 `frontend/src/styles/components/_form-controls.scss` 中的 `.tf-segment` 语义段；业务页面在 `el-radio-group` 上挂 `tf-segment` class，复用统一高度、圆角、字号、边框和选中配色。
-- 高度与输入框一致：PC 使用 `--input-height-default`，手机端使用 `--mobile-control-height`，两者由公共段按断点自动赋值；页面不得为 `.el-radio-button__inner` 再设 `height`、`min-height` 或 `border-radius`。
-- 选中态统一使用主操作色 `--tf-button-primary-bg` / `--tf-button-primary-color`，未选中使用中性边框 `--tf-button-neutral-border` 和文字 `--tf-button-neutral-color`；悬停使用 `--tf-button-primary-border` 描边。相邻段通过 `border-left-width: 0` 消除双边框，禁止页面用负 `margin`、`z-index` 或私有配色复制。
-- Element Plus 选中背景由 `.el-radio-button.is-active .el-radio-button__original-radio:not(:disabled) + .el-radio-button__inner`（特异性 0,5,0）提供；公共段的选中规则必须同时包含 `.is-active` 和 `:checked`，使特异性高于 Element Plus 默认，否则选中态会退回默认蓝 `#409eff` 而不是主操作色。
-- 页面只维护布局：分段数量对应的列数、宽度、是否撑满（`width: 100%`）以及选项内部图标/文字排版；不得复制 `__inner` 的高度、圆角、字号或选中配色。
-- 当前已接入 `tf-segment` 的页面：分享可见范围（SharedView）、营销条件（MarketingView）、预订单匹配状态（PreordersView）。分析、报表等历史 `size="small"` 分段控件尚未统一，按后续任务迁移。
-- `check:form-controls` 断言 `.tf-segment` 公共段存在、高度来自输入框令牌且选中态使用主操作色，页面私自复制分段规格时审计失败。
+- 唯一视觉入口是 `frontend/src/styles/components/_tabs.scss` 中的 `.tf-state-selector`，选项高度、字号、边框、圆角、悬停和选中态均读取同一组 Tab 按钮令牌。
+- 每个 `el-radio-group` 必须显式添加 `tf-state-selector`。迁移只改变外观和控件组件，不得改变现有绑定值、权限、提交或业务事件。
+- 按钮式选项使用独立边框按钮，不显示页面 Tab 的背景容器；Element Plus 的默认选中色必须由公共规则覆盖。
+- 页面仅维护控件位置、是否撑满和选项内容布局，不得声明控件字号、尺寸、边框、圆角、阴影或选中颜色。
+- 禁止使用裸 `el-segmented` 或另建 `.tf-segment`、`.tf-segmented` 等平行样式入口。需要互斥按钮时统一用 `el-radio-group + el-radio-button`。
+- `el-switch` 只用于独立的启用/停用布尔状态，不替代互斥选项；其视觉沿用 Element Plus 全局开关样式。
+- `check:form-controls` 会拒绝未接入 `tf-state-selector` 的 `el-radio-group`，并拒绝 `el-segmented` 和旧样式类。
+
+## 同行只读信息（tf-control-display）
+
+与分段筛选、输入框同行的短排序说明及缩略单号，使用公共 `.tf-control-display`。唯一样式入口为 `_form-controls.scss`，高度按 PC 的 `--input-height-default`、手机的 `--mobile-control-height` 读取，当前均为30px；`border-box` 将边框计入总高，垂直内边距为0，不能依靠正文行高或页面内边距撑高。
+
+强调信息增加 `.tf-control-display--accent`；需省略的文字使用 `.tf-control-display__text`，保留完整 `title` 或既有复制操作。公共入口统一内边距、字体、圆角及颜色，页面仅管理宽度、位置、换行和权限显隐，不另加皮肤或手机尺寸覆盖。排序说明仍是只读内容，复制操作继续使用公共 `el-button link` 和剪贴板工具；与20px小号状态标签同行的单号增加 `.tf-control-display--compact`，复用公共 `--admin-data-table-badge-height`，链接按钮的垂直内边距由公共 `_buttons.scss` 收紧；状态标签继续使用原小号，不放大。普通命令按钮与表格状态标签继续按各自语义规格显示。
+
+`FilmServiceDialog` 的分类筛选、最新优先说明和单号复制区域分别采用30px筛选/排序和20px标签/单号组合。`/standards` 的表单预览展示公共规格，`check:form-controls` 检查唯一高度来源；`node frontend/scripts/test-checkout-order.mjs --film-service-only --viewports=375,430,768,1280` 使用真实组件及公共样式测量筛选、排序和单号外框，检查明暗主题与窄屏边界。隔离服务不会写真实业务数据。
 
 ## 原生业务输入盘点
 

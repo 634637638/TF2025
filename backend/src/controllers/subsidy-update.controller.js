@@ -11,9 +11,10 @@ class SubsidyUpdateController {
 
   async update(req, res) {
     try {
-      const result = await this.service.update(req.params.id, req.body || {})
+      const result = await this.service.update(req.params.id, req.body || {}, req.user)
       return res.status(result.status).json(result.body)
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 更新国补信息失败:', error)
       return res.status(500).json({
         success: false,

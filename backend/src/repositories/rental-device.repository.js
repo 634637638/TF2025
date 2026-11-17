@@ -1,5 +1,7 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 
 const SEARCH_COLUMNS = {
@@ -16,8 +18,10 @@ class RentalDeviceRepository {
     this.getDb = getDb
   }
 
-  async listAvailable({ keyword, searchableFieldIds, page, pageSize, hasPagination }) {
+  async listAvailable({ scope, keyword, searchableFieldIds, page, pageSize, hasPagination }) {
     const params = []
+    const conditions = ['1=1']
+    appendStoreScopeCondition(scope, 'p.store_id', conditions, params)
     let searchSql = ''
     if (keyword) {
       const columns = searchableFieldIds.map(fieldId => SEARCH_COLUMNS[fieldId]).filter(Boolean)
@@ -36,7 +40,7 @@ class RentalDeviceRepository {
        LEFT JOIN models m ON m.id = p.model_id
        LEFT JOIN colors co ON co.id = p.color_id
        LEFT JOIN memories mem ON mem.id = p.memory_id
-       WHERE p.status = 'in_stock' ${searchSql}
+       WHERE ${conditions.join(' AND ')} AND p.status = 'in_stock' ${searchSql}
        ORDER BY p.inventory_time DESC, p.id DESC${paginationSql}`,
       params
     )

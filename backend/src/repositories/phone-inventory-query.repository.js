@@ -2,6 +2,7 @@
 
 const { getActiveSaleSql, getLatestActiveSaleIdSql } = require('../utils/sale-status')
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
 const { withConnection } = require('../core/db/connection')
 
 const { getDatabase } = require('../config/database')
@@ -16,9 +17,10 @@ class PhoneInventoryQueryRepository {
     this.databaseProvider = databaseProvider
   }
 
-  async listInventoryPhones(filters, { page, page_size }) {
+  async listInventoryPhones(filters, { page, page_size, scope }) {
     const whereConditions = []
     const queryParams = []
+    appendStoreScopeCondition(scope, 'p.store_id', whereConditions, queryParams)
 
     if (filters.brand_id) {
       whereConditions.push('p.brand_id = ?')
@@ -247,7 +249,10 @@ class PhoneInventoryQueryRepository {
     })
   }
 
-  async getSoldTimeline() {
+  async getSoldTimeline(scope) {
+    const conditions = ["p.status = 'sold'"]
+    const params = []
+    appendStoreScopeCondition(scope, 'COALESCE(latest_sale.store_id, p.store_id)', conditions, params)
     return withConnection(this.databaseProvider(), async connection => {
       const [rows] = await connection.execute(`
         SELECT
@@ -274,14 +279,18 @@ class PhoneInventoryQueryRepository {
         ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1 AND ${getActiveSaleSql('latest_sale')}
         LEFT JOIN customers c ON latest_sale.customer_id = c.id
         LEFT JOIN stores st ON p.store_id = st.id
-        WHERE p.status = 'sold'
+        WHERE ${conditions.join(' AND ')}
         ORDER BY latest_sale.sale_time DESC
-      `, [])
+      `, params)
       return rows
     })
   }
 
-  async searchByIdentifier(searchKeyword) {
+  async searchByIdentifier(searchKeyword, scope) {
+    const conditions = []
+    const params = []
+    appendStoreScopeCondition(scope, 'COALESCE(latest_sale.store_id, p.store_id)', conditions, params)
+    const scopeSql = conditions.length ? ` AND ${conditions.join(' AND ')}` : ''
     return withConnection(this.databaseProvider(), async connection => {
       const selectFields = `
         p.id,
@@ -313,9 +322,9 @@ class PhoneInventoryQueryRepository {
       const [exactResults] = await connection.execute(`
         SELECT ${selectFields}
         ${joins}
-        WHERE p.imei = ? OR p.serial_number = ?
+        WHERE (p.imei = ? OR p.serial_number = ?)${scopeSql}
         LIMIT 1
-      `, [searchKeyword, searchKeyword])
+      `, [searchKeyword, searchKeyword, ...params])
       if (exactResults.length > 0) {
         return { exact: exactResults[0], fuzzy: [] }
       }
@@ -324,7 +333,7 @@ class PhoneInventoryQueryRepository {
       const [fuzzyResults] = await connection.execute(`
         SELECT ${selectFields}
         ${joins}
-        WHERE p.imei LIKE ? OR p.serial_number LIKE ?
+        WHERE (p.imei LIKE ? OR p.serial_number LIKE ?)${scopeSql}
         ORDER BY
           CASE
             WHEN p.imei = ? THEN 1
@@ -335,7 +344,7 @@ class PhoneInventoryQueryRepository {
           END
         LIMIT 10
       `, [
-        fuzzyPattern, fuzzyPattern,
+        fuzzyPattern, fuzzyPattern, ...params,
         searchKeyword, searchKeyword,
         `${searchKeyword}%`, `${searchKeyword}%`
       ])

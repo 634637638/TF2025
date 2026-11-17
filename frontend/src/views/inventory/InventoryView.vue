@@ -159,6 +159,7 @@ import { useNotification } from '@/composables/useNotification'
 import { useImportExport } from '@/composables/useImportExport'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { extractResponseData, getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
@@ -203,10 +204,6 @@ type InventoryOption = {
   sort_order?: number
 }
 
-type InventoryEditItem = InventoryItem & {
-  created_by_name?: string
-}
-
 const router = useRouter()
 const route = useRoute()
 const mobileDetection = useMobileDetection()
@@ -225,6 +222,9 @@ const authStore = useAuthStore()
 const { init: initFieldPermissions } = fieldPermissions
 const { exportFile, buildDateFilename } = useImportExport()
 const exporting = ref(false)
+const editDetailRequest = useLatestRequest()
+const editModelsRequest = useLatestRequest()
+const editSubmitRequest = useLatestRequest()
 
 // 搜索相关状态
 const searchExpanded = ref(false) // 搜索区域展开状态（移动端默认折叠）
@@ -242,6 +242,14 @@ const inventoryFieldMap: Record<string, string> = {
   stats_used_phones: 'stats.used_phones',
   stats_inventory_value: 'stats.inventory_value',
   supplier_name: 'supplier_info.supplier_name',
+  supplier_id: 'supplier_info.supplier_name',
+  store_id: 'store_info.store_name',
+  brand_id: 'basic.brand',
+  model_id: 'basic.model',
+  color_id: 'basic.color',
+  memory_id: 'basic.memory',
+  condition: 'basic.is_new',
+  status: 'basic.status',
   store_name: 'store_info.store_name',
   brand: 'basic.brand',
   model: 'basic.model',
@@ -252,7 +260,6 @@ const inventoryFieldMap: Record<string, string> = {
   purchase_cost: 'price_info.purchase_cost',
   inventory_operator_name: 'operator_info.inventory_operator_name',
   is_new: 'basic.is_new',
-  status: 'basic.status',
   inventory_time: 'time_info.inventory_time',
   purchase_number: 'purchase_info.purchase_number',
   remarks: 'other_info.remarks',
@@ -268,16 +275,15 @@ const canViewField = (fieldName: string) => {
   return fieldPermissions.isFieldVisible('inventory_inventoryview', getInventoryFieldKey(fieldName))
 }
 
-const canEditField = (fieldName: string) => {
-  if (!canViewField(fieldName)) {
-    return false
-  }
-
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('inventory_inventoryview', getInventoryFieldKey(fieldName))
+const canEditField = (fieldName: string): boolean => {
+  if (!canEdit.value || !canViewField(fieldName)) return false
+  const editable = fieldPermissions.isFieldEditable(
+    'inventory_inventoryview', getInventoryFieldKey(fieldName), { allowUnconfigured: true }
+  )
+  // 品牌变更会重置型号；不能通过联动清掉只读型号。
+  if (fieldName === 'brand' || fieldName === 'brand_id') return editable && canEditField('model')
+  if (fieldName === 'model' || fieldName === 'model_id') return editable && canViewField('brand')
+  return editable
 }
 
 // 根据屏幕宽度动态配置表格列
@@ -479,7 +485,7 @@ const showStockInModal = ref(false)
 
 // 编辑弹窗相关
 const showEditModal = ref(false)
-const selectedPhoneForEdit = ref<InventoryEditItem | null>(null)
+const selectedPhoneForEdit = ref<InventoryItem | null>(null)
 const submitting = ref(false)
 const editForm = reactive({
   brand_id: null as number | null,
@@ -848,15 +854,18 @@ const editItem = async (item: InventoryItem) => {
     return
   }
 
+  const request = editDetailRequest.nextRequest()
   // 先打开弹窗反馈点击，再后台读取最新规范字段（各类 *_id、IMEI 等）。
   selectedPhoneForEdit.value = item
   showEditModal.value = true
 
   try {
     const response = await api.get(`/inventory/${item.id}`, {
+      signal: request.signal,
       useCache: false,
       showError: false
     })
+    if (!request.isLatest() || !showEditModal.value || selectedPhoneForEdit.value?.id !== item.id || !canEdit.value) return
     if (response.success) {
       const detail = extractResponseData<InventoryItem>(response)
       if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
@@ -864,6 +873,7 @@ const editItem = async (item: InventoryItem) => {
       }
     }
   } catch (detailError) {
+    if (!request.isLatest() || editDetailRequest.isCanceledError(detailError)) return
     logger.warn('读取库存详情失败，使用列表数据打开编辑:', detailError)
   }
 
@@ -925,16 +935,6 @@ watch([showEditModal, selectedPhoneForEdit], async ([newVal, selectedPhone]) => 
   if (newVal && selectedPhone) {
     const phone = selectedPhone
 
-    // 打印原始数据用于调试
-
-    // 获取入库员姓名
-    const _operatorName = phone.inventory_operator_name ||
-                         phone.purchase_operator_name ||
-                         phone.operator_name ||
-                         phone.created_by_name ||
-                         authStore.user?.name ||
-                         '当前用户'
-
     // 填充表单数据
     Object.assign(editForm, {
       brand_id: phone.brand_id ?? null,
@@ -992,6 +992,7 @@ const detectEditNoIMEIMode = (imei: string | undefined, serialNumber: string | u
 
 // 切换编辑模式的无IMEI状态
 const toggleEditNoIMEIMode = () => {
+  if (!canEditField('imei')) return
   editIsNoIMEIMode.value = !editIsNoIMEIMode.value
 
   if (editIsNoIMEIMode.value) {
@@ -1009,6 +1010,7 @@ const toggleEditNoIMEIMode = () => {
 
 // 格式化编辑模式的IMEI
 const formatEditIMEI = () => {
+  if (!canEditField('imei')) return
   if (editForm.imei) {
     if (editIsNoIMEIMode.value) {
       // 无IMEI模式：允许数字和字母，字母转大写
@@ -1025,6 +1027,7 @@ const formatEditIMEI = () => {
 
 // 编辑弹窗的品牌变更处理
 const onEditBrandChange = async () => {
+  if (!canEditField('brand')) return
   editForm.model = ''
   editForm.model_id = null
   const selectedBrand = brands.value.find(brand => brand.name === editForm.brand)
@@ -1038,12 +1041,14 @@ const onEditBrandChange = async () => {
 }
 
 const onEditModelChange = (modelName: string) => {
+  if (!canEditField('model')) return
   const normalizedName = String(modelName || '').trim()
   editForm.model_id = editModelIdsByName.value[normalizedName] ?? null
 }
 
 // 获取编辑弹窗品牌对应的型号列表
 const fetchEditBrandModels = async (brandName: string) => {
+  const request = editModelsRequest.nextRequest()
   if (!brandName) {
     editBrandModels.value = []
     return
@@ -1066,6 +1071,7 @@ const fetchEditBrandModels = async (brandName: string) => {
 
     // 使用品牌ID获取型号列表
     const response = await getModels({ brandId: brand.id, status: 1 })
+    if (!request.isLatest() || !showEditModal.value || editForm.brand !== brandName) return
     if (response.success) {
       const modelsData = extractResponseData<ReferenceRecord[]>(response)
 
@@ -1082,6 +1088,7 @@ const fetchEditBrandModels = async (brandName: string) => {
       editBrandModels.value = []
     }
   } catch (err) {
+    if (!request.isLatest()) return
     logger.error('获取型号列表失败:', err)
     editBrandModels.value = []
   }
@@ -1090,24 +1097,26 @@ const fetchEditBrandModels = async (brandName: string) => {
 // 提交编辑
 const submitEdit = async () => {
   if (submitting.value) return
+  if (!canEdit.value) { handleNoPermission('edit'); return }
   const selectedPhone = selectedPhoneForEdit.value
   if (!selectedPhone) {
     error('请选择要编辑的设备')
     return
   }
+  const request = editSubmitRequest.nextRequest()
   try {
     submitting.value = true
 
     // 验证必填字段
     // 如果没有IMEI但有序列号，则自动将IMEI设置为序列号（适用于无IMEI的设备如iPad、手表等）
-    if (!editForm.imei && editForm.serial_number) {
+    if (canEditField('imei') && !editForm.imei && canViewField('serial_number') && editForm.serial_number) {
       editForm.imei = editForm.serial_number
     }
 
     // 对于手机设备（品牌包含iPhone、小米、华为等），IMEI必须是15位
     // 对于非手机设备（AirPods、iPad等），IMEI可以不是15位
     const isPhoneDevice = /^(iPhone|华为|小米|红米|OPPO|vivo|三星|荣耀|realme|一加|魅族|诺基亚|索尼|LG|摩托罗拉)/i.test(editForm.brand || '')
-    if (isPhoneDevice && editForm.imei && editForm.imei.length < 15) {
+    if (canEditField('imei') && isPhoneDevice && editForm.imei && editForm.imei.length < 15) {
       error('请输入完整的15位IMEI号')
       return
     }
@@ -1123,12 +1132,14 @@ const submitEdit = async () => {
         model: editForm.model,
         color: editForm.color,
         memory: editForm.memory
-      }, selectedPhone)
+      }, selectedPhone, (['brand', 'model', 'color', 'memory'] as const).filter(field => canEditField(field)))
     } catch (referenceError) {
+      if (!request.isLatest()) return
       error(referenceError instanceof Error ? referenceError.message : '品牌、型号、颜色和内存必须选择有效数据')
       return
     }
 
+    if (!request.isLatest()) return
     // 构建更新数据
     const updateData = {
       ...toCanonicalPhoneUpdatePayload({
@@ -1150,8 +1161,16 @@ const submitEdit = async () => {
     }
 
 
-    // 发送更新请求
-    const response = await api.put(`/phones/${selectedPhone.id}`, updateData, { showError: false })
+    // 默认值及只读/隐藏字段不进入请求；避免完整表单覆盖受保护字段。
+    const writableData = Object.fromEntries(Object.entries(updateData).filter(([key]) =>
+      Object.prototype.hasOwnProperty.call(inventoryFieldMap, key) && canEditField(key)
+    ))
+    if (!request.isLatest() || !showEditModal.value || selectedPhoneForEdit.value?.id !== selectedPhone.id || !canEdit.value) return
+    if (!Object.keys(writableData).length) { warning('没有可编辑的字段'); return }
+    const response = await api.put(`/phones/${selectedPhone.id}`, writableData, {
+      params: { field_module: 'inventory_inventoryview' }, showError: false
+    })
+    if (!request.isLatest()) return
 
     if (response.success) {
       success('更新成功')
@@ -1161,6 +1180,7 @@ const submitEdit = async () => {
       error(response.message || '更新失败')
     }
   } catch (err: unknown) {
+    if (!request.isLatest()) return
     logger.error('更新失败:', err)
     error(getRequestErrorMessage(err, '更新失败，请重试'))
   } finally {
@@ -1170,6 +1190,9 @@ const submitEdit = async () => {
 
 // 关闭编辑弹窗
 const closeEditModal = () => {
+  editDetailRequest.cancelLatest()
+  editModelsRequest.cancelLatest()
+  editSubmitRequest.cancelLatest()
   showEditModal.value = false
   selectedPhoneForEdit.value = null
   editBrandModels.value = []
@@ -1224,6 +1247,20 @@ const openStockInFromRoute = () => {
 watch(
   () => route.query.openStockIn,
   () => openStockInFromRoute()
+)
+
+watch(showEditModal, visible => {
+  if (!visible) closeEditModal()
+})
+
+watch(
+  [() => fieldPermissions.permissions.value, () => canEdit.value, () => authStore.user?.id],
+  () => {
+    if (!showEditModal.value) return
+    closeEditModal()
+    warning('权限已变化，请重新打开编辑')
+  },
+  { deep: true }
 )
 
 // 入库成功回调
@@ -1512,8 +1549,6 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 .inventory-edit-form-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--tf-space-4);
 }
 
@@ -1522,12 +1557,8 @@ const _handleSelect = (item: InventoryItem) => {
   display: contents;
 }
 
-.inventory-edit-price-field {
-  grid-column: span 1;
-}
-
 .inventory-edit-remarks-field {
-  grid-column: span 3;
+  grid-column: 1 / -1;
 }
 
 .inventory-edit-dialog .el-select,
@@ -1551,6 +1582,24 @@ const _handleSelect = (item: InventoryItem) => {
 }
 
 @media (max-width: 767px) {
+  .inventory-edit-status-field,
+  .inventory-edit-price-field {
+    order: 1;
+  }
+
+  .inventory-edit-status-field {
+    grid-column-start: 1;
+  }
+
+  /* 价格与状态配对，备注隐藏时不采用末尾单项跨整行的补位。 */
+  .inventory-edit-form-grid > .inventory-edit-price-field:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+
+  .inventory-edit-remarks-field {
+    order: 2;
+  }
+
   .inventory-edit-form-shell {
     padding: var(--tf-space-3) var(--tf-space-2);
     border-radius: var(--tf-radius-panel);

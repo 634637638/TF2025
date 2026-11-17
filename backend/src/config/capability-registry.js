@@ -38,11 +38,20 @@ function loadCapabilityRegistry() {
   if (!registry || typeof registry !== 'object' ||
       !Array.isArray(registry.defaultActions) ||
       !Array.isArray(registry.actionOrder) ||
+      !registry.actionLabels || typeof registry.actionLabels !== 'object' ||
+      !registry.moduleMetadata || typeof registry.moduleMetadata !== 'object' ||
       !registry.modules || typeof registry.modules !== 'object') {
     throw new Error(
       `[CONFIG_INVALID] 权限能力清单结构不完整 (${registryPath})，` +
-      '需要 defaultActions、actionOrder 和 modules。'
+      '需要 defaultActions、actionOrder、actionLabels、moduleMetadata 和 modules。'
     )
+  }
+
+  for (const [moduleKey, actions] of Object.entries(registry.modules)) {
+    if (!registry.moduleMetadata[moduleKey]?.name || !Array.isArray(actions) ||
+        actions.some(action => !registry.actionLabels[action] || !registry.actionDefinitions?.[action])) {
+      throw new Error(`[CONFIG_INVALID] 模块 ${moduleKey} 的能力或中文名称不完整，请同步完整权限能力清单。`)
+    }
   }
 
   return registry

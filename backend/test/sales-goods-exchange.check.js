@@ -152,7 +152,7 @@ async function fixture({ serial = false, gift = false, redemption = 0, award = 0
     return operation(db)
   })
   const service = new ExchangeService({ repository: repo, accessories: f.service, pointsLedger: f.pointsLedger,
-    tableExists: async () => true, columnExists: async () => true, permissionCheck: async (user, permission) => !denied.includes(permission), now: () => time })
+    tableExists: async () => true, columnExists: async () => true, permissionCheck: async (user, permission) => !['query:goods-sell', 'query:goods-gift'].includes(permission) && !denied.includes(permission), now: () => time })
   service.checkout.getPointsConfig = async () => normalizePointsConfig({ include_accessories: true, accessory_points_per_100: pointsRate, redemption: { enabled: true,
     points_per_yuan: 10, max_percent: 100, sources: ['accessory'], all_accessory_categories: true } })
   const creditPoints = service.checkout.creditPoints
@@ -478,7 +478,7 @@ test('只读手机清单展示替换件及原件已退数量；按真实关系�
 })
 
 test('换货实际权限、双门店范围、实物确认、同键内容、差价确认和就绪结构不能绕过', async () => {
-  for (const permission of ['query:view', 'query:exchange', 'accessories:view', 'accessories:create']) {
+  for (const permission of ['query:view', 'query:exchange', 'query:goods-view', 'accessories:sell']) {
     const f = await fixture({ denied: [permission] })
     await assert.rejects(f.submit(), { statusCode: 403 }); assert.equal(f.state.exchanges.length, 0)
   }
@@ -532,7 +532,7 @@ test('换货HTTP核对/试算/提交复用真实事务，隐藏销售员或新�
   for (const suffix of ['', '/quote']) {
     const declarations = route.split('\n').filter(line => line.includes(`'/checkout/:orderId/items/:itemId/exchange${suffix}'`))
     assert.equal(declarations.length, suffix ? 1 : 2)
-    for (const declaration of declarations) assert.match(declaration, /unifiedAuth, requirePermission\('query:view'\), requirePermission\('query:exchange'\), requirePermission\('accessories:view'\)/)
+    for (const declaration of declarations) assert.match(declaration, /unifiedAuth, requirePermission\('query:view'\), requirePermission\('query:exchange'\), requirePermission\('query:goods-view'\)/)
   }
 })
 
@@ -672,7 +672,7 @@ test('赠品先换货、手机扣款后再转为收费新件，历史核验完�
 })
 
 test('已扣款赠品换货须商品销售权限，不能改回赠送、重复用原扣款或留下失败半笔', async () => {
-  const denied = await chargedGift({ denied: ['accessories:create'] })
+  const denied = await chargedGift({ denied: ['accessories:sell'] })
   await assert.rejects(denied.submit({ settlement: cash(0, 38) }), { statusCode: 403 })
   const f = await chargedGift()
   await assert.rejects(f.submit({ replacement: { accessory_id: 6, unit_price: 0 }, settlement: cash(12) }), { statusCode: 409 })

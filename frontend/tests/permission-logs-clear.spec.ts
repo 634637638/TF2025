@@ -3,12 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import PermissionsView from '@/views/permissions/PermissionsView.vue'
 import { usePermissionsPageContext, type PermissionsPageContext } from '@/views/permissions/page/context'
+import { PermissionUtils } from '@/utils/permissionMapper'
 import { vPermission } from '@/directives/permission'
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(), delete: vi.fn(), confirm: vi.fn(), success: vi.fn(), warning: vi.fn(),
   error: vi.fn(), handleApiError: vi.fn(),
-  auth: { userPermissions: ['permissions_permissionsview:view', 'permissions_permissionsview:delete'], isAuthenticated: true, isActive: true }
+  auth: { userPermissions: ['permissions_permissionsview:view', 'permissions_permissionsview:delete'], isAuthenticated: true, isActive: true, isAuthReady: true, hasPermission: (_permission: string): boolean => false }
 }))
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: mocks }))
 vi.mock('@/utils/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
@@ -62,7 +63,7 @@ const render = async () => {
 }
 
 beforeEach(() => {
-  mocks.auth = reactive({ userPermissions: ['permissions_permissionsview:view', 'permissions_permissionsview:delete'], isAuthenticated: true, isActive: true })
+  mocks.auth = reactive({ userPermissions: ['permissions_permissionsview:view', 'permissions_permissionsview:delete'], isAuthenticated: true, isActive: true, isAuthReady: true, hasPermission: (permission: string): boolean => PermissionUtils.hasPermission(mocks.auth.userPermissions, permission) })
   mocks.get.mockImplementation(async (url: string) => url === '/permission-logs/logs'
     ? logResponse() : { success: true, data: { roles: [], modules: [], pagination: { total: 0 } } })
   mocks.delete.mockResolvedValue({ success: true, data: { deleted_count: 2 } })

@@ -520,7 +520,7 @@ test('inventory analytics contract covers canonical filters and response fields'
   const service = fs.readFileSync(path.join(root, 'backend/src/services/analytics-inventory.service.js'), 'utf8')
   assert.match(controller, /req\.query\.store_id/)
   assert.match(controller, /req\.query\.supplier_id/)
-  assert.match(service, /getModelStockWarnings\(undefined, limit, \{ storeId, supplierId \}\)/)
+  assert.match(service, /getModelStockWarnings\(undefined, limit, \{ scope, storeId, supplierId \}\)/)
 })
 
 test('accessories contract uses canonical money, pagination and filter fields', () => {

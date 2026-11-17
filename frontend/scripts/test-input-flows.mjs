@@ -14,6 +14,7 @@ import { createQuoteFixtureModules } from './lib/quote-browser-fixtures.mjs'
 import { overlayEntry } from './lib/overlay-browser-fixture.mjs'
 import { deviceInputEntry } from './lib/device-input-browser-fixture.mjs'
 import { salaryGoodsEntry } from './lib/salary-goods-browser-fixture.mjs'
+import { inventoryEditEntry } from './lib/inventory-edit-browser-fixture.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const requireBackend = createRequire(resolve(root, '../backend/package.json'))
@@ -25,6 +26,7 @@ const loadingOnly = process.argv.includes('--loading-only')
 const overlays = process.argv.includes('--overlays') || loadingOnly
 const deviceInputs = process.argv.includes('--device-inputs')
 const salaryGoods = process.argv.includes('--salary-goods')
+const inventoryEdit = process.argv.includes('--inventory-edit')
 const { quoteSaveModules, quoteHeaderModules } = createQuoteFixtureModules(root)
 let server, browser, bootedDevice, iosResult
 const entry = `
@@ -137,7 +139,7 @@ try {
         if (/^\/__quote-save-(wholesale|sales)\.js$/.test(id)) return `\0quote-save-${id.includes('wholesale') ? 'wholesale' : 'sales'}`
       },
       load(id) {
-        if (id === '\0input-entry') return salaryGoods ? salaryGoodsEntry : deviceInputs ? deviceInputEntry : overlays ? `window.fixtureLoadingOnly=${loadingOnly};\n${overlayEntry}` : entry
+        if (id === '\0input-entry') return inventoryEdit ? inventoryEditEntry : salaryGoods ? salaryGoodsEntry : deviceInputs ? deviceInputEntry : overlays ? `window.fixtureLoadingOnly=${loadingOnly};\n${overlayEntry}` : entry
         if (quoteHeaderModules.has(id)) return quoteHeaderModules.get(id)
         if (quoteSaveModules.has(id)) return quoteSaveModules.get(id)
         if (id === resolve(root, 'src/composables/index.ts')) return 'export {useForm,ValidationRules} from \'/src/composables/forms/useForm.ts\';import {ref} from \'vue\';export const useLoadingState=()=>({loading:ref(false)});'
@@ -184,13 +186,13 @@ try {
     page.on('requestfailed', request => errors.push(`request: ${request.url()} ${request.failure()?.errorText || ''}`))
     await page.setRequestInterception(true)
     page.on('request', request => { const target = new URL(request.url()); target.hostname === '127.0.0.1' || ['data:', 'blob:'].includes(target.protocol) ? request.continue() : request.abort() })
-    for (const width of salaryGoods ? [375, 430, 767, 768, 1024, 1440] : [375, 430, 768, 1024, 1440]) {
+    for (const width of inventoryEdit ? [320, 375, 430, 767, 768, 1024, 1440] : loadingOnly ? [320, 360, 375, 390, 430, 768, 1024, 1440] : salaryGoods ? [375, 430, 767, 768, 1024, 1440] : [375, 430, 768, 1024, 1440]) {
       await page.setViewport({ width, height: 932 })
       await page.goto(url, { waitUntil: 'networkidle0' })
       await page.waitForFunction('window.fixtureReady === true').catch(error => { throw new Error(`${error.message}; 页面异常: ${errors.join('; ')}`) })
       const result = await page.evaluate(() => window.runInputSmoke())
       assert.equal(result.ok, true)
-      console.log(`Chromium ${overlays ? '公共覆盖层与报价模板' : '输入与布局'}回归通过：`, JSON.stringify(result.results))
+      console.log(`Chromium ${width}px ${overlays ? '公共覆盖层与报价模板' : '输入与布局'}回归通过：`, JSON.stringify(result.results))
       if (overlays && !loadingOnly) {
         await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }])
         const labels = await page.evaluate(() => window.runFormLabelSmoke())

@@ -68,7 +68,6 @@
         <el-button
           native-type="button"
           type="success"
-          size="small"
           class="btn-action"
           title="添加子菜单"
           @click="addChild"
@@ -79,7 +78,6 @@
         <el-button
           native-type="button"
           type="primary"
-          size="small"
           class="btn-action btn-edit"
           title="编辑"
           @click="edit"
@@ -90,7 +88,6 @@
         <el-button
           native-type="button"
           type="danger"
-          size="small"
           class="btn-action btn-delete"
           title="删除"
           @click="deleteMenu"

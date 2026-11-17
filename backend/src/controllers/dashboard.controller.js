@@ -25,9 +25,9 @@ class DashboardController {
     }
   }
 
-  async getActivities(_req, res) {
+  async getActivities(req, res) {
     try {
-      return ApiResponse.success(res, await this.readService.getActivities(), '获取最近活动成功')
+      return ApiResponse.success(res, await this.readService.getActivities(req.user), '获取最近活动成功')
     } catch (error) {
       log.error('获取最近活动失败:', error)
       return ApiResponse.serverError(res, '获取最近活动失败', error)
@@ -49,7 +49,7 @@ class DashboardController {
     const { phone_threshold, page_size } = req.query
     return this.respondToWarning(
       res,
-      () => this.dashboardService.getComprehensiveWarnings({ phone_threshold, page_size }),
+      () => this.dashboardService.getComprehensiveWarnings({ phone_threshold, page_size }, req.user),
       '获取综合预警失败'
     )
   }
@@ -58,7 +58,7 @@ class DashboardController {
     const { threshold, page_size } = req.query
     return this.respondToWarning(
       res,
-      () => this.dashboardService.getPhoneStockWarnings({ threshold, page_size }),
+      () => this.dashboardService.getPhoneStockWarnings({ threshold, page_size }, req.user),
       '获取手机库存预警失败'
     )
   }
@@ -67,23 +67,23 @@ class DashboardController {
     const { threshold, page_size } = req.query
     return this.respondToWarning(
       res,
-      () => this.dashboardService.getModelStockWarnings({ threshold, page_size }),
+      () => this.dashboardService.getModelStockWarnings({ threshold, page_size }, req.user),
       '获取机型库存预警失败'
     )
   }
 
-  getSalesWarnings(_req, res) {
+  getSalesWarnings(req, res) {
     return this.respondToWarning(
       res,
-      () => this.dashboardService.getSalesWarnings(),
+      () => this.dashboardService.getSalesWarnings(req.user),
       '获取销售预警失败'
     )
   }
 
-  getPurchaseWarnings(_req, res) {
+  getPurchaseWarnings(req, res) {
     return this.respondToWarning(
       res,
-      () => this.dashboardService.getPurchaseWarnings(),
+      () => this.dashboardService.getPurchaseWarnings(req.user),
       '获取入库预警失败'
     )
   }

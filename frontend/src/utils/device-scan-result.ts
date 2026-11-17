@@ -1,4 +1,4 @@
-import { normalizeAccessorySerial, isValidAccessorySerial } from './accessory-serial'
+import { normalizeAccessorySerial, isValidAccessorySerial, isValidProductCode } from './accessory-serial'
 import { isDeviceIMEI, isDeviceSerial } from './device-identifier'
 
 export type DeviceScanType = 'imei' | 'serial'
@@ -10,7 +10,7 @@ export interface DeviceScanParseResult {
 
 export interface DeviceScanParseOptions {
   appleSerialBarcode?: boolean
-  serialProfile?: 'phone' | 'accessory'
+  serialProfile?: 'phone' | 'accessory' | 'product'
 }
 
 const normalizeRawScanText = (rawText: string): string => rawText
@@ -181,6 +181,10 @@ export const parseSerialScanResult = (
   rawText: string,
   options: DeviceScanParseOptions = {}
 ): DeviceScanParseResult => {
+  if (options.serialProfile === 'product') {
+    const value = rawText.trim()
+    return isValidProductCode(value) ? { value, error: null } : { value: null, error: '请对准单独的商品条码或SN，最多100位' }
+  }
   const normalized = normalizeRawScanText(rawText)
   if (options.serialProfile === 'accessory') {
     const value = normalizeAccessorySerial(normalized)

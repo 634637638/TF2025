@@ -21,16 +21,16 @@ function fixture({ race = false, failReceive = false, loseCommitResponse = false
   const repository = {
     async withConnection(callback) {
       let release
-      const db = { row: null, quantity: 0, serials: [], events: [], committed: false,
+      const db = { row: null, rows: [], quantity: 0, serials: [], events: [], committed: false,
         finished: new Promise(resolve => { release = resolve }),
         async beginTransaction() { transactions.push('begin') },
         async commit() {
-          state.entries.push(db.row); state.quantity += db.quantity; state.serials.push(...db.serials); state.events.push(...db.events)
-          db.committed = true; reservations.delete(db.row.request_key); release(); transactions.push('commit')
+          state.entries.push(...db.rows); state.quantity += db.quantity; state.serials.push(...db.serials); state.events.push(...db.events)
+          db.committed = true; db.rows.forEach(row => reservations.delete(row.request_key)); release(); transactions.push('commit')
           if (loseCommitResponse) { loseCommitResponse = false; throw Object.assign(new Error('connection lost after commit'), { code: 'ECONNRESET' }) }
         },
         async rollback() {
-          if (!db.committed && db.row && reservations.get(db.row.request_key) === db) reservations.delete(db.row.request_key)
+          if (!db.committed) db.rows.forEach(row => { if (reservations.get(row.request_key) === db) reservations.delete(row.request_key) })
           release(); transactions.push('rollback')
         }
       }
@@ -52,12 +52,12 @@ function fixture({ race = false, failReceive = false, loseCommitResponse = false
       const occupied = reservations.get(row.request_key)
       if (occupied) await occupied.finished
       if (state.entries.some(entry => entry.request_key === row.request_key)) throw Object.assign(new Error('unique request'), { code: 'ER_DUP_ENTRY' })
-      db.row = { ...row, id: nextId++ }; reservations.set(row.request_key, db)
+      db.row = { ...row, id: nextId++ }; db.rows.push(db.row); reservations.set(row.request_key, db)
       return db.row.id
     },
     async updateAccessoryStock(id, store, quantity, operation, warning, db) { db.quantity += quantity },
     async createSerial(serial, db) {
-      if (state.serials.some(row => row.serial_number === serial.serial_number)) throw Object.assign(new Error('duplicate SN'), { code: 'ER_DUP_ENTRY' })
+      if ([...state.serials, ...db.serials].some(row => row.serial_number === serial.serial_number)) throw Object.assign(new Error('duplicate SN'), { code: 'ER_DUP_ENTRY' })
       db.serials.push(serial); return db.serials.length
     },
     async createSerialEvent(event, db) { db.events.push(event) }
@@ -65,8 +65,137 @@ function fixture({ race = false, failReceive = false, loseCommitResponse = false
   const inventoryService = { async ensureBalance() {}, async receive(context, quantity, db) {
     db.events.push({ ...context, quantity }); if (failReceive) { failReceive = false; throw new Error('ledger failed') }
   } }
-  return { state, transactions, repository, service: new Service({ repository, inventoryService }), notReady() { ready = false } }
+  repository.templateColors = { async assertReady() {}, async families() { return [
+    { template_id: 100, accessory_id: 5, color_id: 1 }, { template_id: 100, accessory_id: 6, color_id: 2 }
+  ] } }
+  return { state, transactions, repository, inventoryService, service: new Service({ repository, inventoryService }), notReady() { ready = false } }
 }
+
+const colorInput = extra => ({ request_key: 'c'.repeat(32), entries: [
+  { accessory_id: 5, color_id: 1, supplier_id: 8, store_id: 1, purchase_cost: 10.25, total_quantity: 10 },
+  { accessory_id: 6, color_id: 2, supplier_id: 8, store_id: 1, purchase_cost: 10.25, total_quantity: 20 }
+], ...extra })
+
+test('普通与SN入库使用所选北京时间，各色时间一致；防重绑定原时间，省略沿用服务端当前时间', async () => {
+  const time = '2026-11-14 15:30:25'
+  for (const serial of [false, true]) {
+    const f = fixture(), request = colorInput()
+    request.entries.forEach((entry, index) => Object.assign(entry, { inventory_time: time,
+      ...(serial ? { serial_tracking: 1, serial_numbers: [{ serial_number: `SN-${index}`, store_id: 1 }] } : {}) }))
+    const result = await f.service.stockIn(request, actor)
+    assert.equal(result.success, true)
+    assert.equal(result.data.batches.every(row => row.inventory_time === time), true)
+    assert.equal(f.state.entries.every(row => row.inventory_time === time), true)
+    assert.equal(f.state.events.every(row => row.time === time), true)
+    request.entries.forEach(entry => { entry.inventory_time = '2026-11-14 15:30:26' })
+    assert.equal((await f.service.stockIn(request, actor)).code, 'STOCK_IN_REQUEST_CONFLICT')
+  }
+  const single = fixture(), request = input({ inventory_time: time })
+  assert.equal((await single.service.stockIn(request, actor)).data.inventory_time, time)
+  assert.equal((await single.service.stockIn(request, actor)).data.replayed, true)
+})
+
+test('非法入库日期、空白、对象、时间溢出及不同颜色时间不一致均在写入前拒绝', async () => {
+  const { isBeijingDateTime } = require('../src/utils/time')
+  for (const time of [null, '', {}, true, ['2026-11-14 12:00:00'], '2026-02-30 12:00:00', '2026-11-14 24:00:00',
+    '2026-11-14 12:60:00', '2026-11-14 12:00:60', '2026-11-14', '2026-11-14 12:00:00\n']) {
+    const f = fixture()
+    assert.equal(isBeijingDateTime(time), false)
+    assert.equal((await f.service.stockIn(input({ inventory_time: time }), actor)).code, 'VALIDATION_ERROR')
+    assert.deepEqual(f.transactions, [])
+  }
+  const f = fixture(), request = colorInput()
+  request.entries[0].inventory_time = '2026-11-14 12:00:00'
+  request.entries[1].inventory_time = '2026-11-14 13:00:00'
+  assert.equal((await f.service.stockIn(request, actor)).code, 'VALIDATION_ERROR')
+  assert.deepEqual(f.transactions, [])
+  assert.equal(isBeijingDateTime('2024-02-29 23:59:59'), true)
+})
+
+test('黑白颜色共用进价，各色独立采购/库存来源，同连接一次事务提交，乱序重试不重复入库', async () => {
+  const f = fixture(), request = colorInput(), before = structuredClone(request)
+  const result = await f.service.stockIn(request, actor)
+  assert.equal(result.success, true)
+  assert.equal(result.data.replayed, false)
+  assert.deepEqual(result.data.batches.map(row => [row.accessory_id, row.quantity, row.total_amount]), [[5, 10, 102.5], [6, 20, 205]])
+  assert.equal(f.state.quantity, 30)
+  assert.deepEqual(f.transactions, ['begin', 'commit'])
+  assert.equal(f.state.entries.every(row => row.operator_id === actor.id && row.product_snapshot), true)
+  const state = structuredClone(f.state)
+  f.repository.templateColors.families = async () => { throw new Error('重试不能重新核对现档案') }
+  const replay = await f.service.stockIn({ ...request, entries: [...request.entries].reverse() }, actor)
+  assert.deepEqual(replay.data, { batches: result.data.batches.map(row => ({ ...row, replayed: true })), replayed: true })
+  assert.deepEqual(f.state, state)
+  assert.deepEqual(request, before)
+})
+
+test('第二个颜色流水或逐件SN失败，前一个颜色的采购、应付、库存和SN全部回滚', async () => {
+  for (const failure of ['ledger', 'serial']) {
+    const f = fixture(), original = f.inventoryService.receive
+    f.inventoryService.receive = async (context, ...rest) => {
+      await original(context, ...rest)
+      if (failure === 'ledger' && context.accessory_id === 6) throw new Error('第二色流水失败')
+    }
+    if (failure === 'serial') f.repository.createSerialEvent = async (event, db) => {
+      db.events.push(event)
+      if (db.serials.length === 2) throw new Error('第二色SN失败')
+    }
+    const request = colorInput()
+    if (failure === 'serial') request.entries.forEach((entry, index) => Object.assign(entry, { serial_tracking: 1,
+      total_quantity: 1, serial_numbers: [{ serial_number: `00COLOR-${index}`, store_id: 1 }] }))
+    const result = await f.service.stockIn(request, actor)
+    assert.equal(result.success, false)
+    assert.deepEqual(f.state, { entries: [], quantity: 0, serials: [], events: [] })
+    assert.deepEqual(f.transactions, ['begin', 'rollback'])
+  }
+})
+
+test('多颜色提交成功但响应中断，原键核对全部回执；不同颜色SN按各自采购来源保存', async () => {
+  const f = fixture({ loseCommitResponse: true }), request = colorInput()
+  request.entries.forEach((entry, index) => Object.assign(entry, { serial_tracking: 1,
+    total_quantity: 1, serial_numbers: [{ serial_number: `00COLOR-${index}`, store_id: 1 }] }))
+  assert.equal((await f.service.stockIn(request, actor)).success, false)
+  assert.equal(f.state.quantity, 2)
+  const replay = await f.service.stockIn(request, actor)
+  assert.equal(replay.data.replayed, true)
+  assert.equal(replay.data.batches.length, 2)
+  assert.deepEqual(f.state.serials.map(row => [row.accessory_id, row.stock_in_id, row.serial_number]), [[5, 1, '00COLOR-0'], [6, 2, '00COLOR-1']])
+  assert.equal(f.state.quantity, 2)
+})
+
+test('整组防重绑定所有颜色、数量和公共资料，不能增删颜色或把其中一色拆成单次重放', async () => {
+  const f = fixture(), original = colorInput()
+  assert.equal((await f.service.stockIn(original, actor)).success, true)
+  const before = structuredClone(f.state)
+  for (const change of [request => request.entries.pop(), request => { request.entries[1].total_quantity = 21 },
+    request => { request.entries.forEach(entry => { entry.purchase_cost = 20 }) }, request => { request.entries[0].accessory_id = 7 }]) {
+    const request = colorInput(); change(request)
+    assert.equal((await f.service.stockIn(request, actor)).code, 'STOCK_IN_REQUEST_CONFLICT')
+    assert.deepEqual(f.state, before)
+  }
+  assert.equal((await f.service.stockIn({ ...original.entries[0], request_key: original.request_key }, actor)).code, 'STOCK_IN_REQUEST_CONFLICT')
+})
+
+test('不同模板/颜色身份错位、重复颜色、无效数量、跨店及不同颜色重复SN均不写入', async () => {
+  for (const change of [request => { request.entries[1].accessory_id = 7 }, request => { request.entries[1].color_id = 1 },
+    request => { request.entries[1].accessory_id = 5 }, request => { request.entries[1].total_quantity = 0 },
+    request => { request.entries[1].total_quantity = '1e2' }, request => { request.entries[1].store_id = 9 },
+    request => { request.entries[1].purchase_cost = 9 }, request => { request.entries[1].request_key = 'd'.repeat(32) },
+    request => request.entries.forEach(entry => Object.assign(entry, { serial_tracking: 1, serial_numbers: [{ serial_number: '00SAME', store_id: 1 }] }))]) {
+    const f = fixture(), request = colorInput(); change(request)
+    assert.equal((await f.service.stockIn(request, actor)).success, false)
+    assert.deepEqual(f.state, { entries: [], quantity: 0, serials: [], events: [] })
+  }
+})
+
+test('同键并发多颜色入库只增加一次全部颜色，竞争者返回全部原回执', async () => {
+  const f = fixture({ race: true })
+  const result = await Promise.all([f.service.stockIn(colorInput(), actor), f.service.stockIn(colorInput(), actor)])
+  assert.equal(result.every(row => row.success), true)
+  assert.deepEqual(result.map(row => row.data.replayed).sort(), [false, true])
+  assert.equal(f.state.entries.length, 2)
+  assert.equal(f.state.quantity, 30)
+})
 
 test('普通采购提交后重试返回原回执；不读取当前模板/库存，也不重复整批应付', async () => {
   const f = fixture(), request = input(), beforeInput = structuredClone(request)

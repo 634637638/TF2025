@@ -18,8 +18,8 @@ class SubsidyExportService {
     this.buildExportFile = buildExportFile
   }
 
-  async export({ userId, query }) {
-    const { whereConditions, queryParams } = buildSubsidyFilters(query)
+  async export({ userId, actor, query }) {
+    const { whereConditions, queryParams } = buildSubsidyFilters(query, actor)
     const requestedSortField = query.sort_by || 'sale_time'
     const sortField = SORT_FIELDS.has(requestedSortField) ? requestedSortField : 'sale_time'
     const sortDirection = query.sort_order?.toLowerCase() === 'asc' ? 'ASC' : 'DESC'

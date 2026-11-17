@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const SubsidyPhoneDetailRepository = require('../repositories/subsidy-phone-detail.repository')
 
 class SubsidyPhoneDetailService {
@@ -7,9 +9,10 @@ class SubsidyPhoneDetailService {
     this.repository = repository
   }
 
-  async getByPhoneId(phoneId) {
+  async getByPhoneId(phoneId, actor) {
     const phone = await this.repository.findSoldPhoneById(phoneId)
     if (!phone) return null
+    assertStoreInScope(resolveStoreScope(actor), phone.store_id)
 
     const sale = await this.repository.findSaleByPhoneId(phoneId)
     const salePrice = Number.parseFloat(phone.sale_price) || 0

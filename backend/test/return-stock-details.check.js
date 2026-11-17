@@ -172,10 +172,12 @@ test('仓储插入显式保存选择时间、独立备注和退款0元，不使�
 test('查询、搜索与编辑覆盖结构化明细，部分编辑不擦除原信息', async () => {
   const repository = new QueryRepository()
   const queries = []
-  repository.getConnection = () => ({ async query(sql, params) {
+  repository.withConnection = action => action({
+    async execute() {}, async beginTransaction() {}, async rollback() {},
+    async query(sql, params) {
     queries.push({ sql, params })
     assert.equal((sql.match(/\?/g) || []).length, params.length)
-    if (sql.includes('SELECT COUNT(*) AS total')) return [[{ total: 1 }]]
+    if (sql.includes('SELECT COUNT(*) AS total ')) return [[{ total: 1 }]]
     if (sql.includes('AS total_records')) return [[{ total_records: 1 }]]
     for (const [name] of COLUMNS) assert.ok(sql.includes(`srl.${name}`))
     return [[{ id: 1, ...normalizeReturnStockInfo(details) }]]
@@ -199,7 +201,7 @@ const response = () => ({ statusCode: 200, status(code) { this.statusCode = code
 
 test('退库记录字段权限在服务端脱敏，隐藏退款字段不能通过编辑请求写入', async () => {
   const controller = new QueryController({
-    service: { async getReturnGoodsRecords() { return { message: '查询成功', data: [{ id: 1, ...details, refund_method: 'mobile', refund_channel: 'wechat' }], pagination: { total: 1 }, stats: { total_records: 1 } } } },
+    service: { async getReturnGoodsRecords() { return { message: '查询成功', data: [{ id: 1, ...details, collection_amount: 12, refund_method: 'mobile', refund_channel: 'wechat' }], pagination: { total: 1 }, stats: { total_records: 1 } } } },
     masking: {
       async getUserFieldPermissions(userId, moduleKey) {
         assert.equal(moduleKey, 'system_returngoods')
@@ -212,6 +214,7 @@ test('退库记录字段权限在服务端脱敏，隐藏退款字段不能通�
   const res = response()
   await controller.getReturnGoodsRecords(req, res)
   assert.equal(res.body.data[0].refund_amount, null)
+  assert.equal(res.body.data[0].collection_amount, null)
   assert.equal(res.body.data[0].refund_method, null)
   assert.equal(res.body.data[0].refund_channel, null)
   assert.equal(res.body.data[0].return_type, '申请换货')
@@ -253,4 +256,87 @@ test('迁移默认只预览、重复执行幂等、有明细拒绝回滚且不�
   assert.match(writes[0], /^ALTER TABLE/)
   await assert.rejects(migrate(db, { rollback: true }), /拒绝删除字段/)
   assert.equal(writes.length, 1)
+})
+
+
+test('联合手机退库与旧日志共用分页、统计和搜索；双门店范围及原手机快照保留', async () => {
+  const repository = new QueryRepository(), events = [], reads = []
+  const rows = [
+    { id: 'aftersale:1:6', record_source: 'sales_aftersale', original_sale_id: 21, refund_amount: '0', collection_amount: '20' },
+    { id: '1', record_source: 'legacy', original_sale_id: 20, refund_amount: '10' }
+  ]
+  repository.withConnection = action => action({
+    async execute(sql) { assert.match(sql, /REPEATABLE READ, READ ONLY/); events.push('readonly') },
+    async beginTransaction() { events.push('begin') },
+    async rollback() { events.push('rollback') },
+    async query(sql, params) {
+      events.push('read'); reads.push({ sql, params })
+      assert.equal((sql.match(/\?/g) || []).length, params.length)
+      assert.match(sql, /UNION ALL/)
+      assert.match(sql, /a.operation_type = 'phone_return'/)
+      assert.match(sql, /a.original_store_id IN \(\?\)/)
+      assert.match(sql, /a.store_id IN \(\?\)/)
+      assert.match(sql, /i.item_type = 'phone'/)
+      assert.match(sql, /i.order_id = a.order_id/)
+      assert.match(sql, /JSON_EXTRACT\(i.snapshot, '\$.imei'\)/)
+      assert.match(sql, /DATE\(r.reversal_date\) >= \?/)
+      assert.match(sql, /DATE\(r.reversal_date\) <= \?/)
+      assert.deepEqual(params.slice(0, 3), [3, 3, 3])
+      assert.deepEqual(params.slice(3, 19), Array(16).fill('%退货%'))
+      if (sql.includes('SELECT COUNT(*) AS total ')) return [[{ total: 2 }]]
+      if (sql.includes('AS total_records')) return [[{ total_records: 2, total_phones: 1, total_days: 1 }]]
+      assert.deepEqual(params.slice(-2), [1, 1])
+      return [rows]
+    }
+  })
+  const result = await repository.getReturnGoodsRecords({ page: 2, page_size: 1, keyword: '退货', start_date: '2026-11-01', end_date: '2026-11-14' }, scope)
+  assert.equal(result.data[0].id, 'aftersale:1:6')
+  assert.equal(result.data[1].id, 1)
+  assert.equal(result.data[0].collection_amount, '20')
+  assert.equal(result.pagination.total, 2)
+  assert.equal(result.pagination.has_prev, true)
+  assert.deepEqual(result.stats, { total_records: 2, total_phones: 1, total_days: 1 })
+  assert.deepEqual(events, ['readonly', 'begin', 'read', 'read', 'read', 'rollback'])
+  assert.equal(reads.length, 3)
+})
+
+test('售后来源ID、畸形ID不能到达旧编辑删除SQL，合法旧ID正常保留', async () => {
+  const service = new QueryService(), calls = []
+  service.queryRepository = {
+    async updateReturnGoodsRecord(id) { calls.push(['update', id]) },
+    async deleteReturnGoodsRecord(id) { calls.push(['delete', id]) }
+  }
+  for (const id of ['aftersale:1:6', '1abc', '1e3', '1 OR 1=1', -1, 0, null, true, {}]) {
+    await assert.rejects(service.updateReturnGoodsRecord(id, { remarks: '不应保存' }, scope), { statusCode: 400 })
+    await assert.rejects(service.deleteReturnGoodsRecord(id, scope), { statusCode: 400 })
+  }
+  assert.equal(calls.length, 0)
+  await service.updateReturnGoodsRecord('1', { remarks: '保留旧日志编辑' }, scope)
+  await service.deleteReturnGoodsRecord('1', scope)
+  assert.deepEqual(calls, [['update', 1], ['delete', 1]])
+  const controller = new QueryController({ service })
+  for (const action of ['updateReturnGoodsRecord', 'deleteReturnGoodsRecord']) {
+    const res = response()
+    await controller[action]({ user: { id: 1, is_admin: true }, params: { id: 'aftersale:1:6' }, body: {}, query: {} }, res)
+    assert.equal(res.statusCode, 400)
+    assert.equal(res.body.code, 'RETURN_GOODS_READ_ONLY')
+  }
+})
+
+test('售后结构缺失明确拒绝，读取异常回滚不提交、不吞成空记录', async () => {
+  for (const code of ['ER_NO_SUCH_TABLE', 'READ_FAILED']) {
+    const repository = new QueryRepository(), events = []
+    repository.withConnection = action => action({
+      async execute() {}, async beginTransaction() {}, async rollback() { events.push('rollback') },
+      async query() { throw Object.assign(new Error('模拟读取失败'), { code }) }
+    })
+    if (code === 'ER_NO_SUCH_TABLE') {
+      const service = new QueryService(); service.queryRepository = repository
+      const controller = new QueryController({ service }), res = response()
+      await controller.getReturnGoodsRecords({ user: { id: 1, is_admin: true }, query: {} }, res)
+      assert.equal(res.statusCode, 409)
+      assert.equal(res.body.code, 'CHECKOUT_RETURN_NOT_READY')
+    } else await assert.rejects(repository.getReturnGoodsRecords({}, scope), /模拟读取失败/)
+    assert.deepEqual(events, ['rollback'])
+  }
 })

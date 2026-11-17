@@ -16,13 +16,13 @@ class SubsidyListService {
     this.logger = logger
   }
 
-  async list({ userId, query, onFiltersBuilt = () => {} }) {
+  async list({ userId, actor, query, onFiltersBuilt = () => {} }) {
     const { sort_by: sortBy = 'sale_time', sort_order: sortOrder = 'desc' } = query
     const page = Math.max(1, Number.parseInt(String(query.page || 1), 10) || 1)
     const pageSize = Math.min(500, Math.max(1, Number.parseInt(String(query.page_size || 20), 10) || 20))
     this.logger.info('🔍 国补列表查询参数:', { page, page_size: pageSize, sort_by: sortBy, sort_order: sortOrder, filters: query })
 
-    const { whereConditions, queryParams } = buildSubsidyFilters(query)
+    const { whereConditions, queryParams } = buildSubsidyFilters(query, actor)
     onFiltersBuilt({ page, page_size: pageSize, filterCount: whereConditions.length, queryParamCount: queryParams.length })
     const sortField = SORT_FIELDS.has(sortBy) ? sortBy : 'sale_time'
     const sortDirection = sortOrder?.toLowerCase() === 'asc' ? 'ASC' : 'DESC'

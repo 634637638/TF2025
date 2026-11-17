@@ -15,10 +15,10 @@ class SubsidyStatsService {
     this.masking = masking
   }
 
-  async getSummary({ userId, query, onFiltersBuilt = () => {} }) {
+  async getSummary({ userId, actor, query, onFiltersBuilt = () => {} }) {
     const permissions = await this.masking.getUserFieldPermissions(userId, 'subsidy_subsidyview')
     const hiddenFields = new Set(permissions.hiddenFields || [])
-    const { whereConditions, queryParams } = buildSubsidyFilters(query)
+    const { whereConditions, queryParams } = buildSubsidyFilters(query, actor)
     const includeStoreStats = query.include_store_stats === '1' && !hiddenFields.has('stats.store_overview')
     onFiltersBuilt({ includeStoreStats, filterCount: whereConditions.length, queryParamCount: queryParams.length })
     const { stats, storeStats, statsQueryMs, storeStatsQueryMs } = await this.repository.getSummary({

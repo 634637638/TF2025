@@ -1,14 +1,15 @@
 :root {
-  --tf-button-height: 36px;
+  /* 普通按钮默认复用紧凑基础规格，业务页面无需重复声明 small。 */
+  --tf-button-height: var(--tf-button-small-base-height);
   --tf-button-small-base-height: 28px;
   --tf-button-small-base-padding-x: 10px;
   --tf-button-small-base-font-size: var(--tf-type-scale-13);
   --tf-button-height-small: var(--tf-button-small-base-height);
   --tf-button-height-large: 44px;
-  --tf-button-padding-x: var(--tf-space-4);
+  --tf-button-padding-x: var(--tf-button-small-base-padding-x);
   --tf-button-padding-x-small: var(--tf-button-small-base-padding-x);
   --tf-button-radius: var(--tf-radius-control);
-  --tf-button-font-size: var(--tf-font-body);
+  --tf-button-font-size: var(--tf-button-small-base-font-size);
   --tf-button-font-size-small: var(--tf-button-small-base-font-size);
   --tf-button-batch-small-height: 24px;
   --tf-button-batch-small-padding-x: var(--tf-space-2);
@@ -16,12 +17,11 @@
   --tf-button-batch-small-font-size: var(--tf-type-scale-12);
   --tf-button-batch-small-icon-size: var(--tf-type-scale-12);
   --tf-button-font-weight: 600;
-  --tf-toolbar-button-height: 34px;
-  --tf-toolbar-button-padding-x: var(--tf-space-3);
-  --tf-toolbar-button-font-size: var(--tf-type-scale-13);
+  --tf-toolbar-button-height: var(--tf-button-small-base-height);
+  --tf-toolbar-button-padding-x: var(--tf-button-small-base-padding-x);
+  --tf-toolbar-button-font-size: var(--tf-button-small-base-font-size);
   --tf-search-control-height: var(--input-height-default);
-  --tf-topbar-control-height: 32px;
-  --tf-topbar-control-min-width: 64px;
+  --tf-topbar-control-height: var(--tf-button-height);
   --tf-topbar-control-padding-x: var(--tf-space-2);
   --tf-topbar-control-gap: var(--tf-space-1);
   --tf-topbar-user-info-max-width: min(46vw, 360px);
@@ -54,6 +54,8 @@
   --tf-button-warning-color: #ffffff;
   --tf-button-warning-hover-bg: #b45309;
   --tf-button-warning-hover-border: #b45309;
+  --tf-button-cart-color: var(--tf-color-orange-tailwind-500);
+  --tf-button-cart-hover-color: var(--tf-color-orange-tailwind-700);
 
   --tf-button-danger-bg: #dc2626;
   --tf-button-danger-border: #dc2626;
@@ -184,22 +186,21 @@
   --tf-button-badge-size: 18px;
 }
 
-@mixin tf-filled-button($bg, $border, $color, $hover-bg, $hover-border) {
+@mixin tf-filled-button($bg, $border, $color, $hover-bg, $hover-border, $hover-color: $color) {
   --el-button-bg-color: #{$bg} !important;
   --el-button-border-color: #{$border} !important;
   --el-button-text-color: #{$color} !important;
   --el-button-hover-bg-color: #{$hover-bg} !important;
   --el-button-hover-border-color: #{$hover-border} !important;
-  --el-button-hover-text-color: #{$color} !important;
+  --el-button-hover-text-color: #{$hover-color} !important;
   background: #{$bg} !important;
   border-color: #{$border} !important;
   color: #{$color} !important;
 
-  &:hover,
-  &:focus {
+  &:is(:hover, :focus) {
     background: #{$hover-bg} !important;
     border-color: #{$hover-border} !important;
-    color: #{$color} !important;
+    color: #{$hover-color} !important;
   }
 }
 
@@ -240,6 +241,12 @@
   min-height: var(--tf-button-height-large) !important;
 }
 
+/* 仅登录页主按钮使用大号触控高度，普通按钮规格保持不变。 */
+.el-button.tf-button--login-large:not(.is-circle):where(:not(.is-text):not(.is-link)) {
+  --tf-button-height: var(--tf-button-height-large);
+  --tf-button-font-size: var(--tf-type-scale-16);
+}
+
 /* Icon-only circle buttons keep a stable square footprint at every size. */
 .el-button.is-circle:not(.is-text):not(.is-link) {
   flex: 0 0 var(--tf-button-height) !important;
@@ -250,6 +257,7 @@
   min-height: var(--tf-button-height) !important;
   max-height: var(--tf-button-height) !important;
   padding: 0 !important;
+  font-size: var(--tf-button-font-size);
   border-radius: var(--tf-radius-full) !important;
   box-sizing: border-box;
 }
@@ -262,6 +270,7 @@
   height: var(--tf-button-height-small) !important;
   min-height: var(--tf-button-height-small) !important;
   max-height: var(--tf-button-height-small) !important;
+  font-size: var(--tf-button-font-size-small);
 }
 
 .el-button.el-button--large.is-circle:not(.is-text):not(.is-link) {
@@ -279,17 +288,40 @@
   min-height: var(--tf-button-height-large) !important;
 }
 
-/* Main application topbar controls share one stable desktop height. */
-.btn.tf-button--topbar {
-  --tf-button-padding-x: var(--tf-topbar-control-padding-x);
-  height: var(--tf-topbar-control-height) !important;
-  min-height: var(--tf-topbar-control-height) !important;
+/* 密集快捷命令复用小号基础令牌，不受父表单 size 继承影响。 */
+.el-button.tf-button--compact:not(.is-circle):where(:not(.is-text):not(.is-link)) {
+  --tf-button-height: var(--tf-button-small-base-height);
+  --tf-button-padding-x: var(--tf-button-small-base-padding-x);
+  --tf-button-font-size: var(--tf-button-small-base-font-size);
 }
 
-@media (min-width: 1025px) {
-  .btn.tf-button--topbar {
-    min-width: var(--tf-topbar-control-min-width);
-  }
+/* 表单的 size 只控制输入控件，未声明尺寸的业务按钮继续使用公共默认。 */
+.el-form .el-button:not([data-button-size-preview]) {
+  --tf-button-height-small: var(--tf-button-height);
+  --tf-button-height-large: var(--tf-button-height);
+  --tf-button-padding-x-small: var(--tf-button-padding-x);
+  --tf-button-font-size-small: var(--tf-button-font-size);
+}
+
+/* 顶部操作使用公共默认尺寸，用户信息卡读取同一高度令牌。 */
+.el-button.tf-button--topbar {
+  --tf-button-padding-x: var(--tf-topbar-control-padding-x);
+  flex-shrink: 0;
+}
+
+.el-button.tf-button--topbar + .el-button.tf-button--topbar {
+  margin-left: 0;
+}
+
+.compact-device .el-button.tf-button--topbar {
+  --tf-button-padding-x: 0;
+  width: var(--tf-topbar-control-height);
+  min-width: var(--tf-topbar-control-height);
+  max-width: var(--tf-topbar-control-height);
+}
+
+.compact-device .tf-button--topbar .topbar-button-label {
+  display: none;
 }
 
 .el-button > span {
@@ -308,9 +340,7 @@
 .btn-primary,
 .btn.btn-primary,
 .btn.btn-outline-primary,
-.el-button.tf-button--primary,
-.el-button.tf-button--create,
-.el-button.tf-button--save {
+.el-button:is(.tf-button--primary, .tf-button--create, .tf-button--save) {
   @include tf-filled-button(
     var(--tf-button-primary-bg), var(--tf-button-primary-border), var(--tf-button-primary-color),
     var(--tf-button-primary-hover-bg), var(--tf-button-primary-hover-border)
@@ -321,9 +351,7 @@
 .btn-success,
 .btn.btn-success,
 .btn.btn-outline-success,
-.el-button.tf-button--success,
-.el-button.tf-button--approve,
-.el-button.tf-button--complete {
+.el-button:is(.tf-button--success, .tf-button--approve, .tf-button--complete) {
   @include tf-filled-button(
     var(--tf-button-success-bg), var(--tf-button-success-border), var(--tf-button-success-color),
     var(--tf-button-success-hover-bg), var(--tf-button-success-hover-border)
@@ -334,9 +362,7 @@
 .btn-warning,
 .btn.btn-warning,
 .btn.btn-outline-warning,
-.el-button.tf-button--warning,
-.el-button.tf-button--disable,
-.el-button.tf-button--reject {
+.el-button:is(.tf-button--warning, .tf-button--disable, .tf-button--reject) {
   @include tf-filled-button(
     var(--tf-button-warning-bg), var(--tf-button-warning-border), var(--tf-button-warning-color),
     var(--tf-button-warning-hover-bg), var(--tf-button-warning-hover-border)
@@ -348,8 +374,7 @@
 .btn.btn-danger,
 .btn.btn-outline-danger,
 .btn.tf-button--danger,
-.el-button.tf-button--danger,
-.el-button.tf-button--delete {
+.el-button:is(.tf-button--danger, .tf-button--delete) {
   @include tf-filled-button(
     var(--tf-button-danger-bg), var(--tf-button-danger-border), var(--tf-button-danger-color),
     var(--tf-button-danger-hover-bg), var(--tf-button-danger-hover-border)
@@ -360,8 +385,7 @@
 .btn-info,
 .btn.btn-info,
 .btn.btn-outline-info,
-.el-button.tf-button--info,
-.el-button.tf-button--view {
+.el-button:is(.tf-button--info, .tf-button--view) {
   @include tf-filled-button(
     var(--tf-button-info-bg), var(--tf-button-info-border), var(--tf-button-info-color),
     var(--tf-button-info-hover-bg), var(--tf-button-info-hover-border)
@@ -370,37 +394,39 @@
 
 .el-button.tf-button--manage,
 .btn.tf-button--manage,
-.el-button.tf-button--permission,
-.el-button.tf-button--config {
+.el-button:is(.tf-button--permission, .tf-button--config) {
   @include tf-filled-button(
-    var(--tf-button-manage-bg), var(--tf-button-manage-border), var(--color-bg-white),
+    var(--tf-button-manage-bg), var(--tf-button-manage-border), var(--tf-button-on-color),
     var(--tf-button-manage-hover-bg), var(--tf-button-manage-hover-border)
   );
 }
 
-.el-button.tf-button--finance,
-.el-button.tf-button--payment {
+.el-button:is(.tf-button--finance, .tf-button--payment) {
   @include tf-filled-button(
-    var(--tf-button-finance-bg), var(--tf-button-finance-border), var(--color-bg-white),
+    var(--tf-button-finance-bg), var(--tf-button-finance-border), var(--tf-button-on-color),
     var(--tf-button-finance-hover-bg), var(--tf-button-finance-hover-border)
   );
 }
 
-.el-button.tf-button--transfer,
-.el-button.tf-button--stock {
+.el-button:is(.tf-button--transfer, .tf-button--stock) {
   @include tf-filled-button(
-    var(--tf-button-transfer-bg), var(--tf-button-transfer-border), var(--color-bg-white),
+    var(--tf-button-transfer-bg), var(--tf-button-transfer-border), var(--tf-button-on-color),
     var(--tf-button-transfer-hover-bg), var(--tf-button-transfer-hover-border)
   );
 }
 
-.el-button.tf-button--export,
-.el-button.tf-button--download,
-.el-button.tf-button--sync,
-.el-button.tf-button--refresh {
+.el-button:is(.tf-button--export, .tf-button--download, .tf-button--sync, .tf-button--refresh) {
   @include tf-filled-button(
-    var(--tf-button-export-bg), var(--tf-button-export-border), var(--color-bg-white),
+    var(--tf-button-export-bg), var(--tf-button-export-border), var(--tf-button-on-color),
     var(--tf-button-export-hover-bg), var(--tf-button-export-hover-border)
+  );
+}
+
+/* 轻量快捷入口与实心主命令共用主色语义，表面读取现有浅色令牌。 */
+.el-button.tf-button--soft-primary {
+  @include tf-filled-button(
+    var(--tf-button-primary-soft-bg), var(--tf-button-primary-soft-border), var(--tf-button-primary-soft-color),
+    var(--tf-button-primary-soft-hover-bg), var(--tf-button-primary-soft-hover-border), var(--tf-button-primary-soft-hover-color)
   );
 }
 
@@ -422,8 +448,7 @@
   border-color: var(--tf-button-neutral-border) !important;
   color: var(--tf-button-neutral-color) !important;
 
-  &:hover,
-  &:focus {
+  &:is(:hover, :focus) {
     background: var(--tf-button-neutral-hover-bg) !important;
     border-color: var(--tf-button-neutral-hover-border) !important;
     color: var(--tf-button-neutral-hover-color) !important;
@@ -960,7 +985,24 @@ body .el-button.el-button.tf-button--menu-action:focus {
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: var(--tf-button-primary-bg) !important;
+  color: var(--tf-button-link-color, var(--tf-button-primary-bg)) !important;
+}
+
+/* 紧凑只读单号中的复制链接保持在20px公共徽章高度内。 */
+.tf-control-display--compact .el-button.is-link {
+  height: 100%;
+  padding-block: 0;
+  font-size: var(--tf-font-caption);
+  line-height: 1;
+}
+
+.el-button.tf-button--cart.is-link {
+  --tf-button-link-color: var(--tf-button-cart-color);
+
+  &:hover,
+  &:focus-visible {
+    --tf-button-link-color: var(--tf-button-cart-hover-color);
+  }
 }
 
 .el-button.is-disabled,
@@ -1043,25 +1085,10 @@ body .el-button.el-button.tf-button--menu-action:focus {
     --tf-toolbar-button-padding-x: clamp(5px, 1.6vw, 7px);
     --tf-toolbar-button-font-size: var(--tf-type-scale-12);
     --tf-search-control-height: var(--input-height-default);
-    --tf-topbar-control-height: var(--tf-button-height);
     --tf-button-mobile-nav-size: var(--tf-button-height);
     --tf-button-fab-size: 48px;
     --tf-button-fab-mini-size: 36px;
     --tf-button-overlay-reset-size: 44px;
-  }
-
-  .page-header .header-actions .el-button {
-    height: var(--tf-toolbar-button-height) !important;
-    min-height: var(--tf-toolbar-button-height) !important;
-    padding-inline: var(--tf-toolbar-button-padding-x) !important;
-    font-size: var(--tf-toolbar-button-font-size) !important;
-  }
-
-  .unified-search-panel__actions .el-button.el-button:not(.is-circle) {
-    height: var(--tf-search-control-height) !important;
-    min-height: var(--tf-search-control-height) !important;
-    padding-inline: var(--tf-toolbar-button-padding-x) !important;
-    font-size: var(--tf-toolbar-button-font-size) !important;
   }
 
   .page-header .header-actions .el-button > span,

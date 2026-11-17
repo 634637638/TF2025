@@ -15,7 +15,7 @@ class SalesPhoneRepository {
   }
 
   async findCustomerByPhone(connection, phone) {
-    const [rows] = await connection.execute('SELECT id FROM customers WHERE phone = ?', [phone])
+    const [rows] = await connection.execute('SELECT id, name, apple_id FROM customers WHERE phone = ?', [phone])
     return rows[0] || null
   }
 
@@ -38,7 +38,7 @@ class SalesPhoneRepository {
   async findPhonesForSale(connection, phoneIds) {
     const placeholders = phoneIds.map(() => '?').join(',')
     const [rows] = await connection.execute(
-      `SELECT p.id, p.status, p.purchase_cost, p.is_new, p.is_preordered,
+      `SELECT p.id, p.store_id, p.status, p.purchase_cost, p.is_new, p.is_preordered,
               p.supplier_id, p.remarks, pr.customer_id AS preorder_customer_id,
               c.name AS preorder_customer_name
        FROM phones p
@@ -54,7 +54,7 @@ class SalesPhoneRepository {
 
   async findPreorderForUpdate(connection, preorderId) {
     const [rows] = await connection.execute(
-      `SELECT id, customer_id, deposit_amount, matched_phone_id, status
+      `SELECT id, store_id, customer_id, deposit_amount, matched_phone_id, status
        FROM preorders WHERE id = ? FOR UPDATE`,
       [preorderId]
     )

@@ -135,7 +135,6 @@
               <el-button
                 v-if="ctx.canEdit"
                 type="primary"
-                size="small"
                 title="编辑"
                 @click.stop="ctx.handleEditRole(row)"
               >
@@ -143,7 +142,6 @@
               </el-button><el-button
                 v-if="ctx.canEdit"
                 type="info"
-                size="small"
                 title="页面权限"
                 @click.stop="ctx.handleAssignPermissions(row)"
               >
@@ -151,7 +149,6 @@
               </el-button><el-button
                 v-if="ctx.canEdit"
                 type="warning"
-                size="small"
                 title="字段权限"
                 @click.stop="ctx.handleRoleFieldPermissions(row)"
               >
@@ -159,7 +156,6 @@
               </el-button><el-button
                 v-if="ctx.canDelete"
                 type="danger"
-                size="small"
                 title="删除"
                 :disabled="(row.user_count || 0) > 0"
                 @click.stop="ctx.handleDeleteRole(row)"

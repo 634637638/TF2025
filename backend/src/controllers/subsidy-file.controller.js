@@ -9,12 +9,12 @@ class SubsidyFileController {
     this.logger = logger
   }
 
-  getFile(req, res) {
+  async getFile(req, res) {
     try {
       const requestedPath = typeof req.params[0] === 'string' ? req.params[0] : ''
-      const absolutePath = this.service.getFilePath(requestedPath)
+      const absolutePath = await this.service.getAuthorizedFilePath(requestedPath, req.user)
 
-      res.setHeader('Cache-Control', 'private, max-age=300, must-revalidate')
+      res.setHeader('Cache-Control', 'private, no-store')
       res.setHeader('X-Content-Type-Options', 'nosniff')
       res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
       return res.sendFile(absolutePath)

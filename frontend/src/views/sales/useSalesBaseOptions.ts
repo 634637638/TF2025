@@ -17,7 +17,7 @@ import {
   getCachedMemories,
   getModels,
   searchOperators,
-  getCachedStores,
+  getStores,
   getCachedSuppliers
 } from '@/services/reference-options'
 
@@ -45,7 +45,7 @@ export const useSalesBaseOptions = () => {
 
   const loadStores = async () => {
     try {
-      const response = await getCachedStores()
+      const response = await getStores({ strictScope: true })
       if (response.success) {
         const storeRecords = Array.isArray(response.data)
           ? response.data.map(item => ({

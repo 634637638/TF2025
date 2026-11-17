@@ -18,7 +18,6 @@
         <div class="batch-actions-buttons">
           <el-button
             type="success"
-            size="small"
             :disabled="selectedItems.length === 0"
             @click="emit('pin-selected-items')"
           >
@@ -28,7 +27,6 @@
           <el-button
             v-if="pinnedItems.length > 0"
             type="warning"
-            size="small"
             @click="emit('clear-pinned-items')"
           >
             <i class="fas fa-trash-alt" />
@@ -37,7 +35,6 @@
           <el-button
             v-if="canBatchUpdate"
             type="primary"
-            size="small"
             :disabled="selectedItems.length === 0"
             @click="emit('open-batch-dialog')"
           >
@@ -45,7 +42,6 @@
             <span>批量修改时间</span>
           </el-button>
           <el-button
-            size="small"
             @click="emit('clear-selection')"
           >
             <i class="fas fa-times" />
@@ -248,7 +244,6 @@
                 <el-button
                   v-else-if="!isMobile && canApprove"
                   type="primary"
-                  size="small"
                   class="table-action table-action--manage table-inline-action"
                   title="审批"
                   @click.stop="emit('audit', row)"
@@ -271,7 +266,6 @@
                 <el-button
                   v-else-if="!isMobile && canArrival"
                   type="success"
-                  size="small"
                   class="table-action table-action--finance table-inline-action"
                   title="到账"
                   @click.stop="emit('confirm-arrival', row)"
@@ -291,7 +285,6 @@
                 <el-button
                   v-if="canEdit"
                   type="primary"
-                  size="small"
                   class="table-action table-action--edit"
                   title="编辑"
                   @click.stop="emit('edit', row)"
@@ -301,7 +294,6 @@
                 <el-button
                   v-if="canDelete"
                   type="danger"
-                  size="small"
                   class="table-action table-action--delete"
                   title="删除"
                   @click.stop="emit('delete', row)"

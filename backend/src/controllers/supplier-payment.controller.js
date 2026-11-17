@@ -9,7 +9,7 @@ const { getBeijingTimeString } = require('../utils/time')
 const ApiResponse = require('../utils/response')
 
 const sendError = (res, error, fallbackMessage) => {
-  const statusCode = Number(error?.status_code)
+  const statusCode = Number(error?.statusCode || error?.status_code)
   if (statusCode >= 400 && statusCode < 500) {
     return ApiResponse.error(res, error.message || fallbackMessage, statusCode)
   }
@@ -26,7 +26,7 @@ class SupplierPaymentController {
       const statistics = await supplierPaymentService.getStatistics({
         supplier_id: supplier_id ? Number.parseInt(supplier_id, 10) : null,
         sale_status: req.query.sale_status || 'all'
-      })
+      }, req.user)
 
       res.json({
         success: true,
@@ -53,7 +53,7 @@ class SupplierPaymentController {
         keyword: keyword?.trim(),
         start_date,
         end_date
-      })
+      }, req.user)
 
       res.json({
         success: true,
@@ -93,7 +93,7 @@ class SupplierPaymentController {
         end_date,
         page: Number.parseInt(page, 10),
         page_size: Number.parseInt(page_size, 10)
-      })
+      }, req.user)
 
       res.json({
         success: true,
@@ -128,7 +128,7 @@ class SupplierPaymentController {
         start_date,
         end_date,
         export_all: true
-      })
+      }, req.user)
 
       const rows = (result.phones || []).map((item) => ({
         供应商: item.supplier_name || '',
@@ -190,6 +190,7 @@ class SupplierPaymentController {
       const defaultTime = payment_time || getBeijingTimeString()
 
       const result = await supplierPaymentService.batchPayment({
+        actor: req.user,
         phone_ids,
         payment_method,
         payment_time: defaultTime,
@@ -221,6 +222,7 @@ class SupplierPaymentController {
       const defaultTime = payment_time || getBeijingTimeString()
 
       const result = await supplierPaymentService.singlePayment({
+        actor: req.user,
         phone_id: Number.parseInt(id, 10),
         payment_method,
         payment_time: defaultTime,
@@ -249,7 +251,8 @@ class SupplierPaymentController {
       const details = await supplierPaymentService.getPaymentBatchDetails(
         Number.parseInt(supplier_id, 10),
         payment_time,
-        payment_batch_id || null
+        payment_batch_id || null,
+        req.user
       )
 
       res.json({
@@ -271,6 +274,7 @@ class SupplierPaymentController {
       const { phone_ids } = req.body
 
       const result = await supplierPaymentService.batchCancelPayment({
+        actor: req.user,
         phone_ids
       })
 
@@ -294,6 +298,7 @@ class SupplierPaymentController {
       const { payment_method, payment_time, payment_remarks } = req.body
 
       const result = await supplierPaymentService.updatePayment({
+        actor: req.user,
         phone_id: Number.parseInt(id, 10),
         payment_method,
         payment_time,

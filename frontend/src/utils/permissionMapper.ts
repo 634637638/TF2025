@@ -9,6 +9,7 @@
  * - 模块权限自动解析
  */
 
+import { getPermissionActionMeta } from '@/config/permission-actions'
 import permissionCapabilities from '../../../backend/src/config/module-permission-capabilities.json'
 
 /**
@@ -106,6 +107,7 @@ export const MODULE_KEY_MAP: Record<string, string> = {
   'git-management': 'system_gitmanagement',
   'backup': 'backup_backupview',
   'data-optimization': 'data_optimization_dataoptimizationview',
+  'data-import': 'data_optimization_dataimporttab',
   'data-check': 'data_optimization_dataoptimizationview',
 
   // 演示模块映射
@@ -213,6 +215,7 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
   'salary_salaryview': 'salary',
   'salary_salarytemplatesview': 'salary-templates',
   'salary_salaryrecordsview': 'salary-records',
+  'data_optimization_dataimporttab': 'data-import',
   'salary_mysalaryview': 'my-salary',
   'preorders_preordersview': 'preorders',
   'reminders_reminderview': 'reminders',
@@ -234,7 +237,6 @@ export const BACKEND_MODULE_MAP: Record<string, string> = {
 
 const EXACT_PERMISSION_ALIAS_MAP: Record<string, string> = {
   'my-attendance:view': 'attendance:view:own',
-  'my-attendance:create': 'attendance:create',
   'my-salary:view': 'salary-records:view:own'
 }
 
@@ -242,54 +244,16 @@ const EXACT_PERMISSION_ALIAS_MAP: Record<string, string> = {
  * 标准模块权限定义
  * 定义系统中所有模块的权限结构
  */
-const ACTION_DISPLAY_NAMES: Record<string, string> = {
-  view: '查看',
-  create: '新增',
-  edit: '编辑',
-  delete: '删除',
-  approve: '审批',
-  manage: '管理',
-  export: '导出',
-  import: '导入',
-  sell: '出库',
-  sync: '同步',
-  'return-to-stock': '退库',
-  exchange: '换货',
-  wholesale: '同行调货',
-  'proxy-transfer': '供应商代划拨',
-  match: '匹配',
-  deliver: '交付',
-  cancel: '取消',
-  menu_view: '菜单显示'
-}
-
-const MODULE_DISPLAY_NAMES: Record<string, string> = {
-  dashboard: '仪表盘', inventory: '库存管理', sales: '销售管理', customers: '客户管理',
-  brands: '品牌管理', models: '型号管理', colors: '颜色管理', memories: '内存管理',
-  employee: '员工管理', stores: '门店管理', suppliers: '供应商管理',
-  'supplier-payments': '供应商打款', accessories: '配件管理', 'accessories-catalog': '商品资料', permissions: '权限管理',
-  'module-management': '模块管理', menus: '菜单管理', query: '综合查询', system: '系统管理', standards: '规范与审计',
-  analytics: '数据分析', attendance: '考勤管理', 'my-attendance': '我的考勤',
-  salary: '工资管理', 'my-salary': '我的工资', 'salary-records': '工资记录',
-  'salary-templates': '工资模板', 'data-check': '数据优化', preorders: '新品预定',
-  reminders: '待办提醒', shared: '经验分享', marketing: '营销管理', 'price-list': '价目表',
-  'price-list-sync-logs': '同步日志', subsidy: '国补管理', rentals: '租赁管理', repairs: '维修管理',
-  'git-management': 'Git管理', backup: '备份管理', 'return-goods': '退库管理',
-  'h5-admin': 'H5商城管理', 'h5-templates': '商城模板', 'h5-sold-products': '已售商品',
-  'h5-config': '商城配置', 'home-sections': '首页推荐', 'h5-banners': '轮播图管理',
-  'h5-orders': '商城订单'
-}
-
 export const MODULE_PERMISSIONS: Record<string, ModulePermissionConfig> = Object.fromEntries(
   Object.entries(BACKEND_MODULE_MAP)
     .filter(([moduleKey]) => moduleKey in permissionCapabilities.modules)
     .map(([moduleKey, simpleKey]) => [
       simpleKey,
       {
-        name: MODULE_DISPLAY_NAMES[simpleKey] || simpleKey,
+        name: permissionCapabilities.moduleMetadata[moduleKey as keyof typeof permissionCapabilities.moduleMetadata]?.name || simpleKey,
         permissions: Object.fromEntries(
           permissionCapabilities.modules[moduleKey as keyof typeof permissionCapabilities.modules]
-            .map(action => [action, ACTION_DISPLAY_NAMES[action] || action])
+            .map(action => [action, getPermissionActionMeta(action).name])
         )
       }
     ])
@@ -435,26 +399,8 @@ export class PermissionMapper {
       }
     }
 
-    // 权限名称映射
-    const nameMap: Record<string, string> = {
-      'view': '查看',
-      'create': '创建',
-      'edit': '编辑',
-      'delete': '删除',
-      'export': '导出',
-      'import': '导入',
-      'sell': '销售',
-      'gift': '赠送',
-      'transfer': '库存划拨',
-      'match': '匹配',
-      'deliver': '交付',
-      'cancel': '取消预定',
-      'admin:view': '管理查看',
-      'admin:edit': '管理编辑',
-      'all': '所有权限'
-    }
-
-    return nameMap[permission] || permission
+    const action = this.toSimplePermission(permission).split(':')[0]
+    return getPermissionActionMeta(action).name
   }
 
   /**
@@ -463,7 +409,7 @@ export class PermissionMapper {
    * @returns 模块显示名称
    */
   static getModuleDisplayName(moduleKey: string): string {
-    return MODULE_PERMISSIONS[moduleKey]?.name || moduleKey
+    return MODULE_PERMISSIONS[this.normalizeModuleKey(moduleKey)]?.name || moduleKey
   }
 
   /**
@@ -543,6 +489,7 @@ export class PermissionMapper {
     const normalizedFrontend = this.normalizePermission(frontendPermission)
     const normalizedBackend = this.normalizePermission(backendPermission)
 
+    if (normalizedFrontend === '*' || normalizedFrontend === 'all:*') return true
     if (normalizedFrontend === normalizedBackend) {
       return true
     }
@@ -553,6 +500,8 @@ export class PermissionMapper {
     if (!frontendParsed || !backendParsed || frontendParsed.module !== backendParsed.module) {
       return false
     }
+
+    if (frontendParsed.action === '*') return true
 
     const parseActionScope = (action: string) => {
       if (action.endsWith(':all')) {
@@ -566,16 +515,8 @@ export class PermissionMapper {
       return { baseAction: action, level: 2 }
     }
 
-    const normalizeActionAlias = (action: string) => {
-      if (action === 'menu_view') {
-        return 'view'
-      }
-
-      return action
-    }
-
-    const frontendAction = parseActionScope(normalizeActionAlias(frontendParsed.action))
-    const backendAction = parseActionScope(normalizeActionAlias(backendParsed.action))
+    const frontendAction = parseActionScope(frontendParsed.action)
+    const backendAction = parseActionScope(backendParsed.action)
 
     return frontendAction.baseAction === backendAction.baseAction && frontendAction.level >= backendAction.level
   }

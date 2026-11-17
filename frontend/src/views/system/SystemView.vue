@@ -330,6 +330,11 @@
                   :can-delete="canDelete"
                 />
               </div>
+              <DashboardShortcutsCard
+                v-if="canView && canViewField('settings.site_info')"
+                :can-edit="canUpdateSettings"
+                :can-delete="canDelete"
+              />
             </div>
           </div>
 
@@ -351,7 +356,6 @@
                     <el-button
                       v-if="showOperations"
                       type="primary"
-                      size="small"
                       :disabled="!canUpdateSettings"
                       @click="openPriceContactDialog()"
                     >
@@ -420,7 +424,6 @@
                             <el-button
                               class="table-action"
                               :class="isDefaultPriceContact($index) ? 'table-action--success' : 'table-action--pin'"
-                              size="small"
                               plain
                               :disabled="!canUpdateSettings || isDefaultPriceContact($index)"
                               @click.stop="setDefaultPriceContact($index)"
@@ -442,7 +445,6 @@
                           <div class="action-buttons">
                             <el-button
                               class="table-action table-action--edit"
-                              size="small"
                               plain
                               :disabled="!canUpdateSettings"
                               @click.stop="openPriceContactDialog(row, $index)"
@@ -452,7 +454,6 @@
                             </el-button>
                             <el-button
                               class="table-action table-action--delete"
-                              size="small"
                               plain
                               :disabled="!canUpdateSettings"
                               @click.stop="removePriceContact($index)"
@@ -462,7 +463,6 @@
                             </el-button>
                             <el-button
                               class="table-action table-action--neutral"
-                              size="small"
                               plain
                               :disabled="!canUpdateSettings || $index === 0"
                               @click.stop="movePriceContact($index, -1)"
@@ -472,7 +472,6 @@
                             </el-button>
                             <el-button
                               class="table-action table-action--neutral"
-                              size="small"
                               plain
                               :disabled="!canUpdateSettings || $index === priceContactsEditor.length - 1"
                               @click.stop="movePriceContact($index, 1)"
@@ -552,7 +551,6 @@
                       <h4>查询密码</h4>
                       <el-button
                         type="primary"
-                        size="small"
                         :icon="Plus"
                         @click="showAddPasswordDialog"
                       >
@@ -634,7 +632,6 @@
                             <div class="action-buttons">
                               <el-button
                                 type="primary"
-                                size="small"
                                 link
                                 :icon="Edit"
                                 @click.stop="editPassword(row)"
@@ -643,7 +640,6 @@
                               </el-button><el-button
                                 v-if="canDeleteInventoryPasswords"
                                 type="danger"
-                                size="small"
                                 link
                                 :icon="Delete"
                                 @click.stop="deletePassword(row.id)"
@@ -707,7 +703,10 @@
                   >
                     <!-- 背景类型 -->
                     <el-form-item label="背景类型">
-                      <el-radio-group v-model="screenLockSettings.backgroundType">
+                      <el-radio-group
+                        v-model="screenLockSettings.backgroundType"
+                        class="tf-state-selector"
+                      >
                         <el-radio value="default">
                           默认背景
                         </el-radio>
@@ -738,7 +737,6 @@
                           />
                           <el-button
                             type="danger"
-                            size="small"
                             style="position: absolute; top: 8px; right: 8px"
                             @click="screenLockSettings.imageUrl = ''"
                           >
@@ -780,7 +778,6 @@
                           />
                           <el-button
                             type="danger"
-                            size="small"
                             style="position: absolute; top: 8px; right: 8px"
                             @click="screenLockSettings.videoUrl = ''"
                           >
@@ -1056,6 +1053,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -1079,6 +1077,7 @@ import { ValidationRules } from '@/composables'
 import PhoneWarningConfigView from '@/views/system/phone-warning-config/PhoneWarningConfigView.vue'
 import Returngoods from '@/views/system/page/Returngoods.vue'
 import AnnouncementManagementCard from '@/views/system/page/AnnouncementManagementCard.vue'
+import DashboardShortcutsCard from '@/views/system/page/DashboardShortcutsCard.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { getPublicPriceContactKey, parsePublicPriceContacts } from '@/utils/publicPriceSettings'
@@ -1875,6 +1874,15 @@ const passwordDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'status', label: '状态', value: row.is_active ? '启用' : '禁用', visible: canViewField('settings.passwords') },
     { key: 'remarks', label: '备注', value: row.remarks, visible: canViewField('settings.passwords'), wide: true }
   ] : []
+})
+
+usePageShortcuts('/system', {
+  'system-site-settings': { open: () => { activeTab.value = 'settings' }, allowed: () => canViewField('settings.site_info') || canViewField('settings.logo') },
+  'system-price-settings': { open: () => { activeTab.value = 'price' }, allowed: () => canViewField('settings.price_watermark') },
+  'system-lock-settings': { open: () => { activeTab.value = 'screenlock' }, allowed: () => canViewField('screen_lock.config') },
+  'system-warning-settings': { open: () => { activeTab.value = 'warning' }, allowed: () => canViewField('warning.config') },
+  'system-return-goods': { open: () => { activeTab.value = 'returngoods' }, allowed: () => canViewReturngoods.value },
+  'system-warning-create': { open: () => { activeTab.value = 'warning'; openWarningTemplateDialog() }, allowed: () => canViewField('warning.config') }
 })
 </script>
 

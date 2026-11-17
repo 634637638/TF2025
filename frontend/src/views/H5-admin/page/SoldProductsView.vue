@@ -21,7 +21,6 @@
         <el-button
           type="primary"
           :loading="loading"
-          class="btn-sm"
           @click="loadSoldProducts"
         >
           <i class="fas fa-sync-alt mr-1" />刷新
@@ -120,8 +119,6 @@
               v-if="canViewField('images.image_url') || canDelete"
               plain
               type="primary"
-              size="small"
-              class="btn-sm"
               @click="viewImages(product)"
             >
               <i class="fas fa-eye mr-1" />查看图片
@@ -130,8 +127,6 @@
               v-if="canDelete"
               plain
               type="danger"
-              size="small"
-              class="btn-sm"
               @click="deleteProductImages(product)"
             >
               <i class="fas fa-trash mr-1" />删除素材
@@ -147,7 +142,6 @@
       >
         <el-button
           :disabled="pagination.page === 1"
-          size="small"
           @click="pagination.page--"
         >
           上一页
@@ -157,7 +151,6 @@
         </span>
         <el-button
           :disabled="pagination.page === total_pages"
-          size="small"
           @click="pagination.page++"
         >
           下一页
@@ -261,9 +254,8 @@
                 v-if="canDelete"
                 plain
                 type="danger"
-                size="small"
                 circle
-                class="image-delete-btn btn-sm"
+                class="image-delete-btn"
                 @click.stop="deleteSingleImage(image)"
               >
                 <i class="fas fa-trash" />
@@ -282,7 +274,6 @@
               plain
               type="danger"
               :disabled="loadingImages"
-              class="btn-sm"
               @click="deleteAllImages"
             >
               <i class="fas fa-trash mr-1" />删除全部

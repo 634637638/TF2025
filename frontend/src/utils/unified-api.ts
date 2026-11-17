@@ -5,6 +5,7 @@
 
 import axios, { AxiosHeaders, AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios'
 import type { RawAxiosHeaders } from 'axios'
+import { getPermissionActionMeta } from '@/config/permission-actions'
 import { PermissionMapper } from './permissionMapper'
 import { globalErrorLogger } from './error-logger'
 import { ErrorLevel, ErrorType } from './error-boundary'
@@ -36,6 +37,27 @@ const API_CONFIG = {
 }
 
 const enableApiLogs = import.meta.env.DEV && import.meta.env.VITE_API_LOGGING === 'true'
+
+const expectedInventoryCorrectionErrors = new Set([
+  'STOCK_CORRECTION_USED',
+  'STOCK_CORRECTION_PAID',
+  'STOCK_CORRECTION_DISTRIBUTION',
+  'STOCK_CORRECTION_UNTRACKED',
+  'STOCK_CORRECTION_STALE',
+  'INVENTORY_LEDGER_CONFLICT'
+])
+
+/** 可预期的业务拒绝由页面提示并允许修正，不应升级为技术故障日志或错误上报。 */
+const isExpectedBusinessError = (error: AxiosError): boolean => {
+  const status = error.response?.status
+  const data = error.response?.data as Record<string, unknown> | undefined
+  if (data?.success !== false || typeof data.code !== 'string') return false
+  if (status === 400) return ['CHECKOUT_INVALID', 'CHECKOUT_RETURN_INVALID', 'POINTS_AVAILABLE_INSUFFICIENT'].includes(data.code)
+  return status === 409 && (
+    ['CHECKOUT_RETURN_QUOTE_CHANGED', 'CHECKOUT_RETURN_PAYMENT_REQUIRED'].includes(data.code) ||
+    expectedInventoryCorrectionErrors.has(data.code)
+  )
+}
 
 // 请求配置接口
 export interface RequestConfig extends AxiosRequestConfig {
@@ -82,6 +104,8 @@ class UnifiedApiManager {
   private cache = new Map<string, { data: unknown, timestamp: number, ttl: number }>()
   private cacheGeneration = 0
   private refreshPromise: Promise<boolean> | null = null
+  private sessionRefreshes = new Set<Promise<unknown>>()
+  private signingOut = false
   private csrfToken: string | null = null
   private csrfTokenExpiresAt = 0
   private csrfTokenPromise: Promise<string | null> | null = null
@@ -140,6 +164,8 @@ class UnifiedApiManager {
 
     // 添加认证信息
     this.addAuthHeaders(config)
+    // 认证业务响应每次执行当前授权；不能用本地快照覆盖服务端新脱敏结果。
+    if (config.headers?.Authorization || config.headers?.authorization) requestConfig.useCache = false
 
     // 添加CSRF防护
     try {
@@ -198,7 +224,13 @@ class UnifiedApiManager {
       cacheGeneration: this.cacheGeneration
     }
 
-    // 如果是缓存响应，直接返回
+    const noStore = /(?:^|,)\s*(?:no-store|private)(?:\s|,|$)/i.test(String(response.headers?.['cache-control'] || ''))
+    if (noStore) {
+      delete requestConfig.cachedResponse
+      this.cache.delete(this.generateCacheKey(requestConfig))
+    }
+
+    // 公开响应缓存不得覆盖服务端明确禁止存储的响应。
     if (requestConfig.cachedResponse) {
       if (requestConfig.showLoading) {
         this.hideLoading(requestConfig)
@@ -225,6 +257,7 @@ class UnifiedApiManager {
     // 只缓存当前代次的GET响应，避免写操作前发出的慢请求回填旧数据。
     if (
       method === 'get' &&
+      !noStore &&
       requestConfig.useCache !== false &&
       metadata?.cacheGeneration === this.cacheGeneration
     ) {
@@ -288,7 +321,8 @@ class UnifiedApiManager {
     }
 
     // 错误日志
-    if (enableApiLogs && metadata) {
+    const expectedBusinessError = isExpectedBusinessError(error)
+    if (enableApiLogs && metadata && requestConfig?.reportError !== false && !expectedBusinessError) {
       logger.error(`API错误 [${metadata.requestId}]`, {
         status: error.response?.status,
         message: error.message,
@@ -299,7 +333,7 @@ class UnifiedApiManager {
     }
 
     // 记录到错误日志系统
-    if (requestConfig?.reportError !== false) this.logApiError(error, metadata)
+    if (requestConfig?.reportError !== false && !expectedBusinessError) this.logApiError(error, metadata)
 
     // 记录性能数据
     if (metadata) {
@@ -435,6 +469,7 @@ class UnifiedApiManager {
   }
 
   private async refreshAccessToken(): Promise<boolean> {
+    if (this.signingOut) return false
     if (this.refreshPromise) {
       return this.refreshPromise
     }
@@ -824,21 +859,7 @@ class UnifiedApiManager {
    * 获取操作的友好显示名称
    */
   private getActionDisplayName(action: string): string {
-    const actionMap: Record<string, string> = {
-      'view': '查看',
-      'read': '查看',
-      'create': '新增',
-      'add': '新增',
-      'edit': '编辑',
-      'update': '编辑',
-      'delete': '删除',
-      'remove': '删除',
-      'export': '导出',
-      'import': '导入',
-      'approve': '审批',
-      'reject': '拒绝'
-    }
-    return actionMap[action] || action
+    return getPermissionActionMeta(action).name
   }
 
   /**
@@ -849,30 +870,7 @@ class UnifiedApiManager {
     if (!moduleMatch) return '该模块'
 
     const module = moduleMatch[1].toLowerCase()
-    const moduleMap: Record<string, string> = {
-      'customers': '客户管理',
-      'employees': '员工管理',
-      'suppliers': '供应商管理',
-      'stores': '门店管理',
-      'inventory': '库存管理',
-      'sales': '销售管理',
-      'phones': '手机管理',
-      'brands': '品牌管理',
-      'models': '型号管理',
-      'colors': '颜色管理',
-      'memories': '内存管理',
-      'accessories': '配件管理',
-      'repairs': '维修管理',
-      'rentals': '租赁管理',
-      'query': '综合查询',
-      'analytics': '数据分析',
-      'permissions': '权限管理',
-      'users': '用户管理',
-      'roles': '角色管理',
-      'menus': '菜单管理',
-      'system': '系统管理'
-    }
-    return moduleMap[module] || '该模块'
+    return PermissionMapper.getModuleDisplayName(module)
   }
 
   /**
@@ -1250,6 +1248,9 @@ class UnifiedApiManager {
     const path = this.normalizeUrlPath(url)
     const [moduleName] = path.split('/').filter(Boolean)
     if (!moduleName) return undefined
+    if (path === '/query/film-services/checkout') {
+      return ['/sales', '/accessories', '/customers', '/dashboard', '/analytics', '/salary', '/query']
+    }
 
     const scopeDependencies: Record<string, string[]> = {
       attendance: ['/attendance', '/dashboard', '/analytics'],
@@ -1415,6 +1416,19 @@ class UnifiedApiManager {
    * POST请求
    */
   post<T = DynamicResponse, TSummary = Record<string, unknown>>(url: string, data?: unknown, config?: RequestConfig): Promise<UnifiedApiResponse<T, TSummary>> {
+    if (url === '/auth/logout') {
+      this.signingOut = true
+      // 先等待已发出的刷新响应（包括 HttpOnly Cookie 轮换），再注销最新会话。
+      return Promise.allSettled([...this.sessionRefreshes, ...(this.refreshPromise ? [this.refreshPromise] : [])])
+        .then(() => this.instance.post<unknown, UnifiedApiResponse<T, TSummary>>(url, data, config))
+        .finally(() => { this.signingOut = false })
+    }
+    if (url === '/auth/refresh') {
+      if (this.signingOut) return Promise.reject(new Error('正在退出登录'))
+      const request = this.instance.post<unknown, UnifiedApiResponse<T, TSummary>>(url, data, config)
+      this.sessionRefreshes.add(request)
+      return request.finally(() => { this.sessionRefreshes.delete(request) })
+    }
     return this.instance.post(url, data, config)
   }
 

@@ -32,8 +32,20 @@ class SalesCheckoutRepository {
     const [rows] = await connection.execute('SELECT id, points FROM customers WHERE phone = ? FOR UPDATE', [phone])
     return rows[0] || null
   }
+  async customerById(connection, id) {
+    const [rows] = await connection.execute('SELECT id, name, phone, points FROM customers WHERE id = ? AND status = 1 FOR UPDATE', [id])
+    return rows[0] || null
+  }
+  async customerSummary(connection, phone) {
+    const [rows] = await connection.execute('SELECT id, member_number, points, balance FROM customers WHERE phone = ? AND status = 1 ORDER BY id DESC LIMIT 1 FOR UPDATE', [phone])
+    return rows[0] || null
+  }
+  async customerSummaryById(connection, id) {
+    const [rows] = await connection.execute('SELECT id, member_number, points, balance FROM customers WHERE id = ? AND status = 1 FOR UPDATE', [id])
+    return rows[0] || null
+  }
   async lockCustomer(connection, id, { lock = true } = {}) {
-    const [rows] = await connection.execute(`SELECT id, points FROM customers WHERE id = ?${lock ? ' FOR UPDATE' : ''}`, [id])
+    const [rows] = await connection.execute(`SELECT id, name, phone, points FROM customers WHERE id = ?${lock ? ' FOR UPDATE' : ''}`, [id])
     return rows[0] || null
   }
   async returnChecklist(orderId, saleId, scope) {

@@ -4,7 +4,8 @@ body,
 #app,
 .public-price-query,
 .customer-search-dropdown,
-.tf-dropdown-scroll {
+.tf-dropdown-scroll,
+.tf-scrollbar-hidden {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -16,7 +17,9 @@ body::-webkit-scrollbar,
 .customer-search-dropdown::-webkit-scrollbar,
 .customer-search-dropdown::-webkit-scrollbar-button,
 .tf-dropdown-scroll::-webkit-scrollbar,
-.tf-dropdown-scroll::-webkit-scrollbar-button {
+.tf-dropdown-scroll::-webkit-scrollbar-button,
+.tf-scrollbar-hidden::-webkit-scrollbar,
+.tf-scrollbar-hidden::-webkit-scrollbar-button {
   display: none;
   width: 0;
   height: 0;

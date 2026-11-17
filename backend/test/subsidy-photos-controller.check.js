@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const crypto = require('node:crypto')
 const fs = require('node:fs')
@@ -79,7 +81,7 @@ test('subsidy photo update service locks and commits before removing obsolete fi
       },
       async getPhotosForUpdate(connection, id) {
         events.push(['lock', id])
-        return { subsidy_photos: JSON.stringify(['/uploads/subsidy/old.jpg']) }
+        return { store_id: 1, subsidy_photos: JSON.stringify(['/uploads/subsidy/old.jpg']) }
       },
       async updatePhotos(connection, id, photos) { events.push(['update', id, photos]) },
       async hasOtherPhotoReference() { return false }
@@ -96,7 +98,7 @@ test('subsidy photo update service locks and commits before removing obsolete fi
     logger: { error() {}, warn() {} }
   })
 
-  assert.deepEqual(await service.updatePhotos('12', [], [], 7), { status: 200 })
+  assert.deepEqual(await service.updatePhotos('12', [], [], 7, scopedActor), { status: 200 })
   assert.deepEqual(events.slice(0, 5), ['begin', ['lock', '12'], ['update', '12', []], 'commit', 'release'])
   assert.deepEqual(events.slice(5), [
     ['unlink', '/uploads/subsidy/old.jpg'],
@@ -122,7 +124,7 @@ test('subsidy photo update service rejects a removed-file list that does not bel
           connection.release()
         }
       },
-      async getPhotosForUpdate() { return { subsidy_photos: '[]' } },
+      async getPhotosForUpdate() { return { store_id: 1, subsidy_photos: '[]' } },
       async updatePhotos() { events.push('update') }
     },
     uploadsRoot: () => '/uploads',
@@ -130,7 +132,7 @@ test('subsidy photo update service rejects a removed-file list that does not bel
     logger: { error() {}, warn() {} }
   })
 
-  assert.deepEqual(await service.updatePhotos('12', [], ['/uploads/subsidy/other.jpg'], 7), {
+  assert.deepEqual(await service.updatePhotos('12', [], ['/uploads/subsidy/other.jpg'], 7, scopedActor), {
     status: 400,
     message: '待删除照片不属于当前记录或仍在使用'
   })
@@ -171,9 +173,10 @@ test('subsidy record deletion service removes only safe photo paths and invalida
   const files = new Set(['/uploads/subsidy/record/photo.jpg', '/uploads/outside.jpg'])
   const service = new Service({
     repository: {
+      async withConnection(operation) { return operation({ async beginTransaction() {}, async commit() {}, async rollback() {} }) },
       async findRecordForDelete(id) {
         events.push(['find', id])
-        return { id, subsidy_photos: JSON.stringify([
+        return { id, store_id: 1, subsidy_photos: JSON.stringify([
           '/uploads/subsidy/record/photo.jpg',
           '/uploads/../../outside.jpg'
         ]) }
@@ -192,7 +195,7 @@ test('subsidy record deletion service removes only safe photo paths and invalida
     logger: { error() {} }
   })
 
-  assert.equal(await service.deleteRecord('12'), true)
+  assert.equal(await service.deleteRecord('12', scopedActor), true)
   assert.deepEqual(events.slice(0, 4), [
     ['find', '12'],
     ['delete', '12'],
@@ -209,14 +212,15 @@ test('subsidy record deletion keeps the database deletion when photo metadata or
   const deleted = []
   const service = new Service({
     repository: {
-      async findRecordForDelete() { return { id: 3, subsidy_photos: '{invalid' } },
+      async withConnection(operation) { return operation({ async beginTransaction() {}, async commit() {}, async rollback() {} }) },
+      async findRecordForDelete() { return { id: 3, store_id: 1, subsidy_photos: '{invalid' } },
       async deleteRecord(id) { deleted.push(id) }
     },
     invalidateCache(pathname) { cacheInvalidations.push(pathname) },
     logger: { error(...args) { errors.push(args) } }
   })
 
-  assert.equal(await service.deleteRecord(3), true)
+  assert.equal(await service.deleteRecord(3, scopedActor), true)
   assert.deepEqual(deleted, [3])
   assert.deepEqual(cacheInvalidations, ['/subsidy'])
   assert.equal(errors.length, 1)
@@ -300,17 +304,17 @@ test('subsidy photo service signs valid paths for the requesting user and tolera
   try {
     const service = new Service({
       repository: { async getPhotos(id) {
-        return id === 'malformed'
+        return { store_id: 1, subsidy_photos: id === 'malformed'
           ? '{invalid'
-          : JSON.stringify(['/uploads/subsidy/contract/photo.jpg', '/uploads/other/photo.jpg'])
+          : JSON.stringify(['/uploads/subsidy/contract/photo.jpg', '/uploads/other/photo.jpg']) }
       } },
       logger: { warn(...args) { warnings.push(args) } }
     })
 
-    const photos = await service.getPhotos('12', 41)
+    const photos = await service.getPhotos('12', 41, scopedActor)
     assert.match(photos[0], /^\/api\/subsidy\/files\/subsidy\/contract\/photo\.jpg\?user=41&expires=\d+&signature=/)
     assert.equal(photos[1], '/uploads/other/photo.jpg')
-    assert.deepEqual(await service.getPhotos('malformed', 41), [])
+    assert.deepEqual(await service.getPhotos('malformed', 41, scopedActor), [])
     assert.equal(warnings.length, 1)
   } finally {
     if (previousSigningKey === undefined) delete process.env.FILE_ACCESS_SIGNING_KEY
@@ -325,7 +329,7 @@ test('subsidy photo repository binds the record ID and distinguishes a missing r
     async execute(sql, params) { calls.push({ sql, params }); return [rows.shift()] }
   }) })
 
-  assert.equal(await repository.getPhotos('0012'), '["photo"]')
+  assert.deepEqual(await repository.getPhotos('0012'), { subsidy_photos: '["photo"]' })
   assert.equal(await repository.getPhotos('99'), null)
   assert.deepEqual(calls.map(call => call.params), [['0012'], ['99']])
   assert.ok(calls.every(call => /WHERE id = \?/.test(call.sql)))
@@ -343,7 +347,7 @@ test('subsidy record deletion repository binds IDs for lookup and delete', async
   assert.deepEqual(await repository.findRecordForDelete('004'), { id: 4, subsidy_photos: null })
   assert.equal(await repository.deleteRecord('004'), true)
   assert.deepEqual(calls.map(call => call.params), [['004'], ['004']])
-  assert.match(calls[0].sql, /SELECT id, subsidy_photos FROM national_subsidies WHERE id = \?$/)
+  assert.match(calls[0].sql, /SELECT id, store_id, subsidy_photos FROM national_subsidies WHERE id = \? FOR UPDATE$/)
   assert.match(calls[1].sql, /DELETE FROM national_subsidies WHERE id = \?$/)
 })
 

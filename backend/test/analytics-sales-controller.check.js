@@ -83,7 +83,7 @@ test('sales analytics repository binds canonical date, store and supplier filter
   assert.equal(calls.length, 3)
   assert.deepEqual(calls.map(call => call.params), [
     ['2026-02-01', '2026-02-28', 5],
-    ['2026-02-01', '2026-02-28'],
+    ['2026-02-01', '2026-02-28', 5],
     ['2026-02-01', '2026-02-28', 5, 9]
   ])
   assert.ok(calls[0].query.includes('so.store_id = ?'))

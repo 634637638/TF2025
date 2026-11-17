@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -20,7 +22,7 @@ test('subsidy export controller preserves file headers, body and error response'
   const logged = []
   const file = { filename: '国补管理_2026-11-08.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('xlsx'), total: 2 }
   const controller = new Controller({
-    service: { async export(input) { assert.deepEqual(input, { userId: 4, query: { store_id: '2' } }); return file } },
+    service: { async export(input) { assert.deepEqual(input, { userId: 4, actor: { id: 4 }, query: { store_id: '2' } }); return file } },
     logger: { error(...args) { logged.push(args) } }
   })
   const response = {
@@ -66,14 +68,14 @@ test('subsidy export service applies safe sort and preserves filters, field perm
       return { total: items.length }
     }
   })
-  const result = await service.export({
+  const result = await service.export({ actor: scopedActor,
     userId: 9,
     query: { store_id: '2', sort_by: 'sale_time DESC; DROP TABLE users', sort_order: 'ASC' }
   })
   assert.deepEqual(result, { total: 1 })
   assert.deepEqual(calls[0], ['query', {
-    whereConditions: ['1=1', 'store_id = ?'],
-    queryParams: ['2'],
+    whereConditions: ['1=1', 'store_id IN (?)'],
+    queryParams: [2],
     sortField: 'sale_time',
     sortDirection: 'ASC'
   }])
@@ -91,14 +93,14 @@ test('subsidy export repository executes the filtered date-formatted query with 
     }
   }) })
   assert.deepEqual(await repository.listForExport({
-    whereConditions: ['1=1', 'store_id = ?'],
+    whereConditions: ['1=1', 'store_id IN (?)'],
     queryParams: ['5'],
     sortField: 'sale_time',
     sortDirection: 'ASC'
   }), [{ id: 1 }])
   assert.deepEqual(call.params, ['5'])
   assert.match(call.sql, /DATE_FORMAT\(sale_time, '%Y-%m-%d'\) as sale_time/)
-  assert.match(call.sql, /WHERE 1=1 AND store_id = \?\s+ORDER BY sale_time ASC/)
+  assert.match(call.sql, /WHERE 1=1 AND store_id IN \(\?\)\s+ORDER BY sale_time ASC/)
 })
 
 test('subsidy export workbook keeps visible columns, localized values and attachment total', () => {

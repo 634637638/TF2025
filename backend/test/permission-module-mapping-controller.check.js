@@ -37,7 +37,7 @@ test('module mappings service filters by optional schema and returns ensured mod
   const warnings = []
   const service = new Service({
     columnExists: async (table, column) => { calls.push(`${table}.${column}`); return true },
-    repository: { async list(flags) {
+    repository: { async listMenuOrder() { return [] }, async list(flags) {
       assert.deepEqual(flags, { supportsModuleIsActive: true })
       return [{ module_key: 'inventory', key: 'inventory', name: '库存', category: 'business', icon: 'warehouse', field_count: 9 }]
     } },
@@ -55,22 +55,55 @@ test('module mappings service falls back to defaults and preserves the empty-reg
   const warnings = []
   const service = new Service({
     columnExists: async () => false,
-    repository: { async list() { return [] } },
+    repository: { async listMenuOrder() { return [] }, async list() { return [] } },
     logger: { warn(message) { warnings.push(message) } }
   })
   const modules = await service.list()
-  assert.equal(modules.find(module => module.key === 'dashboard').name, '仪表盘')
+  assert.equal(modules.find(module => module.key === 'dashboard_dashboardview').name, '仪表盘')
   assert.ok(modules.some(module => module.key === 'guide_guidemanagementview'))
   assert.deepEqual(warnings, ['数据库中没有已注册的模块，使用默认模块列表'])
+})
+
+test('字段模块沿用完整菜单层级顺序，别名与重复绑定不丢模块，调序后重新读取', async () => {
+  const rows = [
+    { key: 'inventory', name: '库存', category: 'business' },
+    { key: 'sales_salesview', name: '销售', category: 'business' },
+    { key: 'dashboard_dashboardview', name: '仪表盘', category: 'system' }
+  ]
+  const menus = [
+    { id: 1, parent_id: 0, sort_order: 1 },
+    { id: 2, parent_id: 1, sort_order: 2, module_key: 'inventory' },
+    { id: 3, parent_id: 1, sort_order: 1, module_key: 'sales_salesview' },
+    { id: 4, parent_id: 0, sort_order: 2, module_key: 'dashboard_dashboardview' },
+    { id: 5, parent_id: 0, sort_order: 3, module_key: 'sales_salesview' }
+  ]
+  const service = new Service({ columnExists: async () => true,
+    repository: { async list() { return rows }, async listMenuOrder() { return menus } } })
+  const keys = modules => modules.map(module => module.key)
+  const fallback = keys(mergeManagedModules(rows, 'key')).filter(key => !['inventory', 'sales_salesview', 'dashboard_dashboardview'].includes(key))
+  assert.deepEqual(keys(await service.list()), ['sales_salesview', 'inventory', 'dashboard_dashboardview', ...fallback])
+  assert.equal((await service.list()).find(module => module.key === 'inventory').name, '库存')
+  menus[1].sort_order = 0
+  assert.deepEqual(keys(await service.list()), ['inventory', 'sales_salesview', 'dashboard_dashboardview', ...fallback])
+  menus.length = 0
+  assert.deepEqual(keys(await service.list()), keys(mergeManagedModules(rows, 'key')))
+})
+
+test('字段模块读取菜单失败时明确报错，不返回伪装成功的旧顺序', async () => {
+  const service = new Service({ columnExists: async () => true,
+    repository: { async list() { return [{ key: 'inventory' }] }, async listMenuOrder() { throw new Error('菜单读取失败') } } })
+  await assert.rejects(service.list(), /菜单读取失败/)
 })
 
 test('managed module merge normalizes keys, fills metadata and sorts by category then name', () => {
   const modules = mergeManagedModules([
     { key: 'inventory', name: '库存Z', category: 'business' },
-    { key: 'dashboard', name: '仪表盘', category: 'system' },
+    { key: 'dashboard_dashboardview', name: '仪表盘', category: 'system' },
     { key: '', name: '忽略' }
   ], 'key')
-  assert.equal(modules.length, 23)
+  const registered = Object.keys(require('../src/config/module-permission-capabilities.json').modules)
+  assert.equal(modules.length, registered.length)
+  for (const key of registered) assert.ok(modules.some(module => module.module_key === key))
   assert.equal(modules.find(module => module.name === '库存Z').module_key, 'inventory_inventoryview')
   assert.ok(modules.every(module => module.key && module.module_key))
   for (let index = 1; index < modules.length; index += 1) {

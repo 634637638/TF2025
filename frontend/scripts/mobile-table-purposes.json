@@ -1,4 +1,11 @@
 {
+  "src/views/sales/page/SalesAdditionalGoods.vue": [
+    {
+      "data": "modelValue",
+      "purpose": "data-entry",
+      "reason": "附加商品的未提交清单，价格调整和移除属于草稿编辑，不是持久记录行操作。"
+    }
+  ],
   "src/views/sales/page/SalesBatchForm.vue": [
     {
       "data": "batchItems",
@@ -30,13 +37,6 @@
       "data": "rows",
       "purpose": "related-details",
       "reason": "商品详情内的只读售后流水子单元，无行写操作，不重复嵌套同一份详情。"
-    }
-  ],
-  "src/components/query/ReturnStockModal.vue": [
-    {
-      "data": "checkoutChecklist.accessories",
-      "purpose": "related-details",
-      "reason": "退货办理中的关联配件核对清单，无单条业务动作；查看详情已由外层原单承载。"
     }
   ],
   "src/components/query/SalesReceipt.vue": [

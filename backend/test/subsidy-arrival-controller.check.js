@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -57,10 +59,10 @@ test('subsidy arrival service invalidates cache only after updating an existing 
     invalidateCache(key) { calls.push(['invalidate', key]) }
   })
 
-  assert.equal(await service.confirmArrival('8'), false)
+  assert.equal(await service.confirmArrival('8', scopedActor), false)
   assert.deepEqual(calls, [['update', '8']])
   updated = true
-  assert.equal(await service.confirmArrival('9'), true)
+  assert.equal(await service.confirmArrival('9', scopedActor), true)
   assert.deepEqual(calls.slice(1), [['update', '9'], ['invalidate', '/subsidy']])
 })
 

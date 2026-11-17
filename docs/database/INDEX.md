@@ -8,7 +8,7 @@
 - [数据库结构与模块资料入口](DATABASE_MODULE_MAPPING.md)
 - [T22 本批结构迁移顺序](../backend/accessory-entry.md#t22-本批结构迁移顺序) - 复用既有脚本的9项执行方案、共同结算前置、完整可恢复备份及失败/回退边界；方案不代表执行授权或迁移完成
 - [采购入库原资料字段](../backend/accessory-entry.md#采购入库原资料留存) - 原采购表追加可空 `product_snapshot JSON`，旧单不回填、有原资料禁止删列回退；已于2026-11-14授权迁移回读，真实业务未验收
-- [贴膜服务结构迁移](../backend/accessory-entry.md#类型设置与受控迁移) - 类型表 `film_enabled` 与独立服务事实表 `customer_film_services`，原共同订单唯一关联、元数据外键类型、默认全0及有事实禁止回退；云端结构已迁移回读，真实业务未验收
+- [贴膜基础迁移](../backend/accessory-entry.md#原贴膜基础迁移与兼容) - 类型兼容列与服务事实表已迁移回读；当前模板开关、免费匹配及本次手机关联的[模板匹配扩展](../backend/accessory-entry.md#模板匹配扩展迁移)5列也已于2026-11-15授权迁移回读，真实业务未验收
 - 站内公告数据库结构和迁移边界见[站内公告接口说明](../backend/site-announcements.md)。
 - [字段统一迁移进度](field-consistency-progress.md)
 - [字段一致性迁移记录](field-consistency-migration.md) - 按日期记录的历史核验

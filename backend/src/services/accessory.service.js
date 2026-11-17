@@ -4,10 +4,11 @@
  */
 const AccessoryRepository = require('../repositories/accessory.repository')
 const log = require('../utils/log')
+const { isDatabaseAvailabilityError } = require('../utils/database-errors')
 const crypto = require('crypto')
 const BaseService = require('../core/base/base.service')
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
-const { formatBeijingDate, getBeijingTimeString } = require('../utils/time')
+const { formatBeijingDate, getBeijingTimeString, isBeijingDateTime } = require('../utils/time')
 const { normalizeImei } = require('../utils/imei')
 const SystemSettingsRepository = require('../repositories/system-settings.repository')
 const AccessoryInventoryService = require('./accessory-inventory.service')
@@ -15,6 +16,7 @@ const { validId, moneyCents } = require('../utils/sale-input')
 const { isIntegerInput } = require('../utils/input-values')
 const { hasColumn, hasTable } = require('./schema-inspector.service')
 const { createPurchaseSnapshot, projectPurchaseSnapshot } = require('../utils/accessory-purchase-snapshot')
+const { AccessoryTemplateColorService } = require('./accessory-template-color.service')
 
 const WAREHOUSE_SETTING_KEY = 'accessory_warehouse_store_id'
 
@@ -25,23 +27,31 @@ class AccessoryService extends BaseService {
     this.settingsRepository = settingsRepository
     this.inventoryService = inventoryService
     this.tableExists = tableExists
+    this.templateColors = new AccessoryTemplateColorService(repository)
   }
 
   async getInventoryBatches(actor, accessoryId, query = {}) {
     this.getActorId(actor)
     const invalid = () => { throw this.createError('批次库存查询参数无效', 400, 'VALIDATION_ERROR') }
-    if (!validId(accessoryId) || Object.keys(query).some(key => !['page', 'page_size', 'store_id'].includes(key))) invalid()
+    if (!validId(accessoryId) || Object.keys(query).some(key => !['page', 'page_size', 'store_id', 'include_zero'].includes(key))) invalid()
+    if (query.include_zero !== undefined && !['true', 'false', true, false].includes(query.include_zero)) invalid()
     for (const key of ['page', 'page_size', 'store_id']) if (query[key] !== undefined && !validId(query[key])) invalid()
     const page = Number(query.page ?? 1), pageSize = Number(query.page_size ?? 20)
     if (page > 1000000 || pageSize > 100) invalid()
     const input = { accessoryId: Number(accessoryId), scope: resolveStoreScope(actor, query.store_id), page, pageSize }
+    if (query.include_zero === true || query.include_zero === 'true') input.includeZero = true
     return this.readInventorySnapshot(async connection => {
       for (const table of ['accessory_inventory_events', 'accessory_serials', 'accessory_stock', 'accessory_stock_in']) {
         if (!await this.tableExists(table, connection)) throw this.createError('库存流水结构未就绪，请先完成迁移', 409, 'INVENTORY_LEDGER_NOT_READY')
       }
       if (!await this.accessoryRepository.getAccessoryById(input.accessoryId, connection)) throw this.createError('商品不存在', 404, 'NOT_FOUND')
       if (await this.inventoryService.repository.batchConflict(input, connection)) throw this.createError('批次库存与门店或SN汇总不一致，请核对库存流水', 409, 'INVENTORY_LEDGER_CONFLICT')
-      return await this.inventoryService.repository.currentBatches(input, connection)
+      const result = await this.inventoryService.repository.currentBatches(input, connection)
+      return { ...result, data: result.data.map(row => {
+        // 云端BIGINT按字符串返回；仅在响应边界校验并归一编号，金额保持原精度。
+        if (!validId(row.accessory_id) || !validId(row.store_id)) throw this.createError('批次库存返回的商品或门店编号无效', 500, 'INVALID_BATCH_RESPONSE')
+        return { ...row, accessory_id: Number(row.accessory_id), store_id: Number(row.store_id) }
+      }) }
     })
   }
 
@@ -118,16 +128,27 @@ class AccessoryService extends BaseService {
       page: this.serialPage(query.page, 1, 1000000), pageSize: this.serialPage(query.page_size, 20, 100) })
   }
 
-  async getSaleOptions(actor, query = {}, searchFields = ['name', 'barcode', 'brand_name', 'product_model', 'serial_number']) {
+  async getSaleOptions(actor, query = {}, searchFields = ['name', 'category', 'barcode', 'brand_name', 'product_model', 'serial_number'], includePurchaseCost = false) {
     this.getActorId(actor)
-    if (Object.keys(query).some(key => !['store_id', 'search', 'page', 'page_size', 'film_only'].includes(key))) throw this.createError('商品检索参数无效', 400, 'VALIDATION_ERROR')
+    if (Object.keys(query).some(key => !['store_id', 'search', 'page', 'page_size', 'film_only', 'film_free_only', 'film_model_id', 'search_mode', 'match_mode'].includes(key))) throw this.createError('商品检索参数无效', 400, 'VALIDATION_ERROR')
+    if (query.film_model_id !== undefined && (!validId(query.film_model_id) || ![true, 'true'].includes(query.film_only))) throw this.createError('贴膜适配型号无效', 400, 'VALIDATION_ERROR')
+    if (query.film_free_only !== undefined && (![true, false, 'true', 'false'].includes(query.film_free_only) || [true, 'true'].includes(query.film_free_only) && ![true, 'true'].includes(query.film_only))) throw this.createError('免费贴膜筛选参数无效', 400, 'VALIDATION_ERROR')
+    if (query.search_mode !== undefined && !['regular', 'serial'].includes(query.search_mode)) throw this.createError('商品检索模式无效', 400, 'VALIDATION_ERROR')
     if (query.film_only !== undefined && ![true, false, 'true', 'false'].includes(query.film_only)) throw this.createError('贴膜筛选参数无效', 400, 'VALIDATION_ERROR')
     if (!validId(query.store_id)) throw this.createError('请先选择有效销售门店', 400, 'VALIDATION_ERROR')
     const storeId = Number(query.store_id)
     assertStoreInScope(resolveStoreScope(actor, null), storeId)
+    const filmFreeOnly = query.film_free_only === undefined ? undefined : query.film_free_only === true || query.film_free_only === 'true'
+    if (filmFreeOnly !== undefined && !await this.accessoryRepository.filmReady()) throw this.createError('贴膜服务结构尚未就绪，请先完成部署迁移', 409, 'FILM_SERVICE_NOT_READY')
     if (['page', 'page_size'].some(key => query[key] !== undefined && !validId(query[key]))) throw this.createError('商品分页参数无效', 400, 'VALIDATION_ERROR')
     if (query.search !== undefined && (typeof query.search !== 'string' || query.search.trim().length > 100)) throw this.createError('商品检索最多100字', 400, 'VALIDATION_ERROR')
+    if (query.match_mode !== undefined && (query.match_mode !== 'exact' || !query.search?.trim() || !['regular', 'serial'].includes(query.search_mode))) throw this.createError('商品精确检索参数无效', 400, 'VALIDATION_ERROR')
     return this.accessoryRepository.getSaleOptions({ storeId, search: query.search?.trim() || '', searchFields,
+      ...(includePurchaseCost ? { includePurchaseCost: true } : {}),
+      ...(filmFreeOnly !== undefined ? { filmFreeOnly } : {}),
+      ...(query.search_mode ? { searchMode: query.search_mode } : {}),
+      ...(query.match_mode === 'exact' ? { exactMatch: true } : {}),
+      ...(query.film_model_id ? { filmModelId: Number(query.film_model_id) } : {}),
       ...(query.film_only === true || query.film_only === 'true' ? { filmOnly: true } : {}),
       page: this.serialPage(query.page, 1, 1000000), pageSize: this.serialPage(query.page_size, 20, 100) })
   }
@@ -265,9 +286,14 @@ class AccessoryService extends BaseService {
 
   async validateProduct(data, existing = {}, executor) {
     const normalized = { ...data }
+    if (data.film_enabled !== undefined) throw this.createError('用于贴膜开关已停用，请改用商品模板的免费专用设置', 400, 'VALIDATION_ERROR')
+    if (data.free_film !== undefined && ![0, 1].includes(data.free_film)) throw this.createError('免费专用开关无效', 400, 'VALIDATION_ERROR')
     if (data.min_stock !== undefined) {
       if (typeof data.min_stock !== 'number' || !Number.isSafeInteger(data.min_stock) || data.min_stock < 0 || data.min_stock > 9999) throw this.createError('预警值必须为0到9999的整数', 400, 'VALIDATION_ERROR')
       normalized.min_stock = data.min_stock
+    }
+    if (data.status !== undefined && ![0, 1].includes(data.status)) {
+      throw this.createError('启用状态无效', 400, 'VALIDATION_ERROR')
     }
     if (data.serial_tracking !== undefined) {
       if (![0, 1].includes(data.serial_tracking)) throw this.createError('SN 管理方式无效', 400, 'VALIDATION_ERROR')
@@ -282,7 +308,7 @@ class AccessoryService extends BaseService {
       }
       normalized.sale_price = price
     }
-    for (const [field, maxLength] of [['name', 200], ['category', 100], ['product_model', 100]]) {
+    for (const [field, maxLength] of [['name', 200], ['category', 100], ['product_model', 100], ['remarks', 1000]]) {
       if (data[field] === undefined) continue
       if (data[field] !== null && typeof data[field] !== 'string') throw this.createError('商品文本字段格式不正确', 400, 'VALIDATION_ERROR')
       const value = (data[field] || '').trim()
@@ -329,9 +355,12 @@ class AccessoryService extends BaseService {
         throw this.createError('适配型号格式不正确', 400, 'VALIDATION_ERROR')
       }
       const ids = [...new Set(data.model_ids.map(value => this.optionalId(value, '适配手机型号')).filter(Boolean))]
+      // 数据库 GROUP_CONCAT 返回字符串，内存调用也可能传入数组。
+      const existingModelIds = new Set((Array.isArray(existing.model_ids)
+        ? existing.model_ids : String(existing.model_ids || '').split(',')).map(Number))
       for (const id of ids) {
         const reference = await this.accessoryRepository.getReference(id, 'model_id', executor)
-        const isExisting = (existing.model_ids || []).map(Number).includes(id) || Number(existing.model_id) === id
+        const isExisting = existingModelIds.has(id) || Number(existing.model_id) === id
         if (reference?.brand_business_scope === 'accessory' && !isExisting) {
           throw this.createError('适配型号必须属于手机业务品牌', 400, 'INVALID_REFERENCE')
         }
@@ -350,8 +379,8 @@ class AccessoryService extends BaseService {
   }
 
   async saveProductCatalogItem(kind, id, data) {
-    if (data.film_enabled !== undefined && (kind !== 'category' || typeof data.film_enabled !== 'boolean')) {
-      throw this.createError('贴膜类型标记须为布尔值，且只能用于商品类型', 400, 'VALIDATION_ERROR')
+    if (data.film_enabled !== undefined) {
+      throw this.createError('贴膜配置已移至商品模板', 400, 'VALIDATION_ERROR')
     }
     const name = String(data.name || '').trim()
     const sortOrder = Number(data.sort_order ?? 0)
@@ -362,8 +391,7 @@ class AccessoryService extends BaseService {
     }
     const description = kind === 'category' ? String(data.description || '').trim() : undefined
     if (description?.length > 500) throw this.createError('分类说明不能超过500个字符', 400, 'VALIDATION_ERROR')
-    const saved = await this.accessoryRepository.saveCatalogItem(kind, id, { name, sort_order: sortOrder, status, description: description || null,
-      ...(data.film_enabled === undefined ? {} : { film_enabled: data.film_enabled }) })
+    const saved = await this.accessoryRepository.saveCatalogItem(kind, id, { name, sort_order: sortOrder, status, description: description || null })
     return this.success('商品资料保存成功', saved)
   }
 
@@ -414,10 +442,11 @@ class AccessoryService extends BaseService {
   async getAccessories(params = {}, actor) {
     try {
       const store_scope = this.inventoryReadScope(actor, params), page = this.inventoryReadPage(params)
-      if (['brand_id', 'model_id', 'supplier_id'].some(key => params[key] !== undefined && !validId(params[key])) ||
+      if (['brand_id', 'model_id', 'supplier_id', 'color_id'].some(key => params[key] !== undefined && !validId(params[key])) ||
         params.mode !== undefined && !['templates', 'inventory'].includes(params.mode) ||
         params.status !== undefined && params.status !== null && (!isIntegerInput(params.status) || ![0, 1].includes(Number(params.status))) ||
         params.search !== undefined && (typeof params.search !== 'string' || params.search.length > 200) ||
+        params.model_name !== undefined && (typeof params.model_name !== 'string' || params.model_name.length > 200) ||
         params.category !== undefined && (typeof params.category !== 'string' || params.category.length > 100)) {
         throw this.createError('商品查询条件无效', 400, 'VALIDATION_ERROR')
       }
@@ -426,6 +455,7 @@ class AccessoryService extends BaseService {
       }, connection))
       return this.success('获取配件列表成功', result)
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       log.error('获取配件列表失败:', error)
       return this.error('获取配件列表失败', 'DATABASE_ERROR')
@@ -440,7 +470,7 @@ class AccessoryService extends BaseService {
       const scope = this.inventoryReadScope(actor)
       if (!validId(id)) throw this.createError('商品ID无效', 400, 'VALIDATION_ERROR')
       return await this.readInventorySnapshot(async connection => {
-        const accessory = await this.accessoryRepository.getAccessoryById(id, connection)
+        const accessory = await this.accessoryRepository.getAccessoryById(id, connection, { storeScope: scope })
         if (!accessory) {
           return this.error('配件不存在', 'NOT_FOUND')
         }
@@ -454,6 +484,7 @@ class AccessoryService extends BaseService {
         })
       })
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       log.error('获取配件详情失败:', error)
       return this.error('获取配件详情失败', 'DATABASE_ERROR')
@@ -468,7 +499,7 @@ class AccessoryService extends BaseService {
       const scope = this.inventoryReadScope(actor)
       if (typeof barcode !== 'string' || !barcode.trim() || barcode.length > 100) throw this.createError('商品条形码无效', 400, 'VALIDATION_ERROR')
       return await this.readInventorySnapshot(async connection => {
-        const accessory = await this.accessoryRepository.getAccessoryByBarcode(barcode, connection)
+        const accessory = await this.accessoryRepository.getAccessoryByBarcode(barcode, connection, { storeScope: scope })
         if (!accessory) {
           return this.error('未找到该条形码的配件', 'NOT_FOUND')
         }
@@ -482,6 +513,7 @@ class AccessoryService extends BaseService {
         })
       })
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       log.error('根据条形码获取配件失败:', error)
       return this.error('根据条形码获取配件失败', 'DATABASE_ERROR')
@@ -493,11 +525,13 @@ class AccessoryService extends BaseService {
    */
   async createAccessory(data) {
     try {
+      const colorVariants = data.color_variants
       data = await this.validateProduct(data)
       // 验证必填字段
       if (!data.name) {
         return this.error('配件名称不能为空', 'VALIDATION_ERROR')
       }
+      if (colorVariants !== undefined) return this.success('创建多颜色商品模板成功', await this.templateColors.create(data, colorVariants))
 
       // 检查条形码是否已存在
       if (data.barcode) {
@@ -510,6 +544,7 @@ class AccessoryService extends BaseService {
       const accessory = await this.accessoryRepository.withConnection(async connection => {
         await connection.beginTransaction()
         try {
+          await this.accessoryRepository.lockFilmConfiguration(connection, data)
           const id = await this.accessoryRepository.createAccessory(data, connection)
           if (data.model_ids !== undefined) await this.accessoryRepository.replaceCompatibleModels(id, data.model_ids, connection)
           const created = await this.accessoryRepository.getAccessoryById(id, connection)
@@ -523,7 +558,7 @@ class AccessoryService extends BaseService {
 
       return this.success('创建商品模板成功', accessory)
     } catch (error) {
-      if (error.statusCode) return this.error(error.message, error.code)
+      if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       if (error.code === 'ER_DUP_ENTRY') return this.error('该条形码已存在，请使用其他条码', 'DUPLICATE_BARCODE')
       log.error('创建配件失败:', error)
       return this.error('创建配件失败', 'DATABASE_ERROR')
@@ -535,11 +570,11 @@ class AccessoryService extends BaseService {
    */
   async updateAccessory(id, data) {
     try {
+      const colorVariants = data.color_variants
       const existing = await this.accessoryRepository.getAccessoryById(id)
       if (!existing) {
         return this.error('配件不存在', 'NOT_FOUND')
       }
-      if (existing.template_id) return this.error('请在商品模板中编辑共享资料', 'VALIDATION_ERROR')
       if (!existing.model_ids && this.accessoryRepository.getCompatibleModelIds) {
         existing.model_ids = await this.accessoryRepository.getCompatibleModelIds(id)
       }
@@ -557,15 +592,54 @@ class AccessoryService extends BaseService {
       const updated = await this.accessoryRepository.withConnection(async connection => {
         await connection.beginTransaction()
         try {
-          if (data.serial_tracking !== undefined) {
-            const template = await this.accessoryRepository.lockAccessory(id, connection)
-            if (!template || template.template_id) throw this.createError('商品模板不存在，请刷新后重试', 404, 'NOT_FOUND')
-            // 仅修改后续入库的默认模式，不转换已有SN或数量库存。
+          await this.accessoryRepository.lockFilmConfiguration(connection, data)
+          const rootId = Number(existing.template_id || existing.id)
+          const family = this.accessoryRepository.templateColors
+            ? await this.accessoryRepository.templateColors.families([rootId], connection) : []
+          if (family.length) {
+            const current = await this.templateColors.update({ id, existing, data, input: colorVariants, family, connection })
+            await connection.commit()
+            return current
           }
-          const saved = await this.accessoryRepository.updateAccessory(id, data, connection)
-          if (data.model_ids !== undefined) await this.accessoryRepository.replaceCompatibleModels(id, data.model_ids, connection)
+          if (colorVariants !== undefined) {
+            const current = await this.templateColors.promote({ id, existing, data, input: colorVariants, connection })
+            await connection.commit()
+            return current
+          }
+          const root = await this.accessoryRepository.lockAccessory(rootId, connection)
+          if (!root) throw this.createError('商品模板不存在，请刷新后重试', 404, 'NOT_FOUND')
+          if (this.accessoryRepository.templateColors && (await this.accessoryRepository.templateColors.families([rootId], connection, { currentRead: true })).length) {
+            throw this.createError('模板颜色关联已变化，请刷新后重新编辑', 409, 'PROFILE_CORRECTION_STALE')
+          }
+          if (Number(id) !== rootId && !await this.accessoryRepository.lockAccessory(id, connection)) {
+            throw this.createError('商品资料已变化，请刷新后重试', 409, 'PROFILE_CORRECTION_STALE')
+          }
+          if (data.brand_id !== undefined && Number(data.brand_id || 0) !== Number(existing.brand_id || 0)) {
+            const duplicate = Number(root.brand_id || 0) === Number(data.brand_id || 0) ||
+              await this.accessoryRepository.getBrandVariant(rootId, data.brand_id, connection)
+            if (duplicate && Number(duplicate.id || duplicate) !== Number(id)) {
+              throw this.createError('该商品模板下已存在此配件品牌的商品，不能直接合并库存与历史记录', 409, 'DUPLICATE_BRAND_VARIANT')
+            }
+          }
+          const childFields = ['brand_id', 'supplier_id', 'purchase_cost']
+          const sharedFields = ['name', 'barcode', 'category', 'category_id', 'model_id', 'color_id', 'sale_price', 'unit', 'unit_id', 'description', 'image_url', 'min_stock', 'serial_tracking', 'product_model', 'status', 'remarks', 'free_film']
+          const childData = Object.fromEntries(childFields.filter(field => data[field] !== undefined).map(field => [field, data[field]]))
+          const sharedData = Object.fromEntries(sharedFields.filter(field => data[field] !== undefined).map(field => [field, data[field]]))
+          // 品牌库存商品继承模板共享资料；档案更正仅独立保留实际商品品牌及采购来源。
+          const childSaved = existing.template_id
+            ? (!Object.keys(childData).length || await this.accessoryRepository.updateAccessory(id, childData, connection))
+            : true
+          const sharedSaved = existing.template_id
+            ? (!Object.keys(sharedData).length || await this.accessoryRepository.updateAccessory(rootId, sharedData, connection))
+            : await this.accessoryRepository.updateAccessory(id, { ...sharedData, ...childData }, connection)
+          const saved = childSaved && sharedSaved
+          if (!saved) throw this.createError('商品资料保存失败，请刷新后重试', 500, 'UPDATE_FAILED')
+          if (data.model_ids !== undefined) await this.accessoryRepository.replaceCompatibleModels(rootId, data.model_ids, connection)
+          const current = await this.accessoryRepository.getAccessoryById(id, connection)
+          if (!current) throw this.createError('商品资料更新后无法核对，请刷新重试', 409, 'PROFILE_CORRECTION_STALE')
+          await this.accessoryRepository.syncProductProfileSnapshots(id, rootId, connection)
           await connection.commit()
-          return saved
+          return current
         } catch (error) {
           await connection.rollback()
           throw error
@@ -575,11 +649,15 @@ class AccessoryService extends BaseService {
         return this.error('更新配件失败', 'UPDATE_FAILED')
       }
 
-      const accessory = await this.accessoryRepository.getAccessoryById(id)
-      return this.success('更新配件成功', accessory)
+      return this.success('更新配件成功', updated)
     } catch (error) {
-      if (error.statusCode) return this.error(error.message, error.code)
-      if (error.code === 'ER_DUP_ENTRY') return this.error('该条形码已存在，请使用其他条码', 'DUPLICATE_BARCODE')
+      if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
+      if (['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error.code)) {
+        return { ...this.error('商品资料正在更新，请刷新后重新编辑', 'PROFILE_CORRECTION_STALE'), statusCode: 409 }
+      }
+      if (error.code === 'ER_DUP_ENTRY') return this.error(data.color_variants === undefined && data.brand_id !== undefined
+        ? '该商品模板下已存在相同品牌的商品，不能直接合并库存与历史记录'
+        : '该条形码已存在，请使用其他条码', data.color_variants === undefined && data.brand_id !== undefined ? 'DUPLICATE_BRAND_VARIANT' : 'DUPLICATE_BARCODE')
       log.error('更新配件失败:', error)
       return this.error('更新配件失败', 'DATABASE_ERROR')
     }
@@ -595,6 +673,10 @@ class AccessoryService extends BaseService {
         return this.error('配件不存在', 'NOT_FOUND')
       }
 
+      if (this.accessoryRepository.templateColors) {
+        const result = await this.updateAccessory(id, { status: 0 })
+        return result.success ? this.success('删除配件成功') : result
+      }
       const deleted = await this.accessoryRepository.deleteAccessory(id)
       if (!deleted) {
         return this.error('删除配件失败', 'DELETE_FAILED')
@@ -607,73 +689,126 @@ class AccessoryService extends BaseService {
     }
   }
 
+  /** 新采购与原批次更正共用输入、门店、分币金额及防重摘要。 */
+  parseStockInInput(data, actor) {
+    if (data.color_variants !== undefined) throw this.createError('请先选择具体颜色再入库，不能提交整组颜色规格', 400, 'COLOR_VARIANT_REQUIRED')
+    const operatorId = this.getActorId(actor)
+    const inventoryTime = data.inventory_time
+    if (inventoryTime !== undefined && !isBeijingDateTime(inventoryTime)) throw this.createError('请选择有效的入库时间（北京时间，精确到秒）', 400, 'VALIDATION_ERROR')
+    if (typeof data.request_key !== 'string' || !/^[a-f0-9]{32}$/.test(data.request_key)) {
+      throw this.createError('入库请求标识无效，请重新打开入库窗口', 400, 'VALIDATION_ERROR')
+    }
+    const scope = resolveStoreScope(actor, null)
+    if (data.distribution !== undefined && (!Array.isArray(data.distribution) || data.distribution.length > 1000)) {
+      throw this.createError('门店分配格式不正确', 400, 'VALIDATION_ERROR')
+    }
+    // 公共门店范围兼容查询数组；写入必须先验证原值，不能把数组/布尔转成编号。
+    for (const value of [data.store_id, ...(data.distribution || []).map(item => item?.store_id),
+      ...(Array.isArray(data.serial_numbers) ? data.serial_numbers.map(item => item?.store_id) : [])]) {
+      if (!isIntegerInput(value) || Number(value) <= 0) throw this.createError('入库门店无效', 400, 'VALIDATION_ERROR')
+    }
+    const serials = this.normalizeSerials(data.serial_numbers, scope)
+    const storeId = assertStoreInScope(scope, data.store_id)
+    const supplierId = this.optionalId(data.supplier_id, '供应商')
+    if (!supplierId) throw this.createError('请选择供应商', 400, 'VALIDATION_ERROR')
+    const usageType = data.usage_type === undefined ? 'sale' : data.usage_type
+    if (!['sale', 'gift'].includes(usageType)) throw this.createError('请选择收费或赠送入库用途', 400, 'VALIDATION_ERROR')
+    if (data.remarks !== undefined && (typeof data.remarks !== 'string' || data.remarks.trim().length > 1000)) throw this.createError('备注必须为文本且最多1000字', 400, 'VALIDATION_ERROR')
+    if (data.serial_tracking !== undefined && ![0, 1].includes(data.serial_tracking)) throw this.createError('SN模式无效', 400, 'VALIDATION_ERROR')
+    const serialMode = data.serial_tracking === undefined ? serials.length > 0 : data.serial_tracking === 1
+    if (!serialMode && serials.length) throw this.createError('普通入库不能携带SN', 400, 'VALIDATION_ERROR')
+    const quantity = serialMode ? serials.length : Number(data.total_quantity)
+    const costCents = moneyCents(data.purchase_cost)
+    if ((!serialMode && !isIntegerInput(data.total_quantity)) || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 999999) {
+      throw this.createError('入库数量必须为正整数且不超过999999', 400, 'VALIDATION_ERROR')
+    }
+    if (costCents === null || costCents * quantity >= 10000000000) {
+      throw this.createError('价格最多保留两位小数，入库总额不能超过字段范围', 400, 'VALIDATION_ERROR')
+    }
+    const quantities = new Map()
+    for (const item of data.distribution || []) {
+      const targetId = assertStoreInScope(scope, item?.store_id)
+      const value = Number(item?.quantity)
+      if (!isIntegerInput(item?.quantity) || value < 0 || value > 999999) throw this.createError('分配数量必须为非负整数且不超过999999', 400, 'VALIDATION_ERROR')
+      quantities.set(targetId, (quantities.get(targetId) || 0) + value)
+    }
+    const distributed = [...quantities.values()].reduce((sum, value) => sum + value, 0)
+    if (distributed > quantity) throw this.createError('门店分配数量不能超过入库总数', 400, 'VALIDATION_ERROR')
+    quantities.set(storeId, (quantities.get(storeId) || 0) + quantity - distributed)
+    const distribution = [...quantities].filter(([, value]) => value > 0)
+      .sort(([a], [b]) => a - b).map(([store_id, quantity]) => ({ store_id, quantity }))
+    const accessoryId = this.optionalId(data.accessory_id, '配件')
+    const productFields = ['barcode', 'name', 'category', 'category_id', 'product_model', 'brand_id', 'model_id', 'model_ids',
+      'color_id', 'sale_price', 'unit', 'unit_id', 'status', 'min_stock', 'description', 'image_url']
+    const hash = crypto.createHash('sha256').update(JSON.stringify({
+      operator_id: operatorId, accessory_id: accessoryId, supplier_id: supplierId, store_id: storeId,
+      ...(inventoryTime === undefined ? {} : { inventory_time: inventoryTime }),
+      quantity, cost_cents: costCents, usage_type: usageType, distribution, serial_tracking: serialMode,
+      serials: [...serials].sort((a, b) => a.serial_number < b.serial_number ? -1 : a.serial_number > b.serial_number ? 1 : 0), remarks: data.remarks?.trim() || '',
+      product: productFields.map(key => [key, data[key] === undefined ? { omitted: true } : data[key]])
+    })).digest('hex')
+    return { operatorId, scope, serials, storeId, supplierId, usageType, serialMode, quantity, costCents, distribution, accessoryId, hash, inventoryTime }
+  }
+
+  /** 调用方持有事务；共享模板及实际品牌商品的建档规则。 */
+  async resolveStockInProduct(data, { accessoryId, supplierId, costCents }, connection) {
+    let minStock = 5
+    let existing = accessoryId ? await this.accessoryRepository.getAccessoryById(accessoryId, connection) : null
+    if (accessoryId && !existing) throw this.createError('配件不存在', 404, 'NOT_FOUND')
+    if (!existing && data.barcode) existing = await this.accessoryRepository.getAccessoryByBarcode(data.barcode, connection)
+    if (existing?.color_variants?.length && Number(existing.color_template_id) === Number(existing.id)) {
+      throw this.createError('请选择本次入库的具体商品颜色', 400, 'COLOR_VARIANT_REQUIRED')
+    }
+    if (existing && Number(existing.status) !== 1) throw this.createError('配件已停用', 400, 'INVALID_REFERENCE')
+    let finalId = existing?.id
+    if (!finalId) {
+      const product = await this.validateProduct({ ...data, supplier_id: supplierId }, {}, connection)
+      if (!product.name) throw this.createError('请填写配件名称', 400, 'VALIDATION_ERROR')
+      minStock = product.min_stock ?? 5
+      finalId = await this.accessoryRepository.createAccessory(product, connection)
+      if (product.model_ids !== undefined) await this.accessoryRepository.replaceCompatibleModels(finalId, product.model_ids, connection)
+    } else {
+      const template = await this.accessoryRepository.lockAccessory(existing.template_id || existing.id, connection)
+      if (!template || template.template_id || Number(template.status) !== 1) {
+        throw this.createError('商品模板不存在或已停用', 400, 'INVALID_REFERENCE')
+      }
+      minStock = Number(template.min_stock ?? 5)
+      const brandId = data.brand_id === undefined ? (existing.brand_id || null) : this.optionalId(data.brand_id, '品牌')
+      await this.validateProduct({ brand_id: brandId, product_model: data.product_model }, existing, connection)
+      if (Number(brandId || 0) === Number(template.brand_id || 0)) {
+        // 历史有品牌商品继续使用原 ID，既有库存和单据不迁移。
+        finalId = template.id
+      } else {
+        const variant = await this.accessoryRepository.getBrandVariant(template.id, brandId, connection)
+        finalId = variant?.id || await this.accessoryRepository.createAccessory({
+          ...template, template_id: template.id, barcode: null, brand_id: brandId,
+          product_model: template.product_model || null,
+          supplier_id: supplierId, purchase_cost: costCents / 100
+        }, connection)
+      }
+    }
+    return { finalId, minStock }
+  }
+
   /**
    * 配件入库
    */
-  async stockIn(data, actor) {
+  async stockIn(data, actor, transaction) {
+    if (data.film_enabled !== undefined || data.free_film !== undefined) return { ...this.error('贴膜规则请在商品模板中设置', 'VALIDATION_ERROR'), statusCode: 400 }
+    if (data.entries !== undefined && !transaction) return this.stockInColors(data, actor)
     try {
-      const operatorId = this.getActorId(actor)
-      if (typeof data.request_key !== 'string' || !/^[a-f0-9]{32}$/.test(data.request_key)) {
-        throw this.createError('入库请求标识无效，请重新打开入库窗口', 400, 'VALIDATION_ERROR')
-      }
-      const scope = resolveStoreScope(actor, null)
-      if (data.distribution !== undefined && (!Array.isArray(data.distribution) || data.distribution.length > 1000)) {
-        throw this.createError('门店分配格式不正确', 400, 'VALIDATION_ERROR')
-      }
-      // 公共门店范围兼容查询数组；写入必须先验证原值，不能把数组/布尔转成编号。
-      for (const value of [data.store_id, ...(data.distribution || []).map(item => item?.store_id),
-        ...(Array.isArray(data.serial_numbers) ? data.serial_numbers.map(item => item?.store_id) : [])]) {
-        if (!isIntegerInput(value) || Number(value) <= 0) throw this.createError('入库门店无效', 400, 'VALIDATION_ERROR')
-      }
-      const serials = this.normalizeSerials(data.serial_numbers, scope)
-      const storeId = assertStoreInScope(scope, data.store_id)
-      const supplierId = this.optionalId(data.supplier_id, '供应商')
-      if (!supplierId) throw this.createError('请选择供应商', 400, 'VALIDATION_ERROR')
-      const usageType = data.usage_type === undefined ? 'sale' : data.usage_type
-      if (!['sale', 'gift'].includes(usageType)) throw this.createError('请选择收费或赠送入库用途', 400, 'VALIDATION_ERROR')
-      if (data.remarks !== undefined && (typeof data.remarks !== 'string' || data.remarks.trim().length > 1000)) throw this.createError('备注必须为文本且最多1000字', 400, 'VALIDATION_ERROR')
-      if (data.serial_tracking !== undefined && ![0, 1].includes(data.serial_tracking)) throw this.createError('SN模式无效', 400, 'VALIDATION_ERROR')
-      const serialMode = data.serial_tracking === undefined ? serials.length > 0 : data.serial_tracking === 1
-      if (!serialMode && serials.length) throw this.createError('普通入库不能携带SN', 400, 'VALIDATION_ERROR')
-      const quantity = serialMode ? serials.length : Number(data.total_quantity)
-      const costCents = moneyCents(data.purchase_cost)
-      let minStock = 5
-      if ((!serialMode && !isIntegerInput(data.total_quantity)) || !Number.isSafeInteger(quantity) || quantity <= 0 || quantity > 999999) {
-        throw this.createError('入库数量必须为正整数且不超过999999', 400, 'VALIDATION_ERROR')
-      }
-      if (costCents === null || costCents * quantity >= 10000000000) {
-        throw this.createError('价格最多保留两位小数，入库总额不能超过字段范围', 400, 'VALIDATION_ERROR')
-      }
-      const quantities = new Map()
-      for (const item of data.distribution || []) {
-        const targetId = assertStoreInScope(scope, item?.store_id)
-        const value = Number(item?.quantity)
-        if (!isIntegerInput(item?.quantity) || value < 0 || value > 999999) throw this.createError('分配数量必须为非负整数且不超过999999', 400, 'VALIDATION_ERROR')
-        quantities.set(targetId, (quantities.get(targetId) || 0) + value)
-      }
-      const distributed = [...quantities.values()].reduce((sum, value) => sum + value, 0)
-      if (distributed > quantity) throw this.createError('门店分配数量不能超过入库总数', 400, 'VALIDATION_ERROR')
-      quantities.set(storeId, (quantities.get(storeId) || 0) + quantity - distributed)
-      const distribution = [...quantities].filter(([, value]) => value > 0)
-        .sort(([a], [b]) => a - b).map(([store_id, quantity]) => ({ store_id, quantity }))
-      const accessoryId = this.optionalId(data.accessory_id, '配件')
-      const productFields = ['barcode', 'name', 'category', 'category_id', 'product_model', 'brand_id', 'model_id', 'model_ids',
-        'color_id', 'sale_price', 'unit', 'unit_id', 'status', 'min_stock', 'description', 'image_url']
-      const hash = crypto.createHash('sha256').update(JSON.stringify({
-        operator_id: operatorId, accessory_id: accessoryId, supplier_id: supplierId, store_id: storeId,
-        quantity, cost_cents: costCents, usage_type: usageType, distribution, serial_tracking: serialMode,
-        serials: [...serials].sort((a, b) => a.serial_number < b.serial_number ? -1 : a.serial_number > b.serial_number ? 1 : 0), remarks: data.remarks?.trim() || '',
-        product: productFields.map(key => [key, data[key] === undefined ? { omitted: true } : data[key]])
-      })).digest('hex')
+      const parsed = this.parseStockInInput(data, actor)
+      const { operatorId, scope, serials, storeId, supplierId, usageType, serialMode, quantity, costCents, distribution, accessoryId, inventoryTime } = parsed
+      const hash = transaction ? crypto.createHash('sha256').update(`${transaction.groupHash}:${parsed.hash}`).digest('hex') : parsed.hash
       const receipt = (row, replayed) => ({ stock_in_id: Number(row.id), batch_no: row.batch_no,
         accessory_id: Number(row.accessory_id), quantity: Number(row.quantity), total_amount: Number(row.total_amount),
         inventory_time: row.inventory_time, replayed })
       const checkReplay = row => {
         if (!row) return null
-        if (Number(row.operator_id) !== operatorId || row.request_hash !== hash || row.status !== 'completed' ||
+        if (Number(row.operator_id) !== operatorId || row.request_hash !== hash || (row.status !== 'completed' && !row.corrected) ||
           !isIntegerInput(row.id) || Number(row.id) <= 0 || Number(row.quantity) !== quantity ||
           moneyCents(row.purchase_cost) !== costCents || moneyCents(row.total_amount) !== costCents * quantity ||
-          Number(row.supplier_id) !== supplierId || !row.batch_no || !row.inventory_time) {
+          Number(row.supplier_id) !== supplierId || !row.batch_no || !row.inventory_time || inventoryTime !== undefined && row.inventory_time !== inventoryTime) {
           throw this.createError('该入库请求已使用，不能更改原入库内容', 409, 'STOCK_IN_REQUEST_CONFLICT')
         }
         assertStoreInScope(scope, row.store_id)
@@ -687,7 +822,7 @@ class AccessoryService extends BaseService {
         targets.forEach(item => assertStoreInScope(scope, item.store_id))
         return receipt(row, true)
       }
-      const result = await this.accessoryRepository.withConnection(async connection => {
+      const execute = async connection => {
         let started = false
         try {
           if (!await this.accessoryRepository.stockInReady(connection)) {
@@ -696,45 +831,14 @@ class AccessoryService extends BaseService {
           // 在事务外核对已提交采购；并发尚未提交由唯一索引兜底，冲突后回滚再读。
           const replay = checkReplay(await this.accessoryRepository.getStockInByKey(data.request_key, connection))
           if (replay) return replay
-          await connection.beginTransaction()
-          started = true
+          if (transaction?.replayOnly) throw this.createError('多颜色入库凭据不完整，请核对原采购记录', 409, 'STOCK_IN_REQUEST_CONFLICT')
+          if (!transaction) { await connection.beginTransaction(); started = true }
           for (const targetId of new Set([storeId, ...distribution.map(item => item.store_id)])) {
             const store = await this.accessoryRepository.getReference(targetId, 'store_id', connection)
             if (!store || Number(store.status) !== 1) throw this.createError('分配门店不存在或已停用', 400, 'INVALID_REFERENCE')
           }
           await this.validateProduct({ supplier_id: supplierId }, {}, connection)
-          let existing = accessoryId ? await this.accessoryRepository.getAccessoryById(accessoryId, connection) : null
-          if (accessoryId && !existing) throw this.createError('配件不存在', 404, 'NOT_FOUND')
-          if (!existing && data.barcode) existing = await this.accessoryRepository.getAccessoryByBarcode(data.barcode, connection)
-          if (existing && Number(existing.status) !== 1) throw this.createError('配件已停用', 400, 'INVALID_REFERENCE')
-          let finalId = existing?.id
-          if (!finalId) {
-            const product = await this.validateProduct({ ...data, supplier_id: supplierId }, {}, connection)
-            if (!product.name) throw this.createError('请填写配件名称', 400, 'VALIDATION_ERROR')
-            minStock = product.min_stock ?? 5
-            finalId = await this.accessoryRepository.createAccessory(product, connection)
-            if (product.model_ids !== undefined) await this.accessoryRepository.replaceCompatibleModels(finalId, product.model_ids, connection)
-          } else {
-            const template = await this.accessoryRepository.lockAccessory(existing.template_id || existing.id, connection)
-            if (!template || template.template_id || Number(template.status) !== 1) {
-              throw this.createError('商品模板不存在或已停用', 400, 'INVALID_REFERENCE')
-            }
-            minStock = Number(template.min_stock ?? 5)
-            const brandId = data.brand_id === undefined ? (existing.brand_id || null) : this.optionalId(data.brand_id, '品牌')
-            const product = await this.validateProduct({ brand_id: brandId, product_model: data.product_model }, existing, connection)
-            if (Number(brandId || 0) === Number(template.brand_id || 0)) {
-              // 历史有品牌商品继续使用原 ID，既有库存和单据不迁移。
-              finalId = template.id
-            } else {
-              const variant = await this.accessoryRepository.getBrandVariant(template.id, brandId, connection)
-              if (variant && Number(variant.status) !== 1) throw this.createError('该品牌库存商品已停用', 400, 'INVALID_REFERENCE')
-              finalId = variant?.id || await this.accessoryRepository.createAccessory({
-                ...template, template_id: template.id, barcode: null, brand_id: brandId,
-                product_model: data.product_model === undefined ? template.product_model || null : product.product_model || null,
-                supplier_id: supplierId, purchase_cost: costCents / 100
-              }, connection)
-            }
-          }
+          const { finalId, minStock } = await this.resolveStockInProduct(data, { accessoryId, supplierId, costCents }, connection)
           if (serialMode) {
             if (serials.some(serial => serial.store_id !== storeId) || distribution.some(item => item.store_id !== storeId)) {
               throw this.createError('本次 SN 必须全部归属所选入库店铺；其他店铺请另建入库单', 400, 'SERIAL_STORE_MISMATCH')
@@ -747,7 +851,7 @@ class AccessoryService extends BaseService {
           }
           const batchNo = this.generateBatchNo()
           const totalAmount = costCents * quantity / 100
-          const time = getBeijingTimeString()
+          const time = inventoryTime || transaction?.time || getBeijingTimeString()
           const context = { accessory_id: finalId, operator_id: operatorId, operator_name: actor.name || actor.username || '', time }
           const productSnapshot = createPurchaseSnapshot(
             await this.accessoryRepository.purchaseSnapshotSource(finalId, supplierId, storeId, connection),
@@ -774,26 +878,106 @@ class AccessoryService extends BaseService {
             await this.accessoryRepository.createSerialEvent({ serial_id: id, event_type: 'stock_in', stock_in_id: stockInId,
               store_id: serial.store_id, operator_id: operatorId, operator_name: actor.name || actor.username, time }, connection)
           }
-          await connection.commit()
-          started = false
+          if (!transaction) { await connection.commit(); started = false }
           return receipt({ id: stockInId, batch_no: batchNo, accessory_id: finalId, quantity,
             total_amount: totalAmount, inventory_time: time }, false)
         } catch (error) {
           if (started) await connection.rollback()
           // 不能只把唯一冲突当成重复SN；不同模板/同请求的竞争也必须重放原采购。
-          if (error.code === 'ER_DUP_ENTRY' || error.code === 'ER_LOCK_DEADLOCK') {
+          if (!transaction && (error.code === 'ER_DUP_ENTRY' || error.code === 'ER_LOCK_DEADLOCK')) {
             const replay = checkReplay(await this.accessoryRepository.getStockInByKey(data.request_key, connection))
             if (replay) return replay
           }
           throw error
         }
-      })
+      }
+      const result = transaction ? await execute(transaction.connection) : await this.accessoryRepository.withConnection(execute)
       return this.success(result.replayed ? '该采购已入库，已核对原入库回执' : '入库成功', result)
     } catch (error) {
+      // 多颜色编排持有同一事务，必须把异常交还外层整体回滚。
+      if (transaction) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       if (error.code === 'ER_DUP_ENTRY') return this.error('SN 或条形码已存在，整单未入库，请核对后重试', 'DUPLICATE_SERIAL')
       log.error('配件入库失败:', error)
       return { ...this.error('配件入库失败', 'DATABASE_ERROR'), statusCode: 500 }
+    }
+  }
+
+  /** 每色独立采购批次，共用一个事务及绑定整组内容的防重凭据。 */
+  async stockInColors(data, actor) {
+    try {
+      if (typeof data.request_key !== 'string' || !/^[a-f0-9]{32}$/.test(data.request_key) ||
+        !Array.isArray(data.entries) || !data.entries.length || data.entries.length > 100) {
+        throw this.createError('请填写1至100个颜色的入库数量', 400, 'VALIDATION_ERROR')
+      }
+      const allowed = new Set(['accessory_id', 'barcode', 'name', 'category', 'category_id', 'product_model', 'brand_id', 'model_id', 'model_ids',
+        'color_id', 'supplier_id', 'purchase_cost', 'sale_price', 'unit', 'unit_id', 'status', 'min_stock', 'total_quantity', 'distribution',
+        'store_id', 'remarks', 'description', 'image_url', 'usage_type', 'serial_tracking', 'serial_numbers', 'inventory_time'])
+      const ids = new Set(), serials = new Set()
+      const entries = data.entries.map(entry => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry) || Object.keys(entry).some(key => !allowed.has(key)) || !validId(entry.accessory_id)) {
+          throw this.createError('颜色入库资料格式无效', 400, 'VALIDATION_ERROR')
+        }
+        const id = Number(entry.accessory_id)
+        if (ids.has(id)) throw this.createError('同一颜色不能重复入库，请合并数量', 400, 'VALIDATION_ERROR')
+        ids.add(id)
+        const input = { ...entry, request_key: data.request_key }
+        const parsed = this.parseStockInInput(input, actor)
+        for (const serial of parsed.serials) {
+          if (serials.has(serial.serial_number)) throw this.createError('不同颜色存在重复SN，请核对', 400, 'DUPLICATE_SERIAL')
+          serials.add(serial.serial_number)
+        }
+        return { id, input, parsed }
+      }).sort((a, b) => a.id - b.id)
+      const first = entries[0].parsed
+      if (serials.size > 1000 || entries.reduce((sum, entry) => sum + entry.parsed.quantity, 0) > 999999 ||
+        entries.reduce((sum, entry) => sum + entry.parsed.quantity * entry.parsed.costCents, 0) >= 10000000000 ||
+        entries.some(({ parsed, input }) => parsed.storeId !== first.storeId || parsed.supplierId !== first.supplierId ||
+          parsed.costCents !== first.costCents || parsed.usageType !== first.usageType || parsed.serialMode !== first.serialMode || parsed.inventoryTime !== first.inventoryTime ||
+          Number(input.brand_id || 0) !== Number(entries[0].input.brand_id || 0) || parsed.distribution.some(row => row.store_id !== first.storeId))) {
+        throw this.createError('各颜色须共用进价、供应商、品牌、店铺、用途及入库时间，总数量最多999999件、SN最多1000条', 400, 'VALIDATION_ERROR')
+      }
+      const groupHash = crypto.createHash('sha256').update(JSON.stringify(entries.map(entry => entry.parsed.hash))).digest('hex')
+      entries.forEach((entry, index) => { entry.input.request_key = index === 0 ? data.request_key
+        : crypto.createHash('sha256').update(`${data.request_key}:${entry.id}`).digest('hex').slice(0, 32) })
+      const result = await this.accessoryRepository.withConnection(async connection => {
+        const time = first.inventoryTime || getBeijingTimeString()
+        const run = async replayOnly => {
+          const batches = []
+          for (const entry of entries) {
+            const result = await this.stockIn(entry.input, actor, { connection, groupHash, replayOnly, time })
+            batches.push(result.data)
+          }
+          if (batches.some(batch => batch.replayed !== replayOnly)) throw this.createError('多颜色入库凭据不一致，请核对原采购记录', 409, 'STOCK_IN_REQUEST_CONFLICT')
+          return { batches, replayed: replayOnly }
+        }
+        if (!await this.accessoryRepository.stockInReady(connection)) throw this.createError('采购入库结构未就绪，请先完成迁移', 409, 'STOCK_IN_NOT_READY')
+        if (await this.accessoryRepository.getStockInByKey(data.request_key, connection)) return run(true)
+        await connection.beginTransaction()
+        try {
+          await this.accessoryRepository.templateColors.assertReady(connection)
+          const families = await this.accessoryRepository.templateColors.families(entries.map(entry => entry.id), connection, { forUpdate: true })
+          const familyId = Number(families.find(row => Number(row.accessory_id) === entries[0].id)?.template_id)
+          if (!familyId || entries.some(entry => !families.some(row => Number(row.template_id) === familyId && Number(row.accessory_id) === entry.id &&
+            (entry.input.color_id === undefined || Number(row.color_id) === Number(entry.input.color_id))))) {
+            throw this.createError('颜色规格已变化或不属于同一模板，请重新选择商品', 400, 'INVALID_REFERENCE')
+          }
+          const result = await run(false)
+          await connection.commit()
+          return result
+        } catch (error) {
+          await connection.rollback()
+          if (['ER_DUP_ENTRY', 'ER_LOCK_DEADLOCK', 'STOCK_IN_REQUEST_CONFLICT'].includes(error.code) &&
+            await this.accessoryRepository.getStockInByKey(data.request_key, connection)) return run(true)
+          throw error
+        }
+      })
+      return this.success(result.replayed ? '已核对全部颜色原入库，未重复入库' : '全部颜色入库成功', result)
+    } catch (error) {
+      if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
+      if (error.code === 'ER_DUP_ENTRY') return { ...this.error('SN或条形码已存在，全部颜色均未入库', 'DUPLICATE_SERIAL'), statusCode: 400 }
+      log.error('多颜色入库失败:', error)
+      return { ...this.error('多颜色入库失败，请重试原入库核对结果', 'DATABASE_ERROR'), statusCode: 500 }
     }
   }
 
@@ -809,6 +993,7 @@ class AccessoryService extends BaseService {
       }, connection))
       return this.success('获取库存列表成功', result)
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       log.error('获取库存列表失败:', error)
       return this.error('获取库存列表失败', 'DATABASE_ERROR')
@@ -832,6 +1017,7 @@ class AccessoryService extends BaseService {
         return { ...row, accessory_name: name }
       }) })
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       log.error('获取入库记录失败:', error)
       return this.error('获取入库记录失败', 'DATABASE_ERROR')
@@ -851,6 +1037,7 @@ class AccessoryService extends BaseService {
       })
       return this.success('获取分类统计成功', rows)
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       log.error('获取分类统计失败:', error)
       return this.error('获取分类统计失败', 'DATABASE_ERROR')
@@ -872,6 +1059,7 @@ class AccessoryService extends BaseService {
         warnings: accessories
       })
     } catch (error) {
+      if (isDatabaseAvailabilityError(error)) throw error
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       log.error('获取库存预警失败:', error)
       return this.error('获取库存预警失败', 'DATABASE_ERROR')

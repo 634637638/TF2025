@@ -1,3 +1,4 @@
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { nextTick, ref, type Ref } from 'vue'
 import {
   isValidMobilePhone,
@@ -103,6 +104,7 @@ export const useSalesCustomers = ({
   showError,
   showSuccess
 }: UseSalesCustomersOptions) => {
+  const customerPermissions = usePagePermissions('customers')
   const customerEditSubmitting = ref(false)
   const customerNameEditing = ref(false)
   const batchCustomerNameEditing = ref(false)
@@ -262,6 +264,7 @@ export const useSalesCustomers = ({
   }
 
   const enableCustomerNameEdit = (event?: MouseEvent) => {
+    if (!customerPermissions.requirePermission('edit')) return
     if (!selectedCustomer.value) return
     customerNameEditing.value = true
 
@@ -278,6 +281,7 @@ export const useSalesCustomers = ({
   }
 
   const saveCustomerNameEdit = async () => {
+    if (!customerPermissions.requirePermission('edit')) return
     if (customerEditSubmitting.value) return
     if (!selectedCustomer.value || !saleForm.customer_name.trim()) {
       showError('客户姓名不能为空')
@@ -321,6 +325,7 @@ export const useSalesCustomers = ({
   }
 
   const handleCustomerNameTouchEnd = (event: TouchEvent) => {
+    if (!customerPermissions.requirePermission('edit')) return
     handleTouchBasedCustomerUnlock(
       event,
       customerNameLastTapAt,
@@ -330,7 +335,7 @@ export const useSalesCustomers = ({
         if (!selectedCustomer.value) return
         const customerId = selectedCustomer.value.id
         return promptCustomerName(saleForm.customer_name, async nextName => {
-          if (!saleVisible.value || selectedCustomer.value?.id !== customerId) return
+          if (!customerPermissions.requirePermission('edit') || !saleVisible.value || selectedCustomer.value?.id !== customerId) return
           customerNameEditing.value = true
           saleForm.customer_name = nextName
           await saveCustomerNameEdit()
@@ -340,6 +345,7 @@ export const useSalesCustomers = ({
   }
 
   const createNewCustomer = async () => {
+    if (!customerPermissions.requirePermission('create')) return
     const normalizedCustomerPhone = normalizeCustomerPhone(saleForm.customer_phone)
     const normalizedCustomerName = normalizePersonName(saleForm.customer_name, 20)
     const normalizedAppleId = normalizeAppleId(saleForm.customer_apple_id)
@@ -510,6 +516,7 @@ export const useSalesCustomers = ({
   }
 
   const enableBatchCustomerNameEdit = (event?: MouseEvent) => {
+    if (!customerPermissions.requirePermission('edit')) return
     if (!selectedBatchCustomer.value) return
     batchCustomerNameEditing.value = true
 
@@ -526,6 +533,7 @@ export const useSalesCustomers = ({
   }
 
   const saveBatchCustomerNameEdit = async () => {
+    if (!customerPermissions.requirePermission('edit')) return
     if (customerEditSubmitting.value) return
     if (!selectedBatchCustomer.value || !batchSaleForm.customer_name.trim()) {
       showError('客户姓名不能为空')
@@ -569,6 +577,7 @@ export const useSalesCustomers = ({
   }
 
   const handleBatchCustomerNameTouchEnd = (event: TouchEvent) => {
+    if (!customerPermissions.requirePermission('edit')) return
     handleTouchBasedCustomerUnlock(
       event,
       batchCustomerNameLastTapAt,
@@ -578,7 +587,7 @@ export const useSalesCustomers = ({
         if (!selectedBatchCustomer.value) return
         const customerId = selectedBatchCustomer.value.id
         return promptCustomerName(batchSaleForm.customer_name, async nextName => {
-          if (!batchSaleVisible.value || selectedBatchCustomer.value?.id !== customerId) return
+          if (!customerPermissions.requirePermission('edit') || !batchSaleVisible.value || selectedBatchCustomer.value?.id !== customerId) return
           batchCustomerNameEditing.value = true
           batchSaleForm.customer_name = nextName
           await saveBatchCustomerNameEdit()
@@ -588,6 +597,7 @@ export const useSalesCustomers = ({
   }
 
   const createNewBatchCustomer = async () => {
+    if (!customerPermissions.requirePermission('create')) return
     const normalizedCustomerPhone = normalizeCustomerPhone(batchSaleForm.customer_phone)
     const normalizedCustomerName = normalizePersonName(batchSaleForm.customer_name, 20)
     const normalizedAppleId = normalizeAppleId(batchSaleForm.apple_id)

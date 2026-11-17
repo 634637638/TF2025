@@ -22,13 +22,13 @@ const pending = new Map<string, {
   reject: (error: AxiosError) => void
 }>()
 
-function succeed(url: string) {
+function succeed(url: string, data: unknown = [], headers = new AxiosHeaders()) {
   const request = pending.get(url)
   if (!request) throw new Error(`未登记模拟请求 ${url}`)
   pending.delete(url)
   request.resolve({
     config: request.config, status: 200, statusText: 'OK',
-    headers: new AxiosHeaders(), data: { success: true, data: [] }
+    headers, data: { success: true, data }
   })
 }
 
@@ -154,4 +154,48 @@ describe('统一 Axios Loading 生命周期与业务文案', () => {
     store.stopLoading('backup-ui')
     expect(store.activeOperationCount).toBe(0)
   })
+})
+
+it('注销等待在途刷新完成，期间不允许再刷新，然后通过同一 Axios 请求退出', async () => {
+  const refresh = unifiedApi.post('/auth/refresh', undefined, { showLoading: false })
+  await flushPromises()
+  expect(pending.has('/auth/refresh')).toBe(true)
+  const logout = unifiedApi.post('/auth/logout', undefined, { showLoading: false })
+  await flushPromises()
+  expect(pending.has('/auth/logout')).toBe(false)
+  await expect(unifiedApi.post('/auth/refresh')).rejects.toThrow('正在退出登录')
+  succeed('/auth/refresh')
+  await refresh
+  await flushPromises()
+  expect(pending.has('/auth/logout')).toBe(true)
+  succeed('/auth/logout')
+  await logout
+})
+
+it('服务端 no-store 响应替换旧公开缓存，后续请求不能继续使用旧数据', async () => {
+  const first = unifiedApi.get('/isolated-cache-scope', { showLoading: false })
+  await flushPromises()
+  succeed('/isolated-cache-scope', { cost: 300 })
+  await first
+  const second = unifiedApi.get('/isolated-cache-scope', { showLoading: false })
+  await flushPromises()
+  succeed('/isolated-cache-scope', { cost: null }, new AxiosHeaders({ 'cache-control': 'no-store' }))
+  expect((await second).data).toEqual({ cost: null })
+  const third = unifiedApi.get('/isolated-cache-scope', { showLoading: false })
+  await flushPromises()
+  succeed('/isolated-cache-scope', { cost: 100 })
+  expect((await third).data).toEqual({ cost: 100 })
+})
+
+it('携带认证的请求始终展示新响应，不复用同 URL 的历史缓存', async () => {
+  const first = unifiedApi.get('/isolated-auth-scope', { showLoading: false })
+  await flushPromises()
+  succeed('/isolated-auth-scope', { stores: [1, 2] })
+  await first
+  // 认证头统一由存储生成，不能通过请求参数伪造登录身份。
+  vi.spyOn(storage, 'getToken').mockReturnValue([btoa('{}'), btoa('{"sub":7}'), 'isolated'].join('.'))
+  const second = unifiedApi.get('/isolated-auth-scope', { showLoading: false })
+  await flushPromises()
+  succeed('/isolated-auth-scope', { stores: [1] })
+  expect((await second).data).toEqual({ stores: [1] })
 })

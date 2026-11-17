@@ -9,7 +9,9 @@ class RentalScheduleRepository {
 
   async getRental(rentalId) {
     const [rows] = await this.getDb().execute(
-      "SELECT billing_mode,term_months,unit_price,sale_price,down_payment,principal_amount,monthly_rent,DATE_FORMAT(start_date,'%Y-%m-%d') start_date FROM rentals WHERE id=?",
+      `SELECT r.billing_mode,r.term_months,r.unit_price,r.sale_price,r.down_payment,r.principal_amount,r.monthly_rent,
+       DATE_FORMAT(r.start_date,'%Y-%m-%d') start_date,COALESCE(s.store_id,p.store_id) AS store_id
+       FROM rentals r JOIN phones p ON p.id=r.phone_id LEFT JOIN sales s ON s.id=r.sale_id WHERE r.id=?`,
       [rentalId]
     )
     return rows[0] || null
@@ -28,9 +30,9 @@ class RentalScheduleRepository {
 
   async getPaymentRental(connection, rentalId) {
     const [rows] = await connection.execute(
-      `SELECT r.contract_number,r.billing_mode,r.term_months,r.unit_price,r.sale_price,r.down_payment,r.principal_amount,r.monthly_rent,
+      `SELECT COALESCE(s.store_id,p.store_id) AS store_id,r.contract_number,r.billing_mode,r.term_months,r.unit_price,r.sale_price,r.down_payment,r.principal_amount,r.monthly_rent,
               r.status,r.sale_id,r.customer_id,s.payment_method AS sale_payment_method,s.payment_channel AS sale_payment_channel
-       FROM rentals r LEFT JOIN sales s ON s.id=r.sale_id WHERE r.id=? FOR UPDATE`,
+       FROM rentals r JOIN phones p ON p.id=r.phone_id LEFT JOIN sales s ON s.id=r.sale_id WHERE r.id=? FOR UPDATE`,
       [rentalId]
     )
     return rows[0] || null

@@ -56,8 +56,8 @@
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 0 20px;
+  gap: var(--tf-space-2);
+  padding: 0 var(--tf-space-2);
   flex-shrink: 0;
 }
 

@@ -21,11 +21,19 @@ vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => (
   canView: computed(() => true), canCreate: computed(() => true), canEdit: computed(() => true), canDelete: computed(() => true)
 }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({
-  fieldPermissions: { init: vi.fn().mockResolvedValue(undefined), isFieldVisible: (_module: string, field: string) => !mocks.hiddenFields.includes(field) },
+  fieldPermissions: {
+    init: vi.fn().mockResolvedValue(undefined),
+    isFieldVisible: (_module: string, field: string) => !mocks.hiddenFields.includes(field),
+    isFieldEditable: () => true
+  },
   shouldShowActionColumn: () => true
 }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: computed(() => mocks.mobile) }) }))
-vi.mock('@/composables/useRefreshData', () => ({ useRefreshData: () => ({ refreshing: computed(() => false), refresh: vi.fn() }) }))
+vi.mock('@/composables/useRefreshData', () => ({ useRefreshData: () => ({ refreshing: computed(() => false), refresh: vi.fn(),
+  refreshData: async (callback: () => Promise<unknown>, options: { successMessage: string; errorMessage: string }) => {
+    try { await callback(); mocks.success(options.successMessage) } catch { mocks.error(options.errorMessage) }
+  }
+}) }))
 vi.mock('@/composables/useElementTableSortable', () => ({ useElementTableSortable: vi.fn() }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ permissions: [], isAuthenticated: true }) }))
 vi.mock('vue-router', () => ({ useRouter: () => ({}) }))
@@ -260,4 +268,40 @@ it('真实 Element 数字控件在保存失败后恢复原值并允许再次修�
   await flushPromises()
   expect(storedRows.find(row => row.id === 45)?.sort_order).toBe(72)
   expect(mocks.success).toHaveBeenCalledWith('排序已保存')
+})
+
+it.each(['create', 'edit'])('品牌%s成功但列表刷新超时只提示已保存，不重放写入且保留原列表', async action => {
+  const wrapper = await render(BrandsView)
+  const before = wrapper.get('[data-column="品牌名称"]').text()
+  await wrapper.findAll('button').find(item => item.text() === (action === 'create' ? '新增' : '编辑'))!.trigger('click')
+  await wrapper.find('.dialog input[placeholder="请输入品牌名称"]').setValue('已保存品牌')
+  mocks.post.mockResolvedValueOnce({ success: true })
+  mocks.put.mockResolvedValueOnce({ success: true })
+  mocks.get.mockRejectedValueOnce({ response: { status: 503, data: { code: 'DB_CONNECTION_ERROR' } } })
+  await wrapper.findAll('.dialog button').find(item => item.text().includes(action === 'create' ? '创建' : '更新'))!.trigger('click')
+  await flushPromises()
+  expect(wrapper.find('.dialog').exists()).toBe(false)
+  expect(wrapper.get('[data-column="品牌名称"]').text()).toBe(before)
+  expect(mocks.warning).toHaveBeenCalledWith(`品牌已${action === 'create' ? '创建' : '更新'}，列表刷新失败，请点击刷新；请勿重复提交。`)
+  expect(mocks.success).not.toHaveBeenCalled()
+  expect(mocks.handleApiError).not.toHaveBeenCalled()
+  expect(mocks.get).toHaveBeenLastCalledWith('/brands', expect.objectContaining({ showError: false, useCache: false }))
+  expect(action === 'create' ? mocks.post : mocks.put).toHaveBeenCalledTimes(1)
+  expect(action === 'create' ? mocks.put : mocks.post).not.toHaveBeenCalled()
+})
+
+
+it('品牌顶部刷新失败只提示失败，恢复后可重读列表且只提示一次成功', async () => {
+  const wrapper = await render(BrandsView)
+  const refresh = () => wrapper.findAll('button').find(item => item.text() === '刷新')!.trigger('click')
+  mocks.get.mockRejectedValueOnce({ response: { status: 503 } })
+  await refresh()
+  await flushPromises()
+  expect(mocks.success).not.toHaveBeenCalled()
+  expect(mocks.error).toHaveBeenCalledExactlyOnceWith('刷新失败，请重试')
+  mocks.error.mockClear()
+  await refresh()
+  await flushPromises()
+  expect(mocks.success).toHaveBeenCalledExactlyOnceWith('数据刷新成功')
+  expect(mocks.error).not.toHaveBeenCalled()
 })

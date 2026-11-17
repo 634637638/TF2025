@@ -37,9 +37,8 @@ class SalaryRecordController {
     const fields = this.fields[isAdmin ? 'salary_salaryrecordsview' : 'salary_mysalaryview']
     const permissions = await fields.getPermissions(userId)
     if (body) {
-      const hidden = new Set(permissions.hiddenFields || [])
-      if (Object.entries(writeFields).some(([key, field]) => body[key] !== undefined && hidden.has(field))) {
-        throw Object.assign(new Error('不能修改已隐藏的工资字段'), { statusCode: 403, code: 'FIELD_PERMISSION_DENIED' })
+      if (fields.findDeniedWrite(body, writeFields, permissions)) {
+        throw Object.assign(new Error('不能修改无编辑权限的工资字段'), { statusCode: 403, code: 'FIELD_PERMISSION_DENIED' })
       }
     }
     return value => fields.maskPayload(value, permissions)
@@ -47,6 +46,9 @@ class SalaryRecordController {
 
   async operate(req, res, operation, message, { write = false, status = 200 } = {}) {
     try {
+      if (write && req.body?.status === 'approved' && !await this.hasPermission(this.getUserId(req), 'salary_salaryrecordsview', 'approve')) {
+        return ApiResponse.forbidden(res, '设置已审批工资需要工资审批权限')
+      }
       const mask = await this.fieldContext(this.getUserId(req), true, write ? req.body : null)
       const result = await operation()
       return ApiResponse.success(res, message, mask(result), status)
@@ -79,6 +81,7 @@ class SalaryRecordController {
       const userId = this.getUserId(req)
 
       const scopeInfo = await this.getSalaryScope(userId)
+      if (!scopeInfo?.canView) return ApiResponse.forbidden(res, '无权限查看工资记录')
 
       const filters = {}
 
@@ -122,6 +125,7 @@ class SalaryRecordController {
       const { id } = req.params
       const userId = this.getUserId(req)
       const scopeInfo = await this.getSalaryScope(userId)
+      if (!scopeInfo?.canView) return ApiResponse.forbidden(res, '无权限查看工资记录')
       const mask = await this.fieldContext(userId, scopeInfo.isAdmin)
       const result = await this.service.getSalaryRecordById(id)
 
@@ -187,11 +191,15 @@ class SalaryRecordController {
    */
   async saveCalculatedSalary(req, res) {
     const userId = this.getUserId(req)
-    return this.operate(req, res, () => this.service.saveCalculatedSalary(req.body, userId, async (existing, connection) => {
-      if (!await this.hasPermission(userId, 'salary_salaryrecordsview', existing ? 'edit' : 'create', connection)) {
-        throw Object.assign(new Error(existing ? '没有编辑已有工资的权限' : '没有创建工资的权限'), { statusCode: 403, code: 'PERMISSION_DENIED' })
-      }
-    }), '保存工资记录成功', { write: true, status: 201 })
+    return this.operate(req, res, async () => {
+      const canApprove = await this.hasPermission(userId, 'salary_salaryrecordsview', 'approve')
+      const input = { ...req.body, status: req.body.status ?? (canApprove ? 'approved' : 'pending') }
+      return this.service.saveCalculatedSalary(input, userId, async (existing, connection) => {
+        if (!await this.hasPermission(userId, 'salary_salaryrecordsview', existing ? 'edit' : 'create', connection)) {
+          throw Object.assign(new Error(existing ? '没有编辑已有工资的权限' : '没有创建工资的权限'), { statusCode: 403, code: 'PERMISSION_DENIED' })
+        }
+      })
+    }, '保存工资记录成功', { write: true, status: 201 })
   }
 
   /**
@@ -328,7 +336,11 @@ class SalaryRecordController {
         return ApiResponse.error(res, '请提供时间范围（period_start 和 period_end）', 400)
       }
 
-      const result = await this.service.bulkRecalculateByPeriod(period_start, period_end, userId)
+      const result = await this.service.bulkRecalculateByPeriod(period_start, period_end, userId, async (existing, connection) => {
+        if (!await this.hasPermission(userId, 'salary_salaryrecordsview', existing ? 'edit' : 'create', connection)) {
+          throw Object.assign(new Error(existing ? '没有编辑工资权限' : '没有新增工资权限'), { statusCode: 403 })
+        }
+      }, await this.hasPermission(userId, 'salary_salaryrecordsview', 'approve'))
       ApiResponse.success(res, '批量重算工资完成', result, 200)
     } catch (error) {
       if (!error.statusCode || error.statusCode >= 500) log.error('批量重算工资失败:', error)

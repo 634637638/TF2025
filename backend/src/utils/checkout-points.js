@@ -1,19 +1,19 @@
 'use strict'
 
-const { quoteCustomerPoints, normalizePointsConfig } = require('./customer-points-rules')
+const { quoteCustomerPoints, normalizePointsConfig, matchesAccessoryRedemption } = require('./customer-points-rules')
 
 const invalid = message => { throw Object.assign(new Error(message), { statusCode: 400, code: 'POINTS_RULE_INVALID' }) }
 const gcd = (a, b) => b ? gcd(b, a % b) : a
 
 /** 数量明细最多保存两组逐件分摊，不按几十万件展开数组。金额始终使用整数分。 */
-const quoteCheckoutPoints = ({ items, availablePoints, balance = availablePoints, config }) => {
+const quoteCheckoutPoints = ({ items, availablePoints, balance = availablePoints, config, autoRedeem = false }) => {
   if (!Array.isArray(items) || !items.length || items.length > 1000 || !Number.isSafeInteger(availablePoints) ||
     availablePoints < 0 || availablePoints > 2147483647 || !Number.isSafeInteger(balance) || balance < availablePoints || balance > 2147483647) invalid('可用积分或明细无效')
   const normalized = normalizePointsConfig(config), keys = new Set()
-  let used = 0, earned = 0, deduction = 0, gross = 0
+  let used = 0, earned = 0, deduction = 0, gross = 0, remaining = availablePoints
   const lines = items.map(row => {
     if (!row || typeof row !== 'object' || Array.isArray(row)) invalid('积分商品明细无效')
-    const points = row.redeem_points === undefined ? 0 : row.redeem_points
+    let points = row.redeem_points === undefined ? 0 : row.redeem_points
     const quantity = row.quantity === undefined ? 1 : row.quantity
     if (typeof row.key !== 'string' || !row.key.trim() || row.key.length > 100 || keys.has(row.key) ||
       !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999999 ||
@@ -22,6 +22,19 @@ const quoteCheckoutPoints = ({ items, availablePoints, balance = availablePoints
     if (!Number.isSafeInteger(row.amount_cents) || row.amount_cents < 0 || row.amount_cents * quantity >= 10000000000) invalid('商品金额无效或超出范围')
     // 每件抵扣须为可兑换到分的整数步长；将步长份数均分，多出的份数按稳定顺序放前面。
     const step = normalized.redemption.points_per_yuan ? normalized.redemption.points_per_yuan / gcd(normalized.redemption.points_per_yuan, 100) : 1
+    if (autoRedeem) {
+      points = 0
+      const rule = normalized.redemption
+      if (row.source === 'accessory' && !row.is_gift && rule.enabled && rule.sources.includes('accessory') &&
+        matchesAccessoryRedemption(rule, row)) {
+        const maxCents = Math.floor(row.amount_cents * rule.max_percent / 100)
+        const unitSteps = BigInt(maxCents) * BigInt(rule.points_per_yuan) / (100n * BigInt(step))
+        const maximum = unitSteps * BigInt(quantity) * BigInt(step)
+        const available = BigInt(Math.floor(remaining / step) * step)
+        points = Number(maximum < available ? maximum : available)
+        remaining -= points
+      }
+    }
     if (points % step !== 0) invalid('抵扣积分不能精确兑换到分，请调整积分数量')
     const shares = points / step, base = Math.floor(shares / quantity) * step, extra = shares % quantity
     const groups = []
@@ -31,7 +44,7 @@ const quoteCheckoutPoints = ({ items, availablePoints, balance = availablePoints
     const units = groups.map(group => {
       // 单件只核验自己的抵扣量；整单余额在汇总扣分/发分后检查，不能把同一余额重复加到各组。
       const quote = quoteCustomerPoints({ config: normalized, available_points: group.points, items: [{
-        key: row.key, source: row.source, amount_cents: row.amount_cents, category_id: row.category_id,
+        key: row.key, source: row.source, amount_cents: row.amount_cents, category_id: row.category_id, accessory_id: row.accessory_id,
         is_gift: row.is_gift, redeem_points: group.points
       }] }).lines[0]
       lineEarned += points ? 0 : quote.points_awarded * group.quantity

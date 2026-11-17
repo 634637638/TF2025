@@ -5,7 +5,6 @@
  */
 
 import { useAuthStore } from '@/stores/auth'
-import { PermissionUtils } from '@/utils/permissionMapper'
 import { watch, type App, type Directive, type DirectiveBinding } from 'vue'
 
 interface PermissionBinding {
@@ -17,6 +16,8 @@ type PermissionDirectiveValue = PermissionBinding | string
 
 const permissionUnsubscribers = new WeakMap<HTMLElement, () => void>()
 const permissionNotUnsubscribers = new WeakMap<HTMLElement, () => void>()
+const permissionBindings = new WeakMap<HTMLElement, DirectiveBinding<PermissionDirectiveValue>>()
+const permissionNotBindings = new WeakMap<HTMLElement, DirectiveBinding<PermissionDirectiveValue>>()
 
 const getBindingPermissions = (
   binding: DirectiveBinding<PermissionDirectiveValue>
@@ -34,16 +35,8 @@ const hasPermission = (binding: DirectiveBinding<PermissionDirectiveValue>): boo
   }
 
   const authStore = useAuthStore()
-  const userPermissions = authStore.userPermissions || []
-  if (userPermissions.includes('*') || userPermissions.includes('all:*')) {
-    return true
-  }
-
   const permissionList = Array.isArray(permissions) ? permissions : [permissions]
-  const canUse = (permission: string) => {
-    const [module] = permission.split(':')
-    return Boolean(module && userPermissions.includes(`${module}:*`)) || PermissionUtils.hasPermission(userPermissions, permission)
-  }
+  const canUse = (permission: string) => authStore.hasPermission(permission)
   const mode = typeof binding.value === 'string' ? 'any' : binding.value?.mode || 'any'
   return mode === 'all' ? permissionList.every(canUse) : permissionList.some(canUse)
 }
@@ -64,19 +57,22 @@ const applyPermissionVisibility = (
 
 export const vPermission: Directive<HTMLElement, PermissionDirectiveValue> = {
   mounted(el, binding) {
+    permissionBindings.set(el, binding)
     applyPermissionVisibility(el, binding)
     const authStore = useAuthStore()
     const unsubscribe = watch(() => [
       authStore.userPermissions,
       authStore.isAuthenticated,
-      authStore.isActive
+      authStore.isActive,
+      authStore.isAuthReady
     ], () => {
-      applyPermissionVisibility(el, binding)
+      applyPermissionVisibility(el, permissionBindings.get(el) || binding)
     }, { deep: true })
     permissionUnsubscribers.set(el, unsubscribe)
   },
 
   updated(el, binding) {
+    permissionBindings.set(el, binding)
     if (binding.oldValue !== binding.value) {
       applyPermissionVisibility(el, binding)
     }
@@ -85,13 +81,15 @@ export const vPermission: Directive<HTMLElement, PermissionDirectiveValue> = {
   unmounted(el) {
     permissionUnsubscribers.get(el)?.()
     permissionUnsubscribers.delete(el)
+    permissionBindings.delete(el)
   }
 }
 
 export const vPermissionNot: Directive<HTMLElement, PermissionDirectiveValue> = {
   mounted(el, binding) {
+    permissionNotBindings.set(el, binding)
     const applyInverseVisibility = () => {
-      el.style.display = hasPermission(binding) ? 'none' : ''
+      el.style.display = hasPermission(permissionNotBindings.get(el) || binding) ? 'none' : ''
     }
 
     applyInverseVisibility()
@@ -99,12 +97,14 @@ export const vPermissionNot: Directive<HTMLElement, PermissionDirectiveValue> = 
     const unsubscribe = watch(() => [
       authStore.userPermissions,
       authStore.isAuthenticated,
-      authStore.isActive
+      authStore.isActive,
+      authStore.isAuthReady
     ], applyInverseVisibility, { deep: true })
     permissionNotUnsubscribers.set(el, unsubscribe)
   },
 
   updated(el, binding) {
+    permissionNotBindings.set(el, binding)
     if (binding.oldValue !== binding.value) {
       el.style.display = hasPermission(binding) ? 'none' : ''
     }
@@ -113,6 +113,7 @@ export const vPermissionNot: Directive<HTMLElement, PermissionDirectiveValue> = 
   unmounted(el) {
     permissionNotUnsubscribers.get(el)?.()
     permissionNotUnsubscribers.delete(el)
+    permissionNotBindings.delete(el)
   }
 }
 

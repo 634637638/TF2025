@@ -1,5 +1,8 @@
 <template>
-  <section v-if="allowed">
+  <section
+    v-if="allowed"
+    class="goods-aftersale-history"
+  >
     <h3>商品售后记录</h3>
     <p>仅展示原销售门店与办理门店均在授权范围内的记录，退款、补款按本商品归属展示。</p>
     <p v-if="canViewMoney && hasExchange">
@@ -91,7 +94,7 @@ import { getGoodsAftersales } from '@/api/query-goods'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { PaymentMethodText } from '@/components/payment'
-import { canViewAccessoryField as visible, type AccessoryFieldName } from '@/components/accessory-field-permissions'
+import { canViewQueryGoodsField as visible, ACCESSORY_FIELD_IDS, type AccessoryFieldName } from '@/components/accessory-field-permissions'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { isGoodsAftersalesPage } from '@/utils/query-goods'
 import { formatAmount, formatDateTime } from '@/utils/format'
@@ -99,9 +102,8 @@ import { TIME_FORMATS } from '@/utils/time'
 import type { GoodsAftersaleRecord, GoodsExchangeReplacement } from '@/types/accessory'
 
 const props = defineProps<{ saleId: number }>()
-const { canView: canQuery } = usePagePermissions('query')
-const { canView: canGoods } = usePagePermissions('accessories')
-const allowed = computed(() => canQuery.value && canGoods.value)
+const { canView: canQuery, hasPermission } = usePagePermissions('query')
+const allowed = computed(() => canQuery.value && hasPermission('goods-view'))
 const canViewMoney = computed(() => visible('usage_type') && visible('total_quantity') && visible('unit_price') && visible('total_price'))
 const requests = useLatestRequest()
 const rows = ref<GoodsAftersaleRecord[]>([])
@@ -172,7 +174,7 @@ const load = async () => {
 }
 const retry = () => { void load() }
 const changePage = (value: number) => { page.value = value; void load() }
-watch([() => props.saleId, allowed], () => {
+watch(() => [props.saleId, allowed.value, ...Object.keys(ACCESSORY_FIELD_IDS).map(key => visible(key as AccessoryFieldName))], () => {
   requests.cancelLatest()
   rows.value = []; total.value = 0; page.value = 1; loading.value = false; failed.value = false; failureMessage.value = ''
   if (allowed.value) void load()

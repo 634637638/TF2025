@@ -45,22 +45,22 @@ withDefaults(defineProps<Props>(), {
   inset: 0;
   z-index: var(--tf-z-loading-overlay);
   display: grid;
-  place-items: center;
-  padding: var(--tf-space-4);
+  place-items: stretch;
   background: var(--tf-loading-overlay-bg, rgba(255, 255, 255, 0.78));
   -webkit-backdrop-filter: blur(1px);
   backdrop-filter: blur(1px);
 }
 
 .loading-overlay-region__cover :deep(.section-loading) {
-  width: 100%;
-  min-height: 112px;
+  height: 100%;
+  min-height: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
   border-radius: var(--tf-radius-card);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .loading-overlay-region__cover :deep(.section-loading::before) {
-    animation: none;
-  }
+.loading-overlay-region__cover :deep(.section-loading::before) {
+  display: none;
 }
 </style>

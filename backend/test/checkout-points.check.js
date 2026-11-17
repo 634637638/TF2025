@@ -14,6 +14,29 @@ const quote = (items, availablePoints = 1000, rules = config(), balance = availa
   quoteCheckoutPoints({ items, availablePoints, balance, config: rules })
 const invalid = operation => assert.throws(operation, { statusCode: 400, code: 'POINTS_RULE_INVALID' })
 
+test('一键抵扣只按稳定商品顺序分配已有积分，排除手机赠品及不匹配分类，不修改输入', () => {
+  const items = [item({ key: 'phone', source: 'new' }), item({ key: 'gift', is_gift: true, amount_cents: 0 }),
+    item({ key: 'other', category_id: 3 }), item({ key: 'first', amount_cents: 100, quantity: 2 }), item({ key: 'last', amount_cents: 100 })]
+  const before = structuredClone(items), rules = config({ max_percent: 50, all_accessory_categories: false, category_ids: [2] })
+  const result = quoteCheckoutPoints({ items, config: rules, availablePoints: 125, autoRedeem: true })
+  assert.deepEqual(result.lines.map(row => row.points_used), [0, 0, 0, 100, 25])
+  assert.equal(result.points_used, 125)
+  assert.equal(result.deduction_cents, 125)
+  assert.equal(result.payable_cents + result.deduction_cents, result.gross_cents)
+  assert.deepEqual(items, before)
+})
+
+test('一键抵扣遵守逐件比例上限和精确兑换步长，不借本单新积分，大数量不溢出', () => {
+  const auto = (items, availablePoints, rules) => quoteCheckoutPoints({ items, availablePoints, config: rules, autoRedeem: true })
+  const result = auto([item({ quantity: 3, amount_cents: 500 })], 8, config({ points_per_yuan: 3, max_percent: 50 }))
+  assert.equal(result.points_used, 6)
+  assert.equal(result.deduction_cents, 200)
+  assert.ok(result.lines[0].units.every(unit => unit.deduction_cents <= 250))
+  assert.equal(auto([item({ amount_cents: 9999, quantity: 999999 })], 2147483647, config({ points_per_yuan: 1000000 })).points_used <= 2147483647, true)
+  assert.equal(auto([item()], 0, config()).points_used, 0)
+  for (const rules of [config({ enabled: false }), config({ sources: ['new'] })]) assert.equal(auto([item()], 100, rules).points_used, 0)
+})
+
 test('混合手机、数量商品与赠品：抵扣明细不累计，其他明细逐件取整，旧余额独立保留', () => {
   const rules = normalizePointsConfig({ ...config(), new_points_per_100: 2, accessory_points_per_100: 4 })
   const input = [item({ key: 'phone', source: 'new', amount_cents: 100000 }),
@@ -138,4 +161,24 @@ test('金额、累计积分及账户余额在单件和整单均不越界', () =>
   for (const value of [-1, 0.5, '1', null, 2147483648, NaN]) invalid(() => quote([item()], value))
   invalid(() => quote([item()], 10, config(), 9))
   invalid(() => quote([item()], 0, config(), 2147483648))
+})
+
+test('指定商品范围对同类型商品分别生效，自动试算与手动抵扣一致且旧类型规则兼容', () => {
+  const selected = config({ all_accessory_categories: false, category_ids: [2, 3], accessory_ids: [8, 9] })
+  const rows = [item({ key: 'selected', category_id: 2, accessory_id: 8 }),
+    item({ key: 'same-category', category_id: 2, accessory_id: 10 }),
+    item({ key: 'other-category', category_id: 3, accessory_id: 9 }),
+    item({ key: 'wrong-category', category_id: 4, accessory_id: 8 })]
+  const result = quoteCheckoutPoints({ config: selected, items: rows, availablePoints: 1000000, autoRedeem: true })
+  assert.ok(result.lines[0].points_used > 0)
+  assert.equal(result.lines[1].points_used, 0)
+  assert.ok(result.lines[2].points_used > 0)
+  assert.equal(result.lines[3].points_used, 0)
+  for (const row of [rows[1], rows[3], { ...rows[0], accessory_id: undefined }]) {
+    assert.throws(() => quoteCheckoutPoints({ config: selected, items: [{ ...row, redeem_points: 10 }], availablePoints: 1000000 }), /不符合积分抵扣范围/)
+  }
+  const legacy = config({ all_accessory_categories: false, category_ids: [2] })
+  assert.ok(quoteCheckoutPoints({ config: legacy, items: [rows[1]], availablePoints: 1000000, autoRedeem: true }).points_used > 0)
+  const empty = config({ all_accessory_categories: false, category_ids: [2], accessory_ids: [] })
+  assert.equal(quoteCheckoutPoints({ config: empty, items: rows, availablePoints: 1000000, autoRedeem: true }).points_used, 0)
 })

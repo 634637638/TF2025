@@ -1,3 +1,4 @@
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
 const { withConnection } = require('../core/db/connection')
 /**
  * H5商城服务 - 员工端
@@ -39,6 +40,12 @@ const selectFields = (fields, alias = '') => fields
 class ShopService {
   constructor({ phoneProducts = new PhoneProductRepository() } = {}) {
     this.phoneProducts = phoneProducts
+  }
+
+  async assertPhoneAccess(actor, phoneId, imageId = null) {
+    const phone = await this.phoneProducts.getResource(phoneId, imageId)
+    if (!phone) throw Object.assign(new Error('设备或所属图片不存在'), { statusCode: 404 })
+    assertStoreInScope(resolveStoreScope(actor), phone.store_id)
   }
 
   async ensurePrimaryPhoneImage(phoneId, connection = db.getDatabase()) {

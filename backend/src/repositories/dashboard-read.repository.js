@@ -1,5 +1,8 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 const { getDatabase } = require('../config/database')
 
 class DashboardReadRepository {
@@ -17,55 +20,77 @@ class DashboardReadRepository {
     return this.database().execute('SELECT COUNT(*) as count FROM customers WHERE status = 1')
   }
 
-  countStockPhones() {
+  countStockPhones(scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 'store_id', conditions, params)
     return this.database().execute(`
         SELECT COUNT(*) as count
         FROM phones
-        WHERE status = 'in_stock' AND supplier_id IS NOT NULL
-      `)
+        WHERE ${conditions.join(' AND ')} AND status = 'in_stock' AND supplier_id IS NOT NULL
+      `, params)
   }
 
-  todayRetailAmount() {
+  todayRetailAmount(scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 's.store_id', conditions, params)
     return this.database().execute(`
-        SELECT COALESCE(SUM(sale_price), 0) as amount
-        FROM phones
-        WHERE DATE(sale_time) = CURDATE() AND status = 'sold'
-      `)
+        SELECT COALESCE(SUM(s.sale_price), 0) as amount
+        FROM phones p JOIN sales s ON s.id = (${getLatestActiveSaleIdSql('p')})
+        WHERE ${conditions.join(' AND ')} AND DATE(s.sale_time) = CURDATE() AND p.status = 'sold' AND s.sale_type = 'retail'
+      `, params)
   }
 
-  todayAccessoryAmount() {
+  todayAccessoryAmount(scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 'store_id', conditions, params)
     return this.database().execute(`
         SELECT COALESCE(SUM(total_price), 0) as amount
         FROM accessory_sales
-        WHERE DATE(created_at) = CURDATE()
-      `)
+        WHERE ${conditions.join(' AND ')} AND DATE(created_at) = CURDATE()
+      `, params)
   }
 
-  todayWholesaleAmount() {
+  todayWholesaleAmount(scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 'store_id', conditions, params)
     return this.database().execute(`
         SELECT COALESCE(SUM(sale_price), 0) as amount
         FROM sales
-        WHERE DATE(sale_time) = CURDATE() AND sale_type = 'wholesale'
-      `)
+        WHERE ${conditions.join(' AND ')} AND DATE(sale_time) = CURDATE() AND sale_type = 'wholesale'
+      `, params)
   }
 
-  todayAccessoryCount() {
-    return this.database().execute('SELECT COUNT(*) as count FROM accessory_sales WHERE DATE(created_at) = CURDATE()')
+  todayAccessoryCount(scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 'store_id', conditions, params)
+    return this.database().execute(`SELECT COUNT(*) as count FROM accessory_sales WHERE ${conditions.join(' AND ')} AND DATE(created_at) = CURDATE()`, params)
   }
 
-  recentAccessorySales() {
+  recentAccessorySales(scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 'asl.store_id', conditions, params)
     return this.database().execute(`
         SELECT asl.*, acc.name as accessory_name, c.name as customer_name, u.name as operator_name
         FROM accessory_sales asl
         LEFT JOIN accessories acc ON asl.accessory_id = acc.id
         LEFT JOIN customers c ON asl.customer_id = c.id
         LEFT JOIN users u ON asl.operator_id = u.id
+        WHERE ${conditions.join(' AND ')}
         ORDER BY asl.created_at DESC
         LIMIT 5
-      `)
+      `, params)
   }
 
-  phoneSaleActivities(sourceLimit) {
+  phoneSaleActivities(sourceLimit, scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 's.store_id', conditions, params)
     return this.database().execute(`
           SELECT
             CONCAT('phone-sale-', s.id) AS id,
@@ -78,13 +103,16 @@ class DashboardReadRepository {
           LEFT JOIN phones p ON p.id = s.phone_id
           LEFT JOIN brands b ON b.id = p.brand_id
           LEFT JOIN models m ON m.id = p.model_id
-          WHERE COALESCE(s.sale_time, s.created_at) IS NOT NULL
+          WHERE ${conditions.join(' AND ')} AND COALESCE(s.sale_time, s.created_at) IS NOT NULL
           ORDER BY occurred_at DESC, s.id DESC
           LIMIT ${sourceLimit}
-        `)
+        `, params)
   }
 
-  accessorySaleActivities(sourceLimit) {
+  accessorySaleActivities(sourceLimit, scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 'asl.store_id', conditions, params)
     return this.database().execute(`
           SELECT
             CONCAT('accessory-sale-', asl.id) AS id,
@@ -94,10 +122,10 @@ class DashboardReadRepository {
             COALESCE(asl.sale_time, asl.created_at) AS occurred_at
           FROM accessory_sales asl
           LEFT JOIN accessories a ON a.id = asl.accessory_id
-          WHERE COALESCE(asl.sale_time, asl.created_at) IS NOT NULL
+          WHERE ${conditions.join(' AND ')} AND COALESCE(asl.sale_time, asl.created_at) IS NOT NULL
           ORDER BY occurred_at DESC, asl.id DESC
           LIMIT ${sourceLimit}
-        `)
+        `, params)
   }
 
   customerActivities(sourceLimit) {
@@ -115,7 +143,10 @@ class DashboardReadRepository {
         `)
   }
 
-  inventoryActivities(sourceLimit) {
+  inventoryActivities(sourceLimit, scope) {
+    const conditions = ['1=1']
+    const params = []
+    appendStoreScopeCondition(scope, 'p.store_id', conditions, params)
     return this.database().execute(`
           SELECT
             CONCAT('phone-inventory-', p.id) AS id,
@@ -127,13 +158,17 @@ class DashboardReadRepository {
           FROM phones p
           LEFT JOIN brands b ON b.id = p.brand_id
           LEFT JOIN models m ON m.id = p.model_id
-          WHERE p.inventory_time IS NOT NULL
+          WHERE ${conditions.join(' AND ')} AND p.inventory_time IS NOT NULL
           ORDER BY p.inventory_time DESC, p.id DESC
           LIMIT ${sourceLimit}
-        `)
+        `, params)
   }
 
-  repairActivities(sourceLimit) {
+  repairActivities(sourceLimit, scope) {
+    const conditions = ['1=1']
+    const params = []
+    // repairs 表没有 store_id，维修单的门店范围通过关联手机归属门店确定。
+    appendStoreScopeCondition(scope, 'p.store_id', conditions, params)
     return this.database().execute(`
           SELECT
             CONCAT('repair-created-', r.id) AS id,
@@ -144,8 +179,9 @@ class DashboardReadRepository {
             r.phone_model AS model_name,
             r.created_at AS occurred_at
           FROM repairs r
+          LEFT JOIN phones p ON p.id = r.phone_id
           LEFT JOIN brands b ON b.id = r.brand_id
-          WHERE r.created_at IS NOT NULL
+          WHERE ${conditions.join(' AND ')} AND r.created_at IS NOT NULL
 
           UNION ALL
 
@@ -158,12 +194,13 @@ class DashboardReadRepository {
             r.phone_model AS model_name,
             r.completed_at AS occurred_at
           FROM repairs r
+          LEFT JOIN phones p ON p.id = r.phone_id
           LEFT JOIN brands b ON b.id = r.brand_id
-          WHERE r.completed_at IS NOT NULL
+          WHERE ${conditions.join(' AND ')} AND r.completed_at IS NOT NULL
 
           ORDER BY occurred_at DESC, id DESC
           LIMIT ${sourceLimit}
-        `)
+        `, [...params, ...params])
   }
 }
 

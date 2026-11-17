@@ -263,7 +263,6 @@
                 <template #default="{ row }">
                   <el-button
                     type="primary"
-                    size="small"
                     @click.stop="openMediaManager(row)"
                   >
                     <i class="fas fa-photo-film" />
@@ -296,7 +295,6 @@
                     <el-button
                       v-if="!isMobile && canEdit && row.status !== 'completed' && row.status !== 'cancelled'"
                       type="success"
-                      size="small"
                       title="更新状态"
                       @click.stop="updateStatus(row)"
                     >
@@ -345,7 +343,6 @@
                   <div class="action-buttons">
                     <el-button
                       type="primary"
-                      size="small"
                       title="查看详情"
                       @click.stop="viewRepair(row)"
                     >
@@ -354,7 +351,6 @@
                     <el-button
                       v-if="canEdit"
                       type="warning"
-                      size="small"
                       title="编辑"
                       @click.stop="editRepair(row)"
                     >
@@ -364,7 +360,6 @@
                       v-if="canDelete"
                       :disabled="row.status === 'completed'"
                       type="danger"
-                      size="small"
                       title="删除维修单"
                       @click.stop="deleteRepair(row)"
                     >
@@ -518,7 +513,8 @@
                     <div class="repair-customer-empty">
                       <span>{{ customerSearchKeyword.length >= 2 ? '暂无匹配客户' : '输入至少2位姓名或手机号' }}</span>
                       <el-button
-                        v-if="customerSearchKeyword.length >= 2 && canViewRepairField('customer_name') && canViewRepairField('customer_phone')"
+                        v-if="customerPermissions.canCreate.value && customerSearchKeyword.length >= 2 && canViewRepairField('customer_name') && canViewRepairField('customer_phone')"
+                        v-permission="'customers:create'"
                         link
                         type="primary"
                         @click.stop="startManualCustomer"
@@ -536,6 +532,7 @@
                 >
                   <template #append>
                     <el-button
+                      v-permission="'customers:create'"
                       :loading="customerSaving"
                       @click="saveRepairCustomer"
                     >
@@ -715,6 +712,7 @@
               >
                 <el-input
                   v-model="formData.imei"
+                  v-identifier-input="'serial-text'"
                   placeholder="请输入 IMEI"
                   @input="handleManualDeviceChange"
                 />
@@ -731,6 +729,7 @@
               >
                 <el-input
                   v-model="formData.serial_number"
+                  v-identifier-input="'serial-text'"
                   placeholder="请输入序列号"
                   @input="handleManualDeviceChange"
                 />
@@ -986,6 +985,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useLoadingState } from '@/composables'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
@@ -1024,6 +1024,7 @@ interface MemoryOption { id: number; size: string }
 interface TechnicianOption { id: number; name: string }
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission } = usePagePermissions('repairs')
+const customerPermissions = usePagePermissions('customers')
 const repairsApiAvailable = true
 const { success, error: notifyError, info, confirm } = useNotification()
 const { isMobile } = useMobile()
@@ -1223,6 +1224,7 @@ const resetCustomerSelection = () => {
 }
 
 const startManualCustomer = () => {
+  if (!customerPermissions.requirePermission('create')) return
   const keyword = customerSearchKeyword.value
   customerMode.value = 'manual'
   formData.customer_id = null
@@ -1232,6 +1234,7 @@ const startManualCustomer = () => {
 }
 
 const saveRepairCustomer = async () => {
+  if (!customerPermissions.requirePermission('create')) return
   const name = customerDraft.name.trim()
   const phone = customerDraft.phone.trim()
   if (!name || !/^1[3-9]\d{9}$/.test(phone)) {
@@ -1776,6 +1779,10 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'remarks', label: '备注', value: row.remarks, visible: canViewRepairField('remarks'), wide: true },
     { key: 'repair_time', label: '维修时间', value: formatGlobalDate(row.repair_time), visible: canViewRepairField('repair_time'), wide: true }
   ]
+})
+
+usePageShortcuts('/repairs', {
+  'repair-create': { open: showAddModal }
 })
 </script>
 

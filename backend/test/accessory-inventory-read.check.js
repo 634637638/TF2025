@@ -4,6 +4,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { DatabaseSync } = require('node:sqlite')
 const Repository = require('../src/repositories/accessory.repository')
+const ColorRepository = require('../src/repositories/accessory-template-color.repository')
 const Service = require('../src/services/accessory.service')
 const Controller = require('../src/controllers/accessory.controller')
 
@@ -12,12 +13,19 @@ const scope = { allStores: false, storeIds: [1] }
 const fixture = t => {
   const db = new DatabaseSync(':memory:')
   t.after(() => db.close())
+  db.function('JSON_LENGTH', value => value === null ? null : JSON.parse(value).length)
+  db.function('JSON_TYPE', value => value === null ? null : Array.isArray(JSON.parse(value)) ? 'ARRAY' : 'OBJECT')
   db.function('IF', (condition, left, right) => condition ? left : right)
+  db.function('JSON_CONTAINS', (document, candidate) => JSON.parse(document).some(row =>
+    Object.entries(JSON.parse(candidate)).every(([key, value]) => row[key] === value)) ? 1 : 0)
   db.function('LEAST', (left, right) => left === null || right === null ? null : Math.min(left, right))
   db.function('CONCAT', { varargs: true }, (...values) => values.some(value => value === null) ? null : values.join(''))
   db.function('CONCAT_WS', { varargs: true }, (separator, ...values) => values.filter(value => value !== null).join(separator))
+  db.function('JOIN_JSON', (values, separator) => JSON.parse(values).filter(value => value !== null).join(separator) || null)
   db.exec(`CREATE TABLE accessories (id INTEGER PRIMARY KEY, template_id INTEGER, brand_id INTEGER,
     name TEXT, barcode TEXT, category TEXT, category_id INTEGER, status INTEGER, sale_price NUMERIC, min_stock INTEGER);
+    CREATE TABLE accessory_stock_in (id INTEGER PRIMARY KEY, accessory_id INTEGER, store_id INTEGER,
+      purchase_cost NUMERIC, status TEXT, inventory_time TEXT, distribution TEXT);
     CREATE TABLE accessory_categories (id INTEGER PRIMARY KEY, name TEXT);
     CREATE TABLE brands (id INTEGER PRIMARY KEY, name TEXT);
     CREATE TABLE stores (id INTEGER PRIMARY KEY, name TEXT);
@@ -54,6 +62,8 @@ const fixture = t => {
   // 仅适配MySQL字符排序及GROUP_CONCAT分隔符语法；JOIN、筛选、聚合和分页执行真实SQL。
   const rows = (sql, params = []) => db.prepare(sql
     .replace(/CONVERT\(([\s\S]*?) USING utf8mb4\) COLLATE utf8mb4_unicode_ci/g, '$1 COLLATE NOCASE')
+    .replace(/GROUP_CONCAT\(DISTINCT model_brand\.name ORDER BY model_brand\.name SEPARATOR ' \/ '\)/g,
+      "JOIN_JSON(JSON_GROUP_ARRAY(DISTINCT model_brand.name ORDER BY model_brand.name), ' / ')")
     .replace(/ SEPARATOR ', '/g, '')).all(...params).map(row => ({ ...row }))
   const connection = {
     async execute(sql) { calls.push(['configure', sql]) },
@@ -62,12 +72,191 @@ const fixture = t => {
     destroy() { calls.push(['destroy']) },
     async query(sql, params) { calls.push(['query', sql, params]); return [rows(sql, params)] }
   }
-  const repository = new Repository()
+  const repository = new Repository({ columnExists: async () => false, templateColors: new ColorRepository({ tableExists: async () => false }) })
   repository.executeQuery = async (sql, params) => { calls.push(['pool-query', sql, params]); return rows(sql, params) }
   repository.withConnection = async operation => { calls.push(['acquire']); try { return await operation(connection) } finally { calls.push(['release']) } }
   const service = new Service({ repository })
   return { db, repository, service, calls, connection, rows }
 }
+
+test('进价从0更正后列表、详情及条码读取有效新批次，按采购时间和ID排序且隔离门店与品牌', async t => {
+  const { db, repository, service, connection } = fixture(t)
+  db.exec(`UPDATE accessories SET purchase_cost=0 WHERE id IN (2,3);
+    INSERT INTO accessory_stock_in VALUES
+      (10,2,1,0,'completed','2026-11-13 10:00:00',NULL),
+      (11,3,1,99,'completed','2026-11-15 10:00:00',NULL);`)
+  const read = async () => {
+    const list = await service.getAccessories({ mode: 'inventory' }, actor)
+    const detail = await service.getAccessoryDetail(2, actor)
+    const barcode = await service.getAccessoryByBarcode('V2', actor)
+    assert.equal(list.success, true); assert.equal(detail.success, true); assert.equal(barcode.success, true)
+    return [list.data.data.find(row => row.id === 2).purchase_cost, detail.data.purchase_cost, barcode.data.purchase_cost]
+  }
+  assert.deepEqual(await read(), [0,0,0])
+  db.exec(`UPDATE accessory_stock_in SET status='cancelled' WHERE id=10;
+    INSERT INTO accessory_stock_in VALUES
+      (12,2,1,12.5,'completed','2026-11-13 10:00:00',NULL),
+      (13,2,2,88,'completed','2026-11-16 10:00:00',NULL),
+      (14,2,1,66,'cancelled','2026-11-16 11:00:00',NULL),
+      (15,2,1,77,'completed','2026-11-12 10:00:00',NULL),
+      (16,2,1,55,'completed','2026-11-16 12:00:00','[{"store_id":1},{"store_id":2}]');`)
+  assert.deepEqual(await read(), [12.5,12.5,12.5])
+  // 重复独立读取不会恢复旧主档0；主档和作废原单保留原值。
+  assert.deepEqual(await read(), [12.5,12.5,12.5])
+  assert.equal((await repository.getAccessoryById(2, connection)).purchase_cost, 0)
+  assert.equal(db.prepare('SELECT purchase_cost FROM accessory_stock_in WHERE id=10').get().purchase_cost, 0)
+  db.exec("INSERT INTO accessory_stock_in VALUES (17,2,1,0,'completed','2026-11-13 10:00:00',NULL);")
+  assert.deepEqual(await read(), [0,0,0])
+  assert.equal((await service.getAccessoryDetail(2, { id:7, store_ids:[1,2] })).data.purchase_cost, 55)
+})
+
+test('模板适配品牌按真实型号去重排序，品牌库存继承模板，多型号文本及通用语义保留', async t => {
+  const { db, repository, connection } = fixture(t)
+  db.exec(`INSERT INTO brands VALUES (20,'Apple'),(21,'Huawei');
+    INSERT INTO models VALUES (100,20,'iPhone 17'),(101,20,'iPhone 16'),(102,21,'Mate 80');
+    INSERT INTO accessory_compatible_models VALUES (1,100),(1,101),(1,102);
+    UPDATE accessories SET model_id=100 WHERE id=1;`)
+  const result = await repository.getAccessories({ mode: 'templates', store_scope: scope }, connection)
+  const product = result.data.find(row => row.id === 1)
+  assert.equal(product.compatible_brand_names, 'Apple / Huawei')
+  assert.match(product.compatible_model_names, /Apple iPhone 16/)
+  assert.match(product.compatible_model_names, /Huawei Mate 80/)
+  assert.equal(result.data.find(row => row.id === 4).compatible_brand_names, null)
+  assert.equal((await repository.getAccessoryById(2, connection)).compatible_brand_names, 'Apple / Huawei')
+  assert.equal((await repository.getAccessoryByBarcode('V2', connection)).compatible_brand_names, 'Apple / Huawei')
+})
+
+test('商品名称支持片段及多关键词跨字段匹配，统一型号空格大小写规则且不混合不同商品', async t => {
+  const { db, repository, connection } = fixture(t)
+  db.exec(`INSERT INTO colors VALUES (1,'白色'),(2,'黑色');
+    INSERT INTO models VALUES (20,10,'iPhone 17');
+    INSERT INTO accessory_compatible_models VALUES (1,20);
+    UPDATE accessories SET name='原装充电头', product_model='USB-C 20W', color_id=1 WHERE id=1;
+    UPDATE accessories SET name='原装充电头', product_model='USB-C 35W', color_id=2 WHERE id=4;`)
+  const search = keyword => repository.getAccessories({ mode: 'templates', search: keyword,
+    search_fields: ['name', 'category', 'product_model', 'color_name', 'model_name'], store_scope: scope }, connection)
+  for (const keyword of ['充电 20w 白色', '头　20W', 'usb-c20w', 'iPhone17', 'IPHONE-17']) {
+    const result = await search(keyword)
+    assert.equal(Number(result.pagination.total), 1, keyword)
+    assert.deepEqual(result.data.map(row => row.id), [1], keyword)
+  }
+  assert.equal(Number((await search('充电头 usb-c')).pagination.total), 2)
+  assert.equal(Number((await search('20w 黑色')).pagination.total), 0)
+  assert.equal(Number((await search("充电头 ' OR 1=1")).pagination.total), 0)
+  const hidden = await repository.getAccessories({ mode: 'templates', search: '白色', search_fields: ['name'], store_scope: scope }, connection)
+  assert.equal(Number(hidden.pagination.total), 0)
+})
+
+test('商品库存和模板组合筛选类型、品牌、适配型号及颜色，模板品牌仅关联授权店商品', async t => {
+  const { db, repository, connection } = fixture(t)
+  db.exec(`INSERT INTO colors VALUES (1,'白色'),(2,'黑色');
+    INSERT INTO models VALUES (20,10,'iPhone 17'),(21,11,'Galaxy S25');
+    INSERT INTO accessory_compatible_models VALUES (1,20),(4,21);
+    UPDATE accessories SET color_id=1 WHERE id=1;
+    UPDATE accessories SET color_id=2 WHERE id=4;`)
+  const filters = { search: '共享', search_fields: ['name'], category: '充电头', brand_id: 10, model_name: 'iphone-17', color_id: 1, store_scope: scope }
+  for (const [mode, expected] of [['inventory', 2], ['templates', 1]]) {
+    const result = await repository.getAccessories({ ...filters, mode }, connection)
+    assert.equal(result.pagination.total, 1)
+    assert.deepEqual(result.data.map(row => row.id), [expected])
+    for (const mismatch of [{ color_id: 2 }, { model_name: 'Galaxy' }, { category: '数据线' }]) {
+      assert.equal((await repository.getAccessories({ ...filters, ...mismatch, mode }, connection)).pagination.total, 0)
+    }
+  }
+  assert.equal((await repository.getAccessories({ ...filters, mode: 'templates', brand_id: 12 }, connection)).pagination.total, 0)
+  assert.equal((await repository.getAccessories({ ...filters, mode: 'templates', brand_id: 12, store_scope: { allStores: true } }, connection)).pagination.total, 1)
+})
+
+test('适配型号检索支持旧单型号、多型号、通用及字面通配符，保持既有型号ID筛选兼容', async t => {
+  const { db, repository, connection } = fixture(t)
+  db.exec(`INSERT INTO models VALUES (20,10,'iPhone 17'),(21,11,'Phone%_Pro');
+    UPDATE accessories SET model_id=20 WHERE id=1;
+    INSERT INTO accessory_compatible_models VALUES (4,21);`)
+  for (const [filter, id] of [[{ model_name: 'IPHONE-17' }, 1], [{ model_name: '品牌甲 iPhone17' }, 1],
+    [{ model_name: 'Phone%_' }, 4], [{ model_id: 20 }, 1]]) {
+    const result = await repository.getAccessories({ ...filter, mode: 'templates', store_scope: scope }, connection)
+    assert.deepEqual(result.data.map(row => row.id), [id])
+  }
+  const universal = await repository.getAccessories({ mode: 'templates', model_name: '通用', store_scope: scope }, connection)
+  assert.deepEqual(universal.data.map(row => row.id), [7])
+  const injection = await repository.getAccessories({ mode: 'templates', model_name: "' OR 1=1", store_scope: scope }, connection)
+  assert.equal(injection.pagination.total, 0)
+})
+
+test('库存与模板均可按启用、停用或全部状态筛选，品牌子商品继承模板状态', async t => {
+  const { repository, connection } = fixture(t)
+  for (const [mode, active, disabled] of [['inventory', 2, 6], ['templates', 1, 5]]) {
+    const query = { mode, brand_id: 10, store_scope: scope }
+    assert.deepEqual((await repository.getAccessories({ ...query, status: 1 }, connection)).data.map(row => row.id), [active])
+    assert.deepEqual((await repository.getAccessories({ ...query, status: 0 }, connection)).data.map(row => row.id), [disabled])
+    const all = await repository.getAccessories({ ...query, status: null }, connection)
+    assert.deepEqual(all.data.map(row => row.id).sort((left, right) => left - right), [active, disabled])
+    assert.equal(all.pagination.total, 2)
+  }
+})
+
+test('多颜色模板只显示一个入口，颜色条码命中同一模板而库存保留实际颜色身份', async t => {
+  const { db, repository, connection } = fixture(t)
+  db.exec(`CREATE TABLE accessory_template_colors (template_id INTEGER, accessory_id INTEGER PRIMARY KEY, color_id INTEGER);
+    INSERT INTO colors VALUES (3, '白色'), (4, '黑色');
+    INSERT INTO accessories (id, template_id, name, barcode, category, status, sale_price, color_id)
+      VALUES (20, NULL, '多色充电器', NULL, '充电头', 1, 39, NULL),
+      (21, NULL, '多色充电器', 'COLOR-W', '充电头', 1, 39, 3),
+      (22, NULL, '多色充电器', 'COLOR-B', '充电头', 1, 39, 4),
+      (23, 21, '旧颜色副本', NULL, '旧类型', 1, 999, 4);
+    INSERT INTO accessory_template_colors VALUES (20, 21, 3), (20, 22, 4);
+    INSERT INTO accessory_stock VALUES (20,23,1,5,5,0,0,NULL,NULL,NULL);`)
+  repository.templateColors = new ColorRepository({ tableExists: async () => true })
+  for (const search of ['多色', 'COLOR-B', '黑色']) {
+    const result = await repository.getAccessories({ mode: 'templates', search, search_fields: ['name', 'barcode', 'color_name'] }, connection)
+    assert.equal(result.pagination.total, 1)
+    assert.equal(result.data[0].id, 20)
+    assert.deepEqual(result.data[0].color_variants.map(row => [row.accessory_id, row.color_name, row.barcode]), [[21, '白色', 'COLOR-W'], [22, '黑色', 'COLOR-B']])
+  }
+  const inventory = await repository.getAccessories({ mode: 'inventory', search: '多色', search_fields: ['name'], store_scope: scope }, connection)
+  assert.equal(inventory.data[0].id, 23); assert.equal(inventory.data[0].color_name, '白色')
+  assert.equal(inventory.data[0].barcode, 'COLOR-W'); assert.equal(inventory.data[0].total_stock, 5)
+  const detail = await repository.getAccessoryById(23, connection)
+  assert.equal(detail.color_template_id, 20); assert.equal(detail.template_id, 21)
+  db.exec('UPDATE accessories SET brand_id=10 WHERE id=23')
+  const filteredTemplate = await repository.getAccessories({ mode: 'templates', brand_id: 10, color_id: 3, store_scope: scope }, connection)
+  assert.deepEqual(filteredTemplate.data.map(row => row.id), [20])
+  const filteredStock = await repository.getAccessories({ mode: 'inventory', brand_id: 10, color_id: 3, store_scope: scope }, connection)
+  assert.deepEqual(filteredStock.data.map(row => row.id), [23])
+  assert.equal((await repository.getAccessories({ mode: 'inventory', brand_id: 10, color_id: 4, store_scope: scope }, connection)).pagination.total, 0)
+  const hidden = await repository.getAccessories({ mode: 'templates', search: 'COLOR-B', search_fields: ['name'] }, connection)
+  assert.equal(hidden.pagination.total, 0)
+})
+
+test('超过500个同名模板仍可遍历全部匹配，跨页总数与条件一致且不会丢失后面的商品', async t => {
+  const { db, repository, connection } = fixture(t)
+  const insert = db.prepare('INSERT INTO accessories (id,name,category_id,status,product_model) VALUES (?, ?, 1, 1, ?)')
+  for (let index = 1; index <= 521; index++) insert.run(1000 + index, '同名原装充电头', `USB-C 20W-${index}`)
+  const ids = new Set()
+  for (let page = 1; page <= Math.ceil(521 / 20); page++) {
+    const result = await repository.getAccessories({ mode: 'templates', search: '同名 充电头', search_fields: ['name', 'product_model'],
+      category: '充电头', model_name: '通用', page, page_size: 20, store_scope: scope }, connection)
+    assert.equal(Number(result.pagination.total), 521)
+    for (const row of result.data) {
+      assert.equal(ids.has(row.id), false)
+      ids.add(row.id)
+    }
+  }
+  assert.equal(ids.size, 521)
+  assert.equal(ids.has(1001), true)
+  assert.equal(ids.has(1521), true)
+})
+
+test('型号或条码中的下划线、百分号与转义符按字面匹配，不把通配符当成任意内容', async t => {
+  const { db, repository, connection } = fixture(t)
+  db.exec(`UPDATE accessories SET product_model='USB_A100%', barcode='CODE!_100%' WHERE id=1;
+    UPDATE accessories SET product_model='USBXA1000', barcode='CODEXA1000' WHERE id=4;`)
+  for (const [keyword, field] of [['USB_A', 'product_model'], ['100%', 'product_model'], ['CODE!_', 'barcode']]) {
+    const result = await repository.getAccessories({ mode: 'templates', search: keyword, search_fields: [field], store_scope: scope }, connection)
+    assert.deepEqual(result.data.map(row => row.id), [1])
+    assert.equal(Number(result.pagination.total), 1)
+  }
+})
 
 test('类型库存按授权店真实数量及当前模板零售价统计，多品牌不重复模板，停用及空模板不混入', async t => {
   const { repository, db } = fixture(t)
@@ -139,7 +328,7 @@ test('主列表在COUNT与行查询限制真实库存商品和汇总JOIN，模�
   assert.match(calls[0].sql, /current_stock\.store_id IN \(\?\)/)
   assert.match(calls[1].sql, /LEFT JOIN accessory_stock ast ON a.id = ast.accessory_id AND ast.store_id IN \(\?\)/)
   assert.deepEqual(calls[0].params, [1, 1])
-  assert.deepEqual(calls[1].params, [1, 1, 1, 10, 0])
+  assert.deepEqual(calls[1].params, [1, 1, 1, 1, 1, 10, 0])
   calls.length = 0
   const templates = await repository.getAccessories({ mode: 'templates', store_scope: { storeIds: [] } }, connection)
   assert.equal(templates.pagination.total, 3)
@@ -236,7 +425,8 @@ test('所有公开读取携带认证身份及门店范围，非法/越店/无身
     assert.equal((await service[action](query, actor)).statusCode, 400)
   }
   for (const threshold of ['', false, [], {}, -1, 0.5, 10000, '1 OR 1=1']) assert.equal((await service.getLowStockWarnings({ threshold }, actor)).statusCode, 400)
-  for (const query of [{ brand_id: [1] }, { supplier_id: true }, { model_id: '1bad' }, { mode: [] }, { status: ['1'] }, { search: {} }, { category: ['膜'] }]) {
+  for (const query of [{ brand_id: [1] }, { supplier_id: true }, { model_id: '1bad' }, { color_id: [1] }, { color_id: '1 OR 1=1' },
+    { model_name: {} }, { model_name: true }, { model_name: 'a'.repeat(201) }, { mode: [] }, { status: ['1'] }, { search: {} }, { category: ['膜'] }]) {
     assert.equal((await service.getAccessories(query, actor)).statusCode, 400)
   }
   assert.equal((await service.getStockList({ low_stock_only: 'no' }, actor)).statusCode, 400)
@@ -255,6 +445,8 @@ test('详情、条码及分页读取共用只读快照，异常配置/启动/回
       destroy() { calls.push('destroy') }
     }
     const repository = {
+      async lockFilmConfiguration() { return false },
+      async assertUniqueFreeFilms() {},
       async withConnection(operation) { try { return await operation(connection) } finally { calls.push('release') } },
       async getAccessoryById(_id, executor) { assert.equal(executor, connection); if (fault === 'read') throw Object.assign(Error('业务失败'), { statusCode: 409 }); return { id: 2 } },
       async getAccessoryByBarcode(_barcode, executor) { return this.getAccessoryById(2, executor) },
@@ -310,13 +502,16 @@ test('六个HTTP读取入口传递认证用户和原始筛选，不接受客户�
   for (const [action] of pairs) {
     const res = response()
     await controller[action]({ user: actor, params: { id: '2', barcode: 'T1' }, query: {
-      mode: 'inventory', store_id: '1', threshold: '0', low_stock_only: 'false', store_scope: { allStores: true }
+      mode: 'inventory', store_id: '1', threshold: '0', low_stock_only: 'false', store_scope: { allStores: true },
+      color_id: '3', model_name: 'iPhone17'
     } }, res)
     assert.equal(res.body.success, true)
     assert.equal(calls.at(-1)[1][1], actor)
   }
   assert.equal(calls[0][1][0].store_id, '1')
   assert.equal(calls[0][1][0].store_scope, undefined)
+  assert.equal(calls[0][1][0].color_id, '3')
+  assert.equal(calls[0][1][0].model_name, 'iPhone17')
   assert.equal(calls[1][1][0], '2'); assert.equal(calls[2][1][0], 'T1')
   assert.equal(calls[3][1][0].low_stock_only, 'false')
   assert.deepEqual(calls[4][1][0], { store_id: '1', threshold: '0' })
@@ -337,4 +532,18 @@ test('隐藏预警必要字段不可通过结果成员或固定阈值反推，�
     const res = response(); await controller[action]({ user: actor, query: {} }, res)
     assert.equal(res.statusCode, 500); assert.deepEqual(calls, [])
   }
+})
+
+
+test('型号、备注和启用状态读取模板权威资料，旧品牌副本不阻止模板重新启用', async t => {
+  const { repository, db, connection } = fixture(t)
+  db.exec("UPDATE accessories SET product_model='PD-NEW', remarks='模板备注' WHERE id=1; UPDATE accessories SET product_model='OLD', remarks='旧备注', status=0 WHERE id=2")
+  const read = () => repository.getAccessoryById(2, connection)
+  const current = await read()
+  assert.equal(current.product_model, 'PD-NEW'); assert.equal(current.remarks, '模板备注'); assert.equal(current.status, 1)
+  db.exec('UPDATE accessories SET status=0 WHERE id=1')
+  assert.equal((await read()).status, 0)
+  db.exec('UPDATE accessories SET status=1, product_model=NULL, remarks=NULL WHERE id=1')
+  const cleared = await read()
+  assert.equal(cleared.status, 1); assert.equal(cleared.product_model, null); assert.equal(cleared.remarks, null)
 })

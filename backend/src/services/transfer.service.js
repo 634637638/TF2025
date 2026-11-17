@@ -1,3 +1,6 @@
+const { resolveStoreScope, assertStoreInScope, appendStoreScopeCondition } = require('../utils/store-scope')
+const FieldAccessService = require('./field-access.service')
+const CustomerMutationAccessService = require('./customer-mutation-access.service')
 const { withConnection } = require('../core/db/connection')
 const { getDatabase } = require('../config/database')
 const { normalizeDateTime } = require('../utils/time')
@@ -13,6 +16,13 @@ const { parseTransferInput, prepareWholesalePrices } = require('../utils/transfe
  * 2. 代供应商划拨（supplier_proxy）：不产生货款，不计算利润，保留销售追踪记录
  */
 class TransferService {
+  constructor({ fields = new FieldAccessService({ moduleKey: 'inventory_inventoryview', responseKeys: {
+    'price_info.purchase_cost': ['profit', 'total_profit']
+  } }), customerAccess = new CustomerMutationAccessService() } = {}) {
+    this.customerAccess = customerAccess
+    this.fields = fields
+  }
+
   /**
    * 生成会员号（与 customers.js 中的 generateMemberNumber 逻辑一致）
    */
@@ -64,6 +74,7 @@ class TransferService {
    * 场景：自己批发给同行，产生货款，计算利润
    */
   async wholesaleToPeer({
+    actor,
     phone_ids,
     customer_id,
     customer_name,
@@ -83,6 +94,7 @@ class TransferService {
     const { prices, failed_phones } = prepareWholesalePrices(phone_ids, phones)
     if (prices.size === 0) return { success_count: 0, total_count: phone_ids.length, results: [], failed_phones }
 
+    const scope = resolveStoreScope(actor, store_id)
     const pool = getDatabase()
     return await withConnection(pool, async connection => {
       try {
@@ -113,6 +125,7 @@ class TransferService {
             log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`)
           } else {
             // 生成会员号
+            await this.customerAccess.require(actor, 'create')
             const memberNumber = await this.generateMemberNumber(connection)
             // 创建新客户
             const [insertResult] = await connection.query(
@@ -174,6 +187,8 @@ class TransferService {
           log.debug(`使用操作员的默认门店ID: ${final_store_id}`)
         }
 
+        assertStoreInScope(scope, final_store_id)
+
         // 处理每台手机
         for (const phone_id of phone_ids) {
           if (!prices.has(phone_id)) continue
@@ -183,7 +198,7 @@ class TransferService {
 
             // 检查手机状态和信息
             const [phoneRecords] = await connection.query(
-              'SELECT id, imei, status, purchase_cost, supplier_id FROM phones WHERE id = ? FOR UPDATE',
+              'SELECT id, imei, status, store_id, purchase_cost, supplier_id FROM phones WHERE id = ? FOR UPDATE',
               [phone_id]
             )
 
@@ -193,6 +208,7 @@ class TransferService {
             }
 
             const phone = phoneRecords[0]
+            assertStoreInScope(resolveStoreScope(actor), phone.store_id)
 
             // 只有在库状态才能批发
             if (phone.status !== 'in_stock') {
@@ -328,6 +344,7 @@ class TransferService {
    * 与批发的区别：划拨不计算在供应商打款范围内
    */
   async proxyTransferForSupplier({
+    actor,
     phone_ids,
     supplier_id,
     customer_id,
@@ -342,6 +359,7 @@ class TransferService {
     ;({ phone_ids, supplier_id, customer_id, customer_name, customer_phone, operator_id, store_id, salesperson_name, remarks } = parseTransferInput({
       phone_ids, supplier_id, customer_id, customer_name, customer_phone, operator_id, store_id, salesperson_name, remarks
     }, { proxy: true }))
+    const scope = resolveStoreScope(actor, store_id)
     const pool = getDatabase()
     return await withConnection(pool, async connection => {
       try {
@@ -373,6 +391,7 @@ class TransferService {
             log.debug(`手机号 ${customer_phone} 已存在，使用已有客户 ID: ${final_customer_id}`)
           } else {
             // 生成会员号
+            await this.customerAccess.require(actor, 'create')
             const memberNumber = await this.generateMemberNumber(connection)
             const [insertResult] = await connection.query(
               `INSERT INTO customers (name, phone, customer_type, vip_level, member_number, created_at)
@@ -403,6 +422,8 @@ class TransferService {
           final_store_id = operatorData[0].store_id
           log.debug(`使用操作员的默认门店ID: ${final_store_id}`)
         }
+
+        assertStoreInScope(scope, final_store_id)
 
         // 获取供应商信息
         const [supplierData] = await connection.query(
@@ -442,13 +463,15 @@ class TransferService {
         }
         const final_customer_name = customerData[0].name
 
+        assertStoreInScope(scope, final_store_id)
+
         // 处理每台手机
         for (const phone_id of phone_ids) {
           await connection.query('SAVEPOINT proxy_phone')
           try {
             // 检查手机状态和信息
             const [phoneRecords] = await connection.query(
-              'SELECT id, imei, status, supplier_id FROM phones WHERE id = ? FOR UPDATE',
+              'SELECT id, imei, status, store_id, supplier_id FROM phones WHERE id = ? FOR UPDATE',
               [phone_id]
             )
 
@@ -458,6 +481,7 @@ class TransferService {
             }
 
             const phone = phoneRecords[0]
+            assertStoreInScope(resolveStoreScope(actor), phone.store_id)
 
             // 只有在库状态才能划拨
             if (phone.status !== 'in_stock') {
@@ -579,7 +603,7 @@ class TransferService {
   /**
    * 获取批发/划拨记录列表（从 sales 表查询）
    */
-  async getWholesaleRecords(filters = {}) {
+  async getWholesaleRecords(filters = {}, actor) {
     const pool = getDatabase()
     const {
       page = 1,
@@ -597,6 +621,8 @@ class TransferService {
     const offset = (pageNumber - 1) * pageSize
     const whereConditions = ['s.sale_type IN ("wholesale", "supplier_proxy")']
     const whereParams = []
+    appendStoreScopeCondition(resolveStoreScope(actor, filters.store_id), 's.store_id', whereConditions, whereParams)
+    const permissions = await this.fields.getPermissions(actor.id)
 
     if (start_date) {
       whereConditions.push('s.sale_time >= ?')
@@ -682,7 +708,7 @@ class TransferService {
     const total = Number(countResult[0].total)
 
     return {
-      data: records,
+      data: this.fields.maskPayload(records, permissions),
       pagination: {
         page: pageNumber,
         page_size: pageSize,
@@ -697,7 +723,7 @@ class TransferService {
   /**
    * 获取批发/划拨统计（从 sales 表统计）
    */
-  async getWholesaleStatistics(filters = {}) {
+  async getWholesaleStatistics(filters = {}, actor) {
     const pool = getDatabase()
     const { start_date, end_date, store_id, supplier_id } = filters
 
@@ -705,6 +731,8 @@ class TransferService {
 
     const whereConditions = ['s.sale_type IN ("wholesale", "supplier_proxy")']
     const whereParams = []
+    appendStoreScopeCondition(resolveStoreScope(actor, filters.store_id), 's.store_id', whereConditions, whereParams)
+    const permissions = await this.fields.getPermissions(actor.id)
 
     if (start_date) {
       whereConditions.push('s.sale_time >= ?')
@@ -779,7 +807,7 @@ class TransferService {
       }
     })
 
-    return result
+    return this.fields.maskPayload(result, permissions)
   }
 }
 

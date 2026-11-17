@@ -60,6 +60,7 @@ const entry = () => ({
 function fixture({ failStock = false, failBegin = false, existing = null } = {}) {
   const events = []
   const connection = {
+    async query() { return [{ affectedRows: 0 }] },
     async beginTransaction() { events.push('begin'); if (failBegin) throw new Error('begin failed') },
     async commit() { events.push('commit') },
     async rollback() { events.push('rollback') },
@@ -68,6 +69,9 @@ function fixture({ failStock = false, failBegin = false, existing = null } = {})
   const writes = []
   let created
   const repository = {
+    async lockFilmConfiguration() { return false },
+    async assertUniqueFreeFilms() {},
+    syncProductProfileSnapshots: AccessoryRepository.prototype.syncProductProfileSnapshots,
     withConnection: callback => withConnection({ getConnection: async () => connection }, callback),
     async getReference(id, field, executor) {
       if (executor !== undefined) assert.equal(executor, connection)
@@ -184,7 +188,7 @@ test('默认零售价在模板新建/编辑及首次入库共用金额校验，�
 })
 
 test('模板分页与检索在数据库执行，全部状态不按启用过滤且搜索值保持参数化', async () => {
-  const repository = new AccessoryRepository()
+  const repository = new AccessoryRepository({ columnExists: async () => false })
   const queries = []
   repository.queryRows = async (sql, params) => {
     queries.push({ sql, params })
@@ -199,7 +203,9 @@ test('模板分页与检索在数据库执行，全部状态不按启用过滤�
   assert.deepEqual(queries[1].params.slice(-2), [16, 16])
   assert.equal(queries.every(({ sql }) => !sql.includes(keyword) && !sql.includes('not_a_column')), true)
   assert.equal(queries.every(({ sql }) => !sql.includes('a.status = ?')), true)
-  assert.equal(queries.every(({ params }) => params.slice(0, 4).every(value => value === `%${keyword}%`)), true)
+  for (const token of keyword.split(/\s+/u)) {
+    assert.equal(queries.every(({ params }) => params.includes(`%${token}%`)), true)
+  }
   assert.equal(queries.every(({ sql }) => sql.includes('LEFT JOIN brands b') && sql.includes('search_am.accessory_id = COALESCE(a.template_id, a.id)')), true)
 })
 
@@ -226,8 +232,120 @@ test('编辑模板可修改/清空条码，拒绝其他模板（含停用）占�
   }
 })
 
+test('更正已有业务商品品牌会同步旧采购/销售快照，保持交易数量和金额原样', async () => {
+  const queries = [], writes = [], events = []
+  const connection = {
+    async beginTransaction() { events.push('begin') },
+    async commit() { events.push('commit') },
+    async rollback() { events.push('rollback') },
+    async query(sql, params) { queries.push({ sql, params }); return [{ affectedRows: 1 }] },
+    release() { events.push('release') }
+  }
+  let current = { id: 56, template_id: 55, brand_id: 1, brand_name: '苹果', name: '旧商品', category: '充电器',
+    product_model: 'PD-L', color_name: '白色', unit: '个', status: 1 }
+  const repository = {
+    async lockFilmConfiguration() { return false },
+    async assertUniqueFreeFilms() {},
+    syncProductProfileSnapshots: AccessoryRepository.prototype.syncProductProfileSnapshots,
+    withConnection: callback => withConnection({ getConnection: async () => connection }, callback),
+    async getAccessoryById(id) { return Number(id) === 56 ? current : { id: 55, brand_id: 3, status: 1 } },
+    async getCompatibleModelIds() { return [] },
+    async lockAccessory(id) { return { id: Number(id), brand_id: 3, status: 1 } },
+    async getBrandVariant() { return null },
+    async getReference(id, field) { return { id: Number(id), name: '沃品', status: 1, business_scope: 'accessory', ...(field === 'model_id' ? { brand_business_scope: 'phone' } : {}) } },
+    async updateAccessory(id, data) { writes.push({ id: Number(id), data }); current = { ...current, ...data, brand_id: 2, brand_name: '沃品' }; return true }
+  }
+  const service = new AccessoryService({ repository, inventoryService: inventoryFixture({}) })
+  const result = await service.updateAccessory(56, { brand_id: 2 }, actor)
+  assert.equal(result.success, true)
+  assert.deepEqual(writes, [{ id: 56, data: { brand_id: 2 } }])
+  assert.deepEqual(events, ['begin', 'commit', 'release'])
+  assert.equal(queries.length, 2)
+  assert.deepEqual(queries.map(query => query.params), [[55, 55], [55, 55]])
+  assert.match(queries[0].sql, /UPDATE accessory_stock_in/)
+  assert.match(queries[0].sql, /product\.template_id = \?/)
+  assert.match(queries[1].sql, /UPDATE sales_order_items/)
+  assert.match(queries[1].sql, /product\.template_id = \?/)
+  assert.equal(queries.some(({ sql }) => /SET[^;]*(quantity|purchase_cost|total_amount|unit_price|refund)/i.test(sql)), false)
+})
+
+for (const [sourceId, storedModelIds] of [55, 56].flatMap(id => [[20], '20', '20,21'].map(ids => [id, ids]))) {
+  test(`从${sourceId === 55 ? '模板' : '库存档案'}修改共有资料（已有型号${JSON.stringify(storedModelIds)}），同模板商品双向联动且其他模板不变`, async () => {
+    const products = new Map([
+      [55, { id: 55, name: '旧名称', brand_id: null, status: 1, sale_price: 20, unit_id: 1, model_ids: storedModelIds }],
+      [56, { id: 56, template_id: 55, name: '旧副本', brand_id: 1, status: 1, purchase_cost: 8 }],
+      [57, { id: 57, template_id: 55, name: '旧副本', brand_id: 2, status: 1, purchase_cost: 9 }],
+      [58, { id: 58, name: '其他模板', brand_id: null, status: 1, sale_price: 99 }]
+    ])
+    const events = [], writes = [], snapshots = []
+    const shared = ['name', 'barcode', 'category', 'category_id', 'model_id', 'color_id', 'sale_price', 'unit', 'unit_id', 'model_ids', 'product_model', 'remarks', 'status']
+    const read = id => {
+      const product = products.get(Number(id))
+      if (!product) return null
+      const root = products.get(product.template_id || product.id)
+      return { ...product, ...Object.fromEntries(shared.map(field => [field, root[field]])) }
+    }
+    const connection = {
+      async beginTransaction() { events.push('begin') }, async commit() { events.push('commit') },
+      async rollback() { events.push('rollback') }
+    }
+    const repository = {
+    async lockFilmConfiguration() { return false },
+    async assertUniqueFreeFilms() {},
+      withConnection: callback => callback(connection),
+      async getAccessoryById(id) { return read(id) },
+      async lockAccessory(id, executor) { assert.equal(executor, connection); return products.get(Number(id)) },
+      async getReference(id, field) { return { id, name: field, status: 1, business_scope: 'both', brand_business_scope: 'phone' } },
+      async updateAccessory(id, data, executor) {
+        assert.equal(executor, connection); writes.push(Number(id)); Object.assign(products.get(Number(id)), data); return true
+      },
+      async replaceCompatibleModels(id, modelIds, executor) {
+        assert.equal(executor, connection); assert.equal(Number(id), 55); products.get(55).model_ids = modelIds
+      },
+      async syncProductProfileSnapshots(id, rootId, executor) {
+        assert.equal(executor, connection); snapshots.push({ id, rootId, committed: events.includes('commit') })
+      }
+    }
+    const service = new AccessoryService({ repository, inventoryService: inventoryFixture({}) })
+    const before = structuredClone([...products.values()])
+    const result = await service.updateAccessory(sourceId, {
+      name: '统一新名称', category_id: 12, color_id: 3, unit_id: 2, model_ids: [30, 40], sale_price: 39, product_model: 'NEW-PD', remarks: '全部共享备注', status: 0
+    })
+    assert.equal(result.success, true)
+    assert.deepEqual(writes, [55])
+    assert.deepEqual(events, ['begin', 'commit'])
+    assert.deepEqual(snapshots, [{ id: sourceId, rootId: 55, committed: false }])
+    for (const id of [55, 56, 57]) assert.deepEqual(await repository.getAccessoryById(id), {
+      ...read(id), name: '统一新名称', category: 'category_id', category_id: 12, color_id: 3,
+      unit: 'unit_id', unit_id: 2, model_id: 30, model_ids: [30, 40], sale_price: 39, product_model: 'NEW-PD', remarks: '全部共享备注', status: 0
+    })
+    assert.deepEqual(products.get(56), before[1])
+    assert.deepEqual(products.get(57), before[2])
+    assert.deepEqual(products.get(58), before[3])
+  })
+}
+
+test('档案目标品牌已存在时拒绝合并；历史同步失败整单回滚', async () => {
+  const context = fixture({ existing: { id: 56, template_id: 55, brand_id: 1, status: 1 } })
+  context.repository.lockAccessory = async id => ({ id: Number(id), brand_id: null, status: 1 })
+  context.repository.getBrandVariant = async () => ({ id: 57 })
+  const blocked = await context.service.updateAccessory(56, { brand_id: 2 })
+  assert.equal(blocked.code, 'DUPLICATE_BRAND_VARIANT')
+  assert.equal(blocked.statusCode, 409)
+  assert.deepEqual(context.events, ['begin', 'rollback', 'release'])
+  assert.deepEqual(context.writes, [])
+  context.events.length = 0
+  context.repository.getBrandVariant = async () => null
+  context.repository.updateAccessory = async () => true
+  context.repository.syncProductProfileSnapshots = async () => { throw new Error('snapshot sync failed') }
+  const failed = await context.service.updateAccessory(56, { brand_id: 2 })
+  assert.equal(failed.success, false)
+  assert.equal(failed.code, 'DATABASE_ERROR')
+  assert.deepEqual(context.events, ['begin', 'rollback', 'release'])
+})
+
 test('配件自身品牌与适配手机品牌按业务范围区分，旧关联仅保留回显', async () => {
-  const repository = new AccessoryRepository()
+  const repository = new AccessoryRepository({ columnExists: async () => false })
   repository.queryRows = async sql => sql.includes('FROM brands WHERE') ? [
     { id: 1, status: 1, business_scope: 'phone' },
     { id: 2, status: 1, business_scope: 'accessory' },
@@ -250,6 +368,24 @@ test('服务端拒绝配件新选手机专属品牌及配件品牌的适配机�
   assert.equal((await service.validateProduct({ brand_id: 1 }, { brand_id: 1 })).brand_id, 1)
   await assert.rejects(service.validateProduct({ model_ids: [2] }), { code: 'INVALID_REFERENCE' })
   assert.deepEqual((await service.validateProduct({ model_ids: [2] }, { model_ids: [2] })).model_ids, [2])
+})
+
+test('已有适配型号兼容数据库聚合字符串，保留旧停用关联且拒绝新增停用或不存在型号', async () => {
+  const service = new AccessoryService({ repository: {
+    getReference: async id => id === 99 ? null : { id, status: 0, brand_business_scope: 'phone' }
+  } })
+  for (const storedModelIds of [[20, 21], '20,21']) {
+    const existing = { model_ids: storedModelIds }
+    assert.deepEqual((await service.validateProduct({ model_ids: [20, 21, 20] }, existing)).model_ids, [20, 21])
+    await assert.rejects(service.validateProduct({ model_ids: [20, 22] }, existing), { code: 'INVALID_REFERENCE' })
+    await assert.rejects(service.validateProduct({ model_ids: [99] }, { model_ids: '99' }), { code: 'INVALID_REFERENCE' })
+  }
+  assert.deepEqual((await service.validateProduct({ model_ids: [20] }, { model_ids: '20' })).model_ids, [20])
+  assert.deepEqual((await service.validateProduct({ model_ids: [20] }, { model_id: 20, model_ids: null })).model_ids, [20])
+  for (const storedModelIds of [null, undefined, '']) {
+    await assert.rejects(service.validateProduct({ model_ids: [20] }, { model_ids: storedModelIds }), { code: 'INVALID_REFERENCE' })
+  }
+  await assert.rejects(service.validateProduct({ model_ids: '20,21' }), { code: 'VALIDATION_ERROR' })
 })
 
 test('单独创建商品档案只写商品主档，不创建采购记录或门店库存', async () => {
@@ -295,7 +431,7 @@ test('供应商范围限制配件新档案，旧配件保留既有关联', async
 })
 
 test('入库选项只读公共资料、按品牌完整查型号、限制门店且分类来自配件', async () => {
-  const repository = new AccessoryRepository()
+  const repository = new AccessoryRepository({ columnExists: async () => false })
   const queries = []
   repository.getConnection = () => ({
     async query(sql, params) {
@@ -335,7 +471,7 @@ test('选项隐藏整个资料组，适配品牌与商品品牌分别受控', as
 })
 
 test('配件编辑/停用读取 mysql2 写入结果，更新规格不误报失败', async () => {
-  const repository = new AccessoryRepository()
+  const repository = new AccessoryRepository({ columnExists: async () => false })
   const queries = []
   repository.getConnection = () => ({
     async query(sql, params) { queries.push({ sql, params }); return [{ affectedRows: 1 }] }
@@ -467,18 +603,21 @@ test('同模板不同品牌独立商品及库存，同品牌换供应商补货�
   assert.equal(stock.has('55:2'), false)
 })
 
-test('已有品牌库存关联只能从模板编辑；停用模板拒绝采购，不产生新记录', async () => {
+test('停用模板拒绝采购；库存档案可独立更正品牌，不创建采购或库存', async () => {
   const context = fixture({ existing: { id: 55, status: 0, brand_id: 10 } })
   assert.equal((await context.service.stockIn({ ...entry(), accessory_id: 55 }, actor)).code, 'INVALID_REFERENCE')
   assert.equal(context.writes.length, 0)
   assert.deepEqual(context.events, ['begin', 'rollback', 'release'])
   const variant = fixture({ existing: { id: 56, template_id: 55, status: 1 } })
-  assert.equal((await variant.service.updateAccessory(56, { brand_id: 11 })).code, 'VALIDATION_ERROR')
+  const updates = []
+  variant.repository.updateAccessory = async (id, data) => { updates.push({ id, data }); return true }
+  assert.equal((await variant.service.updateAccessory(56, { brand_id: 11 })).success, true)
+  assert.deepEqual(updates, [{ id: 56, data: { brand_id: 11 } }])
   assert.equal(variant.writes.length, 0)
 })
 
 test('模板列表排除品牌商品，库存列表仅查真实库存，模板资料关联统一读取', async () => {
-  const repository = new AccessoryRepository()
+  const repository = new AccessoryRepository({ columnExists: async () => false })
   const queries = []
   repository.queryRows = async (sql, params) => { queries.push({ sql, params }); return sql.includes('COUNT(DISTINCT') ? [{ total: 0 }] : [] }
   await repository.getAccessories({ mode: 'templates', search: '通用', search_fields: ['barcode', 'model_name'] })

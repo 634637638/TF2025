@@ -15,7 +15,7 @@ const response = () => ({
 
 test('repair customer creation route preserves authentication and create permission while delegating to controller', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/repairs.js'), 'utf8')
-  assert.match(route, /router\.post\('\/customers', unifiedAuth, requirePermission\('repairs:create'\), repairCustomerController\.create\.bind\(repairCustomerController\)\)/)
+  assert.match(route, /router\.post\('\/customers', unifiedAuth, requirePermission\('repairs:create'\), requirePermission\('customers:create'\), repairCustomerController\.create\.bind\(repairCustomerController\)\)/)
 })
 
 test('repair customer service keeps input validation before field permissions and database access', async () => {

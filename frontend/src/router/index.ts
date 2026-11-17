@@ -424,26 +424,26 @@ const routes: RouteRecordRaw[] = [
     path: '/price-query',
     name: 'PublicPriceQuery',
     component: () => import('@/views/price-list/page/PublicPriceQuery.vue'),
-    meta: { requiresAuth: false }
+    meta: { title: '批发报价查询', requiresAuth: false, dashboardShortcut: true }
   },
   // 销售报价页面（无需登录）
   {
     path: '/sales-price-display',
     name: 'SalesPriceDisplay',
     component: () => import('@/views/price-list/page/SalesPriceDisplay.vue'),
-    meta: { requiresAuth: false }
+    meta: { title: '销售报价展示', requiresAuth: false, dashboardShortcut: true }
   },
   {
     path: '/DH',
     name: 'GuidePublic',
     component: () => import('@/views/guide/GuidePublicView.vue'),
-    meta: { requiresAuth: false }
+    meta: { title: '公开导航站', requiresAuth: false, dashboardShortcut: true }
   },
   {
     path: '/Marketing_Copy',
     name: 'MarketingCopy',
     component: () => import('@/views/marketing/MarketingView.vue'),
-    meta: { requiresAuth: false }
+    meta: { title: '营销文案', requiresAuth: false, dashboardShortcut: true }
   },
   // H5移动端路由（无需登录）
   {
@@ -455,12 +455,14 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'MobileHome',
-        component: () => import('@/views/H5-mobile/page/MobileHome.vue')
+        component: () => import('@/views/H5-mobile/page/MobileHome.vue'),
+        meta: { title: '商城首页', requiresAuth: false, dashboardShortcut: true }
       },
       {
         path: 'products',
         name: 'MobileProducts',
-        component: () => import('@/views/H5-mobile/page/ProductList.vue')
+        component: () => import('@/views/H5-mobile/page/ProductList.vue'),
+        meta: { title: '商城商品', requiresAuth: false, dashboardShortcut: true }
       },
       {
         path: 'product/new/:id',
@@ -480,7 +482,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'cart',
         name: 'MobileCart',
-        component: () => import('@/views/H5-mobile/page/Cart.vue')
+        component: () => import('@/views/H5-mobile/page/Cart.vue'),
+        meta: { title: '商城购物车', requiresAuth: false, dashboardShortcut: true }
       },
       {
         path: 'checkout',
@@ -500,7 +503,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'my-orders',
         name: 'MobileMyOrders',
-        component: () => import('@/views/H5-mobile/page/MyOrders.vue')
+        component: () => import('@/views/H5-mobile/page/MyOrders.vue'),
+        meta: { title: '商城我的订单', requiresAuth: false, dashboardShortcut: true }
       },
       {
         path: 'order-detail/:orderNumber',
@@ -510,7 +514,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'order-query',
         name: 'MobileOrderQuery',
-        component: () => import('@/views/H5-mobile/page/OrderQuery.vue')
+        component: () => import('@/views/H5-mobile/page/OrderQuery.vue'),
+        meta: { title: '商城订单查询', requiresAuth: false, dashboardShortcut: true }
       },
       {
         path: 'login',
@@ -525,7 +530,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'my',
         name: 'MobileMy',
-        component: () => import('@/views/H5-mobile/page/MyCenter.vue')
+        component: () => import('@/views/H5-mobile/page/MyCenter.vue'),
+        meta: { title: '商城个人中心', requiresAuth: false, dashboardShortcut: true }
       }
     ]
   },

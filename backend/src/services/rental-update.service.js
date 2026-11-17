@@ -1,5 +1,8 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
+const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const { ensureRentalSchema } = require('../utils/rental-schema')
 const { isBuyoutMode, getPrincipalAmount, positiveMoney } = require('../utils/rental-calculations')
 const RentalUpdateRepository = require('../repositories/rental-update.repository')
@@ -9,15 +12,27 @@ const { parseRentalInput, parseRentalId } = require('../utils/rental-input')
 const PAYMENT_METHODS = new Set(['cash', 'mobile', 'bank_card', 'subsidy_card', 'transfer', 'other'])
 
 class RentalUpdateService {
-  constructor({ repository = new RentalUpdateRepository(), ensureSchema = ensureRentalSchema, reconcilePoints = reconcileCustomerPointsForSale } = {}) {
+  constructor({ repository = new RentalUpdateRepository(), ensureSchema = ensureRentalSchema, reconcilePoints = reconcileCustomerPointsForSale, permissionCheck = hasUnifiedPermission } = {}) {
+    this.permissionCheck = permissionCheck
     this.repository = repository
     this.ensureSchema = ensureSchema
     this.reconcilePoints = reconcilePoints
   }
 
-  async update({ id: idValue, body, isAdministrator }) {
+  async assertEditAccess(actor, contract) {
+    if (!await this.permissionCheck(actor, 'rentals:edit')) {
+      throw Object.assign(new Error('缺少租赁编辑权限'), { statusCode: 403 })
+    }
+    if (contract) assertStoreInScope(resolveStoreScope(actor), contract.store_id)
+    if (contract && contract.status !== 'active' && !await this.permissionCheck(actor, 'rentals:edit-history')) {
+      throw Object.assign(new Error('更正非进行中合同需要历史合同更正权限'), { statusCode: 403 })
+    }
+  }
+
+  async update({ id: idValue, body, actor }) {
     const id = parseRentalId(idValue)
     body = parseRentalInput(body)
+    await this.assertEditAccess(actor)
     await this.ensureSchema()
     return this.repository.withConnection(async connection => {
       await connection.beginTransaction()
@@ -27,9 +42,9 @@ class RentalUpdateService {
         }
         const current = await this.repository.findForUpdate(connection, id)
         if (!current) throw Object.assign(new Error('租赁合同不存在'), { code: 'RENTAL_NOT_FOUND' })
-        if (current.status !== 'active' && !isAdministrator) {
-          throw Object.assign(new Error('已结束合同仅管理员可编辑'), { statusCode: 400 })
-        }
+        await this.assertEditAccess(actor, current)
+        if (body.sale_store_id !== undefined) assertStoreInScope(resolveStoreScope(actor), body.sale_store_id)
+        if (body.purchase_cost !== undefined) assertStoreInScope(resolveStoreScope(actor), current.source_store_id)
 
         const mode = current.billing_mode
         const requestedMode = body.billing_mode

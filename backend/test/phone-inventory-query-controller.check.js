@@ -4,6 +4,8 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const masking = require('../src/services/data-masking.service')
+test.beforeEach(t => t.mock.method(masking, 'getUserFieldPermissions', async () => ({ hiddenFields: [], readonlyFields: [] })))
 const PhoneInventoryQueryController = require('../src/controllers/phone-inventory-query.controller')
 const PhoneInventoryQueryService = require('../src/services/phone-inventory-query.service')
 const PhoneInventoryQueryRepository = require('../src/repositories/phone-inventory-query.repository')
@@ -268,10 +270,10 @@ test('phone inventory list service bounds pagination and maps nullable values an
     }
   })
 
-  const result = await service.listInventoryPhones({ page: '-2', page_size: '99999' })
+  const result = await service.listInventoryPhones({ page: '-2', page_size: '99999' }, { id: 7, store_ids: [1] })
   assert.deepEqual(calls, [{
     query: { page: '-2', page_size: '99999' },
-    pagination: { page: 1, page_size: 10000 }
+    pagination: { page: 1, page_size: 10000, scope: { allStores: false, requestedStoreId: null, storeIds: [1] } }
   }])
   assert.deepEqual(result, {
     phones: [{ id: 9, purchase_cost: null, sale_price: '0', inventory_time: null, sale_time: null, is_new: 1, condition: 'new' }],

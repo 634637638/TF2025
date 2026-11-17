@@ -1,10 +1,13 @@
 'use strict'
 
+const { hasGoodsPermission } = require('../utils/goods-permission')
+
 const SalesGoodsReturnService = require('./sales-goods-return.service')
 const { hasColumn } = require('./schema-inspector.service')
 const { planGiftCharge } = require('../utils/checkout-goods-return')
 const { allocateAftersaleSettlement } = require('../utils/sales-aftersale-settlement')
 const { moneyCents } = require('../utils/sale-input')
+const { normalizeReturnStockInfo } = require('./return-stock-validation')
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
 
 const reject = (message, code = 'CHECKOUT_RETURN_CONFLICT', statusCode = 409) => {
@@ -23,6 +26,16 @@ class SalesPhoneReturnService extends SalesGoodsReturnService {
   normalize(orderId, saleId, body, actor, quote) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) reject('退货内容无效', 'CHECKOUT_RETURN_INVALID', 400)
     const { accessories, ...common } = body
+    delete common.return_type
+    delete common.handle_method
+    // 处理意向与旧退库共用选项，仅登记，不在退货事务中执行线下返厂/报废。
+    const requestedDetails = {}
+    for (const field of ['return_type', 'handle_method']) {
+      if (Object.hasOwn(body, field)) requestedDetails[field] = body[field]
+    }
+    let details
+    try { details = normalizeReturnStockInfo(requestedDetails, { partial: true }) }
+    catch (error) { reject(error.message, 'CHECKOUT_RETURN_INVALID', 400) }
     // 共用请求键、门店、北京时间、退款/补款方式、线下确认及备注校验。
     const input = super.normalize(orderId, saleId, { ...common, quantity: 1, serial_numbers: [] }, actor, quote)
     if (Object.hasOwn(common, 'quantity') || Object.hasOwn(common, 'serial_numbers') || !Array.isArray(accessories)) {
@@ -40,7 +53,7 @@ class SalesPhoneReturnService extends SalesGoodsReturnService {
         charge_missing: row.charge_missing, charge_confirmed: row.charge_confirmed }
     }).sort((a, b) => a.item_id - b.item_id)
     if (new Set(rows.map(row => row.item_id)).size !== rows.length) reject('关联商品重复', 'CHECKOUT_RETURN_INVALID', 400)
-    return { ...input, sale_id: Number(saleId), accessories: rows }
+    return { ...input, ...details, sale_id: Number(saleId), accessories: rows }
   }
 
   async ready(connection) {
@@ -78,7 +91,7 @@ class SalesPhoneReturnService extends SalesGoodsReturnService {
     if (linked.length !== input.accessories.length || linked.some((row, index) => Number(row.item_id) !== input.accessories[index].item_id)) {
       reject('关联商品已变化或未逐条核对，请刷新原单')
     }
-    if (linked.length && !await this.permissionCheck(actor, 'accessories:view')) reject('无权核对关联商品', 'PERMISSION_DENIED', 403)
+    if (linked.length && !await this.permissionCheck(actor, 'query:goods-view')) reject('无权核对关联商品', 'PERMISSION_DENIED', 403)
     const goods = []
     for (const [index, row] of input.accessories.entries()) {
       const orderId = Number(linked[index].order_id)
@@ -88,7 +101,7 @@ class SalesPhoneReturnService extends SalesGoodsReturnService {
       let charge = null
       if (data.plan.item.sale_type === 'gift' && data.plan.remaining_quantity > 0) {
         if (!row.charge_missing || !row.charge_confirmed) reject('赠品必须退回，或核对原单约定并确认未退扣款')
-        if (!await this.permissionCheck(actor, 'accessories:gift')) reject('缺少赠品未退扣款确认权限', 'PERMISSION_DENIED', 403)
+        if (!await hasGoodsPermission(actor, 'gift', this.permissionCheck)) reject('缺少赠品未退扣款确认权限', 'PERMISSION_DENIED', 403)
         charge = planGiftCharge(data.plan, row.serial_numbers)
       } else if (row.charge_missing || row.charge_confirmed) reject('该商品不存在待扣款赠品，不能填写未退扣款确认')
       goods.push({ input: row, ...data, charge })
@@ -105,7 +118,8 @@ class SalesPhoneReturnService extends SalesGoodsReturnService {
     let recovery = 0, delta = 0
     if (phoneAward) {
       const result = await this.pointsLedger.returnAward(connection, { customerId: Number(order.customer_id),
-        sourceType: 'phone_sale', sourceId: input.sale_id, points: phoneAward, requestKey: `${key}:phone` })
+        sourceType: 'phone_sale', sourceId: input.sale_id, points: phoneAward, requestKey: `${key}:phone`,
+        details: { reason: '手机退货', operator_id: input.actor_id, sale_id: input.sale_id } })
       recovery = result.recovery_cents; delta = result.points_delta; phoneEntries.push(result.entry_id)
     }
     lines.push({ original_item_id: Number(phone.item.item_id), base_refund_cents: amount,
@@ -114,7 +128,8 @@ class SalesPhoneReturnService extends SalesGoodsReturnService {
       fact_snapshot: { kind: 'phone_return', sale_id: input.sale_id, phone_id: Number(phone.sale.phone_id),
         original_store_id: Number(phone.sale.phone_store_id), store_id: input.store_id, original_operator_id: phone.sale.operator_id,
         payable_cents: amount, points_used: 0, points_awarded: phoneAward, point_entry_ids: phoneEntries,
-        return_reason: input.return_reason, restock_confirmed: true } })
+        return_reason: input.return_reason, return_type: input.return_type || '退货处理',
+        handle_method: input.handle_method || '重新入库', restock_confirmed: true } })
     for (const { input: row, plan, row: original, order: goodsOrder, charge } of goods) {
       if (!row.quantity && !charge) continue // 明确保留收费搭售，不制造0件退款或返库。
       const { base, recovery: recovered, compensation: compensated, delta: changed, pointEntries: entries, inventory } =

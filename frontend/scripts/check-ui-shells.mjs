@@ -53,7 +53,9 @@ requireToken(searchSource, '.filter-item--date-range', 'src/components/search/Un
 requireToken(dateRangeSource, 'placement="bottom-start"', 'src/components/DateRangePicker.vue', '公共日期范围组件必须从输入框下方展开')
 requireToken(customerNameLockSource, 'class="customer-name-lock-input"', 'src/components/common/CustomerNameLockInput.vue', '公共客户姓名组件必须保留 customer-name-lock-input 根节点')
 requireToken(customerNameLockSource, 'title="更换客户"', 'src/components/common/CustomerNameLockInput.vue', '客户姓名锁定与更换客户必须保持独立操作')
-requireToken(customerNameLockSource, 'aria-label="已锁定，双击姓名输入框可编辑"', 'src/components/common/CustomerNameLockInput.vue', '锁定图标必须保留无障碍说明')
+if (!/<span\b(?=[^>]*customer-name-lock-input__status)(?=[^>]*\b(?:aria-label|:aria-label)="[^"]+")[^>]*>/.test(customerNameLockSource)) {
+  errors.push('src/components/common/CustomerNameLockInput.vue 锁定图标必须保留静态或响应式无障碍说明')
+}
 requireToken(customerNameLockSource, 'aria-label="保存姓名并重新锁定"', 'src/components/common/CustomerNameLockInput.vue', '保存图标必须保留无障碍说明')
 requireToken(customerSearchSource, 'class="customer-search-dropdown"', 'src/components/common/CustomerSearchDropdown.vue', '客户检索必须使用公共下拉容器')
 requireToken(customerSearchSource, 'customer-search-dropdown__item', 'src/components/common/CustomerSearchDropdown.vue', '客户检索结果必须使用公共结果项布局')

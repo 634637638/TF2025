@@ -186,7 +186,6 @@
               <el-button
                 v-if="canSell"
                 type="success"
-                size="small"
                 :disabled="!isPhoneSaleActionAvailable(row)"
                 :title="isPhoneSaleActionAvailable(row) ? '销售出库' : '当前状态不可销售出库'"
                 @click.stop="isPhoneSaleActionAvailable(row) && emit('sale', row)"
@@ -197,7 +196,6 @@
               <el-button
                 v-if="canEdit"
                 type="primary"
-                size="small"
                 title="编辑设备信息"
                 @click.stop="emit('edit', row)"
               >
@@ -207,7 +205,6 @@
               <el-button
                 v-if="canDelete"
                 type="danger"
-                size="small"
                 title="删除设备"
                 @click.stop="emit('delete', row)"
               >
@@ -233,7 +230,6 @@
               v-if="hasActiveFilters"
               type="primary"
               plain
-              size="small"
               @click="emit('reset-filters')"
             >
               清空筛选条件

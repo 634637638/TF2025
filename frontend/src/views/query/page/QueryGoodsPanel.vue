@@ -102,7 +102,15 @@
             align="center"
           >
             <template #default="{ row }">
-              {{ display(row[column.key], column.format) }}
+              <span
+                v-if="column.key === 'sale_type'"
+                :class="['status-badge', saleTypeBadgeClass(row.sale_type)]"
+              >
+                {{ saleTypeLabel(row.sale_type) }}
+              </span>
+              <template v-else>
+                {{ display(row[column.key], column.format) }}
+              </template>
             </template>
           </el-table-column>
           <el-table-column
@@ -117,7 +125,6 @@
                 <el-button
                   v-permission="'query:view'"
                   type="primary"
-                  size="small"
                   @click.stop="openDetail(row)"
                 >
                   详情
@@ -126,7 +133,6 @@
                   v-if="canExchangeRow(row)"
                   v-permission="'query:exchange'"
                   type="primary"
-                  size="small"
                   @click.stop="openReturn(row, 'exchange')"
                 >
                   换货
@@ -135,7 +141,6 @@
                   v-if="canReturnRow(row)"
                   v-permission="'query:return-to-stock'"
                   type="danger"
-                  size="small"
                   @click.stop="openReturn(row)"
                 >
                   退货
@@ -169,7 +174,7 @@
     <MobileDialog
       v-model="detailOpen"
       title="商品销售详情"
-      dialog-class="crud-dialog-lg"
+      dialog-class="goods-sale-detail-dialog"
       :show-default-footer="false"
       destroy-on-close
     >
@@ -184,136 +189,266 @@
         :closable="false"
       />
       <template v-else-if="detail">
-        <RecordDescriptions
-          :column="3"
-          border
-        >
-          <el-descriptions-item label="商品资料">
-            {{ detail.has_snapshot ? '销售时资料' : '当前档案（原单无资料快照）' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-for="column in columns"
-            :key="column.key"
-            :label="column.label"
-            :span="['sale_no', 'name', 'customer_phone'].includes(column.key) ? 2 : 1"
+        <div class="goods-detail">
+          <section class="goods-detail__overview">
+            <div class="goods-detail__identity">
+              <span class="goods-detail__eyebrow">商品资料</span>
+              <h2 v-if="visible('name')">
+                {{ detail.name || '-' }}
+              </h2>
+              <div class="goods-detail__meta">
+                <span v-if="visible('category')">{{ detail.category || '-' }}</span>
+                <span v-if="visible('brand_name')">{{ detail.brand_name || '-' }}</span>
+                <span v-if="visible('product_model')">{{ detail.product_model || '-' }}</span>
+              </div>
+              <span class="goods-detail__snapshot-note">
+                {{ detail.has_snapshot ? '销售时资料' : '当前档案（原单无资料快照）' }}
+              </span>
+            </div>
+            <span
+              v-if="visible('usage_type')"
+              :class="['status-badge', saleTypeBadgeClass(detail.sale_type)]"
+            >
+              {{ saleTypeLabel(detail.sale_type) }}
+            </span>
+          </section>
+
+          <section
+            class="goods-detail__metrics"
+            aria-label="交易摘要"
           >
-            {{ display(detail[column.key], column.format) }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="visible('sequence')"
-            label="共同单号"
-            :span="2"
-          >
-            {{ detail.order_no || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="visible('sequence')"
-            label="关联手机单号"
-            :span="2"
-          >
-            {{ detail.linked_phone_invoice || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="visible('barcode')"
-            label="条形码"
-          >
-            {{ detail.barcode || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="visible('color_name')"
-            label="颜色"
-          >
-            {{ detail.color_name || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="visible('unit')"
-            label="单位"
-          >
-            {{ detail.unit || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="visible('serial_number')"
-            label="SN"
-            :span="2"
-          >
-            {{ detail.serial_numbers?.join('、') || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item
-            v-if="visible('remarks')"
-            :span="2"
-            label="备注"
-          >
-            {{ detail.remarks || '-' }}
-          </el-descriptions-item>
-        </RecordDescriptions>
-        <h3>实际出库批次</h3>
-        <el-table
-          :data="detail.batches"
-          class="data-table"
-          row-key="id"
-        >
-          <el-table-column
-            v-if="visible('batch_no')"
-            prop="batch_no"
-            label="入库批次"
-            min-width="160"
+            <div
+              v-if="visible('total_price')"
+              class="goods-detail__metric goods-detail__metric--primary"
+            >
+              <span>实际收款</span>
+              <strong>{{ display(detail.total_price, 'money') }}</strong>
+            </div>
+            <div
+              v-if="visible('profit')"
+              class="goods-detail__metric goods-detail__metric--success"
+            >
+              <span>利润</span>
+              <strong>{{ display(detail.profit, 'money') }}</strong>
+            </div>
+            <div
+              v-if="visible('total_quantity')"
+              class="goods-detail__metric"
+            >
+              <span>数量</span>
+              <strong>{{ display(detail.quantity) }}</strong>
+            </div>
+            <div
+              v-if="visible('total_price')"
+              class="goods-detail__metric"
+            >
+              <span>获得积分</span>
+              <strong>{{ display(detail.points_awarded) }}</strong>
+            </div>
+          </section>
+
+          <section class="goods-detail__section">
+            <div class="goods-detail__section-heading">
+              <div>
+                <span class="goods-detail__eyebrow">交易信息</span>
+                <h3>销售与客户</h3>
+              </div>
+              <span class="goods-detail__section-hint">成交时记录</span>
+            </div>
+            <RecordDescriptions
+              :column="detailDescriptionColumns"
+              direction="vertical"
+              class="goods-detail__descriptions goods-detail__descriptions--cards"
+            >
+              <el-descriptions-item
+                v-for="column in columns.filter(item => ['store_name', 'customer_name', 'customer_phone', 'returned_quantity', 'remaining_quantity', 'unit_price', 'purchase_cost', 'points_used', 'deduction_amount', 'operator_name', 'sale_time'].includes(item.key))"
+                :key="column.key"
+                :label="column.label"
+                :span="column.key === 'customer_phone' ? 2 : 1"
+              >
+                <span :class="{ 'goods-detail__long-value': ['customer_phone', 'store_name', 'operator_name'].includes(column.key) }">
+                  {{ display(detail[column.key], column.format) }}
+                </span>
+              </el-descriptions-item>
+            </RecordDescriptions>
+          </section>
+
+          <section class="goods-detail__section">
+            <div class="goods-detail__section-heading">
+              <div>
+                <span class="goods-detail__eyebrow">商品属性</span>
+                <h3>商品与规格</h3>
+              </div>
+            </div>
+            <RecordDescriptions
+              :column="detailDescriptionColumns"
+              direction="vertical"
+              class="goods-detail__descriptions goods-detail__descriptions--cards"
+            >
+              <el-descriptions-item
+                v-if="visible('name')"
+                label="商品名称"
+                :span="3"
+              >
+                <span class="goods-detail__long-value">{{ detail.name || '-' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-for="column in columns.filter(item => ['category', 'brand_name', 'product_model'].includes(item.key))"
+                :key="column.key"
+                :label="column.label"
+              >
+                {{ display(detail[column.key], column.format) }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="visible('barcode')"
+                label="条形码"
+              >
+                {{ detail.barcode || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="visible('color_name')"
+                label="颜色"
+              >
+                {{ detail.color_name || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="visible('unit')"
+                label="单位"
+              >
+                {{ detail.unit || '-' }}
+              </el-descriptions-item>
+            </RecordDescriptions>
+          </section>
+
+          <section class="goods-detail__section">
+            <div class="goods-detail__section-heading">
+              <div>
+                <span class="goods-detail__eyebrow">原始凭据</span>
+                <h3>关联单据</h3>
+              </div>
+            </div>
+            <RecordDescriptions
+              :column="detailDescriptionColumns"
+              direction="vertical"
+              class="goods-detail__descriptions goods-detail__descriptions--cards"
+            >
+              <el-descriptions-item
+                v-if="visible('sequence')"
+                label="商品单号"
+              >
+                {{ detail.sale_no || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="visible('sequence')"
+                label="共同单号"
+                :span="2"
+              >
+                <span class="goods-detail__long-value">{{ detail.order_no || '-' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="visible('sequence')"
+                label="关联手机单号"
+                :span="2"
+              >
+                <span class="goods-detail__long-value">{{ detail.linked_phone_invoice || '-' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="visible('serial_number')"
+                label="SN"
+                :span="2"
+              >
+                <span class="goods-detail__long-value">{{ detail.serial_numbers?.join('、') || '-' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item
+                v-if="visible('remarks')"
+                label="备注"
+                :span="3"
+              >
+                <span class="goods-detail__long-value">{{ detail.remarks || '-' }}</span>
+              </el-descriptions-item>
+            </RecordDescriptions>
+          </section>
+
+          <section class="goods-detail__section">
+            <div class="goods-detail__section-heading">
+              <div>
+                <span class="goods-detail__eyebrow">库存追溯</span>
+                <h3>实际出库批次</h3>
+              </div>
+              <span class="goods-detail__section-hint">按实际出库批次记录</span>
+            </div>
+            <div class="goods-detail__table-wrap">
+              <el-table
+                :data="detail.batches"
+                class="data-table admin-data-table goods-detail__table"
+                row-key="id"
+              >
+                <el-table-column
+                  v-if="visible('batch_no')"
+                  prop="batch_no"
+                  label="入库批次"
+                  min-width="160"
+                />
+                <el-table-column
+                  v-if="visible('supplier_name')"
+                  prop="supplier_name"
+                  label="供应商"
+                  min-width="130"
+                />
+                <el-table-column
+                  v-if="visible('total_quantity')"
+                  prop="quantity"
+                  label="出库数量"
+                  min-width="100"
+                />
+                <el-table-column
+                  v-if="visible('purchase_cost')"
+                  label="批次进价"
+                  min-width="100"
+                >
+                  <template #default="{ row }">
+                    {{ display(row.purchase_cost, 'money') }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="visible('usage_type')"
+                  label="入库用途"
+                  min-width="100"
+                >
+                  <template #default="{ row }">
+                    {{ display(row.usage_type, 'type') }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  v-if="visible('operator_name')"
+                  prop="inventory_operator_name"
+                  label="入库员"
+                  min-width="100"
+                />
+                <el-table-column
+                  v-if="visible('inventory_time')"
+                  label="入库时间"
+                  min-width="160"
+                >
+                  <template #default="{ row }">
+                    {{ display(row.inventory_time, 'time') }}
+                  </template>
+                </el-table-column>
+                <template #empty>
+                  <DataEmptyState
+                    description="原单暂无可追溯批次"
+                    size="compact"
+                  />
+                </template>
+              </el-table>
+            </div>
+          </section>
+
+          <GoodsAftersaleHistory
+            v-if="detail.order_id && detail.order_item_id"
+            :sale-id="detail.id"
           />
-          <el-table-column
-            v-if="visible('supplier_name')"
-            prop="supplier_name"
-            label="供应商"
-            min-width="130"
-          />
-          <el-table-column
-            v-if="visible('total_quantity')"
-            prop="quantity"
-            label="出库数量"
-            min-width="100"
-          />
-          <el-table-column
-            v-if="visible('purchase_cost')"
-            label="批次进价"
-            min-width="100"
-          >
-            <template #default="{ row }">
-              {{ display(row.purchase_cost, 'money') }}
-            </template>
-          </el-table-column>
-          <el-table-column
-            v-if="visible('usage_type')"
-            label="入库用途"
-            min-width="100"
-          >
-            <template #default="{ row }">
-              {{ display(row.usage_type, 'type') }}
-            </template>
-          </el-table-column>
-          <el-table-column
-            v-if="visible('operator_name')"
-            prop="inventory_operator_name"
-            label="入库员"
-            min-width="100"
-          />
-          <el-table-column
-            v-if="visible('inventory_time')"
-            label="入库时间"
-            min-width="160"
-          >
-            <template #default="{ row }">
-              {{ display(row.inventory_time, 'time') }}
-            </template>
-          </el-table-column>
-          <template #empty>
-            <DataEmptyState
-              description="原单暂无可追溯批次"
-              size="compact"
-            />
-          </template>
-        </el-table>
-        <GoodsAftersaleHistory
-          v-if="detail.order_id && detail.order_item_id"
-          :sale-id="detail.id"
-        />
+        </div>
       </template>
       <template
         v-if="detail && !detailLoading && !detailFailed && (detail.order_id || canReturnRow(detail) || canExchangeRow(detail))"
@@ -322,7 +457,7 @@
         <div class="tf-dialog-actions">
           <el-button
             v-if="detail.order_id"
-            v-permission="{ permission: ['query:view', 'accessories:view'], mode: 'all' }"
+            v-permission="{ permission: ['query:view', 'query:goods-view'], mode: 'all' }"
             type="primary"
             @click.stop="openOrder(detail.id)"
           >
@@ -360,17 +495,23 @@
       :mode="returnMode"
       @success="afterReturn"
     />
+    <SalesGoodsCheckoutDialog
+      v-if="saleOpen && canSellGoods"
+      v-model="saleOpen"
+      field-source="query"
+      @success="afterSale"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { getCachedStores, type ReferenceRecord } from '@/services/reference-options'
+import { getStores, type ReferenceRecord } from '@/services/reference-options'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useMobile } from '@/composables/mobile'
-import { canViewAccessoryField as visible, type AccessoryFieldName } from '@/components/accessory-field-permissions'
+import { canViewQueryGoodsField as visible, ACCESSORY_FIELD_IDS, type AccessoryFieldName } from '@/components/accessory-field-permissions'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import { formatAmount, formatDateTime } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
@@ -383,9 +524,16 @@ import type { PaginatedResponse } from '@/types'
 import type { DateRangeValue } from '@/types/date-range'
 
 const { canView: canQuery, hasPermission } = usePagePermissions('query')
-const { canView: canGoods } = usePagePermissions('accessories')
+const canGoods = computed(() => hasPermission('goods-view'))
 const { isMobile, isTablet } = useMobile()
+const detailDescriptionColumns = computed(() => isMobile.value || isTablet.value ? 2 : 4)
 const allowed = computed(() => canQuery.value && canGoods.value)
+const SalesGoodsCheckoutDialog = defineAsyncComponent(() => import('@/views/sales/page/SalesGoodsCheckoutDialog.vue'))
+const canSellGoods = computed(() => allowed.value && (hasPermission('goods-sell') || hasPermission('goods-gift')))
+const saleOpen = ref(false)
+const openSale = () => { if (canSellGoods.value) saleOpen.value = true }
+const afterSale = async () => { page.value = 1; await load().catch(() => {}) }
+watch(canSellGoods, value => { if (!value) saleOpen.value = false })
 const requests = useLatestRequest(), details = useLatestRequest(), optionRequests = useLatestRequest()
 const rows = ref<AccessorySaleRecord[]>([])
 const stores = ref<ReferenceRecord[]>([])
@@ -395,12 +543,13 @@ const dateRange = ref<DateRangeValue>([])
 const loading = ref(false), failed = ref(false)
 const detailOpen = ref(false), detailLoading = ref(false), detailFailed = ref(false)
 const detail = ref<AccessorySaleDetail | null>(null)
+const detailSaleId = ref<number | null>(null)
 const orderOpen = ref(false), orderSaleId = ref<number | null>(null)
 const openOrder = (id: number) => {
   if (!allowed.value) return
   orderSaleId.value = id; detailOpen.value = false; orderOpen.value = true
 }
-watch(allowed, value => { if (!value) { orderOpen.value = false; orderSaleId.value = null } })
+watch(() => [allowed.value, ...Object.keys(ACCESSORY_FIELD_IDS).map(key => visible(key as AccessoryFieldName))], ([value]) => { if (!value) { orderOpen.value = false; orderSaleId.value = null } })
 const returnOpen = ref(false), returnSale = ref<AccessorySaleRecord | null>(null)
 const returnMode = ref<'return' | 'exchange'>('return')
 const canReturnRow = (row: AccessorySaleRecord) => allowed.value && hasPermission('return-to-stock') && Boolean(row.order_id && row.order_item_id) &&
@@ -427,20 +576,20 @@ const allColumns: Column[] = [
   { key: 'category', label: '商品类型', field: 'category', width: 110 },
   { key: 'brand_name', label: '品牌', field: 'brand_name', width: 100 },
   { key: 'product_model', label: '配件型号', field: 'product_model', width: 130 },
-  { key: 'sale_type', label: '销售 / 赠送', field: 'usage_type', width: 110, format: 'type' },
+  { key: 'sale_type', label: '销售', field: 'usage_type', width: 110, format: 'type' },
   { key: 'store_name', label: '销售门店', field: 'distribution', width: 120 },
   { key: 'customer_name', label: '客户姓名', field: 'customer_name', width: 110 },
   { key: 'customer_phone', label: '客户手机号', field: 'customer_phone', width: 140 },
-  { key: 'quantity', label: '原数量', field: 'total_quantity', width: 90 },
+  { key: 'quantity', label: '数量', field: 'total_quantity', width: 90 },
   { key: 'returned_quantity', label: '已退数量', field: 'total_quantity', width: 100 },
   { key: 'remaining_quantity', label: '未退数量', field: 'total_quantity', width: 100 },
-  { key: 'unit_price', label: '销售单价', field: 'unit_price', width: 110, format: 'money' },
-  { key: 'total_price', label: '原成交净额', field: 'total_price', width: 110, format: 'money' },
-  { key: 'purchase_cost', label: '原单总成本', field: 'purchase_cost', width: 120, format: 'money' },
-  { key: 'profit', label: '毛利', field: 'profit', width: 110, format: 'money' },
+  { key: 'unit_price', label: '销售价', field: 'unit_price', width: 110, format: 'money' },
+  { key: 'total_price', label: '实际收款', field: 'total_price', width: 110, format: 'money' },
+  { key: 'purchase_cost', label: '总成本', field: 'purchase_cost', width: 120, format: 'money' },
+  { key: 'profit', label: '利润', field: 'profit', width: 110, format: 'money' },
   { key: 'points_used', label: '抵扣积分', field: 'total_price', width: 100 },
   { key: 'deduction_amount', label: '积分抵扣金额', field: 'total_price', width: 120, format: 'money' },
-  { key: 'points_awarded', label: '累计积分', field: 'total_price', width: 100 },
+  { key: 'points_awarded', label: '获得积分', field: 'total_price', width: 100 },
   { key: 'operator_name', label: '销售员', field: 'operator_name', width: 110 },
   { key: 'sale_time', label: '销售时间', field: 'created_at', width: 170, format: 'time' }
 ]
@@ -451,10 +600,12 @@ const goodsActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.
 const display = (value: unknown, format?: CellFormat) => {
   if (value === null || value === undefined || value === '') return '-'
   if (format === 'money') return `¥${formatAmount(String(value))}`
-  if (format === 'time') return formatDateTime(String(value), TIME_FORMATS.DATETIME_MINUTE)
+  if (format === 'time') return formatDateTime(String(value), TIME_FORMATS.DATETIME)
   if (format === 'type') return value === 'gift' ? '赠送' : value === 'sale' ? '销售' : '-'
   return String(value)
 }
+const saleTypeLabel = (value: unknown) => value === 'gift' ? '赠送' : value === 'sale' ? '销售' : '-'
+const saleTypeBadgeClass = (value: unknown) => value === 'gift' ? 'status-warning' : value === 'sale' ? 'status-success' : 'status-disabled'
 const load = async () => {
   if (!allowed.value) return
   const request = requests.nextRequest()
@@ -482,10 +633,11 @@ const load = async () => {
 const search = () => { page.value = 1; void load().catch(() => {}) }
 const reset = () => { keyword.value = ''; storeId.value = undefined; saleType.value = ''; dateRange.value = []; search() }
 const changePage = (value: number) => { page.value = value; void load().catch(() => {}) }
-const openDetail = async (row: AccessorySaleRecord) => {
+const openDetail = async (row: Pick<AccessorySaleRecord, 'id'>) => {
   if (!allowed.value) return
   const request = details.nextRequest()
   detailOpen.value = true
+  detailSaleId.value = row.id
   detail.value = null
   detailLoading.value = true
   detailFailed.value = false
@@ -502,17 +654,293 @@ const handleGoodsDoubleTap = (index: number) => {
   const row = rows.value[index]
   if (row) void openDetail(row)
 }
-watch(detailOpen, value => { if (!value) { details.cancelLatest(); detail.value = null; detailLoading.value = false } })
+watch(detailOpen, value => { if (!value) { details.cancelLatest(); detail.value = null; detailSaleId.value = null; detailLoading.value = false } })
 watch(returnOpen, value => { if (!value) returnSale.value = null })
-watch(allowed, value => {
+watch(() => [allowed.value, ...Object.keys(ACCESSORY_FIELD_IDS).map(key => visible(key as AccessoryFieldName))], ([value]) => {
+  const activeDetailId = detailOpen.value ? detailSaleId.value : null
   requests.cancelLatest(); details.cancelLatest(); optionRequests.cancelLatest()
-  rows.value = []; stores.value = []; total.value = 0; detailOpen.value = false; returnOpen.value = false; loading.value = false
-  if (!value) return
+  rows.value = []; stores.value = []; total.value = 0; detail.value = null; returnOpen.value = false; saleOpen.value = false; loading.value = false
+  if (!value) { detailOpen.value = false; return }
   void load().catch(() => {})
+  if (activeDetailId !== null) void openDetail({ id: activeDetailId })
   if (visible('distribution')) {
     const request = optionRequests.nextRequest()
-    void getCachedStores(true).then(response => { if (request.isLatest()) stores.value = response.data || [] }).catch(() => {})
+    void getStores({ strictScope: true }).then(response => { if (request.isLatest()) stores.value = response.data || [] }).catch(() => {})
   }
 }, { immediate: true })
-defineExpose({ load })
+defineExpose({ load, openSale })
 </script>
+
+<style scoped lang="scss">
+.goods-detail {
+  display: grid;
+  gap: var(--tf-space-5);
+  min-width: 0;
+  color: var(--tf-color-slate-800);
+}
+
+.goods-detail__overview {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--tf-space-4);
+  min-width: 0;
+  padding: var(--tf-space-5);
+  border: 1px solid var(--tf-color-border-cool);
+  border-radius: var(--tf-radius-card);
+  background: var(--tf-color-surface-cool-alt);
+}
+
+.goods-detail__identity {
+  min-width: 0;
+}
+
+.goods-detail__eyebrow {
+  display: block;
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-font-caption);
+  font-weight: 600;
+}
+
+.goods-detail__identity h2 {
+  margin-block-start: var(--tf-space-1);
+  margin-block-end: 0;
+  color: var(--tf-color-slate-900);
+  font-size: var(--tf-font-section-title);
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.goods-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+  color: var(--tf-color-slate-600);
+  font-size: var(--tf-font-body);
+}
+
+.goods-detail__meta > span + span::before {
+  content: '·';
+  margin-right: var(--tf-space-2);
+  color: var(--tf-color-slate-400);
+}
+
+.goods-detail__snapshot-note {
+  display: inline-block;
+  margin-top: var(--tf-space-2);
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-font-caption);
+}
+
+.goods-detail__overview > .status-badge {
+  flex: 0 0 auto;
+}
+
+.goods-detail__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--tf-space-3);
+}
+
+.goods-detail__metric {
+  display: grid;
+  align-content: center;
+  gap: var(--tf-space-1);
+  min-width: 0;
+  min-height: 76px;
+  padding: var(--tf-space-3) var(--tf-space-4);
+  border-left: 3px solid var(--tf-color-slate-300);
+  background: var(--tf-color-surface-gray);
+}
+
+.goods-detail__metric > span {
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-font-caption);
+}
+
+.goods-detail__metric > strong {
+  color: var(--tf-color-slate-800);
+  font-size: var(--tf-font-emphasis);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.goods-detail__metric--primary {
+  border-color: var(--tf-color-blue-500);
+}
+
+.goods-detail__metric--primary > strong {
+  color: var(--tf-color-blue-700);
+}
+
+.goods-detail__metric--success {
+  border-color: var(--tf-status-success-border);
+}
+
+.goods-detail__metric--success > strong {
+  color: var(--tf-status-success-color);
+}
+
+.goods-detail__section {
+  min-width: 0;
+  padding-top: var(--tf-space-4);
+  border-top: 1px solid var(--tf-color-border-cool);
+}
+
+.goods-detail__section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  margin-bottom: var(--tf-space-3);
+}
+
+.goods-detail__section-heading h3 {
+  margin-block-start: var(--tf-space-1);
+  margin-block-end: 0;
+  color: var(--tf-color-slate-800);
+  font-size: var(--tf-font-section-title);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.goods-detail__section-hint {
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-font-caption);
+  text-align: right;
+}
+
+.goods-detail__long-value {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.goods-detail__table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.goods-detail :deep(.tf-record-descriptions) {
+  width: 100%;
+}
+
+.goods-detail :deep(.tf-record-descriptions .el-descriptions__body),
+.goods-detail :deep(.tf-record-descriptions .el-descriptions__table) {
+  width: 100%;
+}
+
+.goods-detail :deep(.tf-record-descriptions .el-descriptions__table) {
+  table-layout: auto;
+}
+
+.goods-detail :deep(.tf-record-descriptions .el-descriptions__label),
+.goods-detail :deep(.tf-record-descriptions .el-descriptions__content) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.goods-detail :deep(.tf-record-descriptions .el-descriptions__label) {
+  color: var(--tf-color-slate-500);
+  font-weight: 600;
+}
+
+.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__table) {
+  border-collapse: separate;
+  border-spacing: var(--tf-space-2) 0;
+}
+
+.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__cell) {
+  box-sizing: border-box;
+  border-color: var(--el-border-color-lighter);
+  min-width: 144px;
+  padding: var(--tf-space-2) var(--tf-space-3);
+}
+
+.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__label) {
+  border: 1px solid var(--el-border-color-lighter);
+  border-bottom: 0;
+  border-radius: var(--tf-radius-card) var(--tf-radius-card) 0 0;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-secondary);
+  padding-block-end: var(--tf-space-1);
+  font-size: var(--tf-font-caption);
+}
+
+.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__content) {
+  border: 1px solid var(--el-border-color-lighter);
+  border-top: 0;
+  border-radius: 0 0 var(--tf-radius-card) var(--tf-radius-card);
+  background: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+
+.goods-detail :deep(.goods-aftersale-history) {
+  min-width: 0;
+  padding-top: var(--tf-space-4);
+  border-top: 1px solid var(--tf-color-border-cool);
+}
+
+.goods-detail :deep(.goods-aftersale-history h3) {
+  margin-block-start: 0;
+  margin-block-end: var(--tf-space-2);
+  color: var(--tf-color-slate-800);
+  font-size: var(--tf-font-section-title);
+  line-height: 1.4;
+}
+
+.goods-detail :deep(.goods-aftersale-history p) {
+  margin-block-start: 0;
+  margin-block-end: var(--tf-space-2);
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-font-caption);
+  line-height: 1.5;
+}
+
+.goods-detail :deep(.goods-aftersale-history .table-wrapper) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 767px) {
+  .goods-detail {
+    gap: var(--tf-space-4);
+  }
+
+  .goods-detail__overview {
+    padding: var(--tf-space-4);
+  }
+
+  .goods-detail__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-2);
+  }
+
+  .goods-detail__metric {
+    min-height: 68px;
+    padding: var(--tf-space-2) var(--tf-space-3);
+  }
+
+  .goods-detail__section-hint {
+    max-width: 45%;
+  }
+
+  .goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__table) {
+    border-spacing: var(--tf-space-2) 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .goods-detail__meta {
+    gap: var(--tf-space-1);
+  }
+
+  .goods-detail__meta > span + span::before {
+    margin-right: var(--tf-space-1);
+  }
+}
+</style>

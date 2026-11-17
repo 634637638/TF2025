@@ -24,7 +24,7 @@ function fixture() {
     async byKey(key, db) { check(db); return state.events.find(row => row.request_key === key) },
     async paymentEventsAfter(id, after, size, db) { check(db); assert.equal(id, 8); return state.events.filter(row => Number(row.id) > after).slice(0, size) },
     async append(data, db) { check(db); state.events.push({ ...data, id: state.events.length + 1 }); if (fail) throw new Error('append failed'); return state.events.length },
-    async list(scope, query) { return { scope, query, rows: [], summary: { total: 0 } } }, async history(id, page, pageSize, db) { check(db); return { id, page, pageSize, rows: state.events } }
+    async list(scope, query, db) { check(db); return { scope, query, rows: [], summary: { total: 0 } } }, async history(id, page, pageSize, db) { check(db); return { id, page, pageSize, rows: state.events } }
   }
   return { service: new Service({ repository }), repository, state, tx, setFail() { fail = true } }
 }
@@ -65,6 +65,47 @@ test('付款完整链跨100条后仍可登记和撤销，撤销沿用原方式�
   assert.equal(f.state.events[103].reference_event_id, 103)
   assert.equal(f.state.events[103].payment_method, 'cash')
   assert.equal(f.state.events[103].payment_time, '2026-11-13 00:01:02')
+})
+
+test('原付款方式或完整北京时间损坏时登记和撤销均拒绝，不追加或修补原账', async () => {
+  for (const extra of [{ payment_method: 'unknown' }, { payment_method: null }, { payment_method: ['cash'] },
+    { payment_time: null }, { payment_time: '2026-11-13' }, { payment_time: '2026-11-13 12:13' },
+    { payment_time: '2026-02-30 12:13:14' }, { payment_time: '2026-11-13 24:00:00' },
+    { payment_time: '2026-11-13 12:60:00' }, { payment_time: '2026-11-13 12:13:60' }]) {
+    for (const action of ['pay', 'cancel']) {
+      const f = fixture(), length = action === 'pay' ? 2 : 1
+      f.state.events.push(...Array.from({ length }, (_, index) => paymentEvent(index + 1)))
+      Object.assign(f.state.events[0], extra)
+      const before = structuredClone(f.state)
+      await assert.rejects(f.service.record(actor, 8, action, input({ expected_event_id: length })), { code: 'PURCHASE_PAYMENT_CONFLICT' })
+      assert.deepEqual(f.state, before)
+      assert.equal(f.tx.at(-1), 'rollback')
+    }
+  }
+})
+
+test('撤销必须保留对应原付款方式及秒级时间，早期或后续分页坏记录都拒绝', async () => {
+  for (const index of [1, 101]) for (const extra of [{ payment_method: 'cash' }, { payment_time: '2026-11-13 12:13:15' }]) {
+    const f = fixture()
+    f.state.events.push(...Array.from({ length: 102 }, (_, index) => paymentEvent(index + 1)))
+    Object.assign(f.state.events[index], extra)
+    const before = structuredClone(f.state)
+    await assert.rejects(f.service.record(actor, 8, 'pay', input({ expected_event_id: 102 })), { code: 'PURCHASE_PAYMENT_CONFLICT' })
+    assert.deepEqual(f.state, before)
+    assert.equal(f.tx.at(-1), 'rollback')
+  }
+})
+
+test('不同付款轮次可改方式时间，撤销分别沿用本轮原值，合法闰日及午夜保持北京时间', async () => {
+  const f = fixture()
+  await f.service.record(actor, 8, 'pay', input({ payment_time: '2024-02-29 23:59:59' }))
+  await f.service.record(actor, 8, 'cancel', input({ expected_event_id: 1, request_key: 'b'.repeat(32) }))
+  await f.service.record(actor, 8, 'pay', input({ expected_event_id: 2, request_key: 'c'.repeat(32), payment_method: 'cash', payment_time: '2026-11-14 00:00:00' }))
+  await f.service.record(actor, 8, 'cancel', input({ expected_event_id: 3, request_key: 'd'.repeat(32) }))
+  assert.deepEqual(f.state.events.map(row => [row.action, row.payment_method, row.payment_time]), [
+    ['pay', 'bank_transfer', '2024-02-29 23:59:59'], ['cancel', 'bank_transfer', '2024-02-29 23:59:59'],
+    ['pay', 'cash', '2026-11-14 00:00:00'], ['cancel', 'cash', '2026-11-14 00:00:00']
+  ])
 })
 
 test('跨页付款账读取故障回滚，不追加付款或改变库存', async () => {
@@ -187,4 +228,73 @@ test('采购控制器复用字段脱敏：隐藏成本同时隐藏汇总及历�
   assert.equal(res.statusCode, 403)
   await controller.pay({ user: actor, params: { id: 8 }, body: input() }, res)
   assert.equal(res.statusCode, 403)
+})
+
+/** 使用真实仓储公共租借入口，故障阶段不以假释放掩盖未结束事务。 */
+function paymentConnectionFixture(action, failAt) {
+  const events = [], records = action === 'cancel' ? [paymentEvent(1)] : []
+  const purchase = { id: 8, supplier_id: 3, store_id: 1, quantity: 50, purchase_cost: '12.50', total_amount: '625.00' }
+  let active = false, before, failure = failAt
+  const step = stage => { events.push(stage); if (failure === stage) throw new Error(`${stage}-failed`) }
+  const connection = {
+    async beginTransaction() { step('begin'); before = structuredClone(records); active = true },
+    async commit() { step('commit'); active = false },
+    async rollback() { step('rollback'); records.splice(0, records.length, ...before); active = false },
+    destroy() { events.push('destroy'); active = false },
+    release() { events.push('release'); assert.equal(active, false, '未结束的事务不能回到连接池') }
+  }
+  const repository = new Repository()
+  repository.getConnection = () => ({ async getConnection() { events.push('acquire'); return connection } })
+  repository.getPurchase = async (_id, _scope, db, lock) => { assert.equal(db, connection); assert.equal(lock, true); step('lock'); return purchase }
+  repository.byKey = async (key, db) => { assert.equal(db, connection); step('replay'); return records.find(row => row.request_key === key) }
+  repository.paymentEventsAfter = async (_id, after, _size, db) => { assert.equal(db, connection); step('history'); return records.filter(row => row.id > after) }
+  repository.append = async (row, db) => { assert.equal(db, connection); step('append'); records.push({ ...row, id: records.length + 1 }); return records.length }
+  return { service: new Service({ repository }), events, records, input: input({ expected_event_id: action === 'cancel' ? 1 : 0 }),
+    fail(stage) { failure = stage } }
+}
+
+for (const stage of ['begin', 'lock', 'replay', 'history', 'append', 'commit']) {
+  test(`采购付款/撤销${stage}故障只清理一次，未完成写入不能成功返回`, async () => {
+    for (const action of ['pay', 'cancel']) {
+      const f = paymentConnectionFixture(action, stage)
+      await assert.rejects(f.service.record(actor, 8, action, f.input), new RegExp(`${stage}-failed`))
+      assert.equal(f.events.at(-1), 'release')
+      assert.equal(f.events.filter(event => event === 'acquire').length, 1)
+      assert.equal(f.events.filter(event => event === 'rollback').length, stage === 'begin' ? 0 : 1)
+      assert.equal(f.events.filter(event => event === 'destroy').length, stage === 'begin' ? 1 : 0)
+      assert.equal(f.records.length, action === 'cancel' ? 1 : 0)
+    }
+  })
+}
+
+test('采购付款及撤销回滚故障销毁连接，不二次回滚或自动重放', async () => {
+  for (const action of ['pay', 'cancel']) {
+    const f = paymentConnectionFixture(action, 'rollback')
+    f.service.reconcilePayments = async () => { throw new Error('history-failed') }
+    await assert.rejects(f.service.record(actor, 8, action, f.input), /rollback-failed/)
+    assert.deepEqual(f.events, ['acquire', 'begin', 'lock', 'replay', 'rollback', 'destroy', 'release'])
+  }
+})
+
+test('采购付款/撤销正常提交及同键重放复用连接，重放提交失败仍回滚清理', async () => {
+  for (const action of ['pay', 'cancel']) {
+    const f = paymentConnectionFixture(action)
+    const first = await f.service.record(actor, 8, action, f.input)
+    assert.equal(first.replayed, false)
+    assert.deepEqual(f.events.slice(-2), ['commit', 'release'])
+    f.events.length = 0
+    const replay = await f.service.record(actor, 8, action, f.input)
+    assert.equal(replay.id, first.id); assert.equal(replay.replayed, true)
+    assert.deepEqual(f.events, ['acquire', 'begin', 'lock', 'replay', 'commit', 'release'])
+    const before = structuredClone(f.records)
+    for (const stage of ['commit', 'rollback']) {
+      f.events.length = 0
+      f.fail(stage)
+      if (stage === 'rollback') f.service.repository.byKey = async () => { throw new Error('replay-failed') }
+      await assert.rejects(f.service.record(actor, 8, action, f.input), new RegExp(`${stage}-failed`))
+      assert.deepEqual(f.events.slice(-2), stage === 'commit' ? ['rollback', 'release'] : ['destroy', 'release'])
+      assert.equal(f.events.filter(event => event === 'rollback').length, 1)
+      assert.deepEqual(f.records, before)
+    }
+  }
 })

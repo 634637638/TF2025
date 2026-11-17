@@ -190,7 +190,6 @@
                   <el-button
                     type="info"
                     class="tf-button--view"
-                    size="small"
                     @click="openDetail(standard)"
                   >
                     <i class="fas fa-eye" />查看规范
@@ -199,7 +198,6 @@
                     type="default"
                     class="tf-button--neutral"
                     plain
-                    size="small"
                     @click="copyDocumentPath(standard)"
                   >
                     <i class="fas fa-link" />复制路径
@@ -266,10 +264,11 @@
                   </div>
                 </div>
                 <div class="section-title">
-                  <span>批量操作：页面声明小号</span>
+                  <span>批量操作：显式小号演示</span>
                   <div
                     class="section-actions batch-actions-buttons"
                     data-size="small"
+                    data-button-size-preview
                   >
                     <el-button
                       class="tf-button--neutral"
@@ -293,9 +292,23 @@
                 <el-button
                   type="primary"
                   class="tf-button--save"
-                  @click="previewButtonAction('主要操作')"
+                  @click="previewButtonAction('默认紧凑规格')"
                 >
-                  主要操作
+                  默认小号
+                </el-button>
+                <el-button
+                  type="primary"
+                  class="tf-button--compact"
+                  @click="previewButtonAction('紧凑快捷命令')"
+                >
+                  紧凑快捷命令
+                </el-button>
+                <el-button
+                  class="tf-button--compact tf-button--soft-primary"
+                  @click="previewButtonAction('浅色快捷命令')"
+                >
+                  <i class="fas fa-box-open" />
+                  浅色快捷命令
                 </el-button>
                 <el-button
                   type="success"
@@ -313,8 +326,9 @@
                 </el-button>
                 <el-button
                   size="small"
+                  data-button-size-preview
                   class="tf-button--export"
-                  @click="previewButtonAction('页面显式小号规格')"
+                  @click="previewButtonAction('显式小号规格演示')"
                 >
                   显式小号
                 </el-button>
@@ -341,6 +355,7 @@
                   title="报价页头按钮声明预览"
                   :action-width="isMobile ? 80 : 112"
                   action-size="small"
+                  data-button-size-preview
                 >
                   <template #actions>
                     <el-button
@@ -389,6 +404,16 @@
                   @click="previewButtonAction('图标角标')"
                 >
                   <i class="fas fa-xmark" />
+                </el-button>
+                <el-button
+                  native-type="button"
+                  class="tf-button--cart"
+                  link
+                  title="加入购物车"
+                  aria-label="加入购物车"
+                  @click="previewButtonAction('加入购物车')"
+                >
+                  <i class="fas fa-shopping-cart" />
                 </el-button>
                 <el-button
                   native-type="button"
@@ -518,7 +543,6 @@
                         <el-button
                           type="info"
                           class="table-action table-action--view"
-                          size="small"
                           @click.stop="togglePreviewDetail"
                         >
                           <i class="fas fa-eye" />
@@ -579,7 +603,7 @@
                 <label>可见范围
                   <el-radio-group
                     v-model="previewFormSegment"
-                    class="tf-segment"
+                    class="tf-state-selector"
                   >
                     <el-radio-button value="public">
                       公开
@@ -588,6 +612,20 @@
                       私有
                     </el-radio-button>
                   </el-radio-group>
+                </label>
+                <label>同行只读信息
+                  <span class="tf-control-display tf-control-display--accent">↓ 最新优先</span>
+                  <el-tag
+                    size="small"
+                    type="success"
+                  >免费</el-tag>
+                  <el-tag
+                    size="small"
+                    type="warning"
+                  >收费</el-tag>
+                  <span class="tf-control-display tf-control-display--accent tf-control-display--compact">
+                    <span class="tf-control-display__text">SO38cc…361697</span>
+                  </span>
                 </label>
                 <div class="preview-form__actions">
                   <el-button
@@ -729,7 +767,6 @@
                 <div class="preview-rules__actions">
                   <el-button
                     class="tf-button--neutral"
-                    size="small"
                     @click="togglePolicyRequirements"
                   >
                     <i :class="previewPolicyExpanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" />
@@ -792,7 +829,6 @@
                     <i class="fas fa-check-circle" />已加载演示数据
                     <el-button
                       class="tf-button--neutral"
-                      size="small"
                       @click="previewEmptyLoaded = false"
                     >
                       恢复空状态

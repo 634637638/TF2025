@@ -1,5 +1,7 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 
 class RentalCustomerRepository {
@@ -8,9 +10,11 @@ class RentalCustomerRepository {
     this.getDb = getDb
   }
 
-  async getActiveStores() {
+  async getActiveStores(scope) {
+    const conditions = ['status=1']; const params = []
+    appendStoreScopeCondition(scope, 'id', conditions, params)
     const [rows] = await this.getDb().execute(
-      'SELECT id, name FROM stores WHERE status=1 ORDER BY sort_order, name, id'
+      `SELECT id, name FROM stores WHERE ${conditions.join(' AND ')} ORDER BY sort_order, name, id`, params
     )
     return rows
   }

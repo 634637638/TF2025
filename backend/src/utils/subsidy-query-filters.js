@@ -1,6 +1,8 @@
 'use strict'
 
-const buildSubsidyFilters = (query) => {
+const { resolveStoreScope, appendStoreScopeCondition } = require('../utils/store-scope')
+
+const buildSubsidyFilters = (query, actor) => {
   const {
     status, approval_status, arrival_status, customer_phone, customer_name, customer_idcard,
     imei1, imei2, serial_number, start_date, end_date, store_id, brand, model, color, memory,
@@ -9,6 +11,7 @@ const buildSubsidyFilters = (query) => {
   } = query
   const whereConditions = ['1=1']
   const queryParams = []
+  appendStoreScopeCondition(resolveStoreScope(actor, store_id), 'store_id', whereConditions, queryParams)
 
   if (approval_status) {
     if (approval_status === 'approved' || approval_status === 'completed') whereConditions.push('apply_time IS NOT NULL')
@@ -70,7 +73,6 @@ const buildSubsidyFilters = (query) => {
   for (const [field, value, expression = `${field} = ?`, parameter = value] of [
     ['sale_time', start_date, 'sale_time >= ?'],
     ['sale_time', end_date, 'sale_time < DATE_ADD(?, INTERVAL 1 DAY)'],
-    ['store_id', store_id],
     ['sale_price', min_price, 'sale_price >= ?', parseFloat(min_price)],
     ['sale_price', max_price, 'sale_price <= ?', parseFloat(max_price)],
     ['subsidy_amount', min_subsidy, 'subsidy_amount >= ?', parseFloat(min_subsidy)],

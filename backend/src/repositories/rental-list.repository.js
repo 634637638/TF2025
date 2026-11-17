@@ -1,5 +1,7 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 
 const LIST_SELECT = `
@@ -65,11 +67,12 @@ const SUMMARY_SELECT = `
       END - COALESCE((SELECT SUM(rp.amount) FROM rental_payments rp WHERE rp.rental_id=r.id),0),0
     ) ELSE 0 END) AS receivable_amount,
     SUM(CASE WHEN r.status IN ('active','overdue') THEN COALESCE(r.deposit,0) ELSE 0 END) AS deposit_amount
-  FROM rentals r JOIN customers c ON c.id=r.customer_id JOIN phones p ON p.id=r.phone_id`
+  FROM rentals r JOIN customers c ON c.id=r.customer_id JOIN phones p ON p.id=r.phone_id LEFT JOIN sales s ON s.id=r.sale_id`
 
-const buildWhere = ({ keyword, searchableColumns, status, billingMode }) => {
+const buildWhere = ({ scope, keyword, searchableColumns, status, billingMode }) => {
   const conditions = []
   const params = []
+  appendStoreScopeCondition(scope, 'COALESCE(s.store_id, p.store_id)', conditions, params)
   if (keyword) {
     conditions.push(`(${searchableColumns.map(column => `${column} LIKE ?`).join(' OR ')})`)
     params.push(...searchableColumns.map(() => `%${keyword}%`))
@@ -91,9 +94,9 @@ class RentalListRepository {
     this.getDb = getDb
   }
 
-  async list({ page, pageSize, keyword, searchableColumns, status, billingMode }) {
+  async list({ scope, page, pageSize, keyword, searchableColumns, status, billingMode }) {
     const db = this.getDb()
-    const { sql: where, params } = buildWhere({ keyword, searchableColumns, status, billingMode })
+    const { sql: where, params } = buildWhere({ scope, keyword, searchableColumns, status, billingMode })
     const [rows] = await db.execute(`${LIST_SELECT} ${where} ORDER BY r.id DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`, params)
     const rentalIds = rows.map(row => Number(row.id)).filter(Number.isInteger)
     let files = []
@@ -106,7 +109,7 @@ class RentalListRepository {
       ])
     }
     const [[countRows], [summaryRows]] = await Promise.all([
-      db.execute(`SELECT COUNT(*) AS total FROM rentals r JOIN customers c ON c.id=r.customer_id JOIN phones p ON p.id=r.phone_id ${where}`, params),
+      db.execute(`SELECT COUNT(*) AS total FROM rentals r JOIN customers c ON c.id=r.customer_id JOIN phones p ON p.id=r.phone_id LEFT JOIN sales s ON s.id=r.sale_id ${where}`, params),
       db.execute(`${SUMMARY_SELECT} ${where}`, params)
     ])
     return { rows, files, payments, total: Number(countRows[0]?.total || 0), summary: summaryRows[0] || {} }

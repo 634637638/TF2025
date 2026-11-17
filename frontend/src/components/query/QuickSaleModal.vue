@@ -23,14 +23,15 @@
     :close-on-click-modal="false"
     width="800px"
     dialog-class="quick-sale-dialog"
+    :before-close="beforeClose"
     @cancel="handleCancel"
   >
     <template #footer>
       <div class="tf-dialog-actions quick-sale-footer">
         <el-button
           v-if="canSellGoods && formData.status === 'sold'"
-          v-permission="{ permission: ['accessories:create', 'accessories:gift'] }"
-          :disabled="submitting"
+          v-permission="{ permission: ['accessories:sell', 'accessories:gift', 'query:goods-sell', 'query:goods-gift'] }"
+          :disabled="submitting || additionalGoods.locked.value"
           @click="openGoodsCheckout"
         >
           配件
@@ -61,6 +62,7 @@
       ref="formRef"
       :model="formData"
       :rules="formRules"
+      :disabled="submitting || additionalGoods.locked.value"
       label-position="top"
       class="quick-sale-form tf-form-layout tf-form-grid"
     >
@@ -156,6 +158,7 @@
             <div class="quick-sale-identifier-field">
               <el-input
                 v-model="formData.serial_number"
+                v-identifier-input="'device-serial'"
                 class="quick-sale-identifier-input"
                 placeholder="请输入序列号"
                 maxlength="50"
@@ -193,6 +196,7 @@
             >
               <el-input
                 v-model="formData.imei"
+                v-identifier-input="formData.isNoIMEIMode ? 'device-serial' : 'imei'"
                 class="quick-sale-identifier-input"
                 :class="{ 'tf-imei-input--no-imei': formData.isNoIMEIMode }"
                 :placeholder="formData.isNoIMEIMode ? '' : '请输入15位IMEI号'"
@@ -410,6 +414,7 @@
           >
             <el-input
               v-model="formData.apple_id"
+              :readonly="!!foundCustomer && !customerPermissions.canEdit.value"
               placeholder="请输入Apple ID"
               clearable
               data-field="apple_id"
@@ -541,6 +546,12 @@
         </el-form-item>
       </div>
     </el-form>
+    <el-alert
+      v-if="additionalGoods.uncertain.value"
+      title="提交结果尚未确认，请保留原内容重试，或先到综合查询核对单据。"
+      type="warning"
+      :closable="false"
+    />
   </MobileDialog>
 
   <SalesGoodsCheckoutDialog
@@ -549,11 +560,10 @@
     :phones="checkoutPhones"
     :quick-phone="checkoutPhone"
     :defaults="checkoutDefaults"
-    :initial-customer="checkoutCustomer"
+    :initial-selection="additionalGoods.selection.value"
     :phone-fields-allowed="checkoutFieldsAllowed"
     :phone-field-visible="canViewCheckoutField"
-    @success="completeGoodsCheckout"
-    @customer-updated="syncCheckoutCustomer"
+    @confirm="saveAdditionalGoods"
   />
 
   <teleport to="body">
@@ -578,8 +588,11 @@ import { ValidationRules } from '@/composables'
 import { deviceSerialPattern, deviceIMEIPattern } from '@/utils/device-identifier'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
+import { useGoodsPermissions } from '@/composables/useGoodsPermissions'
+import { useAdditionalGoodsCheckout } from '@/composables/useAdditionalGoodsCheckout'
+import { canViewAccessoryField } from '@/components/accessory-field-permissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import type { CheckoutCustomerForm, CheckoutPhone, CheckoutQuickPhone } from '@/types/sales-checkout'
+import type { CheckoutAdditionalGoodsDraft, CheckoutCustomerForm, CheckoutPhone, CheckoutQuickPhone } from '@/types/sales-checkout'
 import unifiedApi from '@/utils/unified-api'
 import { searchCustomerOptions } from '@/services/customer-options'
 import { getModels } from '@/services/reference-options'
@@ -623,6 +636,8 @@ import type {
 } from './quick-sale/types'
 import { buildStockInScanPromptConfig } from '../stock-in/helpers'
 
+const customerPermissions = usePagePermissions('customers')
+
 const OptimizedScanner = defineAsyncComponent(() => import('../OptimizedScanner.vue'))
 const SalesGoodsCheckoutDialog = defineAsyncComponent(() => import('@/views/sales/page/SalesGoodsCheckoutDialog.vue'))
 
@@ -635,7 +650,7 @@ const emit = defineEmits<UpdateModelValueEmits & SuccessEmits>()
 
 const { isMobile, isIOS } = useMobile()
 const authStore = useAuthStore()
-const goodsPermissions = usePagePermissions('accessories')
+const goodsPermissions = useGoodsPermissions()
 const inventoryPermissions = usePagePermissions('inventory')
 const queryPermissions = usePagePermissions('query')
 const canSellGoods = computed(() => inventoryPermissions.canSell.value && queryPermissions.canView.value && queryPermissions.canCreate.value && goodsPermissions.canView.value &&
@@ -663,10 +678,15 @@ const dialogVisible = computed({
 const formRef = ref<FormInstance>()
 const submitting = ref(false)
 const showGoodsCheckout = ref(false)
+const additionalGoods = useAdditionalGoodsCheckout()
+const saveAdditionalGoods = (draft: CheckoutAdditionalGoodsDraft | null) => {
+  if (additionalGoods.locked.value) return
+  additionalGoods.save(draft)
+  if (draft?.remarks !== undefined && canViewCheckoutField('remarks') && canViewAccessoryField('remarks')) formData.remarks = draft.remarks
+}
 const checkoutPhone = ref<CheckoutQuickPhone>()
 const checkoutPhones = ref<CheckoutPhone[]>([])
-const checkoutDefaults = ref<Partial<CheckoutCustomerForm>>({})
-const checkoutCustomer = ref<Pick<CustomerOption, 'id' | 'name' | 'phone'> | null>(null)
+const checkoutDefaults = ref<CheckoutCustomerForm>({ customer_name: '', customer_phone: '', store_id: '', operator_id: '', sale_time: '', payment_method: '', payment_channel: '', transaction_no: '', remarks: '' })
 const optimizedScannerVisible = ref(false)
 const currentScanType = ref<'imei' | 'serial'>('imei')
 
@@ -1100,6 +1120,7 @@ const { promptCustomerName, promptingCustomerName } = useCustomerNamePrompt()
 const customerNameSaving = ref(false)
 
 const enableCustomerNameEdit = (event?: MouseEvent) => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!foundCustomer.value) return
   customerNameEditing.value = true
 
@@ -1114,6 +1135,7 @@ const enableCustomerNameEdit = (event?: MouseEvent) => {
 }
 
 const handleCustomerNameTouchEnd = async (_event: TouchEvent) => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!isIOS.value) return
 
   const now = Date.now()
@@ -1124,7 +1146,7 @@ const handleCustomerNameTouchEnd = async (_event: TouchEvent) => {
     if (!foundCustomer.value) return
     const customerId = foundCustomer.value.id
     await promptCustomerName(formData.customer_name, async name => {
-      if (!props.modelValue || foundCustomer.value?.id !== customerId) return
+      if (!customerPermissions.requirePermission('edit') || !props.modelValue || foundCustomer.value?.id !== customerId) return
       customerNameEditing.value = true
       formData.customer_name = name
       await saveCustomerNameEdit()
@@ -1147,6 +1169,7 @@ const handleCustomerNameBlur = () => {
 }
 
 const saveCustomerNameEdit = async () => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (customerNameSaving.value) return
   if (!foundCustomer.value) {
     customerNameEditing.value = false
@@ -1290,6 +1313,7 @@ const selectCustomer = (customer: CustomerOption) => {
 
 // 创建新客户（后端自动生成会员号）
 const createNewCustomer = async () => {
+  if (!customerPermissions.requirePermission('create')) return
   formatCustomerPhone()
   formatAppleId()
 
@@ -1369,10 +1393,10 @@ const clearSelectedCustomer = () => {
 
 // 重置表单
 const resetForm = () => {
+  additionalGoods.reset()
   showGoodsCheckout.value = false
   checkoutPhone.value = undefined
   checkoutPhones.value = []
-  checkoutCustomer.value = null
   clearCustomerSearchTimeout()
   customerSearchRequestId.value += 1
   Object.assign(formData, createDefaultQuickSaleForm(authStore.user?.id || null))
@@ -1395,8 +1419,8 @@ const applyInitialData = async () => {
 }
 
 // 提交表单
-const openGoodsCheckout = async () => {
-  if (submitting.value || showGoodsCheckout.value || formData.status !== 'sold' || !canSellGoods.value || !formRef.value) return
+const prepareGoodsCheckout = async () => {
+  if (formData.status !== 'sold' || !canSellGoods.value || !formRef.value) return false
   if (customerNameEditing.value || customerNameSaving.value) { showWarning('请先保存客户姓名，再添加搭售或赠送商品'); return }
   if (!checkoutFieldsAllowed.value) { showWarning('缺少共同结算所需的手机字段权限，请联系管理员'); return }
   try {
@@ -1407,23 +1431,22 @@ const openGoodsCheckout = async () => {
       props.options.brands.find(row => Number(row.id) === Number(formData.brand_id))?.name,
       filteredModels.value.find(row => Number(row.id) === Number(formData.model_id))?.name, formData.imei
     ].filter(Boolean).join(' · ') }]
-    checkoutCustomer.value = foundCustomer.value ? { id: foundCustomer.value.id, name: foundCustomer.value.name, phone: foundCustomer.value.phone } : null
     checkoutDefaults.value = { customer_name: formData.customer_name, customer_phone: formData.customer_phone,
       store_id: Number(formData.store_id), operator_id: Number(formData.sale_operator_id), sale_time: formData.sale_time,
       payment_method: formData.payment_method, payment_channel: formData.payment_channel,
+      transaction_no: '',
       ...(canViewCheckoutField('customer_apple_id') ? { apple_id: formData.apple_id } : {}),
-      ...(canViewCheckoutField('remarks') ? { remarks: formData.remarks } : {}) }
-    showGoodsCheckout.value = true
+      remarks: canViewCheckoutField('remarks') ? formData.remarks : '' }
+    return true
   } catch (error) {
     if (error instanceof Error) showError(error.message)
   }
+  return false
 }
-const syncCheckoutCustomer = (customer: Pick<CustomerOption, 'id' | 'name' | 'phone'>) => {
-  if (foundCustomer.value?.id !== customer.id || formData.customer_phone !== customer.phone) return
-  foundCustomer.value.name = customer.name
-  formData.customer_name = customer.name
+const openGoodsCheckout = async () => {
+  if (submitting.value || showGoodsCheckout.value || additionalGoods.locked.value) return
+  if (await prepareGoodsCheckout()) showGoodsCheckout.value = true
 }
-const completeGoodsCheckout = () => { emit('success'); handleCancel() }
 
 const handleSubmit = async () => {
   if (submitting.value || showGoodsCheckout.value) return
@@ -1438,13 +1461,24 @@ const handleSubmit = async () => {
     const valid = await formRef.value.validate()
     if (!valid) return
 
+    if (additionalGoods.hasGoods.value) {
+      if (!canSellGoods.value || additionalGoods.selection.value?.goods.some(row => !goodsPermissions.hasPermission(row.sale_type === 'gift' ? 'gift' : 'create'))) {
+        showError('商品销售或赠送权限已变更，请重新核对附加商品'); return
+      }
+      if (!await prepareGoodsCheckout()) return
+      submitting.value = true
+      if (await additionalGoods.submit(checkoutDefaults.value, checkoutPhones.value, checkoutPhone.value, canViewCheckoutField)) {
+        finishSale()
+      }
+      return
+    }
+
     submitting.value = true
     const response = await unifiedApi.post('/inventory/quick-sale', buildQuickSaleSubmitPayload(formData))
 
     if (response.success) {
       showSuccess('快速出库成功！')
-      emit('success')
-      handleCancel()
+      finishSale()
     } else {
       showError(response.message || '快速出库失败')
     }
@@ -1461,9 +1495,12 @@ const handleSubmit = async () => {
 
 // 取消操作
 const handleCancel = () => {
+  if (submitting.value) return
   resetForm()
   dialogVisible.value = false
 }
+const finishSale = () => { resetForm(); dialogVisible.value = false; emit('success') }
+const beforeClose = (done: () => void) => { if (!submitting.value) done() }
 
 // ==================== 监听器 ====================
 

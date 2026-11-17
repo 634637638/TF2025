@@ -3,7 +3,6 @@
     <PublicPriceHeader
       title="最新同城报价"
       :action-width="isMobile ? 80 : 112"
-      action-size="small"
     >
       <template #search>
         <PublicSearchBox

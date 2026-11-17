@@ -3,6 +3,7 @@
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
 const SiteSettingsService = require('../services/site-settings.service')
+const { isDatabaseAvailabilityError } = require('../utils/database-errors')
 
 class SiteSettingsController {
   constructor({ service = new SiteSettingsService(), response = ApiResponse, logger = log } = {}) {
@@ -11,7 +12,7 @@ class SiteSettingsController {
     this.logger = logger
   }
 
-  async getPublic(_req, res) {
+  async getPublic(_req, res, next) {
     try {
       if (!this.service.isConnected()) {
         this.logger.warn('数据库未连接，无法读取站点信息设置')
@@ -19,22 +20,24 @@ class SiteSettingsController {
       }
       return this.response.success(res, await this.service.getPublicSettings())
     } catch (error) {
+      if (isDatabaseAvailabilityError(error) && typeof next === 'function') return next(error)
       this.logger.warn('获取站点信息设置失败:', error.message)
       return this.response.error(res, '获取站点信息设置失败', 500)
     }
   }
 
-  async getAdmin(_req, res) {
+  async getAdmin(_req, res, next) {
     try {
       if (!this.service.isConnected()) return this.response.error(res, '数据库未连接', 503)
       return this.response.success(res, await this.service.getSettings())
     } catch (error) {
+      if (isDatabaseAvailabilityError(error) && typeof next === 'function') return next(error)
       this.logger.warn('读取完整站点设置失败:', error.message)
       return this.response.error(res, '读取完整站点设置失败', 500)
     }
   }
 
-  async save(req, res) {
+  async save(req, res, next) {
     try {
       if (!this.service.isConnected()) return this.response.error(res, '数据库未连接', 500)
       const result = await this.service.saveSettings(req.body)
@@ -46,6 +49,7 @@ class SiteSettingsController {
       if (error.code === 'SITE_SETTINGS_SCHEMA_UNSUPPORTED') {
         return this.response.error(res, error.message, 500)
       }
+      if (isDatabaseAvailabilityError(error) && typeof next === 'function') return next(error)
       this.logger.error('保存站点信息设置到数据库失败:', error)
       return this.response.error(res, `站点信息设置保存失败: ${error.message}`, 500)
     }

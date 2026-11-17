@@ -1,3 +1,4 @@
+const { appendStoreScopeCondition } = require('../utils/store-scope')
 const { getDatabase } = require('../config/database')
 
 class PhoneOptionRepository {
@@ -5,8 +6,13 @@ class PhoneOptionRepository {
     this.database = database
   }
 
-  async getOptionRows() {
+  async getOptionRows(scope) {
     const database = this.database || getDatabase()
+    const phoneConditions = [], phoneParams = [], storeConditions = [], storeParams = []
+    appendStoreScopeCondition(scope, 'p.store_id', phoneConditions, phoneParams)
+    appendStoreScopeCondition(scope, 'id', storeConditions, storeParams)
+    const phoneScopeSql = phoneConditions.length ? ` AND ${phoneConditions.join(' AND ')}` : ''
+    const storeScopeSql = storeConditions.length ? ` AND ${storeConditions.join(' AND ')}` : ''
     const [colors] = await database.execute(`
       SELECT id, name, sort_order
       FROM colors
@@ -40,8 +46,9 @@ class PhoneOptionRepository {
       AND m.name NOT IN (
         SELECT name FROM models WHERE status = 1
       )
+      ${phoneScopeSql}
       ORDER BY m.sort_order ASC, m.name ASC, m.id ASC
-    `)
+    `, phoneParams)
     const [actualBrands] = await database.execute(`
       SELECT DISTINCT b.id, b.name as brand, b.sort_order
       FROM phones p
@@ -51,8 +58,9 @@ class PhoneOptionRepository {
       AND b.name NOT IN (
         SELECT name FROM brands WHERE status = 1
       )
+      ${phoneScopeSql}
       ORDER BY b.sort_order ASC, b.name ASC, b.id ASC
-    `)
+    `, phoneParams)
     const [actualColors] = await database.execute(`
       SELECT DISTINCT c.id, c.name as color, c.sort_order
       FROM phones p
@@ -61,8 +69,9 @@ class PhoneOptionRepository {
       AND c.name NOT IN (
         SELECT name FROM colors WHERE status = 1
       )
+      ${phoneScopeSql}
       ORDER BY c.sort_order ASC, c.name ASC, c.id ASC
-    `)
+    `, phoneParams)
     const [actualMemories] = await database.execute(`
       SELECT DISTINCT mem.id, mem.size as memory, mem.sort_order
       FROM phones p
@@ -71,26 +80,29 @@ class PhoneOptionRepository {
       AND mem.size NOT IN (
         SELECT size FROM memories WHERE status = 1
       )
+      ${phoneScopeSql}
       ORDER BY mem.sort_order ASC, mem.size ASC, mem.id ASC
-    `)
+    `, phoneParams)
     const [purchaseNumbers] = await database.execute(`
       SELECT DISTINCT purchase_number
-      FROM phones
+      FROM phones p
       WHERE purchase_number IS NOT NULL AND purchase_number != ''
+      ${phoneScopeSql}
       ORDER BY purchase_number DESC
-    `)
+    `, phoneParams)
     const [conditions] = await database.execute(`
       SELECT DISTINCT quality_grade
-      FROM phones
+      FROM phones p
       WHERE quality_grade IS NOT NULL AND quality_grade != ''
+      ${phoneScopeSql}
       ORDER BY quality_grade
-    `)
+    `, phoneParams)
     const [stores] = await database.execute(`
       SELECT id, name, sort_order
       FROM stores
-      WHERE status = 1
+      WHERE status = 1 ${storeScopeSql}
       ORDER BY sort_order ASC, name ASC, id ASC
-    `)
+    `, storeParams)
 
     return {
       colors,

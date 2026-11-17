@@ -45,7 +45,7 @@ test('退库业务异常会回滚并由共享连接 helper 释放一次', async 
   }, events)
 
   await assert.rejects(
-    new QueryMutationService({ repository }).returnToStock(12, 7, returnDetails, { storeIds: [3] }),
+    new QueryMutationService({ access: { async authorize() {} }, repository }).returnToStock(12, 7, returnDetails, { storeIds: [3] }),
     /未找到相关销售记录/
   )
   assert.deepEqual(events.filter(value => typeof value === 'string'), [
@@ -56,13 +56,13 @@ test('退库业务异常会回滚并由共享连接 helper 释放一次', async 
 test('删除手机在单一事务内提交，helper 在提交后释放连接', async () => {
   const events = []
   const repository = createRepository(sql => {
-    if (sql.includes('SELECT store_id FROM phones')) return [[{ store_id: 3 }]]
+    if (sql.includes('SELECT store_id, status FROM phones')) return [[{ store_id: 3 }]]
     if (sql.includes('SELECT id FROM sales WHERE phone_id')) return [[]]
     if (sql.includes('DELETE FROM phones')) return [{ affectedRows: 1 }]
     return [{ affectedRows: 0 }]
   }, events)
 
-  const result = await new QueryMutationService({ repository }).deletePhoneRecord(12, { storeIds: [3] })
+  const result = await new QueryMutationService({ access: { async authorize() {} }, repository }).deletePhoneRecord(12, { storeIds: [3] })
   assert.equal(result.success, true)
   assert.deepEqual(events.filter(value => typeof value === 'string'), [
     'acquire', 'begin', 'commit', 'release'
@@ -81,7 +81,7 @@ test('退库在同一连接冲回积分、删除销售、条件恢复库存后�
     }
     return [{ affectedRows: 1 }]
   }, events)
-  const service = new QueryMutationService({ repository, reversePoints: async ({ executor, saleId }) => {
+  const service = new QueryMutationService({ access: { async authorize() {} }, repository, reversePoints: async ({ executor, saleId }) => {
     assert.equal(typeof executor.execute, 'function')
     assert.equal(saleId, 21)
     events.push('reverse-points')
@@ -102,7 +102,7 @@ test('退库门店越权和条件更新冲突都回滚，不提交', async () =>
       return [{ affectedRows: 0 }]
     }, events)
     let reversals = 0
-    const service = new QueryMutationService({ repository, reversePoints: async () => { reversals++ } })
+    const service = new QueryMutationService({ access: { async authorize() {} }, repository, reversePoints: async () => { reversals++ } })
     await assert.rejects(service.returnToStock(12, 7, returnDetails, { storeIds: scenario === 'scope' ? [4] : [3] }), scenario === 'scope' ? /无权/ : /销售记录状态已变化/)
     assert.equal(reversals, scenario === 'scope' ? 0 : 1)
     assert.deepEqual(events.filter(value => typeof value === 'string'), ['acquire', 'begin', 'rollback', 'release'])
@@ -112,12 +112,12 @@ test('退库门店越权和条件更新冲突都回滚，不提交', async () =>
 test('删除手机逐条冲回积分，积分异常时不删除并回滚释放', async () => {
   const events = []
   const repository = createRepository(sql => {
-    if (sql.includes('SELECT store_id FROM phones')) return [[{ store_id: 3 }]]
+    if (sql.includes('SELECT store_id, status FROM phones')) return [[{ store_id: 3 }]]
     if (sql.includes('SELECT id FROM sales WHERE phone_id')) return [[{ id: 21 }, { id: 22 }]]
     throw new Error('不应执行删除')
   }, events)
   const reversed = []
-  const service = new QueryMutationService({ repository, reversePoints: async ({ saleId }) => {
+  const service = new QueryMutationService({ access: { async authorize() {} }, repository, reversePoints: async ({ saleId }) => {
     reversed.push(saleId)
     if (saleId === 22) throw new Error('积分冲回失败')
   } })
@@ -133,7 +133,7 @@ test('共同单从旧退库或删除入口进入时先拒绝拆单，仍回滚�
       if (sql.includes('FROM phones')) return [[{ status: 'sold', store_id: 3 }]]
       assert.fail('共同单不得冲回积分、删除销售或改写库存')
     }, events, 91)
-    const service = new QueryMutationService({ repository, reversePoints: async () => assert.fail('不得冲回积分') })
+    const service = new QueryMutationService({ access: { async authorize() {} }, repository, reversePoints: async () => assert.fail('不得冲回积分') })
     await assert.rejects(operation === 'return'
       ? service.returnToStock(12, 7, returnDetails, { storeIds: [3] })
       : service.deletePhoneRecord(12, { storeIds: [3] }), { code: 'CHECKOUT_AFTERSALE_NOT_READY' })

@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -46,21 +48,21 @@ test('phone detail service preserves sale absence and subsidy eligibility calcul
   let sale = null
   let subsidy = null
   const service = new Service({ repository: {
-    async findSoldPhoneById() { return { phone_id: 4, sale_price: '6000', brand: 'B' } },
+    async findSoldPhoneById() { return { store_id: 1, phone_id: 4, sale_price: '6000', brand: 'B' } },
     async findSaleByPhoneId() { return sale },
     async findSubsidyByPhoneId() { return subsidy }
   } })
-  assert.equal((await service.getByPhoneId('4')).requires_sale, true)
+  assert.equal((await service.getByPhoneId('4', scopedActor)).requires_sale, true)
 
   sale = { sale_id: 9, customer_name: null }
-  const eligible = await service.getByPhoneId('4')
+  const eligible = await service.getByPhoneId('4', scopedActor)
   assert.equal(eligible.subsidy_amount, 500)
   assert.equal(eligible.eligible, true)
   assert.equal(eligible.customer_name, '')
   assert.equal(eligible.existing_subsidy, null)
 
   subsidy = { id: 2, apply_status: 'pending', subsidy_amount: 500 }
-  const overLimit = await service.getByPhoneId('4')
+  const overLimit = await service.getByPhoneId('4', scopedActor)
   assert.deepEqual(overLimit.existing_subsidy, subsidy)
   assert.match(overLimit.eligible_reason, /已达上限/)
 })

@@ -25,10 +25,10 @@ function fixture(results = {}) {
   return { connection, loadMigration, events }
 }
 
-test('十项结构全部匹配才报告schema_ready，原库只读事务始终回滚', async () => {
+test('全部登记结构匹配才报告schema_ready，原库只读事务始终回滚', async () => {
   const f = fixture(), result = await checkAccessoryReleaseSchema(f.connection, f)
   assert.equal(result.status, 'schema_ready'); assert.equal(result.writes, false)
-  assert.deepEqual(result.counts, { ready: 10, pending: 0, blocked: 0, error: 0 })
+  assert.deepEqual(result.counts, { ready: migrations.length, pending: 0, blocked: 0, error: 0 })
   assert.deepEqual(result.results.map(row => row.name), migrations.map(row => row.name))
   assert.deepEqual(f.events.slice(0, 2), ['SET TRANSACTION ISOLATION LEVEL REPEATABLE READ', 'START TRANSACTION READ ONLY'])
   assert.equal(f.events.at(-1), 'rollback')
@@ -41,8 +41,8 @@ test('字符串DDL按一条计数；来源账待迁移时售后账标记blocked�
   })
   const result = await checkAccessoryReleaseSchema(f.connection, f)
   assert.equal(result.status, 'schema_not_ready')
-  assert.deepEqual(result.counts, { ready: 7, pending: 2, blocked: 1, error: 0 })
-  assert.equal(result.results[0].statements, 1)
+  assert.deepEqual(result.counts, { ready: migrations.length - 5, pending: 2, blocked: 3, error: 0 })
+  assert.equal(result.results.find(row => row.name === 'accessory-stock-in-requests').statements, 1)
   assert.deepEqual(result.results.find(row => row.name === 'customer-points-aftersales').dependencies, ['customer-points-ledger'])
   assert.equal(f.events.includes('customer-points-aftersales'), false)
   assert.ok(f.events.includes('film-services'))
@@ -52,11 +52,26 @@ test('共同结算异常不能使依赖售后及贴膜虚假就绪，原错误�
   const secret = 'private-database-fixture'
   const f = fixture({ 'sales-checkout': () => { throw new Error(secret) } })
   const result = await checkAccessoryReleaseSchema(f.connection, f)
-  assert.deepEqual(result.counts, { ready: 7, pending: 0, blocked: 2, error: 1 })
+  assert.deepEqual(result.counts, { ready: migrations.length - 5, pending: 0, blocked: 4, error: 1 })
   assert.equal(result.results.find(row => row.name === 'sales-aftersales').status, 'blocked')
   assert.equal(result.results.find(row => row.name === 'film-services').status, 'blocked')
+  assert.equal(result.results.find(row => row.name === 'film-cancellations').status, 'blocked')
   assert.equal(JSON.stringify(result).includes(secret), false)
   assert.equal(f.events.at(-1), 'rollback')
+})
+
+test('贴膜或售后原表缺失时不预览撤销表，缺撤销表不能报告整批结构就绪', async () => {
+  for (const name of ['film-services', 'sales-aftersales', 'film-cancellations']) {
+    const f = fixture({ [name]: { status: 'dry_run', writes: false, sql: ['CREATE TABLE pending (id INT)'] } })
+    const result = await checkAccessoryReleaseSchema(f.connection, f)
+    const cancellation = result.results.find(row => row.name === 'film-cancellations')
+    assert.equal(result.status, 'schema_not_ready')
+    assert.equal(cancellation.status, name === 'film-cancellations' ? 'pending' : 'blocked')
+    if (name !== 'film-cancellations') {
+      assert.deepEqual(cancellation.dependencies, [name])
+      assert.equal(f.events.includes('film-cancellations'), false)
+    }
+  }
 })
 
 for (const sql of ['ALTER TABLE customers ADD x INT', 'CREATE TABLE x (id INT)', 'UPDATE customers SET points=0', 'DELETE FROM sales', 'START TRANSACTION', 'SET FOREIGN_KEY_CHECKS=0', { sql: 'SELECT 1' }]) {

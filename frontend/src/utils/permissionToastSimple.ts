@@ -3,12 +3,11 @@
  * 提供友好的权限不足提示
  */
 
+import { getPermissionActionMeta } from '@/config/permission-actions'
+import type { PermissionAction } from '@/config/permission-actions'
 import { showElementWarning } from '@/utils/element-feedback'
 
-/**
- * 权限提示类型
- */
-export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'export' | 'import'
+export type { PermissionAction } from '@/config/permission-actions'
 
 /**
  * 权限提示配置
@@ -27,18 +26,6 @@ export interface PermissionToastOptions {
 }
 
 /**
- * 操作类型名称映射
- */
-const ACTION_NAMES: Record<PermissionAction, string> = {
-  view: '查看',
-  create: '创建',
-  edit: '编辑',
-  delete: '删除',
-  export: '导出',
-  import: '导入'
-}
-
-/**
  * 显示权限不足提示
  */
 export function showPermissionDenied(options: PermissionToastOptions) {
@@ -47,7 +34,7 @@ export function showPermissionDenied(options: PermissionToastOptions) {
     message
   } = options
 
-  const actionName = ACTION_NAMES[action] || '操作'
+  const actionName = getPermissionActionMeta(action).name
   const defaultMessage = action === 'view'
     ? '您没有访问此页面的权限'
     : `您没有${actionName}权限`

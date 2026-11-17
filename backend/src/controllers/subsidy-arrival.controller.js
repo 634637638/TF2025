@@ -11,12 +11,13 @@ class SubsidyArrivalController {
 
   async confirmArrival(req, res) {
     try {
-      const confirmed = await this.service.confirmArrival(req.params.id)
+      const confirmed = await this.service.confirmArrival(req.params.id, req.user)
       if (!confirmed) {
         return res.status(400).json({ success: false, message: '国补记录不存在' })
       }
       return res.json({ success: true, message: '确认到账成功' })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 确认到账失败:', error)
       return res.status(500).json({
         success: false,

@@ -22,7 +22,10 @@
               <InlineLoading :size="size" />
             </div>
             <div class="loading-copy">
-              <div class="loading-title">
+              <div
+                class="loading-title"
+                :title="loadingStore.loadingText || '正在处理，请稍候...'"
+              >
                 {{ loadingStore.loadingText || '正在处理，请稍候...' }}
               </div>
               <div class="loading-subtitle">
@@ -207,6 +210,8 @@ export default defineComponent({
 .loading-copy {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  width: 100%;
   text-align: center;
 }
 
@@ -263,6 +268,15 @@ export default defineComponent({
   .loading-content {
     width: min(248px, 100%);
     padding: 20px 18px 18px;
+  }
+}
+
+@media (max-width: 767px) {
+  .loading-title,
+  .loading-subtitle {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }
 

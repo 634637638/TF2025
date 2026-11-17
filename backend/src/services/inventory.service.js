@@ -1,6 +1,10 @@
 'use strict'
 
 const crypto = require('node:crypto')
+const CustomerMutationAccessService = require('./customer-mutation-access.service')
+const PhoneMutationAccessService = require('./phone-mutation-access.service')
+const FieldAccessService = require('./field-access.service')
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
 const BaseService = require('../core/base/base.service')
 const InventoryRepository = require('../repositories/inventory.repository')
 const { getDatabase, isConnected } = require('../config/database')
@@ -33,6 +37,19 @@ const TRANSACTION_CONFIG = Object.freeze({
 class InventoryService extends BaseService {
   constructor({
     repository,
+    access = new PhoneMutationAccessService(),
+    fields = new FieldAccessService({ moduleKey: 'inventory_inventoryview', responseKeys: {
+      'price_info.purchase_cost': ['total_value', 'totalValue'],
+      'stats.inventory_value': ['total_value', 'totalValue'],
+      'stats.total_phones': ['total'],
+      'stats.new_phones': ['new_count', 'inStock'],
+      'stats.used_phones': ['used_count', 'sold'],
+      'operator_info.inventory_operator_name': ['inventory_operator_id', 'operator_name'],
+      'basic.phone_id': ['id'],
+      'other_info.remarks': ['purchase_remarks'],
+      'store_info.store_name': ['by_store'], 'basic.brand': ['by_brand']
+    } }),
+    customerAccess = new CustomerMutationAccessService(),
     database = getDatabase,
     connected = isConnected,
     logger = log,
@@ -44,6 +61,9 @@ class InventoryService extends BaseService {
     reconcileCustomerPointsForSale = defaultReconcileCustomerPointsForSale
   } = {}) {
     super()
+    this.customerAccess = customerAccess
+    this.access = access
+    this.fields = fields
     this.repository = repository || new InventoryRepository({ database })
     this.database = database
     this.connected = connected
@@ -56,10 +76,12 @@ class InventoryService extends BaseService {
     this.reconcileCustomerPointsForSale = reconcileCustomerPointsForSale
   }
 
-  async list(query = {}) {
+  async list(query = {}, actor) {
+    const scope = resolveStoreScope(actor, query.store_id)
+    const permissions = await this.fields.getPermissions(actor.id)
     const pageSize = Math.min(Math.max(parseInt(query.page_size ?? query.limit) || 10, 1), 100)
     const page = Math.max(parseInt(query.page) || 1, 1)
-    const { whereConditions, whereClause, queryParams } = this.repository.listFilters(query, { includeLegacyDate: true })
+    const { whereConditions, whereClause, queryParams } = this.repository.listFilters(query, { includeLegacyDate: true, scope })
     this.logger.debug('库存查询条件:', whereConditions)
     this.logger.debug('库存查询参数:', queryParams)
     const { rows, total } = await this.repository.withConnection(connection => this.repository.list(connection, {
@@ -105,7 +127,7 @@ class InventoryService extends BaseService {
     const totalPages = Math.ceil(total / pageSize)
     return {
       success: true,
-      data,
+      data: this.fields.maskPayload(data, permissions),
       pagination: {
         page,
         page_size: pageSize,
@@ -117,11 +139,14 @@ class InventoryService extends BaseService {
     }
   }
 
-  async detail(id) {
+  async detail(id, actor) {
     if (!id || isNaN(id)) throw new InventoryError('无效的商品ID', 400)
     const item = await this.repository.withConnection(connection => this.repository.detail(connection, parseInt(id)))
     if (!item) throw new InventoryError('商品不存在', 404)
-    return {
+    assertStoreInScope(resolveStoreScope(actor), item.store_id)
+    if (COMPLETED_TRANSACTION_STATUSES.includes(item.status)) throw new InventoryError('已完成交易设备请从销售或综合查询查看', 403)
+    const permissions = await this.fields.getPermissions(actor.id)
+    return this.fields.maskPayload({
       id: item.id,
       brand_id: item.brand_id || null,
       model_id: item.model_id || null,
@@ -135,7 +160,6 @@ class InventoryService extends BaseService {
       serial_number: item.serial_number || '',
       purchase_cost: item.purchase_cost ?? null,
       sale_price: item.sale_price ?? null,
-      price: item.sale_price ?? 0,
       supplier_id: item.supplier_id || null,
       store_id: item.store_id || null,
       inventory_time: item.inventory_time,
@@ -150,16 +174,17 @@ class InventoryService extends BaseService {
       supplier_name: item.supplier_name || '',
       store_name: item.store_name || '',
       operator_name: item.operator_name || ''
-    }
+    }, permissions)
   }
 
-  async remove(id) {
+  async remove(id, actor) {
     if (!id || isNaN(id)) throw new InventoryError('无效的商品ID', 400)
     return this.repository.withConnection(async connection => {
       try {
         await connection.beginTransaction()
         const item = await this.repository.findForRemoval(connection, id)
         if (!item) throw new InventoryError('商品不存在', 404)
+        await this.access.authorize(actor, item, 'delete')
         if (COMPLETED_TRANSACTION_STATUSES.includes(item.status) || Number(item.is_preordered) === 1) {
           throw new InventoryError(Number(item.is_preordered) === 1
             ? '预订设备不能直接删除，请先取消或重新匹配预定单'
@@ -184,15 +209,23 @@ class InventoryService extends BaseService {
     })
   }
 
-  async update(id, body = {}) {
+  async update(id, body = {}, actor) {
     if (!id || isNaN(id)) throw new InventoryError('无效的商品ID', 400)
-    const { Inventorytime: legacyInventoryTime, ...requestData } = body
-    const updateData = { ...requestData, inventory_time: requestData.inventory_time ?? legacyInventoryTime }
+    const { Inventorytime: legacyInventoryTime, price, is_new, ...requestData } = body
+    const updateData = Object.fromEntries(Object.entries({ ...requestData,
+      purchase_cost: requestData.purchase_cost ?? price,
+      inventory_time: requestData.inventory_time ?? legacyInventoryTime,
+      condition: is_new === undefined ? requestData.condition : Number(is_new) === 1 ? 'new' : 'used'
+    }).filter(([, value]) => value !== undefined))
+    if (updateData.condition !== undefined && !['new', 'used'].includes(updateData.condition)) throw new InventoryError('成色参数无效', 400)
+    if (updateData.purchase_cost !== undefined && (!Number.isFinite(Number(updateData.purchase_cost)) || Number(updateData.purchase_cost) < 0)) throw new InventoryError('入库价格无效', 400)
     return this.repository.withConnection(async connection => {
       try {
         await connection.beginTransaction()
         const item = await this.repository.findForUpdate(connection, id)
         if (!item) throw new InventoryError('商品不存在', 404)
+        await this.access.authorize(actor, item, 'edit', updateData, ['inventory', 'phones'])
+        const permissions = await this.fields.getPermissions(actor.id)
         if (updateData.imei && updateData.imei !== item.imei
           && await this.repository.phoneImeiExists(connection, updateData.imei, id)) {
           throw new InventoryError('该IMEI号已被其他商品使用', 400)
@@ -202,18 +235,17 @@ class InventoryService extends BaseService {
         const fields = {
           imei: updateData.imei,
           serial_number: updateData.serial_number,
-          purchase_cost: updateData.price,
-          sale_price: updateData.price * 1.2,
+          purchase_cost: updateData.purchase_cost,
           ...(includeSupplier && { supplier_id: updateData.supplier_id }),
           ...(includeStore && { store_id: updateData.store_id }),
           inventory_time: updateData.inventory_time,
-          is_new: updateData.is_new
+          is_new: updateData.condition === undefined ? undefined : updateData.condition === 'new' ? 1 : 0
         }
         const result = await this.repository.updatePhone(connection, id, fields)
         if (!result.query) throw new InventoryError('没有有效的更新字段', 400)
         if (!result.affectedRows) throw new InventoryError('更新失败，商品可能已被删除', 500)
         await connection.commit()
-        return await this.repository.updatedPhone(connection, id)
+        return this.fields.maskPayload(await this.repository.updatedPhone(connection, id), permissions)
       } catch (error) {
         await connection.rollback()
         throw error
@@ -240,6 +272,7 @@ class InventoryService extends BaseService {
     const { normalizedImei, normalizedSerialNumber } = imeiValidation
     if (!imeiValidation.valid) throw new InventoryError(imeiValidation.reason, 400)
     if (!supplier_id || !store_id) throw new InventoryError('供应商和店铺不能为空', 400)
+    assertStoreInScope(resolveStoreScope(actor), store_id)
 
     const requestedPurchaseCost = purchase_cost === null || purchase_cost === undefined ? null : Number(purchase_cost)
     const requestedSalePrice = sale_price === null || sale_price === undefined ? null : Number(sale_price)
@@ -268,18 +301,22 @@ class InventoryService extends BaseService {
         })
         if (!validReferences) throw new InventoryError('品牌、型号、颜色或内存不存在或已停用', 400)
         const existingCustomer = await this.repository.findCustomer(connection, customer_phone)
-        const customerId = existingCustomer
-          ? existingCustomer.id
-          : await this.repository.createCustomer(connection, {
-            name: customer_name || '',
-            phone: customer_phone,
-            appleId: normalizedAppleId,
+        let customerId = existingCustomer?.id
+        if (!existingCustomer) {
+          await this.customerAccess.require(actor, 'create')
+          customerId = await this.repository.createCustomer(connection, {
+            name: customer_name || '', phone: customer_phone, appleId: normalizedAppleId,
             memberNumber: await this.generateMemberNumber({ connection })
           })
-        if (existingCustomer) {
-          await this.repository.updateCustomer(connection, {
-            name: customer_name || '', appleId: normalizedAppleId, customerId
-          })
+        } else {
+          const nameChanged = customer_name && customer_name !== existingCustomer.name
+          const appleChanged = apple_id !== undefined && normalizedAppleId !== (existingCustomer.apple_id || null)
+          if (nameChanged || appleChanged) {
+            await this.customerAccess.require(actor, 'edit')
+            await this.repository.updateCustomer(connection, {
+              name: nameChanged ? customer_name : null, appleId: appleChanged ? normalizedAppleId : null, customerId
+            })
+          }
         }
         if (await this.repository.hasCustomerPhoneDuplicate(connection, { imei: normalizedImei, customerId })) {
           throw new InventoryError('该客户已存在相同IMEI的手机', 400)
@@ -355,12 +392,14 @@ class InventoryService extends BaseService {
     ])
   }
 
-  async overview(query = {}) {
+  async overview(query = {}, actor) {
     if (!this.connected()) throw new InventoryError('数据库未连接', 500)
-    const filters = this.repository.listFilters(query)
+    const scope = resolveStoreScope(actor, query.store_id)
+    const permissions = await this.fields.getPermissions(actor.id)
+    const filters = this.repository.listFilters(query, { scope })
     const result = await this.repository.overview(this.database(), filters)
     const stats = result.stats
-    return {
+    return this.fields.maskPayload({
       total: parseInt(stats.total) || 0,
       new_count: parseInt(stats.new_count) || 0,
       used_count: parseInt(stats.used_count) || 0,
@@ -373,13 +412,14 @@ class InventoryService extends BaseService {
         acc[row.brand_name || '未知品牌'] = row.count
         return acc
       }, {})
-    }
+    }, permissions)
   }
 
-  async stats() {
+  async stats(actor) {
     if (!this.connected()) throw new InventoryError('数据库未连接', 500)
-    const stats = await this.repository.stats(this.database())
-    return { ...stats, totalValue: parseFloat(stats.totalValue) || 0 }
+    const permissions = await this.fields.getPermissions(actor.id)
+    const stats = await this.repository.stats(this.database(), resolveStoreScope(actor))
+    return this.fields.maskPayload({ ...stats, totalValue: parseFloat(stats.totalValue) || 0 }, permissions)
   }
 }
 

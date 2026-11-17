@@ -11,12 +11,13 @@ class SubsidyDetailController {
 
   async getById(req, res) {
     try {
-      const subsidy = await this.service.getById(req.params.id, req.user.id)
+      const subsidy = await this.service.getById(req.params.id, req.user.id, req.user)
       if (!subsidy) {
         return res.status(404).json({ success: false, message: '国补记录不存在' })
       }
       return res.json({ success: true, message: '获取国补详情成功', data: subsidy })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 获取国补详情失败:', error)
       return res.status(500).json({
         success: false,

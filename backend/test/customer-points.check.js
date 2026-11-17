@@ -172,6 +172,27 @@ test('全新和二手支持同时参与并分别设置每100元积分', () => {
   })
 })
 
+test('批量手机逐台取整，与共同结算逐件规则一致，不把不足一分的余数合并奖励', () => {
+  const config = normalizePointsConfig({ new_points_per_100: 2, used_points_per_100: 3 })
+  const phones = [{ is_new: 1, sale_price: '99.99' }, { is_new: 0, sale_price: '99.99' }]
+  const separate = phones.map(phone => calculateCustomerPointsForSale({ phones: [phone], saleType: 'retail', config }).points)
+  const combined = calculateCustomerPointsForSale({ phones, saleType: 'batch', config })
+  const expected = quoteCustomerPoints({ config, available_points: 0, items: phones.map((phone, index) => ({
+    key: String(index), source: phone.is_new ? 'new' : 'used', amount_cents: 9999, is_gift: false, redeem_points: 0
+  })) })
+  assert.deepEqual(separate, [1, 2])
+  assert.equal(combined.points, 3)
+  assert.equal(combined.points, expected.points_awarded)
+  assert.equal(combined.eligibleAmount, 199.98)
+})
+
+test('手机积分使用整数分归集消费额，小数价格不积累浮点误差', () => {
+  const result = calculateCustomerPointsForSale({ phones: [{ is_new: 1, sale_price: '100.10' },
+    { is_new: 0, sale_price: '200.20' }], saleType: 'retail' })
+  assert.equal(result.eligibleAmount, 300.3)
+  assert.equal(result.points, 3)
+})
+
 for (const saleType of ['wholesale', 'peer_transfer', 'supplier_proxy']) {
   test(`${saleType}批发或划拨交易不累计客户积分`, () => {
     const result = calculateCustomerPointsForSale({

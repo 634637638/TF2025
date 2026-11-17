@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
 const RentalDeviceRepository = require('../repositories/rental-device.repository')
 const dataMaskingService = require('./data-masking.service')
 const { ensureRentalSchema } = require('../utils/rental-schema')
@@ -25,7 +27,7 @@ class RentalDeviceService {
     this.ensureSchema = ensureSchema
   }
 
-  async listAvailable(query, userId) {
+  async listAvailable(query, userId, actor) {
     await this.ensureSchema()
     const permissions = await this.masking.getUserFieldPermissions(userId, MODULE_KEY)
     const hiddenFields = new Set(permissions.hiddenFields || [])
@@ -39,6 +41,7 @@ class RentalDeviceService {
     if (keyword && searchableFieldIds.length === 0) return { forbidden: true }
 
     const rows = await this.repository.listAvailable({
+      scope: resolveStoreScope(actor, query.store_id),
       keyword,
       searchableFieldIds: keyword ? searchableFieldIds : [],
       page,

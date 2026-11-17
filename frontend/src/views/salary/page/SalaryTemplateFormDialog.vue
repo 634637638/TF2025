@@ -95,6 +95,7 @@
         >
           <el-radio-group
             v-model="commissionType"
+            class="tf-state-selector"
             :disabled="!edit('template_commission_type')"
           >
             <el-radio value="fixed">
@@ -166,6 +167,7 @@
             <el-form-item label="商品提成方式">
               <el-radio-group
                 v-model="goodsType"
+                class="tf-state-selector"
                 :disabled="!edit('template_goods_commission_rule')"
               >
                 <el-radio value="fixed">
@@ -306,7 +308,9 @@ const emit = defineEmits<{
 }>()
 const formRef = ref<FormInstance>()
 const view = (field: string) => props.canViewField('salary_salarytemplatesview', field)
-const edit = (field: string) => !props.saving && view(field) && props.canEditField('salary_salarytemplatesview', field)
+const raiseFields = ['template_auto_raise_enabled', 'template_auto_raise_months', 'template_auto_raise_amount', 'template_auto_raise_max_salary']
+const edit = (field: string): boolean => !props.saving && view(field) && props.canEditField('salary_salarytemplatesview', field) &&
+  (!raiseFields.includes(field) || raiseFields.every(key => view(key) && props.canEditField('salary_salarytemplatesview', key)))
 const createFieldModel = <K extends keyof SalaryTemplateForm>(key: K) => computed({
   get: () => props.form[key],
   set: (value: SalaryTemplateForm[K]) => emit('update:form', { ...props.form, [key]: value })

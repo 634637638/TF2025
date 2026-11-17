@@ -22,21 +22,21 @@ test('module scan routes preserve admin permission and delegate to controller', 
   assert.match(route, /router\.use\(unifiedAuth\)/)
   assert.match(route, /router\.get\('\/', requireAnyPermission\(\['permissions:admin', 'menus:create', 'menus:edit'\]\), moduleManagementController\.list\.bind\(moduleManagementController\)\)/)
   assert.match(route, /router\.post\('\/sync-all', requirePermission\('permissions:admin'\), moduleManagementController\.syncAll\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.get\('\/registered', requirePermission\('permissions:admin'\), moduleManagementController\.registered\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.get\('\/:module_key\/name-status', requirePermission\('permissions:admin'\), moduleManagementController\.nameStatus\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.get\('\/:module_key', requirePermission\('permissions:admin'\), moduleManagementController\.detail\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.get\('\/registered', requirePermission\('module-management:view'\), moduleManagementController\.registered\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.get\('\/:module_key\/name-status', requirePermission\('module-management:view'\), moduleManagementController\.nameStatus\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.get\('\/:module_key', requirePermission\('module-management:view'\), moduleManagementController\.detail\.bind\(moduleManagementController\)\)/)
   assert.match(route, /router\.get\('\/scan', requirePermission\('permissions:admin'\), moduleManagementController\.scan\.bind\(moduleManagementController\)\)/)
   assert.match(route, /router\.get\('\/unregistered', requirePermission\('permissions:admin'\), moduleManagementController\.unregistered\.bind\(moduleManagementController\)\)/)
   assert.match(route, /router\.post\('\/register', requirePermission\('permissions:admin'\), moduleManagementController\.register\.bind\(moduleManagementController\)\)/)
   assert.match(route, /router\.post\('\/register-batch', requirePermission\('permissions:admin'\), moduleManagementController\.registerBatch\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.post\('\/manual-create', requirePermission\('permissions:admin'\), moduleManagementController\.manualCreate\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.delete\('\/:module_key', requirePermission\('permissions:admin'\), moduleManagementController\.delete\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.put\('\/:module_key\/name', requirePermission\('permissions:admin'\), moduleManagementController\.rename\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.put\('\/:module_key\/restore-name', requirePermission\('permissions:admin'\), moduleManagementController\.restoreName\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.put\('\/:id\/status', requirePermission\('permissions:admin'\), moduleManagementController\.setStatusById\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.put\('\/:module_key', requirePermission\('permissions:admin'\), moduleManagementController\.update\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.patch\('\/:module_key\/toggle', requirePermission\('permissions:admin'\), moduleManagementController\.toggle\.bind\(moduleManagementController\)\)/)
-  assert.match(route, /router\.get\('\/stats\/overview', requirePermission\('permissions:admin'\), moduleManagementController\.overviewStats\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.post\('\/manual-create', requireAllPermissions\(\['module-management:create', 'permissions:admin'\]\), moduleManagementController\.manualCreate\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.delete\('\/:module_key', requireAllPermissions\(\['module-management:delete', 'permissions:admin'\]\), moduleManagementController\.delete\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.put\('\/:module_key\/name', requirePermission\('module-management:edit'\), moduleManagementController\.rename\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.put\('\/:module_key\/restore-name', requirePermission\('module-management:edit'\), moduleManagementController\.restoreName\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.put\('\/:id\/status', requirePermission\('module-management:edit'\), moduleManagementController\.setStatusById\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.put\('\/:module_key', requirePermission\('module-management:edit'\), moduleManagementController\.update\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.patch\('\/:module_key\/toggle', requirePermission\('module-management:edit'\), moduleManagementController\.toggle\.bind\(moduleManagementController\)\)/)
+  assert.match(route, /router\.get\('\/stats\/overview', requirePermission\('module-management:view'\), moduleManagementController\.overviewStats\.bind\(moduleManagementController\)\)/)
   assert.match(route, /router\.post\('\/fix-menu-links', requirePermission\('permissions:admin'\), moduleManagementController\.fixMenuLinks\.bind\(moduleManagementController\)\)/)
 })
 
@@ -573,7 +573,35 @@ test('module scanner registers missing capability modules once and queries the a
       async getRegisteredModules() { return [{ id: 2, key: 'disabled', is_active: 0 }] }
     }
   })
-  assert.deepEqual(await registeredScanner.getRegisteredModules(), [{ id: 2, key: 'disabled', is_active: 0 }])
+  assert.deepEqual(await registeredScanner.getRegisteredModules(), [{ id: 2, key: 'disabled', is_active: 0, permission_count: 1 }])
+})
+
+test('registered module permission counts follow real capabilities instead of role grants or stale values', async () => {
+  const ModuleScanner = require('../src/services/module-scanner.service')
+  const { MODULE_PERMISSION_TYPES, getModulePermissionTypes } = require('../src/config/module-permission-actions')
+  const rows = Object.keys(MODULE_PERMISSION_TYPES).map((key, index) => ({
+    id: index + 1, key, is_active: index % 2, permission_count: 999
+  }))
+  rows.push({ id: rows.length + 1, key: 'custom_unconfigured', is_active: 1, permission_count: 999 })
+  const scanner = new ModuleScanner({ repository: {
+    async getModuleKeys() { return Object.keys(MODULE_PERMISSION_TYPES).map(key => ({ key })) },
+    async getRegisteredModules() { return rows }
+  } })
+  const modules = await scanner.getRegisteredModules()
+  assert.equal(modules.length, rows.length)
+  for (const [index, module] of modules.entries()) {
+    assert.equal(module.permission_count, getModulePermissionTypes(module.key).length)
+    assert.equal(module.is_active, rows[index].is_active)
+    assert.equal(rows[index].permission_count, 999, 'read results must not modify persisted module records')
+  }
+  assert.equal(modules.find(module => module.key === 'dashboard_dashboardview').permission_count, getModulePermissionTypes('dashboard_dashboardview').length)
+  assert.equal(modules.find(module => module.key === 'custom_unconfigured').permission_count, 1)
+  assert.ok(modules.find(module => module.key === 'sales_salesview').permission_count > 1)
+
+  const ModuleManagementController = require('../src/controllers/module-management.controller')
+  const result = response()
+  await new ModuleManagementController({ moduleScanner: scanner }).registered({}, result)
+  assert.deepEqual(result.body.data, { total: modules.length, modules })
 })
 
 test('module management repository uses stable active and complete module queries', async () => {

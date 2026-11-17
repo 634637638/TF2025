@@ -6,6 +6,10 @@ const normalizedModelSql = column => (
   `LOWER(REPLACE(REPLACE(REPLACE(TRIM(${column}), ' ', ''), '　', ''), '-', ''))`
 )
 
+/** 配合 LIKE ... ESCAPE '!'，将商品编码中的通配符按实际字符匹配。 */
+const escapeLikePattern = value => String(value).replace(/[!%_]/g, '!$&')
+
 module.exports = {
-  normalizedModelSql
+  normalizedModelSql,
+  escapeLikePattern
 }

@@ -1104,10 +1104,10 @@ export function useDataPrefetch<T = any>(
       <!-- 操作列 -->
       <template #column-actions="{ row }">
         <el-space>
-          <el-button size="small" @click="handleEdit(row)">
+          <el-button @click="handleEdit(row)">
             编辑
           </el-button>
-          <el-button size="small" type="danger" @click="handleDelete(row)">
+          <el-button type="danger" @click="handleDelete(row)">
             删除
           </el-button>
         </el-space>

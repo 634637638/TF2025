@@ -60,21 +60,18 @@ test('同商品不同供应商批次按实际进价FIFO出库，划拨保留来�
   assert.equal(state.entries.length, 2, '划拨不重复采购应付')
 })
 
-test('赠送批次不得收费，收费转赠送须原因且真实成本不归零', async () => {
+test('收费与赠送均可使用任意用途批次，库存用途只保留流向标记并保留真实成本', async () => {
   const { state, service } = fixture()
   await service.stockIn(purchase({ usage_type: 'gift', purchase_cost: 4, total_quantity: 2 }), actor)
-  const before = structuredClone(state)
-  assert.equal((await issueSale(service, outbound(), actor)).code, 'INVENTORY_LEDGER_CONFLICT')
-  assert.deepEqual(state, before)
-  assert.equal((await issueSale(service, outbound({ sale_type: 'gift', unit_price: 0 }), actor)).success, true)
+  assert.equal((await issueSale(service, outbound(), actor)).success, true)
   assert.equal(state.sales[0].purchase_cost, 4)
+  assert.equal((await issueSale(service, outbound({ sale_type: 'gift', unit_price: 0 }), actor)).success, true)
+  assert.equal(state.sales[1].purchase_cost, 4)
   await service.stockIn(purchase({ purchase_cost: 10, total_quantity: 1 }), actor)
   await issueSale(service, outbound({ sale_type: 'gift', unit_price: 0 }), actor)
-  const saleOnly = structuredClone(state)
-  assert.equal((await issueSale(service, outbound({ sale_type: 'gift', unit_price: 0 }), actor)).success, false)
-  assert.deepEqual(state, saleOnly)
-  assert.equal((await issueSale(service, outbound({ sale_type: 'gift', unit_price: 0, remarks: '促销赠送' }), actor)).success, true)
-  assert.equal(state.sales.at(-1).purchase_cost, 10)
+  assert.equal(state.sales[2].purchase_cost, 10)
+  assert.throws(() => allocateBatches({ balances: [{ stock_in_id: 3, purchase_cost: 10, usage_type: 'gift', serial_tracking: 0, quantity: 0 }],
+    quantity: 1, operation: 'gift' }), { code: 'INVENTORY_LEDGER_CONFLICT', statusCode: 409 })
 })
 
 test('旧批次晚于新批次划入仍按原采购顺序出库，反向划拨守恒且清空后补货不重补期初', async () => {

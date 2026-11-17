@@ -193,7 +193,6 @@
                   description="暂无店铺数据"
                 >
                   <el-button
-                    size="small"
                     type="info"
                     @click="loadStores()"
                   >
@@ -338,21 +337,18 @@
                   <div class="action-buttons">
                     <el-button
                       type="success"
-                      size="small"
                       @click.stop="viewStore(row)"
                     >
                       <i class="fas fa-eye" /><span>查看</span>
                     </el-button><el-button
                       v-if="canEdit"
                       type="primary"
-                      size="small"
                       @click.stop="editStore(row)"
                     >
                       <i class="fas fa-edit" /><span>编辑</span>
                     </el-button><el-button
                       v-if="canDelete"
                       type="danger"
-                      size="small"
                       @click.stop="deleteStore(row)"
                     >
                       <i class="fas fa-trash" /><span>删除</span>
@@ -508,6 +504,7 @@
           >
             <el-radio-group
               v-model="storeForm.status"
+              class="tf-state-selector"
               :disabled="!canEditField('status')"
             >
               <el-radio :value="1">
@@ -662,6 +659,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -746,11 +744,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('stores_storesview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('stores_storesview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
@@ -1440,6 +1434,10 @@ const runMobileDetailAction = (action: 'edit' | 'delete') => {
   if (action === 'edit') editStore(row)
   else void deleteStore(row)
 }
+
+usePageShortcuts('/stores', {
+  'store-create': { open: openAddModal }
+})
 </script>
 
 <style scoped src="./styles/stores-view/list.css"></style>

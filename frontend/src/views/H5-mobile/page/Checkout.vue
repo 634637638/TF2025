@@ -135,7 +135,6 @@
                 </p>
               </div>
               <el-button
-                size="small"
                 type="primary"
                 plain
                 @click="showAddressModal = true"
@@ -149,7 +148,6 @@
             >
               <p>您还没有设置收货地址</p>
               <el-button
-                size="small"
                 type="primary"
                 @click="showAddressModal = true"
               >

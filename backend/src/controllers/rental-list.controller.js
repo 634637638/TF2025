@@ -13,7 +13,7 @@ class RentalListController {
 
   async list(req, res) {
     try {
-      const result = await this.service.list(req.query, req.user.id)
+      const result = await this.service.list(req.query, req.user.id, req.user)
       if (result.forbidden) {
         return res.status(403).json({
           success: false,
@@ -26,6 +26,7 @@ class RentalListController {
         summary: result.summary
       })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('获取租赁合同失败:', error)
       return this.response.serverError(res, '获取租赁合同失败', error)
     }

@@ -8,10 +8,10 @@ import DataEmptyState from '/src/components/DataEmptyState.vue';
 const {default:ReturnStock}=await import('/src/components/query/ReturnStockModal.vue');
 const checklist={mode:'checkout',order_id:10,order_no:'SO-ORIGINAL',store_id:1,
   phone:{item_id:50,sale_id:20,phone_id:30,total_amount:100,points_awarded:10},
-  accessories:[{item_id:51,accessory_id:5,accessory_sale_id:1,sale_type:'sale',name:'收费充电器',quantity:3,
+  accessories:[{item_id:51,accessory_id:5,accessory_sale_id:1,sale_type:'sale',name:'收费充电器',unit:'个',quantity:3,
     returned_quantity:0,remaining_quantity:3,serial_numbers:[],available_serial_numbers:[],unit_price:20,total_amount:60,
     gift_return_unit_price:null,gift_return_total:null,remaining_gift_return_total:null,gift_agreement_state:null},
-  {item_id:52,accessory_id:6,accessory_sale_id:2,sale_type:'gift',name:'原赠品',quantity:3,
+  {item_id:52,accessory_id:6,accessory_sale_id:2,sale_type:'gift',name:'原赠品',unit:'张',quantity:3,
     returned_quantity:1,remaining_quantity:2,serial_numbers:['SN01','SN02','SN03'],available_serial_numbers:['SN02','SN03'],
     unit_price:0,total_amount:0,gift_return_unit_price:5,gift_return_total:15,remaining_gift_return_total:10,gift_agreement_state:'recorded'}]};
 window.mockRead=(url,config)=>{
@@ -53,28 +53,63 @@ async function check(page, text) {
   assert.fail(`没有找到复选项 ${text}`)
 }
 
-export async function verifyPhoneReturn(page, scenario) {
+export async function verifyPhoneReturn(page, scenario, capture) {
   const collection = scenario === 'phone-collection'
-  await page.waitForFunction(() => document.body.textContent.includes('手机及关联商品退货') && !document.body.textContent.includes('正在读取接收门店'))
+  await page.waitForFunction(() => document.body.textContent.includes('商品退货门店') && !document.body.textContent.includes('正在读取接收门店'))
+  assert.deepEqual(await page.$$eval('.checkout-return-checklist h3', elements => elements.map(element => element.textContent)),
+    ['存在收费-赠送商品', '商品退货门店'])
+  assert.equal(await page.evaluate(() => /SO-ORIGINAL|数量已扣除此前|收费配件可保留或退回|未退回正常收费/.test(document.body.textContent)), false)
   assert.equal(await page.$$('button').then(async buttons => {
     for (const item of buttons) if (await item.evaluate(element => element.checkVisibility() && element.textContent.trim() === '确认退库')) return true
     return false
   }), false, '共同单不能显示旧独立退库提交')
-  assert.equal(await page.$eval('input[aria-label="收费充电器退回数量"]', element => element.value), '0', '收费商品默认保留')
+  assert.equal(await page.$eval('input[aria-label="收费充电器本次退回数量"]', element => element.value), '0', '收费商品默认保留')
+  const cards = await page.$$('.return-accessory-card')
+  assert.equal(cards.length, 2)
+  const cardText = await page.$$eval('.return-accessory-card', elements => elements.map(element => element.textContent))
+  assert.ok(cardText[0].includes('购买数量 3') && cardText[0].includes('价格 20元'))
+  assert.ok(cardText[1].includes('赠送数量 3') && cardText[1].includes('价格 1×5元=5元'))
+  assert.equal(await page.evaluate(() => document.body.textContent.includes('剩余赠品约定金额')), false)
+  const rows = cardText
+  assert.ok(rows[0].includes('SN 无')); assert.ok(rows[1].includes('SN01、SN02、SN03'), '核对列显示原商品SN，包括已退SN')
+  assert.equal(await page.evaluate(() => /0表示保留|正常收费/.test(document.body.textContent)), false)
   assert.equal(await page.evaluate(() => window.fixture.reads[0].useCache), false)
   await select(page, '接收门店', '二店')
   await select(page, '退货原因', '客户退货')
-  const quantity = await page.$('input[aria-label="收费充电器退回数量"]')
+  await select(page, '退货类型', '申请换货')
+  await select(page, '处理方式', '返厂维修')
+  const quantity = await page.$('input[aria-label="收费充电器本次退回数量"]')
+  await clickVisible(quantity)
+  await quantity.evaluate(element => element.select())
+  await page.keyboard.type('3')
+  await page.keyboard.press('Tab')
+  assert.equal(await page.$eval('.return-accessory-card__return-label', element => element.textContent.trim()), '退回数量 3')
+  const returnCardText = await page.$eval('.return-accessory-card', element => element.textContent)
+  assert.ok(returnCardText.includes('已退 0') && returnCardText.includes('剩余 3'), `历史已退数量和剩余数量保持原单状态: ${returnCardText}`)
+  assert.ok(returnCardText.includes('退回数量 3'), `本次编辑数量单独显示: ${returnCardText}`)
+  assert.equal(await page.evaluate(() => document.body.textContent.includes('正常收费')), false, '全退不提示继续收费')
   await clickVisible(quantity)
   await quantity.evaluate(element => element.select())
   await page.keyboard.type('1')
   await page.keyboard.press('Tab')
-  await select(page, '本次退回SN', 'SN03')
-  await check(page, '确认 1 件赠品未退')
+  const snSelect = await page.$('.checkout-return-checklist .el-select:has(input[aria-label="原赠品本次退回SN"])')
+  await clickVisible(snSelect)
+  const snListId = await snSelect.$eval('input[aria-controls]', element => element.getAttribute('aria-controls'))
+  const snOptions = `#${snListId} .el-select-dropdown__item`
+  await page.waitForFunction((selector, choice) => [...document.querySelectorAll(selector)].some(element =>
+    element.checkVisibility() && element.textContent.trim().includes(choice)), {}, snOptions, 'SN03')
+  for (const option of await page.$$(snOptions)) if (await option.evaluate(element => element.checkVisibility() && element.textContent.trim() === 'SN03')) {
+    await clickVisible(option)
+    break
+  }
+  await page.keyboard.press('Escape')
+  assert.equal(await page.evaluate(() => document.body.textContent.includes('正常收费')), false)
+  await checkBoundaries(page)
+  await capture?.()
   await input(page, '备注', '手机与关联配件退货')
-  await check(page, '已核验手机及本次退回商品实物')
+  await check(page, '已核对被退回的手机及商品')
   await clickButton(page, '核对退款')
-  await page.waitForFunction(() => document.body.textContent.includes('客户需补差价'))
+  await page.waitForFunction(() => document.body.textContent.includes('客户补差价'))
   const quotes = await page.evaluate(() => JSON.parse(JSON.stringify(window.fixture.posts)))
   assert.equal(quotes.length, 1)
   assert.deepEqual(quotes[0].data.accessories, [
@@ -84,7 +119,7 @@ export async function verifyPhoneReturn(page, scenario) {
   assert.equal(await (await button(page, '确认退货')).evaluate(element => element.disabled), true, '未确认资金不得提交')
   await select(page, collection ? '补款方式' : '退款方式', collection ? '现金' : '移动支付')
   if (!collection) await select(page, '支付渠道', '微信')
-  await check(page, collection ? '确认已收取客户需补差价' : '确认已按本次应退金额退款')
+  await check(page, collection ? '确认已收取客户补差价' : '确认已按本次应退金额退款')
   await checkBoundaries(page)
   await page.evaluate(() => { window.fixture.holdNext = true; window.fixture.failNext = true })
   await clickButton(page, '确认退货')
@@ -105,6 +140,7 @@ export async function verifyPhoneReturn(page, scenario) {
   assert.equal(posts[1].url, '/sales/checkout/10/phones/20/return')
   const data = posts[1].data
   assert.equal(data.store_id, 2); assert.equal(data.return_reason, '客户退货')
+  assert.equal(data.return_type, '申请换货'); assert.equal(data.handle_method, '返厂维修')
   assert.equal(data.remarks, '手机与关联配件退货'); assert.equal(data.restock_confirmed, true)
   assert.match(data.reversal_date, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
   assert.deepEqual(data.settlement, { refund_amount:collection ? 0 : 105,collection_amount:collection ? 25 : 0,

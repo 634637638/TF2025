@@ -1,0 +1,144 @@
+@media (max-width: 767px) {
+  :global(.film-service-product-popper) {
+    max-width: calc(100vw - var(--tf-space-4));
+    overflow-x: hidden;
+  }
+
+  :global(.film-service-product-popper .el-select-dropdown__list) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  :global(.film-service-product-popper .el-select-dropdown__item) {
+    height: auto;
+    min-height: var(--mobile-control-height);
+    padding-block: var(--tf-space-1);
+    overflow: hidden;
+    white-space: normal;
+    line-height: 1.4;
+  }
+
+  .film-product-option {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  .film-product-option > span:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    max-width: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .film-product-option :deep(.el-tag) {
+    min-width: 0;
+    flex: 0 0 auto;
+    max-width: none;
+    white-space: nowrap;
+  }
+
+  .film-history__heading {
+    flex-wrap: nowrap;
+    gap: var(--tf-space-1);
+  }
+
+  .film-history__title {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: var(--tf-space-1);
+  }
+
+  .film-history__controls {
+    flex: 1 1 0;
+    justify-content: flex-end;
+    gap: 0;
+  }
+
+  .film-history-filter {
+    min-width: 0;
+  }
+
+  .film-history-sort {
+    display: none;
+  }
+
+  .film-history-card__header {
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    gap: var(--tf-space-1);
+    white-space: nowrap;
+  }
+
+  .film-history-device,
+  .film-history-card__badges {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: var(--tf-space-1);
+  }
+
+  .film-history-card__badges {
+    flex: 1 1 auto;
+  }
+
+  .film-history-device__mark {
+    display: none;
+  }
+
+  .film-history-device strong {
+    font-size: var(--tf-font-body);
+    overflow-wrap: normal;
+  }
+
+  .film-history-order {
+    flex: 0 1 auto;
+  }
+
+  .film-history-product {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .film-history-meta {
+    flex-wrap: nowrap;
+    gap: var(--tf-space-1);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    font-size: var(--tf-font-caption);
+
+    > div {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    dd {
+      overflow-wrap: normal;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .film-history-product__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .film-history-product__details {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+
+    > * {
+      flex-shrink: 0;
+    }
+  }
+}

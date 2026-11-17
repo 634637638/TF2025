@@ -10,13 +10,13 @@ const { createGoodsCommission } = require('../src/utils/goods-commission')
 const actor = { id: 7, store_ids: [1] }
 const gift = (agreement = 20) => ({ item_id: 31, accessory_id: 50, accessory_sale_id: 61, quantity: 2,
   unit_price: '0.00', total_amount: '0.00', points_awarded: 0,
-  snapshot: { name: '原单充电器', sale_type: 'gift', gift_return_unit_price: agreement, serial_numbers: ['SN001', 'SN002'],
+  snapshot: { name: '原单充电器', unit: '个', sale_type: 'gift', gift_return_unit_price: agreement, serial_numbers: ['SN001', 'SN002'],
     purchase_cost: 100, supplier_name: '内部资料不可返回' } })
 const header = { order_id: 1, order_no: 'SO-ORIGINAL', store_id: 1, phone_item_id: 11, sale_id: 21,
   phone_id: 41, phone_quantity: 1, phone_amount: '1000.00', phone_points: 10 }
 const sale = { item_id: 32, accessory_id: 51, accessory_sale_id: 62, quantity: 1,
   unit_price: '50.50', total_amount: '50.50', points_awarded: 0,
-  snapshot: JSON.stringify({ name: '原单钢化膜', sale_type: 'sale', serial_numbers: [], gift_return_unit_price: null }) }
+  snapshot: JSON.stringify({ name: '原单钢化膜', unit: '张', sale_type: 'sale', serial_numbers: [], gift_return_unit_price: null }) }
 
 function fixture({ denied = [], rows = [{ ...header, ...gift() }, { ...header, ...sale }] } = {}) {
   const calls = []
@@ -36,21 +36,46 @@ function fixture({ denied = [], rows = [{ ...header, ...gift() }, { ...header, .
 }
 const response = () => ({ status(code) { this.code = code; return this }, json(body) { this.body = body; return this } })
 
+test('云库BIGINT字符串明细标识在公共原单解析后输出数字，拒绝无效或越界标识', async () => {
+  const row = { ...header, ...gift(), phone_item_id: '2147483648', item_id: '2147483649', accessory_id: '2147483650', accessory_sale_id: '2147483651' }
+  const result = await fixture({ rows: [row] }).service.phoneReturnChecklist(41, actor)
+  assert.equal(result.phone.item_id, 2147483648)
+  assert.equal(result.accessories[0].item_id, 2147483649)
+  assert.equal(result.accessories[0].accessory_id, 2147483650)
+  assert.equal(result.accessories[0].accessory_sale_id, 2147483651)
+  for (const key of ['phone_item_id', 'item_id', 'accessory_id', 'accessory_sale_id']) {
+    for (const value of ['invalid', '9007199254740993', 0]) {
+      await assert.rejects(fixture({ rows: [{ ...row, [key]: value }] }).service.phoneReturnChecklist(41, actor), error => error.statusCode === 409)
+    }
+  }
+})
+
 test('按原手机销售ID核对同单搭售/赠品，保留原单名称、SN、原价和原积分，不返回内部快照', async () => {
   const f = fixture(), result = await f.service.returnChecklist('1', '21', actor)
   assert.deepEqual(f.calls, [{ orderId: 1, saleId: 21, scope: { allStores: false, requestedStoreId: null, storeIds: [1] } }])
   assert.deepEqual(result.phone, { item_id: 11, sale_id: 21, phone_id: 41, total_amount: 1000, points_awarded: 10 })
   assert.equal(result.accessories.length, 2)
   assert.equal(result.accessories[0].name, '原单充电器')
+  assert.equal(result.accessories[0].unit, '个')
   assert.equal(result.accessories[0].gift_return_unit_price, 20)
   assert.equal(result.accessories[0].gift_return_total, 40)
   assert.equal(result.accessories[0].gift_agreement_state, 'recorded')
   assert.deepEqual(result.accessories[0].serial_numbers, ['SN001', 'SN002'])
   assert.equal(result.accessories[1].total_amount, 50.5)
+  assert.equal(result.accessories[1].unit, '张')
   assert.equal(result.accessories[1].gift_agreement_state, null)
   assert.equal(result.accessories[1].gift_return_total, null)
   for (const key of ['purchase_cost', 'supplier_name', 'snapshot', 'customer_phone', 'customer_name']) {
     assert.equal(JSON.stringify(result).includes(key), false)
+  }
+})
+
+test('退货单位只读取原销售快照，旧单缺失或非法单位保持未知，不取当前商品单位补造', async () => {
+  for (const unit of [undefined, null, 1, { name: '根' }, ['根']]) {
+    const row = { ...header, ...gift(), unit: '当前单位' }
+    row.snapshot.unit = unit
+    const result = await fixture({ rows: [row] }).service.returnChecklist(1, 21, actor)
+    assert.equal(result.accessories[0].unit, null)
   }
 })
 
@@ -86,11 +111,11 @@ test('无手机核对权限在读取前拒绝，关联商品查看权限逐域�
     await assert.rejects(f.service.returnChecklist(1, 21, actor), { statusCode: 403, code: 'PERMISSION_DENIED' })
     assert.equal(f.calls.length, 0)
   }
-  const denied = fixture({ denied: ['accessories:view'] })
+  const denied = fixture({ denied: ['query:goods-view'] })
   await assert.rejects(denied.service.returnChecklist(1, 21, actor), { statusCode: 403 })
-  const phoneOnly = fixture({ denied: ['accessories:view'], rows: [{ ...header, item_id: null }] })
+  const phoneOnly = fixture({ denied: ['query:goods-view'], rows: [{ ...header, item_id: null }] })
   assert.deepEqual((await phoneOnly.service.returnChecklist(1, 21, actor)).accessories, [])
-  assert.equal(phoneOnly.permissions.includes('accessories:view'), false)
+  assert.equal(phoneOnly.permissions.includes('query:goods-view'), false)
 })
 
 test('跨店、错单、错手机销售ID和不存在记录统一不返回原单，非法标识不进入仓储', async () => {
@@ -149,9 +174,10 @@ test('真实公共字段脱敏同时隐藏价格衍生金额、积分、赠品�
     ['accessories_accessoriesview', 'price_info.unit_price', [], ['unit_price', 'total_amount', 'points_awarded', 'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state']],
     ['accessories_accessoriesview', 'stock_info.total_quantity', [], ['quantity', 'total_amount', 'points_awarded', 'gift_return_total']],
     ['accessories_accessoriesview', 'basic_info.serial_number', [], ['serial_numbers']],
+    ['accessories_accessoriesview', 'basic_info.unit', [], ['unit']],
     ['accessories_accessoriesview', 'basic_info.name', [], ['name', 'accessory_id']]
   ]) {
-    const masking = { async getUserFieldPermissions(id, key) { assert.equal(id, 7); return { hiddenFields: key === module ? [field] : [] } }, filterSensitiveFields: rows => rows }
+    const masking = { async getUserFieldPermissions(id, key, options) { assert.equal(id, 7); return { hiddenFields: (options?.fieldScope === 'goods' ? 'accessories_accessoriesview' : key) === module ? [field] : [] } }, filterSensitiveFields: rows => rows }
     const controller = new Controller({ service: fixture().service, masking })
     const res = response()
     await controller.returnChecklist({ user: actor, params: { orderId: 1, saleId: 21 } }, res)
@@ -164,7 +190,7 @@ test('真实公共字段脱敏同时隐藏价格衍生金额、积分、赠品�
 test('隐藏门店不得通过共同单头反推商品位置，鉴权错误和内部错误返回统一结构', async () => {
   for (const [module, field] of [['query_queryview', 'store_info.store_name'], ['accessories_accessoriesview', 'stock_info.distribution']]) {
     const controller = new Controller({ service: fixture().service, masking: {
-      async getUserFieldPermissions(id, key) { return { hiddenFields: key === module ? [field] : [] } }, filterSensitiveFields: rows => rows
+      async getUserFieldPermissions(id, key, options) { return { hiddenFields: (options?.fieldScope === 'goods' ? 'accessories_accessoriesview' : key) === module ? [field] : [] } }, filterSensitiveFields: rows => rows
     } })
     const res = response()
     await controller.returnChecklist({ user: actor, params: { orderId: 1, saleId: 21 } }, res)
@@ -221,7 +247,7 @@ test('原抵扣或逐件分摊损坏时拒绝，不能当作0抵扣或按原单�
 test('抵扣积分、抵扣金额与原价服从数量和价格字段脱敏，不从衍生字段绕过', async () => {
   for (const field of ['stock_info.total_quantity', 'price_info.unit_price', 'price_info.total_price']) {
     const controller = new Controller({ service: fixture({ rows: [redeemedRow()] }).service,
-      masking: { async getUserFieldPermissions(id, key) { return { hiddenFields: key === 'accessories_accessoriesview' ? [field] : [] } }, filterSensitiveFields: rows => rows } })
+      masking: { async getUserFieldPermissions(id, key, options) { return { hiddenFields: key === 'query_queryview' && options?.fieldScope === 'goods' ? [field] : [] } }, filterSensitiveFields: rows => rows } })
     const res = response()
     await controller.returnChecklist({ user: actor, params: { orderId: 1, saleId: 21 } }, res)
     for (const key of ['points_used', 'deduction_amount', 'gross_amount', 'total_amount']) assert.equal(res.body.data.accessories[0][key], null)
@@ -308,7 +334,7 @@ test('新增已退、剩余、未退SN及剩余赠品金额沿用公共字段权
     ['price_info.unit_price', ['remaining_gift_return_total']], ['price_info.total_price', ['remaining_gift_return_total']]
   ]) {
     const controller = new Controller({ service: fixture().service, masking: {
-      async getUserFieldPermissions(id, key) { return { hiddenFields: key === 'accessories_accessoriesview' ? [field] : [] } }, filterSensitiveFields: rows => rows
+      async getUserFieldPermissions(id, key, options) { return { hiddenFields: key === 'query_queryview' && options?.fieldScope === 'goods' ? [field] : [] } }, filterSensitiveFields: rows => rows
     } })
     const res = response()
     await controller.returnChecklist({ user: actor, params: { phoneId: 41 } }, res)

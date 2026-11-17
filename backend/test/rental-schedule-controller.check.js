@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -36,7 +38,7 @@ test('rental schedule service builds paid and unpaid buyout rows and masks field
     repository: {
       async getRental(id) {
         calls.push(['rental', id])
-        return { billing_mode: 'buyout', term_months: 2, principal_amount: '1000', monthly_rent: '50', start_date: '2026-01-31' }
+        return { store_id: 1, source_store_id: 1, billing_mode: 'buyout', term_months: 2, principal_amount: '1000', monthly_rent: '50', start_date: '2026-01-31' }
       },
       async getPayments(id) {
         calls.push(['payments', id])
@@ -50,7 +52,7 @@ test('rental schedule service builds paid and unpaid buyout rows and masks field
       }
     }
   })
-  const schedule = await service.getPaymentSchedule(7, 9)
+  const schedule = await service.getPaymentSchedule(7, 9, scopedActor)
   assert.deepEqual(calls, ['schema', ['rental', 7], ['payments', 7], ['permissions', 9, 'rentals_rentalsview']])
   assert.deepEqual(schedule, [
     { period_number: 1, due_date: '2026-02-28', principal_amount: 500, monthly_rent: 50, amount: 550, paid: null, paid_at: null, operator_name: null },
@@ -63,13 +65,13 @@ test('rental schedule service preserves not-found and daily-rental behavior', as
   const service = new Service({
     ensureSchema: async () => {},
     repository: {
-      async getRental(id) { return id === 0 ? null : { billing_mode: 'daily' } },
+      async getRental(id) { return id === 0 ? null : { store_id: 1, billing_mode: 'daily' } },
       async getPayments() { paymentReads += 1; return [] }
     },
     masking: { async getUserFieldPermissions() { throw new Error('must not load permissions for daily rentals') } }
   })
-  assert.equal(await service.getPaymentSchedule(0, 1), null)
-  assert.deepEqual(await service.getPaymentSchedule(1, 1), [])
+  assert.equal(await service.getPaymentSchedule(0, 1, scopedActor), null)
+  assert.deepEqual(await service.getPaymentSchedule(1, 1, scopedActor), [])
   assert.equal(paymentReads, 1)
 })
 
@@ -109,7 +111,7 @@ test('rental schedule repository binds rental ID in both reads', async () => {
   assert.deepEqual(await repository.getRental(12), { id: 1 })
   assert.deepEqual(await repository.getPayments(12), [{ id: 1 }])
   assert.deepEqual(calls.map(call => call.params), [[12], [12]])
-  assert.match(calls[0].sql, /DATE_FORMAT\(start_date,'%Y-%m-%d'\)/)
+  assert.match(calls[0].sql, /DATE_FORMAT\(r\.start_date,'%Y-%m-%d'\)/)
   assert.match(calls[1].sql, /ORDER BY COALESCE\(rp\.period_number,255\),rp\.id/)
 })
 
@@ -157,7 +159,7 @@ test('rental payment service commits buyout installments atomically and releases
       async getPaymentRental(conn, id) {
         assert.equal(conn, connection)
         assert.equal(id, 7)
-        return { billing_mode: 'buyout', term_months: 2, principal_amount: 1000, monthly_rent: 50, status: 'active', sale_id: 12, customer_id: 9, contract_number: 'MD20260007', sale_payment_method: 'cash' }
+        return { store_id: 1, source_store_id: 1, billing_mode: 'buyout', term_months: 2, principal_amount: 1000, monthly_rent: 50, status: 'active', sale_id: 12, customer_id: 9, contract_number: 'MD20260007', sale_payment_method: 'cash' }
       },
       async findPaidPeriods(conn, id, periods) { assert.equal(conn, connection); assert.equal(id, 7); assert.deepEqual(periods, [1, 2]); return [] },
       async insertInstallment() { return { insertId: 31 } },
@@ -166,7 +168,7 @@ test('rental payment service commits buyout installments atomically and releases
       async markBoughtOut() {}
     }
   })
-  const result = await service.recordPayment(7, { period_numbers: [2, 1, 1], remarks: '  收款  ' }, 4)
+  const result = await service.recordPayment(7, { period_numbers: [2, 1, 1], remarks: '  收款  ' }, 4, scopedActor)
   assert.deepEqual(result, { message: '月供已登记', inserted: [{ id: 31 }, { id: 31 }] })
   assert.deepEqual(calls, ['schema', 'begin', 'commit', 'release'])
 })
@@ -182,9 +184,9 @@ test('rental payment service rejects invalid daily payment before acquiring a co
   const service = new Service({
     ensureSchema: async () => {},
     databaseProvider: { async getConnection() { return connection } },
-    repository: { async getPaymentRental() { return { billing_mode: 'daily', status: 'active' } } }
+    repository: { async getPaymentRental() { return { store_id: 1, source_store_id: 1, billing_mode: 'daily', status: 'active' } } }
   })
-  await assert.rejects(() => service.recordPayment(7, { amount: 0 }, 4), /请输入正确的收款金额/)
+  await assert.rejects(() => service.recordPayment(7, { amount: 0 }, 4, scopedActor), /请输入正确的收款金额/)
   assert.deepEqual(calls, [])
 })
 

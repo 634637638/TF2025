@@ -7,8 +7,8 @@ const SalesManagementController = require('../controllers/sales-management.contr
 const router = express.Router()
 const salesManagementController = new SalesManagementController()
 
-const H5_ORDER_VIEW_PERMISSIONS = ['h5-orders:view', 'h5-admin:view', 'sales:view']
-const H5_ORDER_EDIT_PERMISSIONS = ['h5-orders:edit', 'h5-admin:edit', 'sales:edit']
+const H5_ORDER_VIEW_PERMISSIONS = ['h5-orders:view']
+const H5_ORDER_EDIT_PERMISSIONS = ['h5-orders:edit']
 
 router.use(unifiedAuth)
 

@@ -5,11 +5,12 @@ const SalesCheckoutRepository = require('../repositories/sales-checkout.reposito
 const checkoutRepository = new SalesCheckoutRepository()
 const CustomerPointsLedgerService = require('./customer-points-ledger.service')
 const pointsLedger = new CustomerPointsLedgerService()
+const { moneyCents } = require('../utils/sale-input')
 
 const POINTS_CONFIG_KEY = 'customer_points_config'
 const {
   CUSTOMER_POINTS_AMOUNT_PER_POINT, DEFAULT_POINTS_CONFIG, normalizePointsConfig,
-  validatePointsConfig, sourceRate, quoteCustomerPoints
+  validatePointsConfig, quoteCustomerPoints
 } = require('../utils/customer-points-rules')
 const CUSTOMER_POINTS_COLUMN = 'points_awarded'
 const CUSTOMER_POINTS_ACCOUNTED_AT_COLUMN = 'points_accounted_at'
@@ -146,10 +147,6 @@ const isEligiblePhoneCondition = (isNew, config) => {
   return isNewPhone ? config.include_new : config.include_used
 }
 
-const getPhonePointsRate = (isNew, config) => (
-  sourceRate(Number(isNew) === 1 ? 'new' : 'used', config)
-)
-
 const calculateCustomerPointsForSale = ({ phones = [], saleType = '', config = DEFAULT_POINTS_CONFIG }) => {
   const normalizedConfig = normalizePointsConfig(config)
 
@@ -161,20 +158,28 @@ const calculateCustomerPointsForSale = ({ phones = [], saleType = '', config = D
     }
   }
 
-  const totals = phones.reduce((result, phone) => {
+  const totals = phones.reduce((result, phone, index) => {
     if (!isEligiblePhoneCondition(phone.is_new, normalizedConfig)) {
       return result
     }
 
-    const price = Number(phone.sale_price ?? phone.price) || 0
-    result.eligibleAmount += price
-    result.weightedAmount += price * getPhonePointsRate(phone.is_new, normalizedConfig)
+    const cents = moneyCents(phone.sale_price ?? phone.price ?? 0)
+    if (cents === null) throw Object.assign(new Error('手机积分成交金额无效'), { statusCode: 400, code: 'POINTS_RULE_INVALID' })
+    const quote = quoteCustomerPoints({ config: normalizedConfig, available_points: 0, items: [{
+      key: String(index), source: Number(phone.is_new) === 1 ? 'new' : 'used', amount_cents: cents,
+      is_gift: false, redeem_points: 0
+    }] })
+    result.eligibleCents += cents
+    result.points += quote.points_awarded
+    if (!Number.isSafeInteger(result.eligibleCents) || result.points > 2147483647) {
+      throw Object.assign(new Error('手机累计积分或消费金额超出范围'), { statusCode: 400, code: 'POINTS_RULE_INVALID' })
+    }
     return result
-  }, { eligibleAmount: 0, weightedAmount: 0 })
+  }, { eligibleCents: 0, points: 0 })
 
   return {
-    points: Math.floor(totals.weightedAmount / normalizedConfig.amount_per_point),
-    eligibleAmount: totals.eligibleAmount,
+    points: totals.points,
+    eligibleAmount: totals.eligibleCents / 100,
     amountPerPoint: normalizedConfig.amount_per_point
   }
 }
@@ -259,7 +264,8 @@ const reconcileCustomerPointsForSale = async ({
   isNew,
   config = null,
   awardPoints = true,
-  initialize = false
+  initialize = false,
+  description = null
 }) => {
   await assertCustomerPointsSchema(executor)
 
@@ -335,7 +341,8 @@ const reconcileCustomerPointsForSale = async ({
     if (delta && !await pointsLedger.applyDelta(executor, { customerId: deltaCustomerId, delta, sourceType: 'phone_sale', sourceId: normalizedSaleId,
       details: { sale_price: salePrice, sale_type: saleType, is_new: Number(isNew) === 1, config: pointsConfig,
         phone_id: currentSale.phone_id, store_id: currentSale.store_id, operator_id: currentSale.operator_id,
-        sale_time: currentSale.sale_time, previous_points: previousPoints } })) {
+        sale_time: currentSale.sale_time, previous_points: previousPoints,
+        reason: description || (delta > 0 ? '购买手机（自动生成）' : '手机销售积分调整（自动生成）') } })) {
       await applyCustomerPointsDelta(executor, deltaCustomerId, delta)
     }
   }

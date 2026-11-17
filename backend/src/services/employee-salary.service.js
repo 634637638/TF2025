@@ -18,13 +18,17 @@ class EmployeeSalaryService {
   }
 
   async getSalaryList(userId) {
-    const { isAdmin } = await this.getSalaryAccessScope(userId)
+    const scope = await this.getSalaryAccessScope(userId)
+    if (!scope?.canView) throw Object.assign(new Error('无权限查看工资数据'), { statusCode: 403 })
+    const { isAdmin } = scope
     const employees = await this.repository.getSalaryList({ isAdmin, userId })
     return { employees: employees || [], total: employees.length }
   }
 
   async getCurrentSalaries(userId, date) {
-    const { isAdmin } = await this.getSalaryAccessScope(userId)
+    const scope = await this.getSalaryAccessScope(userId)
+    if (!scope?.canView) throw Object.assign(new Error('无权限查看工资数据'), { statusCode: 403 })
+    const { isAdmin } = scope
     const employees = await this.repository.getCurrentSalaryRows({ isAdmin, userId })
     return employees.map(employee => this.mapCurrentSalary(employee, date))
   }

@@ -11,7 +11,10 @@ export interface ReturnStockDetails {
 }
 
 export interface ReturnGoodsRecord extends Partial<Omit<ReturnStockDetails, 'refund_amount'>> {
-  id: number
+  id: number | `aftersale:${number}:${number}`
+  record_source?: 'legacy' | 'sales_aftersale'
+  /** 联合退货的整单净补款；与退款共用字段权限。 */
+  collection_amount?: number | string | null
   phone_id: number
   original_sale_id: number | null
   original_sale_type: string | null

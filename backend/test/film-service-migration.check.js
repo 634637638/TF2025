@@ -23,6 +23,7 @@ function fixture() {
     if (sql.includes('information_schema.TABLES')) return [[...Object.keys(state.types), 'accessory_categories',
       ...(state.table ? ['customer_film_services'] : [])].filter(name => name !== state.override.missingParent)
       .map(name => ({ TABLE_NAME: name, ENGINE: state.override.engine || 'InnoDB' }))]
+    if (sql.includes("COLUMN_NAME IN ('phone_id','model_id','phone_snapshot')")) return [state.extensions || []]
     if (sql.includes('information_schema.COLUMNS')) return [[...Object.entries(state.types).map(([name, type]) => ({
       TABLE_NAME: name, COLUMN_NAME: 'id', COLUMN_TYPE: type })), ...(state.flag ? [{ TABLE_NAME: 'accessory_categories',
       COLUMN_NAME: 'film_enabled', COLUMN_TYPE: 'tinyint(1)', IS_NULLABLE: 'NO', COLUMN_DEFAULT: '0', EXTRA: '', ...state.override.flag }] : []),
@@ -156,4 +157,16 @@ test('迁移期间原类型变化或服务写入必须报核验失败并保留�
     assert.equal(f.state.table, true); assert.equal(f.state.flag, true)
     assert.equal(JSON.parse(await fs.readFile(backup(`${field}.json`), 'utf8')).categories[0].name, '钢化膜')
   }
+})
+
+
+test('旧贴膜迁移兼容已登记设备关联扩展，但不能先于扩展回退或忽略未知字段', async () => {
+  const f = fixture(); f.state.flag = f.state.table = true
+  f.state.extensions = ['phone_id', 'model_id', 'phone_snapshot'].map(COLUMN_NAME => ({ COLUMN_NAME }))
+  f.state.override.columns = [...f.columns(), ...f.state.extensions.map(row => ({ ...row, TABLE_NAME: 'customer_film_services' }))]
+  assert.equal((await migrate(f.db)).status, 'already_ready')
+  await assert.rejects(migrate(f.db, { rollback: true }), /先按受控流程回退贴膜模板匹配扩展/)
+  f.state.override.columns.push({ TABLE_NAME: 'customer_film_services', COLUMN_NAME: 'unknown' })
+  await assert.rejects(migrate(f.db), /字段数量不一致/)
+  assert.deepEqual(f.state.writes, [])
 })

@@ -2,7 +2,7 @@
 
 const { getDatabase } = require('../config/database')
 const { hasColumn } = require('./schema-inspector.service')
-const { normalizeFieldConfig } = require('../utils/field-permission-normalizer')
+const { normalizeFieldConfig, normalizeStoredFieldConfig, resolveQueryGoodsFieldConfigs } = require('../utils/field-permission-normalizer')
 const RoleFieldPermissionsRepository = require('../repositories/role-field-permissions.repository')
 const { withConnection } = require('../core/db/connection')
 const PermissionLogsService = require('./permission-logs.service')
@@ -30,23 +30,25 @@ class RoleFieldPermissionsService {
   }
 
   parseFieldConfig(value, moduleKey) {
-    if (!value) return { ...EMPTY_FIELD_CONFIG }
+    if (value === undefined) return { ...EMPTY_FIELD_CONFIG }
 
     let parsed
     try {
       parsed = typeof value === 'string' ? JSON.parse(value) : value
     } catch {
-      this.logger.warn('解析 field_config 失败:', value)
-      return { ...EMPTY_FIELD_CONFIG }
+      this.logger.warn('解析 field_config 失败:', { moduleKey })
+      throw new Error('字段权限配置无效')
     }
 
-    const normalized = normalizeFieldConfig(parsed)
+    const normalized = normalizeFieldConfig(parsed, { strict: true })
+    if (!normalized) throw new Error('字段权限配置无效')
     const fieldConfig = normalized || { ...EMPTY_FIELD_CONFIG }
     this.logger.debug(`🔍 解析字段配置 ${moduleKey}:`, fieldConfig)
     return fieldConfig
   }
 
-  async getByRole(roleId, moduleKey) {
+  async getByRole(roleId, moduleKey, fieldScope) {
+    this.validateFieldScope(moduleKey, fieldScope)
     const database = this.databaseProvider()
     const supportsRoleIsActive = await this.columnExists('roles', 'is_active', database)
     const role = await this.repository.findRole(database, roleId, supportsRoleIsActive)
@@ -54,6 +56,11 @@ class RoleFieldPermissionsService {
 
     const rows = await this.repository.listFieldPermissions(database, roleId, moduleKey)
     const fieldPermissions = {}
+    if (fieldScope === 'goods') {
+      const config = await this.getGoodsConfig(database, roleId, rows)
+      return { role_id: parseInt(roleId), role_name: role.name, total_modules: 1,
+        field_permissions: { [moduleKey]: { module_key: moduleKey, field_scope: 'goods', field_config: config } } }
+    }
 
     if (rows.length === 0 && moduleKey) {
       fieldPermissions[moduleKey] = {
@@ -85,7 +92,30 @@ class RoleFieldPermissionsService {
     }
   }
 
-  async saveForRole(roleId, moduleKey, fieldConfig, requestContext = null) {
+  validateFieldScope(moduleKey, fieldScope) {
+    if (fieldScope !== undefined && (fieldScope !== 'goods' || moduleKey !== 'query_queryview')) {
+      throw Object.assign(new Error('字段页面范围无效'), { statusCode: 400 })
+    }
+  }
+
+  async getGoodsConfig(database, roleId, queryRows = []) {
+    const legacy = await this.repository.listFieldPermissions(database, roleId, 'accessories_accessoriesview')
+    const configs = resolveQueryGoodsFieldConfigs([...queryRows, ...legacy].map(row => ({ ...row, role_id: roleId })))
+    const config = { hidden_fields: [...new Set(configs.flatMap(row => row.normalized.config.hidden_fields || []))] }
+    if (configs.some(row => row.normalized.hasEditableScope)) {
+      config.editable_fields = [...new Set(configs.flatMap(row => row.normalized.config.editable_fields || []))]
+    }
+    const readonly = [...new Set(configs.flatMap(row => row.normalized.readonlyFields))]
+    if (readonly.length) config.readonly_fields = readonly
+    return config
+  }
+
+  async saveForRole(roleId, moduleKey, fieldConfig, requestContext = null, fieldScope) {
+    this.validateFieldScope(moduleKey, fieldScope)
+    if (!normalizeFieldConfig(fieldConfig, { strict: true })) throw Object.assign(new Error('字段配置格式错误'), { statusCode: 400 })
+    if (fieldScope && (!normalizeFieldConfig(fieldConfig, { strict: true }) || Object.hasOwn(fieldConfig, 'scopes'))) {
+      throw Object.assign(new Error('商品字段配置无效'), { statusCode: 400 })
+    }
     return withConnection(this.databaseProvider, async connection => {
       const supportsRoleIsActive = await this.columnExists('roles', 'is_active', connection)
       const supportsModuleIsActive = await this.columnExists('modules', 'is_active', connection)
@@ -98,29 +128,50 @@ class RoleFieldPermissionsService {
         const module = await this.repository.findModuleForWrite(connection, moduleKey, supportsModuleIsActive, Boolean(requestContext))
         if (!module) throw Object.assign(new Error('模块不存在或已停用'), { statusCode: 400 })
 
-        const existing = await this.repository.findExistingFieldPermission(connection, roleId, moduleKey, Boolean(requestContext))
-        const previousConfig = this.parseFieldConfig(existing?.field_config, moduleKey)
-        const serializedConfig = JSON.stringify(fieldConfig)
+        const existing = await this.repository.findExistingFieldPermission(connection, roleId, moduleKey, true)
+        const previousConfig = existing
+          ? normalizeStoredFieldConfig(existing, { strict: true })?.config
+          : { ...EMPTY_FIELD_CONFIG }
+        if (!previousConfig) throw new Error('原字段权限配置无效，不能覆盖')
+        const selectedPreviousConfig = fieldScope
+          ? previousConfig.scopes?.[fieldScope] || await this.getGoodsConfig(connection, roleId)
+          : previousConfig
+        const storedConfig = fieldScope
+          ? { ...previousConfig, scopes: { ...previousConfig.scopes, [fieldScope]: { ...selectedPreviousConfig, ...fieldConfig } } }
+          : { ...previousConfig, ...fieldConfig, ...(previousConfig.scopes ? { scopes: previousConfig.scopes } : {}) }
+        const serializedConfig = JSON.stringify(storedConfig)
         if (existing) await this.repository.updateFieldPermission(connection, roleId, moduleKey, serializedConfig)
         else await this.repository.insertFieldPermission(connection, roleId, moduleKey, serializedConfig)
         await connection.commit()
         const result = { role_id: parseInt(roleId), module_key: moduleKey, field_config: fieldConfig, action: existing ? 'updated' : 'created' }
         if (requestContext) {
           this.clearPermissionCache()
-          const previousHiddenFields = Array.isArray(previousConfig.hidden_fields) ? previousConfig.hidden_fields : []
-          const hiddenFields = Array.isArray(fieldConfig.hidden_fields) ? fieldConfig.hidden_fields : []
+          const previousHiddenFields = Array.isArray(selectedPreviousConfig.hidden_fields) ? selectedPreviousConfig.hidden_fields : []
+          const nextConfig = fieldScope ? storedConfig.scopes[fieldScope] : storedConfig
+          const hiddenFields = nextConfig.hidden_fields || []
+          const writeChanges = {}
+          for (const key of ['readonly_fields', 'editable_fields']) {
+            const before = selectedPreviousConfig[key]
+            const after = nextConfig[key]
+            if (JSON.stringify(before) !== JSON.stringify(after)) {
+              writeChanges[`previous_${key}`] = before ?? null
+              writeChanges[key] = after ?? null
+            }
+          }
           const addedHiddenFields = hiddenFields.filter(field => !previousHiddenFields.includes(field))
           const removedHiddenFields = previousHiddenFields.filter(field => !hiddenFields.includes(field))
-          if (addedHiddenFields.length > 0 || removedHiddenFields.length > 0) {
+          if (addedHiddenFields.length > 0 || removedHiddenFields.length > 0 || Object.keys(writeChanges).length) {
             await this.permissionLogs.logPermissionOperation(
               requestContext,
               'permission',
               'role',
               roleId,
               role.name,
-              `修改角色 ${role.name} 的字段权限：隐藏 ${addedHiddenFields.length} 项，恢复显示 ${removedHiddenFields.length} 项`,
+              `修改角色 ${role.name} 的字段权限：隐藏 ${addedHiddenFields.length} 项，恢复显示 ${removedHiddenFields.length} 项${Object.keys(writeChanges).length ? '，调整字段编辑范围' : ''}`,
               {
                 audit_type: 'role_field_permissions',
+                ...writeChanges,
+                ...(fieldScope ? { field_scope: fieldScope } : {}),
                 module_key: moduleKey,
                 module_name: module.name || moduleKey,
                 previous_hidden_fields: previousHiddenFields,
@@ -159,11 +210,18 @@ class RoleFieldPermissionsService {
         let updatedCount = 0
         let createdCount = 0
         for (const [moduleKey, rawFieldConfig] of Object.entries(modulePermissions)) {
-          const fieldConfig = normalizeFieldConfig(rawFieldConfig)
+          let fieldConfig = normalizeFieldConfig(rawFieldConfig, { strict: true })
           if (!moduleKey || !fieldConfig) throw new Error(`模块 ${moduleKey || '(empty)'} 的字段配置无效`)
           const module = await this.repository.findModuleForWrite(connection, moduleKey, true)
           if (!module) throw new Error(`模块不存在或已停用: ${moduleKey}`)
-          const existing = await this.repository.findExistingFieldPermission(connection, roleId, moduleKey)
+          const existing = await this.repository.findExistingFieldPermission(connection, roleId, moduleKey, true)
+          if (existing) {
+            const previous = existing.field_config === undefined
+              ? { ...EMPTY_FIELD_CONFIG }
+              : normalizeStoredFieldConfig(existing, { strict: true })?.config
+            if (!previous) throw new Error('原字段权限配置无效，不能覆盖')
+            fieldConfig = { ...previous, ...fieldConfig, ...(previous.scopes ? { scopes: previous.scopes } : {}) }
+          }
           const serializedConfig = JSON.stringify(fieldConfig)
           if (existing) {
             await this.repository.updateFieldPermission(connection, roleId, moduleKey, serializedConfig)

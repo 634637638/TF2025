@@ -8,21 +8,24 @@ import type { CheckoutOrderDetail, CheckoutOrderItem } from '@/types/sales-check
 import type { QueryItem } from '@/types'
 import { isCheckoutOrderDetail } from '@/utils/query-goods'
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }))
+const mocks = vi.hoisted(() => ({ get: vi.fn(), print: vi.fn(), warning: vi.fn() }))
+vi.mock('@/utils/print', () => ({ printElement: mocks.print }))
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ warning: mocks.warning }) }))
 const queryView = ref(true), goodsView = ref(true)
 const hidden = reactive({ query: [] as string[], goods: [] as string[] })
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: mocks }))
-vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => module === 'query' ? queryView.value : goodsView.value), hasPermission: () => false }) }))
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => module === 'query' ? queryView.value : goodsView.value), hasPermission: (action: string) => module === 'query' && action === 'goods-view' && goodsView.value }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: {
   isFieldVisible: (module: string, field: string) => !(module === 'query_queryview' ? hidden.query : hidden.goods).includes(field),
   getHiddenFields: (module: string) => module === 'query_queryview' ? hidden.query : hidden.goods
 } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: ref(true), isTablet: ref(false) }) }))
-const Dialog = { props: ['modelValue', 'title'], emits: ['update:modelValue'], template: '<div v-if="modelValue" class="dialog"><h2>{{ title }}</h2><button @click="$emit(\'update:modelValue\', false)">关闭</button><slot /></div>' }
+const Dialog = { props: ['modelValue', 'title'], emits: ['update:modelValue'], template: '<div v-if="modelValue" class="dialog"><h2>{{ title }}</h2><button @click="$emit(\'update:modelValue\', false)">关闭</button><slot /><slot name="footer" /></div>' }
 const Empty = { props: ['description', 'title', 'actionText'], emits: ['action'], template: '<div>{{title}}{{description}}<button @click="$emit(\'action\')">{{actionText}}</button></div>' }
 const line = (extra: Partial<CheckoutOrderItem> = {}): CheckoutOrderItem => ({ id: 201, item_type: 'accessory', sale_no: 'GOODS-A', linked_phone_sale_no: 'PHONE-A', sale_type: 'sale',
   name: '原充电器', brand_name: '配件品牌', product_model: 'MWVW3CH', color_name: '白', memory: null, imei: null, serial_numbers: ['000SN1', '000SN2'], unit: '个', quantity: 2,
-  unit_price: 10, gross_amount: 20, total_amount: 15, points_used: 500, deduction_amount: 5, points_awarded: 0, ...extra })
+  unit_price: 10, gross_amount: 20, total_amount: 15, points_used: 500, deduction_amount: 5, points_awarded: 0,
+  gift_return_unit_price: null, gift_return_total: null, gift_agreement_state: extra.sale_type === 'gift' ? 'not_recorded' : null, ...extra })
 const order = (): CheckoutOrderDetail => ({ id: 10, order_no: 'SO-ORIGINAL', customer_name: '原客户', customer_phone: '13900000001', store_name: '一店', operator_name: '原销售员', sale_time: '2026-11-14 10:00:00', remarks: '整批公共备注',
   total_amount: 120, final_amount: 115, paid_amount: 115, deduction_amount: 5, points_used: 500, points_awarded: 10,
   items: [line({ id: 101, item_type: 'phone', sale_no: 'PHONE-A', linked_phone_sale_no: null, name: '原手机型号', product_model: null, serial_numbers: ['000PHONE'], quantity: 1,
@@ -30,7 +33,7 @@ const order = (): CheckoutOrderDetail => ({ id: 10, order_no: 'SO-ORIGINAL', cus
   line({ id: 202, name: '原赠膜', sale_type: 'gift', serial_numbers: [], quantity: 1, unit_price: 0, gross_amount: 0, total_amount: 0, points_used: 0, deduction_amount: 0 })] })
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async () => {
-  const wrapper = mount(OrderDialog, { props: { modelValue: true, saleId: 51, source: 'goods' }, global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, SectionLoading: true, DataEmptyState: Empty } } })
+  const wrapper = mount(OrderDialog, { props: { modelValue: true, saleId: 51, source: 'goods' }, global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, SectionLoading: true, DataEmptyState: Empty }, directives: { permission: {} } } })
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
 beforeEach(() => { queryView.value = goodsView.value = true; hidden.query = []; hidden.goods = []; mocks.get.mockResolvedValue({ success: true, data: order() }) })
@@ -112,8 +115,40 @@ it('校验原单资金守恒及脱敏、重复行和赠品；换货现金可小�
   const hiddenTotal = order(); hiddenTotal.final_amount = null; expect(isCheckoutOrderDetail(hiddenTotal)).toBe(false)
 })
 
+it('整单区分未记录、零元和正数赠品约定，不增加实收；隐藏相关字段立即移除约定', async () => {
+  const wrapper = await render()
+  expect(wrapper.text()).toContain('原单未记录约定金额')
+  for (const [index, price] of [0, 12.34].entries()) {
+    const data = order()
+    Object.assign(data.items[2], { gift_return_unit_price: price, gift_return_total: price, gift_agreement_state: 'recorded' })
+    mocks.get.mockResolvedValueOnce({ success: true, data })
+    await wrapper.setProps({ saleId: 52 + index }); await flushPromises()
+    expect(wrapper.text()).toContain(`原单约定 ¥${price}/件`)
+    expect(wrapper.text()).toContain('实际扣款以售后核对为准')
+    expect(wrapper.text()).toContain('¥115')
+  }
+  for (const field of ['basic_info.usage_type', 'stock_info.total_quantity', 'price_info.unit_price', 'price_info.total_price']) {
+    hidden.goods = [field]
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('赠品未退约定')
+    expect(wrapper.text()).not.toContain('原单未记录约定金额')
+  }
+})
+
+it('赠品约定响应必须完整且数量金额守恒，合法整体脱敏保留', () => {
+  const data = order(), gift = data.items[2]
+  Object.assign(gift, { quantity: 2, gift_return_unit_price: 12.34, gift_return_total: 24.68, gift_agreement_state: 'recorded' })
+  expect(isCheckoutOrderDetail(data)).toBe(true)
+  gift.gift_return_total = 12.34; expect(isCheckoutOrderDetail(data)).toBe(false)
+  gift.gift_return_total = null; expect(isCheckoutOrderDetail(data)).toBe(false)
+  Object.assign(gift, { gift_return_unit_price: null, gift_return_total: null, gift_agreement_state: null })
+  expect(isCheckoutOrderDetail(data)).toBe(true)
+  Object.assign(gift, { gift_return_unit_price: 0, gift_return_total: 0, gift_agreement_state: 'recorded', sale_type: 'sale' })
+  expect(isCheckoutOrderDetail(data)).toBe(false)
+})
+
 it('手机实际详情按钮传递原销售ID，关闭父详情或切换销售会清理子窗口', async () => {
-  const detailItem: QueryItem = { 基本信息: { phone_id: 11 }, 客户信息: {}, 供应商信息: {}, 店铺信息: {}, 价格信息: {}, 时间信息: {}, 操作员信息: {}, 销售信息: { sale_id: 81 } }
+  const detailItem: QueryItem = { 基本信息: { phone_id: 11 }, 客户信息: {}, 供应商信息: {}, 店铺信息: {}, 价格信息: {}, 时间信息: {}, 操作员信息: {}, 销售信息: { sale_id: 81, has_checkout_order: true } }
   const Order = { name: 'CheckoutOrderDialog', props: ['modelValue', 'saleId', 'source'], template: '<div class="order-child" />' }
   const wrapper = mount(QueryDetailDialog, { props: { modelValue: true, detailItem, canEdit: false, canDelete: false, canReturnToStock: false },
     global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, CheckoutOrderDialog: Order }, directives: { permission: {} } } })
@@ -122,4 +157,53 @@ it('手机实际详情按钮传递原销售ID，关闭父详情或切换销售�
   expect(wrapper.findComponent(Order).props()).toMatchObject({ modelValue: true, saleId: 81, source: 'phone' })
   await wrapper.setProps({ detailItem: { ...detailItem, 销售信息: { sale_id: 82 } } }); await flushPromises()
   expect(wrapper.find('.order-child').exists()).toBe(false)
+})
+
+it.each([false, undefined])('普通手机销售没有共同订单（%s），不显示整单入口也不请求原单', async hasCheckoutOrder => {
+  const detailItem: QueryItem = { 基本信息: { phone_id: 16646 }, 客户信息: {}, 供应商信息: {}, 店铺信息: {}, 价格信息: {}, 时间信息: {}, 操作员信息: {},
+    销售信息: { sale_id: 15865, has_checkout_order: hasCheckoutOrder } }
+  const wrapper = mount(QueryDetailDialog, { props: { modelValue: true, detailItem, canEdit: false, canDelete: false, canReturnToStock: false },
+    global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog }, directives: { permission: {} } } })
+  wrappers.push(wrapper)
+  await flushPromises()
+  expect(wrapper.text()).toContain('设备销售信息')
+  expect(wrapper.findAll('button').some(button => button.text() === '整单明细')).toBe(false)
+  wrapper.findComponent({ name: 'QueryDetailContent' }).vm.$emit('order')
+  await flushPromises()
+  expect(wrapper.findComponent(OrderDialog).exists()).toBe(false)
+  expect(mocks.get).not.toHaveBeenCalled()
+})
+
+it('共同订单标记失效时关闭已打开的明细，同一销售不会残留旧内容', async () => {
+  const detailItem: QueryItem = { 基本信息: { phone_id: 11 }, 客户信息: {}, 供应商信息: {}, 店铺信息: {}, 价格信息: {}, 时间信息: {}, 操作员信息: {},
+    销售信息: { sale_id: 81, has_checkout_order: true } }
+  const Order = { name: 'CheckoutOrderDialog', props: ['modelValue', 'saleId', 'source'], template: '<div class="order-child" />' }
+  const wrapper = mount(QueryDetailDialog, { props: { modelValue: true, detailItem, canEdit: false, canDelete: false, canReturnToStock: false },
+    global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, CheckoutOrderDialog: Order }, directives: { permission: {} } } })
+  wrappers.push(wrapper)
+  await wrapper.findAll('button').find(button => button.text() === '整单明细')!.trigger('click'); await flushPromises()
+  expect(wrapper.find('.order-child').exists()).toBe(true)
+  await wrapper.setProps({ detailItem: { ...detailItem, 销售信息: { sale_id: 81, has_checkout_order: false } } })
+  expect(wrapper.find('.order-child').exists()).toBe(false)
+})
+
+
+it('收银凭证仅打印已核对且有权查看的原成交内容，失败或撤权后禁止打印', async () => {
+  const wrapper = await render()
+  await wrapper.setProps({ receipt: true }); await flushPromises()
+  mocks.print.mockReturnValue(true)
+  await wrapper.findAll('button').find(row => row.text() === '打印凭证')!.trigger('click')
+  const printed = mocks.print.mock.calls[0][0] as HTMLElement
+  expect(printed.textContent).toContain('SO-ORIGINAL')
+  expect(printed.textContent).toContain('原赠膜')
+  expect(printed.textContent).toContain('000SN1')
+  hidden.goods.push('basic_info.serial_number'); await flushPromises()
+  await wrapper.findAll('button').find(row => row.text() === '打印凭证')!.trigger('click')
+  expect(mocks.print.mock.calls[1][0].textContent).not.toContain('000SN1')
+  mocks.get.mockRejectedValueOnce(new Error('读取失败'))
+  await wrapper.setProps({ saleId: 99 }); await flushPromises()
+  expect(wrapper.findAll('button').find(row => row.text() === '打印凭证')!.attributes('disabled')).toBeDefined()
+  expect(mocks.print).toHaveBeenCalledTimes(2)
+  queryView.value = false; await flushPromises()
+  expect(wrapper.text()).not.toContain('原充电器')
 })

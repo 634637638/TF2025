@@ -25,12 +25,12 @@ router.get('/sales-data', requirePermission('salary-records:view:all'),
 // 获取单个员工的销售明细列表（必须放在 /:id 之前）
 // 允许员工查看自己的销售明细，需要额外的权限检查在controller中处理
 router.get('/sales-details',
-  requirePermission('salary-records:view'),
+  requireAnyPermission(['salary-records:view', 'salary-records:view:own']),
   SalaryRecordController.getEmployeeSalesDetails.bind(SalaryRecordController)
 )
 
 // 获取工资记录详情
-router.get('/:id', requirePermission('salary-records:view'),
+router.get('/:id', requireAnyPermission(['salary-records:view', 'salary-records:view:own']),
   SalaryRecordController.getSalaryRecordById.bind(SalaryRecordController)
 )
 
@@ -75,7 +75,7 @@ router.post('/:id/approve', requirePermission('salary-records:approve'),
 )
 
 // 标记工资为已发放
-router.post('/:id/pay', requirePermission('salary-records:edit'),
+router.post('/:id/pay', requirePermission('salary-records:pay'),
   SalaryRecordController.markAsPaid.bind(SalaryRecordController)
 )
 

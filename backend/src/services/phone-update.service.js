@@ -1,5 +1,7 @@
 'use strict'
 
+const CustomerMutationAccessService = require('./customer-mutation-access.service')
+const PhoneMutationAccessService = require('./phone-mutation-access.service')
 const { clearCache } = require('../middleware/cache')
 const { generateMemberNumber } = require('../utils/member-number')
 const { reconcileCustomerPointsForSale } = require('./customer-points.service')
@@ -15,7 +17,9 @@ const { validateSalePayment } = require('../utils/sale-payment')
 const { assertStandaloneSale } = require('../utils/sale-input')
 
 class PhoneUpdateService {
-  constructor({ repository = new PhoneUpdateRepository(), permissionCheck = hasUnifiedPermission, logger = log } = {}) {
+  constructor({ repository = new PhoneUpdateRepository(), permissionCheck = hasUnifiedPermission, logger = log, customerAccess = new CustomerMutationAccessService(), access = new PhoneMutationAccessService() } = {}) {
+    this.customerAccess = customerAccess
+    this.access = access
     this.repository = repository
     this.permissionCheck = permissionCheck
     this.logger = logger
@@ -27,6 +31,11 @@ class PhoneUpdateService {
     let finalizeMediaDirectory = null
     try {
       const { id } = req.params
+      // 库存编辑复用手机写服务，但只能使用库存模块的动作与字段授权。
+      const fieldModule = req.query?.field_module
+      if (fieldModule !== undefined && fieldModule !== 'inventory_inventoryview') {
+        throw Object.assign(new Error('字段权限模块无效'), { status: 400 })
+      }
   
       const {
         brand_id,
@@ -68,6 +77,9 @@ class PhoneUpdateService {
             throw error
           }
   
+          await this.access.authorize(req.user, currentPhone, 'edit', req.body,
+            fieldModule === 'inventory_inventoryview' ? ['inventory', 'phones'] : undefined)
+
           const valueOrCurrent = (value, currentValue) => (
             value === undefined ? currentValue : value
           )
@@ -315,6 +327,11 @@ class PhoneUpdateService {
             throw new Error('设备状态已被其他操作修改，请刷新后重试')
           }
           assertStandaloneSale(lockedStatus.checkout_order_id)
+          if (fieldModule === 'inventory_inventoryview') {
+            // 锁定后重核当前门店和字段，避免读取后设备已被移店或角色规则已变化。
+            const lockedPhone = await this.repository.getPhoneForUpdate(connection, id)
+            await this.access.authorize(req.user, lockedPhone, 'edit', req.body, ['inventory', 'phones'])
+          }
   
           // 执行更新phones表
           await this.repository.updatePhone(connection, updateFields, updateValues.slice(0, -1), id)
@@ -345,8 +362,11 @@ class PhoneUpdateService {
   
           // 获取原始客户信息（用于比较手机号是否变化）
           let originalCustomerPhone = null
+          let originalCustomer = null
+          let customerCreated = false
           if (finalCustomerId && finalCustomerId !== '') {
-            originalCustomerPhone = await this.repository.findCustomerPhone(connection, finalCustomerId)
+            originalCustomer = await this.repository.findCustomerById(connection, finalCustomerId)
+            originalCustomerPhone = originalCustomer?.phone || null
           }
   
           // 判断是否需要处理客户信息
@@ -363,21 +383,25 @@ class PhoneUpdateService {
               if (matchedCustomer) {
                 // 找到匹配的客户
                 finalCustomerId = matchedCustomer.id
+                originalCustomer = matchedCustomer
                 log.debug(`✅ 找到匹配客户: ID=${finalCustomerId}, 姓名=${matchedCustomer.name}, 手机=${customer_phone}`)
   
                 // 如果前端还提供了姓名，更新客户姓名
                 if (customer_name && customer_name !== matchedCustomer.name) {
+                  await this.customerAccess.require(req.user, 'edit')
                   await this.repository.updateCustomerName(connection, customer_name, finalCustomerId)
                   log.debug(`✅ 更新客户姓名: ${customer_name}`)
                 }
               } else {
                 // 没找到匹配客户，创建新客户
+                await this.customerAccess.require(req.user, 'create')
                 const memberNumber = await generateMemberNumber({ connection })
                 finalCustomerId = await this.repository.createCustomer(connection, {
                   name: customer_name || null,
                   phone: customer_phone || null,
                   memberNumber
                 })
+                customerCreated = true
                 log.debug(`✅ 创建新客户: ID=${finalCustomerId}, 姓名=${customer_name}, 手机=${customer_phone}`)
               }
   
@@ -390,7 +414,7 @@ class PhoneUpdateService {
                 const updateCustomerFields = []
                 const updateCustomerValues = []
   
-                if (customer_name !== null && customer_name !== undefined) {
+                if (customer_name !== null && customer_name !== undefined && customer_name !== originalCustomer?.name) {
                   updateCustomerFields.push('name = ?')
                   updateCustomerValues.push(customer_name)
                 }
@@ -398,6 +422,7 @@ class PhoneUpdateService {
                 if (updateCustomerFields.length > 0) {
                   updateCustomerValues.push(finalCustomerId)
   
+                  await this.customerAccess.require(req.user, 'edit')
                   await this.repository.updateCustomer(
                     connection,
                     updateCustomerFields,
@@ -415,32 +440,38 @@ class PhoneUpdateService {
                   if (existingCustomerByPhone) {
                     // 手机号已存在，直接使用已有客户
                     finalCustomerId = existingCustomerByPhone.id
+                    originalCustomer = existingCustomerByPhone
                     log.debug(`✅ 手机号 ${customer_phone} 已存在，使用已有客户 ID: ${finalCustomerId}`)
   
                     // 如果前端还提供了姓名，更新客户姓名
                     if (customer_name && customer_name !== existingCustomerByPhone.name) {
+                      await this.customerAccess.require(req.user, 'edit')
                       await this.repository.updateCustomerName(connection, customer_name, finalCustomerId)
                       log.debug(`✅ 更新客户姓名: ${customer_name}`)
                     }
                   } else {
                     // 手机号不存在，创建新客户
+                    await this.customerAccess.require(req.user, 'create')
                     const memberNumber = await generateMemberNumber({ connection })
                     finalCustomerId = await this.repository.createCustomer(connection, {
                       name: customer_name || null,
                       phone: customer_phone,
                       memberNumber
                     })
+                    customerCreated = true
                     log.debug(`✅ 创建新客户: ID=${finalCustomerId}, 姓名=${customer_name}, 手机=${customer_phone}`)
                   }
                 } else {
                   // 没有手机号，直接创建新客户（用临时手机号）
                   const tempPhone = `TEMP_${Date.now()}`
+                  await this.customerAccess.require(req.user, 'create')
                   const memberNumber = await generateMemberNumber({ connection })
                   finalCustomerId = await this.repository.createCustomer(connection, {
                     name: customer_name || null,
                     phone: tempPhone,
                     memberNumber
                   })
+                  customerCreated = true
                   log.debug(`✅ 创建临时客户: ID=${finalCustomerId}, 姓名=${customer_name}`)
                 }
   
@@ -450,7 +481,8 @@ class PhoneUpdateService {
             }
   
             // 🔥 处理 Apple ID（存储在customers表）
-            if (apple_id !== null && apple_id !== undefined && finalCustomerId) {
+            if (apple_id !== null && apple_id !== undefined && finalCustomerId && (apple_id || null) !== (originalCustomer?.apple_id || null)) {
+              if (!customerCreated) await this.customerAccess.require(req.user, 'edit')
               await this.repository.updateCustomerAppleId(connection, apple_id || null, finalCustomerId)
               log.debug(`✅ 更新Apple ID到customers表: ${apple_id || '(清空)'}`)
             }
@@ -716,7 +748,8 @@ class PhoneUpdateService {
             }
           }
   
-          return updatedPhone
+          // 库存编辑只需要成功回执，不能透传通用手机查询中的完整敏感资料。
+          return fieldModule === 'inventory_inventoryview' ? { id: Number(id) } : updatedPhone
         } catch (error) {
           if (transactionStarted) {
             await connection.rollback()

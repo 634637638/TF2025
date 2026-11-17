@@ -10,7 +10,6 @@
       <div class="phone-list-actions">
         <el-button
           type="primary"
-          size="small"
           @click="emit('add')"
         >
           <i class="fas fa-plus" />
@@ -18,7 +17,6 @@
         </el-button>
         <el-button
           type="success"
-          size="small"
           @click="emit('batch')"
         >
           <i class="fas fa-layer-group" />
@@ -27,7 +25,6 @@
         <el-button
           v-if="formData.phones.length > 1"
           type="danger"
-          size="small"
           @click="emit('clear')"
         >
           <i class="fas fa-trash-alt" />
@@ -184,6 +181,7 @@
             <template #default="{ row: phone }">
               <el-input
                 v-model="phone.serial_number"
+                v-identifier-input="'device-serial'"
                 placeholder="序列号"
                 size="small"
                 @input="formatSerialNumber(phone)"
@@ -207,6 +205,7 @@
               >
                 <el-input
                   v-model="phone.imei"
+                  v-identifier-input="phone.isNoIMEIMode ? 'device-serial' : 'imei'"
                   :class="{ 'tf-imei-input--no-imei': phone.isNoIMEIMode }"
                   :placeholder="phone.isNoIMEIMode ? '' : 'IMEI'"
                   size="small"
@@ -246,7 +245,6 @@
               <el-button
                 v-if="formData.phones.length > 1"
                 type="danger"
-                size="small"
                 class="table-action table-action--delete"
                 title="删除商品"
                 @click.stop="removePhone(index)"
@@ -272,7 +270,6 @@
             <el-button
               v-if="formData.phones.length > 1"
               type="danger"
-              size="small"
               circle
               class="table-action--delete"
               title="删除商品"
@@ -386,6 +383,7 @@
                 <div class="long-input-field">
                   <el-input
                     v-model="phone.serial_number"
+                    v-identifier-input="'device-serial'"
                     placeholder="请输入序列号"
                     clearable
                     @input="formatSerialNumber(phone)"
@@ -427,6 +425,7 @@
                 >
                   <el-input
                     v-model="phone.imei"
+                    v-identifier-input="phone.isNoIMEIMode ? 'device-serial' : 'imei'"
                     :class="{ 'tf-imei-input--no-imei': phone.isNoIMEIMode }"
                     :placeholder="phone.isNoIMEIMode ? '' : '请输入15位IMEI号（双击启用无IMEI模式）'"
                     clearable

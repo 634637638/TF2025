@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
 import { parse } from '@vue/compiler-sfc'
-import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditButtonSizeDeclarations, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -190,6 +190,9 @@ function auditFile(file) {
   const relativeFile = relative(root, file)
   const findings = styleSections(file, rawSource).flatMap(section => auditSection(relativeFile, section.source, section.lineOffset))
   if (file.endsWith('.vue')) {
+    for (const finding of auditButtonSizeDeclarations(rawSource, { allowPreview: relativeFile === 'src/views/standards/StandardsAuditView.vue' })) {
+      findings.push(`${relativeFile}:${finding.line} ${finding.message}`)
+    }
     for (const finding of auditTableButtonUsage(rawSource)) {
       findings.push(`${relativeFile}:${finding.line} ${finding.message}`)
     }
@@ -281,6 +284,7 @@ const standardsButtonRequirements = [
   [/tf-button--h5-action/, '规范与审计标杆页手机端操作按钮预览必须声明 tf-button--h5-action 语义'],
   [/tf-button--pill-filter/, '规范与审计标杆页筛选胶囊预览必须声明 tf-button--pill-filter 语义'],
   [/tf-button--icon-badge/, '规范与审计标杆页图标角标预览必须声明 tf-button--icon-badge 语义'],
+  [/tf-button--cart/, '规范与审计标杆页必须提供公共橙色购物车按钮预览'],
   [/tf-button--media-tile/, '规范与审计标杆页媒体缩略图必须声明公共 tf-button--media-tile 规格'],
   [/tf-button--scanner-control/, '规范与审计标杆页扫码器必须预览公共控制按钮']
 ]

@@ -14,6 +14,22 @@ const response = () => ({
   json(body) { this.body = body; return this }
 })
 
+test('没有团队考勤查看时，员工排行不读取或返回全员出勤率', async () => {
+  const service = new AnalyticsEmployeeSummaryService({ connected: () => true,
+    salaryCalculator: { async batchCalculateSalary() { return [] } },
+    repository: {
+      async getEmployeePerformance() { return [{ id: 7, total_sales: 100 }] },
+      async getAttendanceRates() { assert.fail('无权时不能查询考勤') }
+    }
+  })
+  const data = await service.getEmployeePerformance({})
+  assert.equal(Object.hasOwn(data[0], 'attendance_rate'), false)
+  const controller = new AnalyticsEmployeeSummaryController({ service, permissionCheck: async () => false })
+  const res = response()
+  await controller.employeePerformance({ user: { id: 7 }, query: {} }, res)
+  assert.equal(Object.hasOwn(res.body.data[0], 'attendance_rate'), false)
+})
+
 test('analytics query parser normalizes optional integer filters consistently', () => {
   for (const value of [undefined, null, '', 'undefined', 'null', 'invalid']) {
     assert.equal(parseOptionalInt(value), null)
@@ -51,7 +67,7 @@ test('employee overview controller forwards date and store filters and maps vali
   } })
   const result = response()
   await controller.employeeOverview({ query: { start_date: '2026-11-01', end_date: '2026-11-07', store_id: '5abc' } }, result)
-  assert.deepEqual(calls[0], { startDate: '2026-11-01', endDate: '2026-11-07', storeId: 5 })
+  assert.deepEqual(calls[0], { startDate: '2026-11-01', endDate: '2026-11-07', storeId: 5, includeAttendance: false })
   assert.equal(result.body.message, '获取员工分析数据成功')
   assert.deepEqual(result.body.data, { totalCount: 12, activeCount: 8 })
 
@@ -72,7 +88,7 @@ test('employee performance controller clamps page size, parses store and preserv
   } })
   const result = response()
   await controller.employeePerformance({ query: { metric: 'newSales', page_size: '150', store_id: '5abc' } }, result)
-  assert.deepEqual(calls[0], { metric: 'newSales', pageSize: 100, storeId: 5 })
+  assert.deepEqual(calls[0], { metric: 'newSales', pageSize: 100, storeId: 5, includeAttendance: false })
   assert.equal(result.body.message, '获取员工业绩排行成功')
   assert.deepEqual(result.body.data, [{ id: 8, total_sales: 300 }])
 
@@ -186,7 +202,7 @@ test('employee performance service combines salary, attendance and sales fields 
     }
   })
 
-  assert.deepEqual(await service.getEmployeePerformance({ metric: 'totalSales', pageSize: 20, storeId: 5 }), [
+  assert.deepEqual(await service.getEmployeePerformance({ metric: 'totalSales', pageSize: 20, storeId: 5, includeAttendance: true }), [
     { id: 7, total_sales: 60000.5, new_sales: 2, used_sales: 1, wholesale_count: 3, allocation_count: 4, salary: 1200, attendance_rate: 75, trend: 'up' },
     { id: 8, total_sales: 10000, new_sales: 0, used_sales: 0, wholesale_count: 0, allocation_count: 0, salary: 0, attendance_rate: 0, trend: 'down' }
   ])
@@ -224,14 +240,14 @@ test('employee overview service defaults to Beijing month and combines payroll a
       }
     }
   })
-  assert.deepEqual(await service.getEmployeeOverview({ storeId: 5 }), {
+  assert.deepEqual(await service.getEmployeeOverview({ storeId: 5, includeAttendance: true }), {
     totalCount: 12, activeCount: 8, totalSalary: 1200, baseSalaryTotal: 1000, commissionTotal: 200,
     overtimePayTotal: 50, deductionTotal: 50, templateEmployeeCount: 2, calculatedEmployeeCount: 1,
     failedEmployeeCount: 1, avgAttendance: 75, storeCount: 3, newCount: 4, usedCount: 2,
     avgSales: 1250, totalTrend: 'stable', totalChange: 0, salaryTrend: 'stable', salaryChange: 0
   })
   assert.deepEqual(calls, [
-    ['overview', { startDate: '2026-11-01', endDate: '2026-11-30', storeId: 5 }],
+    ['overview', { startDate: '2026-11-01', endDate: '2026-11-30', storeId: 5, includeAttendance: true }],
     ['salary', [7, 8], '2026-11-01', '2026-11-30', { logExpectedErrors: false }]
   ])
   await assert.rejects(service.getEmployeeOverview({ startDate: '2026-02-30' }), {
@@ -272,7 +288,7 @@ test('employee overview repository binds store and date filters across summary q
       return responses[calls.length - 1]
     }
   }))
-  const result = await repository.getEmployeeOverview({ startDate: '2026-11-01', endDate: '2026-11-30', storeId: 5 })
+  const result = await repository.getEmployeeOverview({ startDate: '2026-11-01', endDate: '2026-11-30', storeId: 5, includeAttendance: true })
   assert.equal(calls.length, 8)
   assert.ok(calls.every(call => call.params.includes(5)))
   assert.deepEqual(calls[3].params, ['2026-11-01', '2026-11-30', 5])
@@ -295,7 +311,7 @@ test('attendance summary controller preserves filters, success message, validati
 
   const result = response()
   await controller.attendanceSummary({ query: { start_date: '2026-11-01', end_date: '2026-11-07', store_id: '12abc' } }, result)
-  assert.deepEqual(calls[0], { startDate: '2026-11-01', endDate: '2026-11-07', storeId: 12 })
+  assert.deepEqual(calls[0], { startDate: '2026-11-01', endDate: '2026-11-07', storeId: 12, employeeId: undefined })
   assert.equal(result.body.message, '获取考勤记录成功')
   assert.deepEqual(result.body.data, { summary: { totalRecords: 4 }, records: [], alerts: [] })
 
@@ -315,7 +331,7 @@ test('attendance summary service validates dates and formats summary, records an
     connected: () => true,
     repository: {
       async getAttendanceSummary(filters) {
-        assert.deepEqual(filters, { startDate: '2026-11-01', endDate: '2026-11-07', storeId: 4 })
+        assert.deepEqual(filters, { startDate: '2026-11-01', endDate: '2026-11-07', storeId: 4, employeeId: null })
         return {
           summaryRow: { total_records: '9', employee_count: '3', pending_count: '2', approved_count: '5', abnormal_count: '1', leave_count: '2', overtime_count: null },
           records: [

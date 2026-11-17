@@ -281,6 +281,7 @@
             <label class="sales-edit-field-label">序列号</label>
             <el-input
               v-model="editForm.serial_number"
+              v-identifier-input="'device-serial'"
               placeholder="请输入序列号（字母、数字、斜杠或连字符）"
               class="full-width"
               :disabled="!canEditField('serial_number')"
@@ -301,6 +302,7 @@
             >
               <el-input
                 v-model="editForm.imei"
+                v-identifier-input="isNoImeiMode ? 'device-serial' : 'imei'"
                 :class="{ 'tf-imei-input--no-imei': isNoImeiMode }"
                 :placeholder="isNoImeiMode ? '' : '请输入IMEI'"
                 class="full-width"

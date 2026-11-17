@@ -111,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { ref, computed, watch, nextTick } from 'vue'
 import type { VNodeRef } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
@@ -166,6 +167,8 @@ interface Emits {
   (_e: 'update:visible', _value: boolean): void
   (_e: 'success', _data: { success_count: number; total_count: number; message: string }): void
 }
+
+const customerPermissions = usePagePermissions('customers')
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
@@ -379,6 +382,7 @@ const focusCustomerNameInput = (input: HTMLInputElement | null) => {
 }
 
 const enableCustomerNameEdit = (event?: MouseEvent) => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!selectedCustomer.value) return
   customerNameEditing.value = true
 
@@ -393,6 +397,7 @@ const enableCustomerNameEdit = (event?: MouseEvent) => {
 }
 
 const handleCustomerNameTouchEnd = () => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!mobileDetection.isIOS.value) return
 
   const now = Date.now()
@@ -418,6 +423,7 @@ const handleCustomerNameBlur = () => {
 }
 
 const saveCustomerNameEdit = async () => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!selectedCustomer.value) {
     customerNameEditing.value = false
     return
@@ -509,6 +515,7 @@ const selectCustomer = (customer: CustomerSearchItem) => {
 
 // 自动创建新客户
 const autoCreateCustomer = async () => {
+  if (!customerPermissions.requirePermission('create')) return
   const normalizedCustomerPhone = normalizeCustomerPhone(formData.value.customer_phone)
   const normalizedCustomerName = normalizePersonName(formData.value.customer_name, 20)
 

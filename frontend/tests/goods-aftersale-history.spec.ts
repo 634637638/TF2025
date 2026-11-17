@@ -9,7 +9,7 @@ import type { GoodsAftersaleRecord } from '@/types/accessory'
 const mocks = vi.hoisted(() => ({ get: vi.fn(), hidden: new Set<string>() }))
 const canQuery = ref(true), canGoods = ref(true)
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: mocks }))
-vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => module === 'query' ? canQuery.value : canGoods.value) }) }))
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => module === 'query' ? canQuery.value : canGoods.value), hasPermission: (action: string) => action === 'goods-view' && canGoods.value }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFieldVisible: (_module: string, field: string) => !mocks.hidden.has(field) } }))
 
 const row = (extra: Partial<GoodsAftersaleRecord> = {}): GoodsAftersaleRecord => ({ id: 31, quantity: 1, serial_numbers: ['ORIGINAL-SN'],

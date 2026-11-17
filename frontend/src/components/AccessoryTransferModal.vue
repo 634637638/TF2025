@@ -103,6 +103,7 @@
         label="划拨SN"
       >
         <el-select
+          ref="serialSelectRef"
           v-model="serials"
           multiple
           filterable
@@ -113,19 +114,14 @@
           :disabled="!fromStore || saving"
           placeholder="搜索或扫描SN，支持多选"
           @visible-change="handleSerialDropdown"
+          @popup-scroll="handleSerialScroll"
         >
-          <div
-            v-infinite-scroll="loadMoreSerials"
-            :infinite-scroll-disabled="serialLoading || serialFailed || serialResults.length >= serialTotal"
-            :infinite-scroll-immediate="false"
-          >
-            <el-option
-              v-for="serial in serialOptions"
-              :key="serial"
-              :value="serial"
-              :label="serial"
-            />
-          </div>
+          <el-option
+            v-for="serial in serialOptions"
+            :key="serial"
+            :value="serial"
+            :label="serial"
+          />
         </el-select>
       </el-form-item>
       <el-form-item
@@ -153,7 +149,7 @@
         </el-button>
         <el-button
           v-permission="'accessories:transfer'"
-          type="primary"
+          class="tf-button--transfer"
           :loading="saving"
           :disabled="!canSubmit"
           @click="submit"
@@ -166,6 +162,7 @@
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useSelectLoadMore } from '@/composables/useSelectLoadMore'
 import { unifiedApi } from '@/utils/unified-api'
 import { getAccessoryEntryOptions } from '@/services/reference-options'
 import { useLatestRequest } from '@/composables/useLatestRequest'
@@ -252,6 +249,9 @@ const loadMoreSerials = async () => {
   if (serialLoading.value || serialFailed.value || serialResults.value.length >= serialTotal.value) return
   await loadSerials(true)
 }
+const { selectRef: serialSelectRef, onPopupScroll: handleSerialScroll } = useSelectLoadMore(
+  loadMoreSerials, () => serialLoading.value || serialFailed.value || serialResults.value.length >= serialTotal.value
+)
 const handleSerialDropdown = (opened: boolean) => {
   if (!opened || serialLoading.value) return
   if (serialFailed.value) void loadSerials(serialPage.value > 0)

@@ -10,8 +10,8 @@ import type { AccessoryPurchaseReturnContext, AccessoryPurchaseReturnQuote } fro
 const mocks = vi.hoisted(() => ({ get: vi.fn(), quote: vi.fn(), post: vi.fn() }))
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: { post: mocks.post } }))
 vi.mock('@/api/accessory-purchases', () => ({ getAccessoryPurchaseReturnContext: mocks.get, quoteAccessoryPurchaseReturn: mocks.quote }))
-const access = reactive({ purchase: true, inventory: true, mobile: false, hidden: new Set<string>() })
-vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => module === 'accessories' ? access.inventory : access.purchase) }) }))
+const access = reactive({ purchase: true, inventory: true, returnCheck: false, mobile: false, hidden: new Set<string>() })
+vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ hasPermission: (action: string) => module === 'supplier-payments' && action === 'return-check' && access.returnCheck, canView: computed(() => module === 'accessories' ? access.inventory : access.purchase) }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { permissions: ref({}), isFieldVisible: (_module: string, key: string) => !access.hidden.has(key) } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: computed(() => access.mobile) }) }))
 const Dialog = { props: ['modelValue'], template: '<div v-if="modelValue" class="dialog"><slot /></div>' }
@@ -36,7 +36,7 @@ const render = async () => {
 }
 beforeEach(() => {
   mocks.quote.mockReset()
-  access.purchase = access.inventory = true; access.mobile = false; access.hidden.clear()
+  access.purchase = access.inventory = true; access.mobile = false; access.returnCheck = false; access.hidden.clear()
   mocks.get.mockImplementation(async (id: number, page: number) => {
     const data = result(id, page)
     if (access.hidden.has('basic_info.serial_number')) data.data.serials = null
@@ -215,6 +215,7 @@ it('SN末页因售出消失时回有效页，迟到检索结果不得覆盖新�
 
 const quoted = (extra: Partial<AccessoryPurchaseReturnQuote> = {}) => ({ success: true, data: {
   purchase_id: 8, quantity: 2, purchase_cost: 12.5, total_amount: 25, payment_status: 'paid', latest_event_id: 1, preview_only: true,
+  settlement: { mode: 'supplier_refund', payable_reduction: 0, refund_amount: extra.total_amount ?? 25, credit_amount: 0 },
   data: [
     { row_key: 'event:1', store_id: 2, store_name: '当前二店', quantity: 1, usage_type: 'sale', serial_tracking: 0, serial_numbers: [] },
     { row_key: 'event:2', store_id: 2, store_name: '当前二店', quantity: 1, usage_type: 'sale', serial_tracking: 1, serial_numbers: ['000ABC'] }
@@ -228,18 +229,82 @@ const selectSN = async (wrapper: ReturnType<typeof mount>) => {
   await wrapper.find('input[type="checkbox"]').setValue(true); await flushPromises()
 }
 
+it('待退数量清空后保持空白，重新输入不会拼接默认零且试算只提交新数量', async () => {
+  const data = result(); data.data.data[0].quantity = 5
+  mocks.get.mockResolvedValue(data)
+  const wrapper = await render()
+  const field = wrapper.find('input[role="spinbutton"]')
+  await field.setValue('1'); await field.trigger('change'); await flushPromises()
+  await field.setValue(''); await field.trigger('change'); await flushPromises()
+  expect(field.element).toHaveProperty('value', '')
+  expect(button(wrapper, '按原采购价试算').attributes('disabled')).toBeDefined()
+  await field.setValue('2'); await field.trigger('change'); await flushPromises()
+  await button(wrapper, '按原采购价试算').trigger('click'); await flushPromises()
+  expect(mocks.quote).toHaveBeenCalledWith(8, {
+    batches: [{ row_key: 'event:1', quantity: 2 }], serial_ids: [], settlement_mode: 'supplier_refund'
+  }, expect.any(AbortSignal))
+  await button(wrapper, '清空选择').trigger('click'); await flushPromises()
+  expect(field.element).toHaveProperty('value', '0')
+})
+
 it('普通批次与SN选择后服务端按原价试算，提交仅包含原批次、数量和逐件ID', async () => {
   mocks.quote.mockResolvedValue(quoted())
   const wrapper = await render()
   expect(button(wrapper, '按原采购价试算').attributes('disabled')).toBeDefined()
   await selectOrdinary(wrapper); await selectSN(wrapper)
   await button(wrapper, '按原采购价试算').trigger('click'); await flushPromises()
-  expect(mocks.quote).toHaveBeenCalledWith(8, { batches: [{ row_key: 'event:1', quantity: 1 }], serial_ids: [91] }, expect.any(AbortSignal))
+  expect(mocks.quote).toHaveBeenCalledWith(8, { batches: [{ row_key: 'event:1', quantity: 1 }], serial_ids: [91], settlement_mode: 'supplier_refund' }, expect.any(AbortSignal))
   expect(wrapper.text()).toContain('原采购价试算金额'); expect(wrapper.text()).toContain('¥25')
   expect(wrapper.text()).toContain('仅为原采购价试算'); expect(wrapper.find('[role="status"]').text()).toContain('000ABC')
   await button(wrapper, '清空选择').trigger('click'); await flushPromises()
   expect(wrapper.find('[role="status"]').exists()).toBe(false)
   expect(button(wrapper, '按原采购价试算').attributes('disabled')).toBeDefined()
+})
+
+it('已付款可切退款或留抵，改方式取消旧试算且迟到响应不能显示原资金归属', async () => {
+  const wrapper = await render(); await selectOrdinary(wrapper); await selectSN(wrapper)
+  mocks.quote.mockResolvedValueOnce(quoted())
+  await button(wrapper, '按原采购价试算').trigger('click'); await flushPromises()
+  expect(wrapper.find('[role="status"]').text()).toContain('拟收供应商退款')
+  let finish: ((value: ReturnType<typeof quoted>) => void) | undefined
+  mocks.quote.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  await button(wrapper, '按原采购价试算').trigger('click')
+  const signal: AbortSignal = mocks.quote.mock.calls.at(-1)![2]
+  await wrapper.find('input[value="supplier_credit"]').setValue(true); await flushPromises()
+  expect(signal.aborted).toBe(true)
+  finish?.(quoted()); await flushPromises()
+  expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  mocks.quote.mockResolvedValueOnce(quoted({ settlement: { mode: 'supplier_credit', payable_reduction: 0, refund_amount: 0, credit_amount: 25 } }))
+  await button(wrapper, '按原采购价试算').trigger('click'); await flushPromises()
+  expect(mocks.quote.mock.calls.at(-1)![1].settlement_mode).toBe('supplier_credit')
+  expect(wrapper.find('[role="status"]').text()).toContain('拟留抵后续货款')
+  expect(wrapper.find('[role="status"]').text()).not.toContain('拟收供应商退款')
+  expect(wrapper.find('[role="status"]').text()).toContain('¥25')
+})
+
+it('未付款只试算冲减应付，不提供退款留抵选择，不传客户端资金金额', async () => {
+  const data = result(); Object.assign(data.data.purchase, { payment_status: 'unpaid', paid_amount: 0, unpaid_amount: 625 })
+  mocks.get.mockResolvedValue(data)
+  const wrapper = await render(); await selectOrdinary(wrapper); await selectSN(wrapper)
+  expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false)
+  mocks.quote.mockResolvedValueOnce(quoted({ payment_status: 'unpaid', settlement: { mode: 'reduce_payable', payable_reduction: 25, refund_amount: 0, credit_amount: 0 } }))
+  await button(wrapper, '按原采购价试算').trigger('click'); await flushPromises()
+  expect(mocks.quote.mock.calls.at(-1)![1]).toEqual({ batches: [{ row_key: 'event:1', quantity: 1 }], serial_ids: [91], settlement_mode: 'reduce_payable' })
+  expect(wrapper.find('[role="status"]').text()).toContain('拟冲减应付')
+})
+
+it('资金试算缺失、重复归属、金额或付款状态变化均拒绝，不能展示错误的退款或留抵', async () => {
+  const wrapper = await render(); await selectOrdinary(wrapper); await selectSN(wrapper)
+  const missing = quoted(); Reflect.deleteProperty(missing.data, 'settlement')
+  for (const value of [missing, quoted({ settlement: { mode: 'supplier_credit', payable_reduction: 0, refund_amount: 0, credit_amount: 25 } }),
+    quoted({ settlement: { mode: 'supplier_refund', payable_reduction: 0, refund_amount: 25, credit_amount: 25 } }),
+    quoted({ settlement: { mode: 'supplier_refund', payable_reduction: 0, refund_amount: 24.99, credit_amount: 0 } }),
+    quoted({ payment_status: 'unpaid', settlement: { mode: 'reduce_payable', payable_reduction: 25, refund_amount: 0, credit_amount: 0 } })]) {
+    mocks.quote.mockResolvedValueOnce(value)
+    await button(wrapper, '按原采购价试算').trigger('click'); await flushPromises()
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('退供试算失败')
+  }
 })
 
 it('批次和SN跨页保留选择，重读使旧试算失效，重新核对则清空草稿', async () => {
@@ -252,7 +317,7 @@ it('批次和SN跨页保留选择，重读使旧试算失效，重新核对则�
   expect(wrapper.text()).toContain('已选普通批次 1 条')
   await selectOrdinary(wrapper); await selectSN(wrapper)
   await button(wrapper, '按原采购价试算').trigger('click'); await flushPromises()
-  expect(mocks.quote.mock.calls.at(-1)![1]).toEqual({ batches: [{ row_key: 'event:1', quantity: 1 }, { row_key: 'event:21', quantity: 1 }], serial_ids: [91] })
+  expect(mocks.quote.mock.calls.at(-1)![1]).toEqual({ batches: [{ row_key: 'event:1', quantity: 1 }, { row_key: 'event:21', quantity: 1 }], serial_ids: [91], settlement_mode: 'supplier_refund' })
   await button(wrapper, '重新核对').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('已选普通批次 0 条、SN 0 件')
 })

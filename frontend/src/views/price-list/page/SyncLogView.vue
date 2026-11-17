@@ -295,7 +295,6 @@
                 <el-button
                   link
                   type="primary"
-                  size="small"
                   @click.stop="handleViewDetail(row)"
                 >
                   详情
@@ -304,7 +303,6 @@
                   v-if="canDelete"
                   link
                   type="danger"
-                  size="small"
                   @click.stop="handleDeleteLog(row)"
                 >
                   删除

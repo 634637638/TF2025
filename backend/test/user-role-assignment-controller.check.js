@@ -80,6 +80,7 @@ test('user role assignment service replaces roles transactionally and audits aft
     release() { calls.push('release') }
   }
   const service = new Service({
+    permissionCheck: async () => true,
     databaseProvider: () => ({ async getConnection() { return connection } }),
     repository: {
       async findUser(conn, userId) { assert.equal(conn, connection); assert.equal(userId, 8); calls.push('user'); return { id: 8, username: 'staff' } },
@@ -111,6 +112,7 @@ test('user role assignment service rolls back missing users and invalid roles an
       release() { calls.push('release') }
     }
     const service = new Service({
+    permissionCheck: async () => true,
       databaseProvider: () => ({ async getConnection() { return connection } }),
       repository: {
         async findUser() { calls.push('user'); return user },
@@ -147,4 +149,19 @@ test('user role assignment repository binds IDs and builds only placeholder list
   assert.match(calls[2].sql, /id IN \(\?,\?\)/)
   assert.deepEqual(calls.at(-1).params, [8, 2, 8, 4])
   assert.match(calls.at(-1).sql, /VALUES \(\?, \?\),\(\?, \?\)/)
+})
+
+test('公共角色服务再次拒绝未授权分配，controller 返回 403 而非服务器错误', async () => {
+  const { requirePermission } = require('../src/middleware/unified-auth')
+  const service = new Service({
+    permissionCheck: async (user, permission) => {
+      let allowed = false
+      await requirePermission(permission)({ user }, { status() { return this }, json() { return this } }, () => { allowed = true })
+      return allowed
+    },
+    databaseProvider: () => { assert.fail('未授权不得开启角色事务') }
+  })
+  const res = { status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } }
+  await new Controller({ service }).assign({ params: { id: 8 }, body: { role_ids: [1] }, user: { id: 7, permissions: [] } }, res)
+  assert.equal(res.statusCode, 403)
 })

@@ -83,8 +83,6 @@
                   v-if="!isMobile && canEdit"
                   plain
                   type="primary"
-                  size="small"
-                  class="btn-sm"
                   @click="editSection(section)"
                 >
                   <i class="fas fa-edit mr-1" />编辑
@@ -93,8 +91,6 @@
                   v-if="canDelete"
                   plain
                   type="danger"
-                  size="small"
-                  class="btn-sm"
                   @click="deleteSection(section)"
                 >
                   <i class="fas fa-trash mr-1" />删除
@@ -118,8 +114,6 @@
                   v-if="!isMobile && canEdit"
                   plain
                   type="primary"
-                  size="small"
-                  class="btn-sm"
                   @click="manageProducts(section)"
                 >
                   <i class="fas fa-cog mr-1" />管理
@@ -492,7 +486,6 @@
               <span>可选商品 ({{ availableProducts.length }})</span>
               <el-button
                 text
-                size="small"
                 :disabled="!canEdit"
                 @click="loadAvailableProducts"
               >
@@ -557,8 +550,6 @@
                 v-if="canDelete"
                 plain
                 type="danger"
-                size="small"
-                class="btn-sm"
                 @click="clearAllProducts"
               >
                 <i class="fas fa-trash mr-1" />清空
@@ -679,6 +670,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -1460,6 +1452,10 @@ const productFields = (row: SearchProduct | HomeSectionProduct | null): RecordDe
 const availableDetailFields = computed(() => productFields(availableDetailRow.value))
 const productDetailFields = computed(() => productFields(productDetailRow.value))
 
+
+usePageShortcuts('/H5-admin/page/home-sections', {
+  'shop-section-create': { open: openCreateDialog }
+})
 </script>
 
 <style scoped lang="scss" src="./styles/home-sections/sections.scss"></style>

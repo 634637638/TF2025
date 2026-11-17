@@ -10,6 +10,7 @@
     <span
       v-if="text"
       class="inline-loading__text"
+      :title="text"
     >{{ text }}</span>
   </span>
 </template>
@@ -33,6 +34,8 @@ withDefaults(defineProps<Props>(), {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
+  max-width: 100%;
   gap: 8px;
   color: var(--tf-loading-color, var(--tf-color-blue-600));
   font-weight: 600;
@@ -42,6 +45,11 @@ withDefaults(defineProps<Props>(), {
 
 .inline-loading--inherit {
   color: currentColor;
+}
+
+.inline-loading__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .inline-loading__spinner {
@@ -86,6 +94,14 @@ withDefaults(defineProps<Props>(), {
   width: 24px;
   height: 24px;
   border-width: 3px;
+}
+
+@media (max-width: 767px) {
+  .inline-loading__text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 
 @keyframes tf-loading-spin {

@@ -3,19 +3,26 @@
     v-if="canViewAccessoryField('distribution')"
     class="detail-section"
   >
-    <h3>库存划拨记录</h3>
+    <div class="flex items-center justify-between gap-2 mb-3">
+      <h3 class="m-0">
+        库存划拨记录
+      </h3>
+      <div class="tf-dialog-toolbar">
+        <el-button
+          class="tf-button--refresh"
+          :disabled="loading"
+          @click="load"
+        >
+          刷新
+        </el-button>
+      </div>
+    </div>
     <el-alert
       v-if="failed"
       type="error"
       title="划拨记录读取失败，请刷新重试"
       :closable="false"
     />
-    <el-button
-      :disabled="loading"
-      @click="load"
-    >
-      刷新划拨记录
-    </el-button>
     <el-table
       v-table-double-tap="detailTapOptions"
       v-tf-loading="{ active: loading, text: '正在读取划拨记录...' }"
@@ -26,7 +33,7 @@
     >
       <el-table-column
         label="单号"
-        :width="$getNumberColumnWidth(rows.map(row => row.id), 72)"
+        :width="$getNumberColumnWidth(rows.map(row => row.id))"
         align="center"
       >
         <template #default="{ row }">
@@ -36,23 +43,27 @@
       <el-table-column
         prop="from_store_name"
         label="来源店"
-        min-width="130"
+        :min-width="getTextColumnMinWidth(['来源店', ...rows.map(row => row.from_store_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         prop="to_store_name"
         label="接收店"
-        min-width="130"
+        :min-width="getTextColumnMinWidth(['接收店', ...rows.map(row => row.to_store_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('total_quantity')"
         prop="quantity"
         label="数量"
-        min-width="80"
+        :min-width="getTextColumnMinWidth(['数量', ...rows.map(row => row.quantity)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('serial_number')"
         label="SN"
-        min-width="180"
+        :min-width="getIdentifierColumnMinWidth(['SN', ...rows.map(row => row.serial_numbers?.join('、') || '-')], { minWidth: 0 })"
+        class-name="identifier-column"
       >
         <template #default="{ row }">
           {{ row.serial_numbers?.join('、') || '-' }}
@@ -62,12 +73,14 @@
         v-if="canViewAccessoryField('operator_name')"
         prop="operator_name"
         label="操作员"
-        min-width="100"
+        :min-width="getTextColumnMinWidth(['操作员', ...rows.map(row => row.operator_name)], { minWidth: 0 })"
+        class-name="complete-text-column"
       />
       <el-table-column
         v-if="canViewAccessoryField('created_at')"
         label="时间"
-        min-width="160"
+        :min-width="getTextColumnMinWidth(['时间', ...rows.map(row => formatDateTime(row.created_at, TIME_FORMATS.DATETIME_MINUTE))], { minWidth: 0 })"
+        class-name="complete-text-column"
       >
         <template #default="{ row }">
           {{ formatDateTime(row.created_at, TIME_FORMATS.DATETIME_MINUTE) }}
@@ -77,7 +90,8 @@
         v-if="canViewAccessoryField('remarks')"
         prop="remarks"
         label="备注"
-        min-width="140"
+        :min-width="getTextColumnMinWidth(['备注', ...rows.map(row => row.remarks)], { minWidth: 0, maxWidth: 240 })"
+        class-name="complete-text-column wrapped-text-column"
       />
       <template #empty>
         <DataEmptyState
@@ -111,6 +125,7 @@ import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
 import { unifiedApi } from '@/utils/unified-api'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { formatDateTime } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import { canViewAccessoryField } from './accessory-field-permissions'

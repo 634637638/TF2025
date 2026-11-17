@@ -19,12 +19,12 @@ class RoleFieldPermissionsController {
     }
 
     try {
-      const data = await this.service.getByRole(roleId, req.query.module_key)
+      const data = await this.service.getByRole(roleId, req.query.module_key, req.query.field_scope)
       if (!data) return res.status(404).json({ success: false, message: '角色不存在' })
       return res.json({ success: true, message: '获取角色字段权限成功', data })
     } catch (error) {
       this.logger.error('获取角色字段权限失败:', error)
-      return res.status(500).json({
+      return res.status(error.statusCode || 500).json({
         success: false,
         message: '获取角色字段权限失败: ' + error.message,
         data: { role_id: roleId, field_permissions: {} }
@@ -35,13 +35,13 @@ class RoleFieldPermissionsController {
   async save(req, res) {
     const roleId = req.params.role_id
     const moduleKey = req.body?.module_key
-    const fieldConfig = normalizeFieldConfig(req.body?.field_config)
+    const fieldConfig = normalizeFieldConfig(req.body?.field_config, { strict: true })
     this.logger.debug('💾 保存角色字段权限配置:', { roleId, moduleKey, fieldConfig })
     if (!roleId || !moduleKey) return res.status(400).json({ success: false, message: '角色ID和模块Key不能为空' })
     if (!fieldConfig || typeof fieldConfig !== 'object') return res.status(400).json({ success: false, message: '字段配置格式错误' })
 
     try {
-      const data = await this.service.saveForRole(roleId, moduleKey, fieldConfig)
+      const data = await this.service.saveForRole(roleId, moduleKey, fieldConfig, null, req.body?.field_scope)
       this.clearPermissionCache()
       return res.json({ success: true, message: '字段权限配置保存成功', data })
     } catch (error) {
@@ -53,17 +53,17 @@ class RoleFieldPermissionsController {
   async update(req, res) {
     const roleId = req.params.role_id
     const moduleKey = req.body?.module_key
-    const fieldConfig = normalizeFieldConfig(req.body?.field_config)
+    const fieldConfig = normalizeFieldConfig(req.body?.field_config, { strict: true })
     if (!roleId || !moduleKey) return res.status(400).json({ success: false, message: '角色ID和模块Key不能为空' })
     if (!fieldConfig || typeof fieldConfig !== 'object') return res.status(400).json({ success: false, message: '字段配置格式错误' })
 
     try {
-      const data = await this.service.saveForRole(roleId, moduleKey, fieldConfig, req)
+      const data = await this.service.saveForRole(roleId, moduleKey, fieldConfig, req, req.body?.field_scope)
       return res.json({ success: true, message: '字段权限配置更新成功', data })
     } catch (error) {
       this.logger.error('更新角色字段权限失败:', error)
       if (error.statusCode === 404) return res.status(404).json({ success: false, message: '角色不存在' })
-      if (error.statusCode === 400) return res.status(400).json({ success: false, message: '模块不存在或已停用' })
+      if (error.statusCode === 400) return res.status(400).json({ success: false, message: error.message })
       return res.status(500).json({ success: false, message: '更新角色字段权限失败: ' + error.message })
     }
   }

@@ -3,6 +3,7 @@ const BaseRepository = require('./base.repository')
 const { batchKey } = require('../utils/accessory-batches')
 const { appendStoreScopeCondition } = require('../utils/store-scope')
 const { purchaseSnapshotText } = require('../utils/accessory-purchase-snapshot')
+const { inspect: inspectAdjustmentSchema } = require('../utils/accessory-inventory-adjustment-schema')
 
 class AccessoryInventoryRepository extends BaseRepository {
   constructor() { super('accessory_inventory_events') }
@@ -50,16 +51,20 @@ class AccessoryInventoryRepository extends BaseRepository {
     const { groups, params, stocks, stockParams } = this.batchQueries(input.accessoryId, input.scope, input.exact)
     const tracked = `SELECT CONCAT('event:', g.event_id) AS row_key, g.accessory_id, g.store_id, g.stock_in_id,
       g.purchase_cost, g.usage_type, g.serial_tracking, g.quantity,
-      IF(g.stock_in_id IS NULL, 'legacy', 'purchase') AS source_status FROM (${groups}) g WHERE g.quantity > 0`
+      IF(g.stock_in_id IS NULL, 'legacy', 'purchase') AS source_status FROM (${groups}) g WHERE (g.quantity > 0${input.includeZero ? ` OR
+        (g.quantity = 0 AND g.serial_tracking = 0 AND EXISTS (SELECT 1 FROM accessory_stock_in origin
+          WHERE origin.id = g.stock_in_id AND origin.accessory_id = g.accessory_id AND origin.status = 'completed'))` : ''})`
     const balances = input.stockInId ? `${tracked} AND g.stock_in_id = ?` : `${tracked}
       UNION ALL SELECT CONCAT('stock:', st.accessory_id, ':', st.store_id), st.accessory_id, st.store_id, NULL, NULL, 'unclassified', NULL,
       st.quantity, 'untracked' FROM (${stocks}) st WHERE st.quantity > 0 AND NOT EXISTS
         (SELECT 1 FROM accessory_inventory_events e WHERE e.accessory_id = st.accessory_id AND e.store_id = st.store_id)`
     const values = input.stockInId ? [...params, input.stockInId] : [...params, ...stockParams]
     const [[count]] = await executor.query(`SELECT COUNT(*) AS total, COALESCE(SUM(b.quantity), 0) AS total_quantity FROM (${balances}) b`, values)
-    const [data] = await executor.query(`SELECT b.*, s.name AS store_name, brand.name AS brand_name, a.product_model,
+    const [data] = await executor.query(`SELECT b.*, s.name AS store_name, brand.name AS brand_name,
+      ${purchaseSnapshotText('product_model', 'IF(a.template_id IS NULL, a.product_model, t.product_model)')} AS product_model,
       si.batch_no, ${purchaseSnapshotText('supplier_name', 'supplier.name')} AS supplier_name, si.inventory_time, si.operator_name AS inventory_operator_name
       FROM (${balances}) b LEFT JOIN accessories a ON a.id = b.accessory_id
+      LEFT JOIN accessories t ON t.id = a.template_id
       LEFT JOIN brands brand ON brand.id = a.brand_id LEFT JOIN stores s ON s.id = b.store_id
       LEFT JOIN accessory_stock_in si ON si.id = b.stock_in_id AND si.accessory_id = b.accessory_id
       LEFT JOIN suppliers supplier ON supplier.id = si.supplier_id
@@ -178,6 +183,57 @@ class AccessoryInventoryRepository extends BaseRepository {
     [data.accessory_id, data.store_id, data.stock_in_id ?? null, data.purchase_cost ?? null, data.usage_type,
       data.serial_tracking, data.event_type, data.quantity_delta, data.transfer_id ?? null, data.sale_id ?? null,
       data.operator_id, data.operator_name || null, data.remarks || null, data.time])
+    return result.insertId
+  }
+
+  async adjustmentBatch(eventId, accessoryId, scope, executor, lock = false) {
+    const [seeds] = await executor.query(`SELECT seed.id, seed.accessory_id, seed.store_id, seed.stock_in_id,
+      seed.purchase_cost, seed.usage_type, seed.serial_tracking FROM accessory_inventory_events seed
+      WHERE seed.id = ? AND seed.accessory_id = ?${lock ? ' FOR UPDATE' : ''}`, [eventId, accessoryId])
+    const seed = seeds[0]
+    if (!seed) return null
+    const conditions = ['e.accessory_id = ?', 'e.store_id = ?', 'e.stock_in_id <=> ?',
+      'e.purchase_cost <=> ?', 'e.usage_type = ?', 'e.serial_tracking = ?']
+    const params = [accessoryId, seed.store_id, seed.stock_in_id, seed.purchase_cost, seed.usage_type, seed.serial_tracking]
+    appendStoreScopeCondition(scope, 'e.store_id', conditions, params)
+    const [rows] = await executor.query(`SELECT e.quantity_delta, si.batch_no, si.status AS purchase_status,
+      si.supplier_id, si.quantity AS purchase_quantity FROM accessory_inventory_events e
+      JOIN accessory_stock_in si ON si.id = e.stock_in_id AND si.accessory_id = e.accessory_id
+      WHERE ${conditions.join(' AND ')} ORDER BY e.id${lock ? ' FOR UPDATE' : ''}`, params)
+    if (!rows.length) return null
+    return { ...seed, ...rows[0], quantity: rows.reduce((sum, row) => sum + Number(row.quantity_delta), 0) }
+  }
+
+  async adjustmentByKey(key, executor, lock = false) {
+    const [rows] = await executor.query(`SELECT id, accessory_id, store_id, stock_in_id,
+      previous_quantity, counted_quantity, quantity_delta, operator_id, request_hash, created_at
+      FROM accessory_inventory_adjustments WHERE request_key = ?
+      ORDER BY id DESC LIMIT 1${lock ? ' FOR UPDATE' : ''}`, [key])
+    return rows[0] || null
+  }
+
+  async adjustmentSchemaReady(executor) {
+    try { return (await inspectAdjustmentSchema(executor)).exists }
+    catch (error) {
+      if (error.code === 'INVENTORY_ADJUSTMENT_SCHEMA_CONFLICT') return false
+      throw error
+    }
+  }
+
+  async adjustQuantity(accessoryId, storeId, delta, time, executor) {
+    const [result] = await executor.query(`UPDATE accessory_stock SET quantity = quantity + ?, updated_at = ?
+      WHERE accessory_id = ? AND store_id = ? AND quantity + ? >= 0`, [delta, time, accessoryId, storeId, delta])
+    return result.affectedRows === 1
+  }
+
+  async appendAdjustmentRecord(data, executor) {
+    const [result] = await executor.query(`INSERT INTO accessory_inventory_adjustments
+      (request_key, request_hash, accessory_id, store_id, stock_in_id, previous_quantity, counted_quantity,
+       quantity_delta, inventory_event_id, operator_id, operator_name, remarks, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [data.request_key, data.request_hash, data.accessory_id, data.store_id, data.stock_in_id,
+      data.previous_quantity, data.counted_quantity, data.quantity_delta, data.inventory_event_id,
+      data.operator_id, data.operator_name, data.remarks, data.time])
     return result.insertId
   }
 

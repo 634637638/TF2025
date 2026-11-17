@@ -4,6 +4,16 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const masking = require('../src/services/data-masking.service')
+test.beforeEach(t => t.mock.method(masking, 'getUserFieldPermissions', async () => ({ hiddenFields: [], readonlyFields: [] })))
+const { requirePermission } = require('../src/middleware/unified-auth')
+const PhoneMutationAccessService = require('../src/services/phone-mutation-access.service')
+const access = new PhoneMutationAccessService({ permissionCheck: async (actor, permission) => {
+  let allowed = false
+  await requirePermission(permission)({ user: actor }, createResponse(), () => { allowed = true })
+  return allowed
+} })
+const actor = { id: 7, store_ids: [2, 6, 9, 99], permissions: ['inventory:edit', 'inventory:delete'] }
 const InventoryController = require('../src/controllers/inventory.controller')
 
 const createResponse = () => ({
@@ -34,7 +44,7 @@ test('库存列表、统计路由保留统一认证和 inventory:view 权限并�
 test('快速出库成功时沿用单号、收款、积分和同一事务提交', async () => {
   const events = []
   const calls = []
-  const controller = new InventoryController({
+  const controller = new InventoryController({ access,
     database: () => ({
       async getConnection() {
         return {
@@ -44,7 +54,7 @@ test('快速出库成功时沿用单号、收款、积分和同一事务提交',
             if (sql.includes('FROM models')) return [[{ id: 2 }]]
             if (sql.includes('FROM colors')) return [[{ id: 3 }]]
             if (sql.includes('FROM memories')) return [[{ id: 4 }]]
-            if (sql.includes('SELECT id FROM customers')) return [[{ id: 25 }]]
+            if (sql.includes('SELECT id, name, apple_id FROM customers')) return [[{ id: 25, name: 'Customer', apple_id: 'apple@example.com' }]]
             if (sql.includes('UPDATE customers SET')) return [{ affectedRows: 1 }]
             if (sql.includes('WHERE p.imei = ?')) return [[]]
             if (sql === 'SELECT id FROM phones WHERE imei = ?') return [[]]
@@ -81,7 +91,7 @@ test('快速出库成功时沿用单号、收款、积分和同一事务提交',
   const response = createResponse()
 
   await controller.quickSale({
-    user: { id: 7 },
+    user: actor,
     body: {
       brand_id: 1, model_id: 2, color_id: 3, memory_id: 4,
       is_new: 1, imei: 'imei-input', serial_number: 'SERIAL-81',
@@ -106,7 +116,7 @@ test('快速出库成功时沿用单号、收款、积分和同一事务提交',
 test('快速出库输入拒绝和数据库失败都会回滚并释放连接', async () => {
   const run = async ({ body, failure }) => {
     const events = []
-    const controller = new InventoryController({
+    const controller = new InventoryController({ access,
       database: () => ({
         async getConnection() {
           return {
@@ -126,7 +136,7 @@ test('快速出库输入拒绝和数据库失败都会回滚并释放连接', as
       prepareInvoiceNumberTransaction: async () => events.push('prepare')
     })
     const response = createResponse()
-    await controller.quickSale({ user: { id: 7 }, body }, response)
+    await controller.quickSale({ user: actor, body }, response)
     return { response, events }
   }
 
@@ -159,7 +169,7 @@ test('库存根路径仍保留 301 列表重定向', () => {
 test('库存列表保留筛选、分页响应字段及连接释放', async () => {
   const calls = []
   const events = []
-  const controller = new InventoryController({
+  const controller = new InventoryController({ access,
     connected: () => true,
     database: () => ({
       async getConnection() {
@@ -189,13 +199,13 @@ test('库存列表保留筛选、分页响应字段及连接释放', async () =>
   })
   const response = createResponse()
 
-  await controller.list({ query: {
+  await controller.list({ user: actor, query: {
     page: '2', page_size: '10', store_id: '2', supplier_id: '3',
     status: 'available', date: '2026-11-01'
   } }, response)
 
   assert.equal(calls.length, 2)
-  assert.deepEqual(calls[0].params, ['sold', 'peer_transfer', 'supplier_proxy', 2, 3, 'in_stock', '2026-11-01'])
+  assert.deepEqual(calls[0].params, ['sold', 'peer_transfer', 'supplier_proxy', 2, 2, 3, 'in_stock', '2026-11-01'])
   assert.match(calls[0].sql, /DATE\(p\.inventory_time\) = \?/)
   assert.match(calls[0].sql, /LIMIT 10 OFFSET 10/)
   assert.deepEqual(response.body.data.pagination, {
@@ -210,7 +220,7 @@ test('库存列表保留筛选、分页响应字段及连接释放', async () =>
 test('库存详情验证 ID、格式化预订状态并在所有查询路径释放连接', async () => {
   const events = []
   let rowCount = 1
-  const controller = new InventoryController({
+  const controller = new InventoryController({ access,
     database: () => ({
       async getConnection() {
         return {
@@ -236,11 +246,11 @@ test('库存详情验证 ID、格式化预订状态并在所有查询路径释�
   })
 
   const invalid = createResponse()
-  await controller.detail({ params: { id: 'abc' } }, invalid)
+  await controller.detail({ user: actor, params: { id: 'abc' } }, invalid)
   assert.equal(invalid.statusCode, 400)
 
   const success = createResponse()
-  await controller.detail({ params: { id: '12' } }, success)
+  await controller.detail({ user: actor, params: { id: '12' } }, success)
   assert.equal(success.body.data.status, 'reserved')
   assert.equal(success.body.data.condition, 'new')
   assert.equal(success.body.data.remarks, '备注')
@@ -249,7 +259,7 @@ test('库存详情验证 ID、格式化预订状态并在所有查询路径释�
 
   rowCount = 0
   const missing = createResponse()
-  await controller.detail({ params: { id: '12' } }, missing)
+  await controller.detail({ user: actor, params: { id: '12' } }, missing)
   assert.equal(missing.statusCode, 404)
   assert.deepEqual(events, ['release', 'release'])
 })
@@ -258,7 +268,7 @@ test('库存删除拒绝无效、已交易、预订和有关联记录的设备�
   const runDelete = async ({ item, related = [0, 0, 0] }) => {
     const events = []
     let relationIndex = 0
-    const controller = new InventoryController({
+    const controller = new InventoryController({ access,
       database: () => ({
         async getConnection() {
           return {
@@ -283,22 +293,22 @@ test('库存删除拒绝无效、已交易、预订和有关联记录的设备�
       logger: { debug() {}, error() {} }
     })
     const response = createResponse()
-    await controller.remove({ params: { id: '15' } }, response)
+    await controller.remove({ user: actor, params: { id: '15' } }, response)
     return { events, response }
   }
 
-  const reserved = await runDelete({ item: { id: 15, status: 'in_stock', is_preordered: 1, imei: 'imei' } })
+  const reserved = await runDelete({ item: { id: 15, status: 'in_stock', store_id: 9, is_preordered: 1, imei: 'imei' } })
   assert.equal(reserved.response.statusCode, 400)
   assert.match(reserved.response.body.message, /预订设备不能直接删除/)
   assert.deepEqual(reserved.events, ['begin', 'rollback', 'release'])
 
-  const completed = await runDelete({ item: { id: 15, status: 'sold', is_preordered: 0, imei: 'imei' } })
-  assert.equal(completed.response.statusCode, 400)
-  assert.match(completed.response.body.message, /已完成交易/)
+  const completed = await runDelete({ item: { id: 15, status: 'sold', store_id: 9, is_preordered: 0, imei: 'imei' } })
+  assert.equal(completed.response.statusCode, 403)
+  assert.match(completed.response.body.message, /无权操作该状态/)
   assert.deepEqual(completed.events, ['begin', 'rollback', 'release'])
 
   const linked = await runDelete({
-    item: { id: 15, status: 'in_stock', is_preordered: 0, imei: 'imei' },
+    item: { id: 15, status: 'in_stock', store_id: 9, is_preordered: 0, imei: 'imei' },
     related: [0, 0, 2]
   })
   assert.equal(linked.response.statusCode, 400)
@@ -309,7 +319,7 @@ test('库存删除拒绝无效、已交易、预订和有关联记录的设备�
 test('库存删除成功提交并返回删除摘要，缺少记录时回滚', async () => {
   const events = []
   let found = true
-  const controller = new InventoryController({
+  const controller = new InventoryController({ access,
     database: () => ({
       async getConnection() {
         return {
@@ -319,7 +329,7 @@ test('库存删除成功提交并返回删除摘要，缺少记录时回滚', as
               events.push('delete')
               return [{ affectedRows: 1 }]
             }
-            if (sql.includes('FROM phones WHERE id')) return [[...(found ? [{ id: 15, status: 'in_stock', is_preordered: 0, imei: 'imei-value' }] : [])]]
+            if (sql.includes('FROM phones WHERE id')) return [[...(found ? [{ id: 15, status: 'in_stock', store_id: 9, is_preordered: 0, imei: 'imei-value' }] : [])]]
             if (sql.includes('FROM rentals') || sql.includes('FROM sales') || sql.includes('FROM repairs')) return [[{ count: 0 }]]
             throw new Error(`未预期的 SQL: ${sql}`)
           },
@@ -332,7 +342,7 @@ test('库存删除成功提交并返回删除摘要，缺少记录时回滚', as
     logger: { debug() {}, error() {} }
   })
   const success = createResponse()
-  await controller.remove({ params: { id: '15' } }, success)
+  await controller.remove({ user: actor, params: { id: '15' } }, success)
   assert.equal(success.body.message, '商品删除成功')
   assert.deepEqual(success.body.data, { id: 15, deleted: true, item: { id: 15, imei: 'imei-value' } })
   assert.deepEqual(events, ['begin', 'delete', 'commit', 'release'])
@@ -340,7 +350,7 @@ test('库存删除成功提交并返回删除摘要，缺少记录时回滚', as
   events.length = 0
   found = false
   const missing = createResponse()
-  await controller.remove({ params: { id: '15' } }, missing)
+  await controller.remove({ user: actor, params: { id: '15' } }, missing)
   assert.equal(missing.statusCode, 404)
   assert.deepEqual(events, ['begin', 'rollback', 'release'])
 })
@@ -348,14 +358,14 @@ test('库存删除成功提交并返回删除摘要，缺少记录时回滚', as
 test('库存更新保留统一权限、旧入库时间兼容、字段映射和事务提交', async () => {
   const events = []
   const calls = []
-  const controller = new InventoryController({
+  const controller = new InventoryController({ access,
     database: () => ({
       async getConnection() {
         return {
           async beginTransaction() { events.push('begin') },
           async execute(sql, params) {
             calls.push({ sql, params })
-            if (sql.includes('SELECT id, imei, status, is_preordered')) return [[{ id: 15, imei: 'old-imei' }]]
+            if (sql.includes('FOR UPDATE')) return [[{ id: 15, imei: 'old-imei', store_id: 9, status: 'in_stock' }]]
             if (sql.includes('SELECT id FROM phones WHERE imei')) return [[]]
             if (sql.includes('FROM suppliers')) return [[{ id: 3 }]]
             if (sql.includes('FROM stores')) return [[]]
@@ -380,7 +390,7 @@ test('库存更新保留统一权限、旧入库时间兼容、字段映射和�
   const response = createResponse()
 
   await controller.update({
-    params: { id: '15' },
+    user: actor, params: { id: '15' },
     body: {
       imei: 'new-imei', serial_number: 'SERIAL-15', price: 100,
       supplier_id: 3, store_id: 99, Inventorytime: '2026-11-07', is_new: 1
@@ -388,9 +398,9 @@ test('库存更新保留统一权限、旧入库时间兼容、字段映射和�
   }, response)
 
   const updateCall = calls.find(call => call.sql.startsWith('UPDATE phones SET'))
-  assert.match(updateCall.sql, /purchase_cost = \?, sale_price = \?, supplier_id = \?, inventory_time = \?, quality_grade = \?, is_new = \?/)
+  assert.match(updateCall.sql, /purchase_cost = \?, supplier_id = \?, inventory_time = \?, quality_grade = \?, is_new = \?/)
   assert.doesNotMatch(updateCall.sql, /store_id|brand_id|model_id|color_id|memory_id|status =/)
-  assert.deepEqual(updateCall.params, ['new-imei', 'SERIAL-15', 100, 120, 3, '2026-11-07', 'A', 1, '15'])
+  assert.deepEqual(updateCall.params, ['new-imei', 'SERIAL-15', 100, 3, '2026-11-07', 'A', 1, '15'])
   assert.deepEqual(response.body.data, {
     id: 15, imei: 'new-imei', serial_number: 'SERIAL-15', purchase_cost: 100,
     quality_grade: 'A', inventory_time: '2026-11-07', sale_time: null
@@ -399,15 +409,15 @@ test('库存更新保留统一权限、旧入库时间兼容、字段映射和�
 })
 
 test('库存更新对无效 ID、重复 IMEI 和缺少设备分别响应并回滚', async () => {
-  const createController = ({ existing = [{ id: 15, imei: 'old-imei' }], conflict = false } = {}) => {
+  const createController = ({ existing = [{ id: 15, imei: 'old-imei', store_id: 9, status: 'in_stock' }], conflict = false } = {}) => {
     const events = []
-    const controller = new InventoryController({
+    const controller = new InventoryController({ access,
       database: () => ({
         async getConnection() {
           return {
             async beginTransaction() { events.push('begin') },
             async execute(sql) {
-              if (sql.includes('SELECT id, imei, status, is_preordered')) return [existing]
+              if (sql.includes('FOR UPDATE')) return [existing]
               if (sql.includes('SELECT id FROM phones WHERE imei')) return [conflict ? [{ id: 99 }] : []]
               throw new Error(`未预期的 SQL: ${sql}`)
             },
@@ -424,27 +434,27 @@ test('库存更新对无效 ID、重复 IMEI 和缺少设备分别响应并回�
 
   const invalidSetup = createController()
   const invalid = createResponse()
-  await invalidSetup.controller.update({ params: { id: 'x' }, body: {} }, invalid)
+  await invalidSetup.controller.update({ user: actor, params: { id: 'x' }, body: {} }, invalid)
   assert.equal(invalid.statusCode, 400)
   assert.deepEqual(invalidSetup.events, [])
 
   const conflictSetup = createController({ conflict: true })
   const conflict = createResponse()
-  await conflictSetup.controller.update({ params: { id: '15' }, body: { imei: 'duplicate' } }, conflict)
+  await conflictSetup.controller.update({ user: actor, params: { id: '15' }, body: { imei: 'duplicate' } }, conflict)
   assert.equal(conflict.statusCode, 400)
   assert.match(conflict.body.message, /IMEI号已被其他商品使用/)
   assert.deepEqual(conflictSetup.events, ['begin', 'rollback', 'release'])
 
   const missingSetup = createController({ existing: [] })
   const missing = createResponse()
-  await missingSetup.controller.update({ params: { id: '15' }, body: {} }, missing)
+  await missingSetup.controller.update({ user: actor, params: { id: '15' }, body: {} }, missing)
   assert.equal(missing.statusCode, 404)
   assert.deepEqual(missingSetup.events, ['begin', 'rollback', 'release'])
 })
 
 test('库存汇总统计和基础统计复用规范状态及筛选参数', async () => {
   const calls = []
-  const controller = new InventoryController({
+  const controller = new InventoryController({ access,
     connected: () => true,
     database: () => ({
       async execute(sql, params) {
@@ -452,7 +462,7 @@ test('库存汇总统计和基础统计复用规范状态及筛选参数', async
         if (sql.includes('AS total_value')) return [[{ total: '3', new_count: '2', used_count: '1', total_value: '450' }]]
         if (sql.includes('AS store_name')) return [[{ store_name: 'Store A', count: 3 }]]
         if (sql.includes('AS brand_name')) return [[{ brand_name: 'Brand A', count: 3 }]]
-        if (sql.includes('AS inStock')) return [[{ inStock: 2 }]]
+        if (sql.includes('AS inStock')) return [[{ total: 3, inStock: 2, sold: 1, totalValue: '450' }]]
         if (sql.includes('AS sold')) return [[{ sold: 1 }]]
         if (sql.includes('AS totalValue')) return [[{ totalValue: '450' }]]
         return [[{ total: 3 }]]
@@ -461,17 +471,17 @@ test('库存汇总统计和基础统计复用规范状态及筛选参数', async
     logger: { error() {} }
   })
   const overview = createResponse()
-  await controller.overview({ query: { store_id: '9', search: '128gb' } }, overview)
+  await controller.overview({ user: actor, query: { store_id: '9', search: '128gb' } }, overview)
   assert.equal(calls.length, 3)
-  assert.deepEqual(calls[0].params, ['sold', 'peer_transfer', 'supplier_proxy', 9, '%128GB%'])
+  assert.deepEqual(calls[0].params, ['sold', 'peer_transfer', 'supplier_proxy', 9, 9, '%128GB%'])
   assert.equal(overview.body.data.by_store['Store A'], 3)
   assert.equal(overview.body.data.by_brand['Brand A'], 3)
 
   calls.length = 0
   const stats = createResponse()
-  await controller.stats({ query: {} }, stats)
-  assert.equal(calls.length, 4)
-  assert.ok(calls.every(call => call.params.length === 3))
+  await controller.stats({ user: actor, query: {} }, stats)
+  assert.equal(calls.length, 1)
+  assert.ok(calls.every(call => call.params.length === 7))
   assert.match(calls[0].sql, /COALESCE\(status, ''\) NOT IN/)
   assert.deepEqual(stats.body.data, { total: 3, inStock: 2, sold: 1, totalValue: 450 })
 })

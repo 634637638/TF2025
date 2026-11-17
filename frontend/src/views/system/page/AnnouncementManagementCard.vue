@@ -19,7 +19,6 @@
         <el-button
           v-if="canEdit"
           type="primary"
-          size="small"
           @click="openCreateDialog"
         >
           <i class="fas fa-plus" />

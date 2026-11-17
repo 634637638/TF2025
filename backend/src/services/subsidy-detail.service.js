@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const log = require('../utils/log')
 const dataMaskingService = require('./data-masking.service')
 const SubsidyDetailRepository = require('../repositories/subsidy-detail.repository')
@@ -18,9 +20,10 @@ class SubsidyDetailService {
     this.logger = logger
   }
 
-  async getById(id, userId) {
+  async getById(id, userId, actor) {
     const subsidy = await this.repository.findById(id)
     if (!subsidy) return null
+    assertStoreInScope(resolveStoreScope(actor), subsidy.store_id)
 
     subsidy.sale_price = parseFloat(subsidy.sale_price)
     subsidy.subsidy_amount = parseFloat(subsidy.subsidy_amount)

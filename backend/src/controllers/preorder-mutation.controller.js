@@ -47,6 +47,7 @@ class PreorderMutationController {
           : '预定单创建成功'
       )
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return ApiResponse.error(res, error.message, error.statusCode)
       log.error('创建预定单失败:', error)
       return ApiResponse.serverError(res, '创建预定单失败', error)
     }
@@ -54,7 +55,7 @@ class PreorderMutationController {
 
   async update(req, res) {
     try {
-      const result = await this.service.update(req.params.id, req.body)
+      const result = await this.service.update(req.params.id, req.body, req.user)
       if (result.error === 'not_found') return ApiResponse.notFound(res, '预定单不存在')
       if (result.error === 'customer_not_found') return ApiResponse.notFound(res, '客户不存在')
 
@@ -82,6 +83,7 @@ class PreorderMutationController {
         result.staleMatchNeedsClearing ? '原匹配已解除，请按当前商品规格重新匹配库存' : '预定单更新成功'
       )
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return ApiResponse.error(res, error.message, error.statusCode)
       log.error('更新预定单失败:', error)
       return ApiResponse.serverError(res, '更新预定单失败', error)
     }
@@ -89,7 +91,7 @@ class PreorderMutationController {
 
   async remove(req, res) {
     try {
-      const result = await this.service.remove(req.params.id)
+      const result = await this.service.remove(req.params.id, req.user)
       if (result.error === 'not_found') return ApiResponse.notFound(res, '预定单不存在')
       if (result.error === 'invalid_status') {
         return ApiResponse.badRequest(res, '只能删除已取消或已交付的预定单')
@@ -97,6 +99,7 @@ class PreorderMutationController {
 
       return ApiResponse.success(res, result.data, '预定单删除成功')
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return ApiResponse.error(res, error.message, error.statusCode)
       log.error('删除预定单失败:', error)
       return ApiResponse.serverError(res, '删除预定单失败', error)
     }
@@ -104,7 +107,7 @@ class PreorderMutationController {
 
   async cancel(req, res) {
     try {
-      const result = await this.service.cancel(req.params.id, req.body?.reason)
+      const result = await this.service.cancel(req.params.id, req.body?.reason, req.user)
       if (result.error === 'not_found') return ApiResponse.notFound(res, '预定单不存在')
       if (result.error === 'already_cancelled') return ApiResponse.badRequest(res, '预定单已被取消')
       if (result.error === 'delivered') return ApiResponse.badRequest(res, '已交付的预定单不能取消')
@@ -114,6 +117,7 @@ class PreorderMutationController {
 
       return ApiResponse.success(res, result.data, '预定单取消成功')
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return ApiResponse.error(res, error.message, error.statusCode)
       log.error('取消预定单失败:', error)
       return ApiResponse.serverError(res, '取消预定单失败', error)
     }
@@ -125,7 +129,7 @@ class PreorderMutationController {
 
   async restore(req, res) {
     try {
-      const result = await this.service.restore(req.params.id)
+      const result = await this.service.restore(req.params.id, req.user)
       if (result.error === 'not_found') return ApiResponse.notFound(res, '预定单不存在')
       if (result.error === 'invalid_status') return ApiResponse.badRequest(res, '只能恢复已取消状态的预定单')
       if (result.error === 'phone_in_use') return ApiResponse.badRequest(res, '库存设备刚刚被占用，请重新恢复')
@@ -139,6 +143,7 @@ class PreorderMutationController {
           : '预定单已恢复，当前无可用库存，后续入库后将自动匹配'
       )
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return ApiResponse.error(res, error.message, error.statusCode)
       log.error('恢复预定单失败:', error)
       return ApiResponse.serverError(res, '恢复预定单失败', error)
     }
@@ -146,7 +151,7 @@ class PreorderMutationController {
 
   async match(req, res) {
     try {
-      const result = await this.service.match(req.params.id, req.body)
+      const result = await this.service.match(req.params.id, req.body, req.user)
       const errors = {
         phone_required: [400, '请选择要匹配的手机或输入IMEI'],
         invalid_date: [400, '到货日期格式必须为 YYYY-MM-DD'],
@@ -172,6 +177,7 @@ class PreorderMutationController {
       const data = await this.maskItem(result.data, req)
       return ApiResponse.success(res, data, result.message)
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return ApiResponse.error(res, error.message, error.statusCode)
       log.error('匹配预定单失败:', error)
       return ApiResponse.serverError(res, '匹配预定单失败', error)
     }

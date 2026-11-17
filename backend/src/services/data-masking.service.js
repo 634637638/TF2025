@@ -4,13 +4,17 @@
  */
 
 const { getDatabase } = require('../config/database')
-const { normalizeFieldConfig } = require('../utils/field-permission-normalizer')
+const { normalizeStoredFieldConfig, resolveQueryGoodsFieldConfigs } = require('../utils/field-permission-normalizer')
+const UserFieldPermissionsRepository = require('../repositories/user-field-permissions.repository')
+const { getActiveUserRoles } = require('./access-control.service')
 const log = require('../utils/log')
 
 class DataMaskingService {
-  constructor({ database = getDatabase, logger = log } = {}) {
+  constructor({ database = getDatabase, logger = log, fieldRepository = new UserFieldPermissionsRepository(), getActiveRoles = getActiveUserRoles } = {}) {
     this.database = database
     this.logger = logger
+    this.fieldRepository = fieldRepository
+    this.getActiveRoles = getActiveRoles
   }
 
   /**
@@ -19,32 +23,24 @@ class DataMaskingService {
    * @param {string} moduleKey - 模块标识
    * @returns {Object} - 字段权限配置
    */
-  async getUserFieldPermissions(userId, moduleKey, { strict = false } = {}) {
+  async getUserFieldPermissions(userId, moduleKey, { fieldScope } = {}) {
     const pool = this.database()
     try {
-      // 获取用户的所有角色
-      const [userRoles] = await pool.execute(`
-        SELECT DISTINCT ur.role_id
-        FROM user_roles ur
-        JOIN roles r ON ur.role_id = r.id
-        WHERE ur.user_id = ? AND r.is_active = 1
-      `, [userId])
+      const userRoles = await this.getActiveRoles(userId, pool)
 
       if (userRoles.length === 0) {
         return { hiddenFields: [], readonlyFields: [] }
       }
 
       const roleIds = userRoles.map(r => r.role_id)
-      const placeholders = roleIds.map(() => '?').join(',')
-
       // 获取角色的字段权限配置
-      const [fieldPermissions] = await pool.execute(`
-        SELECT role_id, module_key, field_config
-        FROM role_field_permissions
-        WHERE role_id IN (${placeholders})
-        AND module_key = ?
-        ORDER BY module_key
-      `, [...roleIds, moduleKey])
+      const fieldPermissions = fieldScope === 'goods' && moduleKey === 'query_queryview'
+        ? (await Promise.all(['query_queryview', 'accessories_accessoriesview'].map(key =>
+          this.fieldRepository.listRoleFieldPermissions(pool, roleIds, key)))).flat()
+        : await this.fieldRepository.listRoleFieldPermissions(pool, roleIds, moduleKey)
+      const normalizedPermissions = fieldScope === 'goods' && moduleKey === 'query_queryview'
+        ? resolveQueryGoodsFieldConfigs(fieldPermissions).map(row => row.normalized)
+        : fieldPermissions.map(row => normalizeStoredFieldConfig(row, { strict: true }))
 
       // 合并所有角色的权限（取最严格的）
       const mergedConfig = {
@@ -52,16 +48,19 @@ class DataMaskingService {
         readonlyFields: new Set()
       }
 
-      fieldPermissions.forEach(perm => {
+      const editableFields = new Set()
+      let hasEditableScope = false
+      normalizedPermissions.forEach(normalized => {
         try {
-          const rawConfig = typeof perm.field_config === 'object'
-            ? perm.field_config
-            : JSON.parse(strict ? perm.field_config : perm.field_config || '{}')
-          const normalized = normalizeFieldConfig(rawConfig, { strict })
-          if (strict && !normalized) {
+          if (!normalized) {
             throw new Error('字段权限配置无效')
           }
-          const config = normalized || { hidden_fields: [], editable_fields: [] }
+          const config = normalized.config
+          if (normalized.hasEditableScope) {
+            hasEditableScope = true
+          }
+          for (const field of config.editable_fields || []) editableFields.add(field)
+          for (const field of normalized.readonlyFields || []) mergedConfig.readonlyFields.add(field)
 
           if (config.hidden_fields) {
             config.hidden_fields.forEach(field => {
@@ -70,19 +69,19 @@ class DataMaskingService {
           }
 
         } catch {
-          if (strict) throw new Error('字段权限配置无效')
-          this.logger.warn('解析字段权限配置失败:', { moduleKey, roleId: perm.role_id })
+          throw new Error('字段权限配置无效')
         }
       })
 
       return {
         hiddenFields: Array.from(mergedConfig.hiddenFields),
-        readonlyFields: Array.from(mergedConfig.readonlyFields)
+        readonlyFields: Array.from(mergedConfig.readonlyFields),
+        ...(hasEditableScope ? { editableFields: Array.from(editableFields).filter(field =>
+          !mergedConfig.hiddenFields.has(field) && !mergedConfig.readonlyFields.has(field)) } : {})
       }
     } catch (error) {
       this.logger.error('获取用户字段权限失败:', error)
-      if (strict) throw error
-      return { hiddenFields: [], readonlyFields: [] }
+      throw error
     }
   }
 
@@ -103,11 +102,14 @@ class DataMaskingService {
       const filteredItem = { ...item }
 
       const flatFieldAliases = {
-        brand: ['brand', 'phone_brand'],
-        model: ['model', 'phone_model'],
-        color: ['color', 'phone_color'],
-        memory: ['memory', 'phone_memory'],
+        brand: ['brand', 'brand_id', 'brand_name', 'phone_brand'],
+        model: ['model', 'model_id', 'model_name', 'phone_model'],
+        color: ['color', 'color_id', 'color_name', 'phone_color'],
+        memory: ['memory', 'memory_id', 'memory_size', 'phone_memory'],
         created_at: ['created_at', 'repair_time'],
+        store_name: ['store_id', 'store_name'],
+        supplier_name: ['supplier_id', 'supplier_name'],
+        is_new: ['is_new', 'condition', 'phone_condition', 'quality_grade'],
         imei1: ['imei1', 'imei'],
         status: ['status', 'status_text', 'apply_status'],
         brand_name: ['brand_name', 'product_name'],

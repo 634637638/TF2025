@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const ModuleScanner = require('../services/module-scanner.service')
 const MenuModuleLinker = require('../services/menu-module-linker.service')
-const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission, requireAllPermissions } = require('../middleware/unified-auth')
 const { logPermissionOperation } = require('./permission-logs')
 const ModuleManagementService = require('../services/module-management.service')
 const ModuleManagementController = require('../controllers/module-management.controller')
@@ -53,47 +53,47 @@ router.post('/sync-all', requirePermission('permissions:admin'), moduleManagemen
 /**
  * 获取已注册的模块列表
  */
-router.get('/registered', requirePermission('permissions:admin'), moduleManagementController.registered.bind(moduleManagementController))
+router.get('/registered', requirePermission('module-management:view'), moduleManagementController.registered.bind(moduleManagementController))
 
 /**
  * 获取模块详细信息
  */
-router.get('/:module_key', requirePermission('permissions:admin'), moduleManagementController.detail.bind(moduleManagementController))
+router.get('/:module_key', requirePermission('module-management:view'), moduleManagementController.detail.bind(moduleManagementController))
 
 /**
  * 更新模块信息
  */
-router.put('/:module_key', requirePermission('permissions:admin'), moduleManagementController.update.bind(moduleManagementController))
+router.put('/:module_key', requirePermission('module-management:edit'), moduleManagementController.update.bind(moduleManagementController))
 
 /**
  * 启用/禁用模块
  */
-router.patch('/:module_key/toggle', requirePermission('permissions:admin'), moduleManagementController.toggle.bind(moduleManagementController))
+router.patch('/:module_key/toggle', requirePermission('module-management:edit'), moduleManagementController.toggle.bind(moduleManagementController))
 
 /**
  * 删除模块
  */
-router.delete('/:module_key', requirePermission('permissions:admin'), moduleManagementController.delete.bind(moduleManagementController))
+router.delete('/:module_key', requireAllPermissions(['module-management:delete', 'permissions:admin']), moduleManagementController.delete.bind(moduleManagementController))
 
 /**
  * 获取模块统计信息
  */
-router.get('/stats/overview', requirePermission('permissions:admin'), moduleManagementController.overviewStats.bind(moduleManagementController))
+router.get('/stats/overview', requirePermission('module-management:view'), moduleManagementController.overviewStats.bind(moduleManagementController))
 
 /**
  * 修改模块名称
  */
-router.put('/:module_key/name', requirePermission('permissions:admin'), moduleManagementController.rename.bind(moduleManagementController))
+router.put('/:module_key/name', requirePermission('module-management:edit'), moduleManagementController.rename.bind(moduleManagementController))
 
 /**
  * 恢复模块原始名称
  */
-router.put('/:module_key/restore-name', requirePermission('permissions:admin'), moduleManagementController.restoreName.bind(moduleManagementController))
+router.put('/:module_key/restore-name', requirePermission('module-management:edit'), moduleManagementController.restoreName.bind(moduleManagementController))
 
 /**
  * 获取模块名称状态
  */
-router.get('/:module_key/name-status', requirePermission('permissions:admin'), moduleManagementController.nameStatus.bind(moduleManagementController))
+router.get('/:module_key/name-status', requirePermission('module-management:view'), moduleManagementController.nameStatus.bind(moduleManagementController))
 
 /**
  * 获取菜单-模块关联统计信息
@@ -118,12 +118,12 @@ router.post('/menu-link/link', requirePermission('permissions:admin'), menuModul
 /**
  * 切换模块启用/禁用状态
  */
-router.put('/:id/status', requirePermission('permissions:admin'), moduleManagementController.setStatusById.bind(moduleManagementController))
+router.put('/:id/status', requirePermission('module-management:edit'), moduleManagementController.setStatusById.bind(moduleManagementController))
 
 /**
  * 手动创建模块
  */
-router.post('/manual-create', requirePermission('permissions:admin'), moduleManagementController.manualCreate.bind(moduleManagementController))
+router.post('/manual-create', requireAllPermissions(['module-management:create', 'permissions:admin']), moduleManagementController.manualCreate.bind(moduleManagementController))
 
 /**
  * 手动触发菜单关联修复

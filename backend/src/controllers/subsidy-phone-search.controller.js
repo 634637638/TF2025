@@ -36,7 +36,7 @@ class SubsidyPhoneSearchController {
       }
 
       mark('search params prepared', { keywordLength: identifier.trim().length })
-      const deviceList = await this.service.search(identifier, mark)
+      const deviceList = await this.service.search(identifier, mark, req.user)
       if (deviceList.length === 0) {
         return res.status(404).json({ success: false, message: '未找到匹配的设备' })
       }
@@ -48,6 +48,7 @@ class SubsidyPhoneSearchController {
       })
       mark('response sent', { resultCount: deviceList.length })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       mark('request failed', { error: error.message })
       this.logger.error('❌ 搜索设备失败:', error)
       return res.status(500).json({

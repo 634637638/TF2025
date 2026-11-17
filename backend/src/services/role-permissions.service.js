@@ -1,7 +1,9 @@
 'use strict'
 
+const { invalidateAuthProfiles } = require('../middleware/unified-auth')
+
 const { getDatabase } = require('../config/database')
-const { getModulePermissionTypes, normalizePermissionType } = require('../config/module-permission-actions')
+const { getModulePermissionTypes, normalizePermissionType, MODULE_PERMISSION_METADATA } = require('../config/module-permission-actions')
 const { hasColumn } = require('./schema-inspector.service')
 const { mergeManagedModules, normalizeManagedModuleKey } = require('../utils/managed-permission-modules')
 const RolePermissionsRepository = require('../repositories/role-permissions.repository')
@@ -9,16 +11,15 @@ const PermissionChangeAuditService = require('./permission-change-audit.service'
 const { permissionCache } = require('../config/redis')
 const PermissionLogsService = require('./permission-logs.service')
 const { ENSURED_PERMISSION_MODULE_KEYS } = require('../utils/managed-permission-modules')
+const { sortModulesByMenu } = require('../utils/menu-hierarchy')
 
-const FALLBACK_MODULES = [
-  { module_key: 'dashboard', module_name: '仪表盘', module_description: '系统主界面', module_category: 'system', permission_type: 'view' },
-  { module_key: 'users', module_name: '用户管理', module_description: '用户账户管理', module_category: 'system', permission_type: 'view' },
-  { module_key: 'roles', module_name: '角色管理', module_description: '角色权限管理', module_category: 'system', permission_type: 'view' },
-  { module_key: 'permissions', module_name: '权限管理', module_description: '系统权限配置', module_category: 'system', permission_type: 'view' },
-  { module_key: 'inventory', module_name: '库存管理', module_description: '商品库存管理', module_category: 'business', permission_type: 'view' },
-  { module_key: 'stock-in', module_name: '入库管理', module_description: '商品入库管理', module_category: 'business', permission_type: 'view' },
-  { module_key: 'sales', module_name: '销售管理', module_description: '销售订单管理', module_category: 'business', permission_type: 'view' }
-]
+const FALLBACK_MODULES = Object.entries(MODULE_PERMISSION_METADATA).map(([moduleKey, metadata]) => ({
+  module_key: moduleKey,
+  module_name: metadata.name,
+  module_description: metadata.description,
+  module_category: metadata.category,
+  permission_type: 'view'
+}))
 
 class RolePermissionsService {
   constructor({
@@ -116,7 +117,8 @@ class RolePermissionsService {
 
     const { rawModules, modules } = await this.getModules(database, supportsModuleIsActive)
     const rolePermissions = await this.repository.listRolePermissions(database, roleId)
-    const resultModules = this.buildRoleModulePermissions(modules, rolePermissions)
+    const menus = await this.repository.listMenuOrder(database)
+    const resultModules = sortModulesByMenu(this.buildRoleModulePermissions(modules, rolePermissions), menus, this.normalizeModuleKey)
     const message = rawModules.length === 0
       ? `获取角色权限成功（显示 ${modules.length} 个扫描到的模块，建议先在模块管理中同步模块到数据库）`
       : `获取角色权限成功（显示 ${modules.length} 个数据库中的模块）`
@@ -153,6 +155,7 @@ class RolePermissionsService {
     const users = await this.repository.listUsersWithRole(database, roleId)
 
     for (const user of users) {
+      invalidateAuthProfiles([user.user_id])
       await this.permissionCache.deleteUserPermissions(user.user_id)
       this.logger.debug(`已清除用户 ${user.user_id} 的权限缓存（角色 ${roleId} 清除权限）`)
     }
@@ -186,6 +189,7 @@ class RolePermissionsService {
 
     const users = await this.repository.listUsersWithRole(database, roleId)
     for (const user of users) {
+      invalidateAuthProfiles([user.user_id])
       await this.permissionCache.deleteUserPermissions(user.user_id)
       this.logger.debug(`已清除用户 ${user.user_id} 的权限缓存（角色 ${role.name} 权限变更）`)
     }
@@ -246,6 +250,7 @@ class RolePermissionsService {
 
     const users = await this.repository.listUsersWithRole(database, roleId)
     for (const user of users) {
+      invalidateAuthProfiles([user.user_id])
       await this.permissionCache.deleteUserPermissions(user.user_id)
       this.logger.debug(`已清除用户 ${user.user_id} 的权限缓存（角色 ${roleId} 全选权限）`)
     }

@@ -258,7 +258,12 @@
 }
 
 .admin-panel {
-  padding: var(--admin-panel-padding) !important;
+  --admin-panel-current-padding: var(--admin-panel-padding);
+  padding: var(--admin-panel-current-padding) !important;
+}
+
+.admin-panel[data-density="compact"] {
+  --admin-panel-current-padding: var(--tf-space-2);
 }
 
 .admin-page .unified-search-panel {

@@ -304,7 +304,6 @@
                 </div>
                 <div
                   class="batch-actions-buttons"
-                  :data-size="isMobile ? 'small' : undefined"
                 >
                   <el-button
                     native-type="button"
@@ -564,7 +563,6 @@
                         v-else-if="!isMobile && canCreatePayment && row.payment_status === 'unpaid'"
                         class="table-inline-action table-action--success payment-time-action"
                         type="success"
-                        size="small"
                         @click.stop="handleSinglePayment(row)"
                       >
                         <i class="fas fa-money-bill-wave" />
@@ -588,7 +586,6 @@
                         <el-button
                           v-if="canViewPayments"
                           type="primary"
-                          size="small"
                           @click.stop="!isMobile && handleShowPaymentDetails(row)"
                         >
                           <i class="fas fa-eye" />
@@ -597,7 +594,6 @@
                         <el-button
                           v-if="canEditPayment"
                           type="warning"
-                          size="small"
                           @click.stop="handleEditPayment(row)"
                         >
                           <i class="fas fa-edit" />
@@ -606,7 +602,6 @@
                         <el-button
                           v-if="canDeletePayment"
                           type="danger"
-                          size="small"
                           class="table-action table-action--delete"
                           title="取消打款"
                           :disabled="removingPayment"
@@ -1736,13 +1731,14 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import unifiedApi from '@/utils/unified-api'
-import { getCachedStores } from '@/services/reference-options'
+import { getStores } from '@/services/reference-options'
 import logger from '@/utils/logger'
 import { getPhoneStatusLabel } from '@/constants/phoneStatuses'
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
@@ -2550,7 +2546,7 @@ const loadSummaryStatistics = async () => {
 const loadStores = async () => {
   try {
     // 传递 all=true 参数获取所有店铺（用于下拉选择）
-    const response = await getCachedStores() as SupplierPaymentApiResponse<StoreOption[]>
+    const response = await getStores({ strictScope: true }) as SupplierPaymentApiResponse<StoreOption[]>
     if (response.success) {
       stores.value = sortOptionsByOrder(Array.isArray(response.data) ? response.data : [])
     }
@@ -3284,6 +3280,11 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'payment_status', label: '打款状态', value: row.payment_status === 'paid' ? '已打款' : '未打款', visible: canViewPaymentField('payment_status') },
     { key: 'payment_time', label: '打款时间', value: formatDateTimeBeijing(row.payment_time ?? null), visible: canViewPaymentField('payment_time'), wide: true }
   ]
+})
+
+usePageShortcuts('/payments', {
+  'payments-phones': { open: () => { businessMode.value = 'phones' } },
+  'payments-goods': { open: () => { businessMode.value = 'accessories' } }
 })
 </script>
 

@@ -3,7 +3,6 @@
     <PublicPriceHeader
       title="最新销售价"
       :action-width="112"
-      action-size="small"
     >
       <template #search>
         <PublicSearchBox

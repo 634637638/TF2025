@@ -171,7 +171,7 @@
               <template #default="{ row }">
                 <el-input-number
                   v-if="row.serial_tracking === 0"
-                  :model-value="batchDraft.get(row.row_key)?.quantity ?? 0"
+                  :model-value="clearedBatchRows.has(row.row_key) ? null : batchDraft.get(row.row_key)?.quantity ?? 0"
                   :aria-label="`${row.store_name ?? '当前门店'}待退数量`"
                   :min="0"
                   :max="Number(row.quantity)"
@@ -212,6 +212,7 @@
         >
           <el-input
             v-model="serialKeyword"
+            v-identifier-input="'accessory-serial'"
             aria-label="SN序列号"
             clearable
             maxlength="100"
@@ -282,6 +283,31 @@
       >
         <h3>退供试算</h3>
         <p>已选普通批次 {{ batchDraft.size }} 条、SN {{ serialDraft.size }} 件，共 {{ draftQuantity }} 件（保留跨页选择）。</p>
+        <el-form
+          v-if="context.purchase.payment_status === 'paid'"
+          class="tf-form-layout"
+          :label-position="isMobile ? 'top' : 'right'"
+          :class="{ 'tf-dialog-form': isMobile, 'tf-dialog-form--stacked': isMobile }"
+        >
+          <el-form-item label="退供资金方式">
+            <el-radio-group
+              v-model="paidSettlementMode"
+              class="tf-state-selector"
+              aria-label="退供资金方式"
+              :disabled="loading"
+            >
+              <el-radio value="supplier_refund">
+                供应商退款
+              </el-radio>
+              <el-radio value="supplier_credit">
+                留抵后续货款
+              </el-radio>
+            </el-radio-group>
+          </el-form-item>
+        </el-form>
+        <p v-else>
+          未付款采购退供按原采购价试算拟冲减应付金额。
+        </p>
         <div class="tf-dialog-toolbar">
           <el-button
             v-permission="{ permission: ['supplier-payments:view', 'accessories:view'], mode: 'all' }"
@@ -332,6 +358,13 @@
             </el-descriptions-item>
             <el-descriptions-item label="打款状态">
               {{ quote.payment_status === 'paid' ? '已打款' : '未打款' }}
+            </el-descriptions-item>
+            <el-descriptions-item
+              v-if="quote.settlement"
+              :label="quote.settlement.mode === 'reduce_payable' ? '拟冲减应付' : quote.settlement.mode === 'supplier_refund' ? '拟收供应商退款' : '拟留抵后续货款'"
+              :span="2"
+            >
+              ¥{{ formatAmount(quote.settlement.mode === 'reduce_payable' ? quote.settlement.payable_reduction : quote.settlement.mode === 'supplier_refund' ? quote.settlement.refund_amount : quote.settlement.credit_amount) }}
             </el-descriptions-item>
           </RecordDescriptions>
           <RecordDescriptions
@@ -398,7 +431,7 @@ import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { canViewAccessoryField as stockVisible } from '@/components/accessory-field-permissions'
 import { formatAmount, formatDateTime } from '@/utils/format'
 import { isMoneyInput } from '@/utils/security'
-import type { AccessoryPurchaseReturnContext, AccessoryPurchaseReturnQuote } from '@/types/accessory'
+import type { AccessoryPurchaseReturnContext, AccessoryPurchaseReturnQuote, AccessoryPurchaseReturnQuoteInput } from '@/types/accessory'
 import type { RecordDetailField } from '@/types/component'
 
 const props = defineProps<{ visible: boolean; purchaseId: number }>()
@@ -412,17 +445,22 @@ const requests = useLatestRequest()
 type Batch = AccessoryPurchaseReturnContext['data'][number]
 type Serial = NonNullable<AccessoryPurchaseReturnContext['serials']>['data'][number]
 const batchDraft = ref(new Map<string, Batch>())
+const clearedBatchRows = ref(new Set<string>())
 const serialDraft = ref(new Map<number, Serial>())
 const quote = ref<AccessoryPurchaseReturnQuote | null>(null)
+const paidSettlementMode = ref<'supplier_refund' | 'supplier_credit'>('supplier_refund')
 const quoting = ref(false), quoteFailed = ref(false), selectionError = ref('')
 const quoteRequests = useLatestRequest()
 const draftQuantity = computed(() => [...batchDraft.value.values()].reduce((sum, row) => sum + Number(row.quantity), serialDraft.value.size))
 const invalidateQuote = () => { quoteRequests.cancelLatest(); quote.value = null; quoting.value = false; quoteFailed.value = false; selectionError.value = '' }
-const clearSelection = () => { invalidateQuote(); batchDraft.value.clear(); serialDraft.value.clear() }
-const setBatchQuantity = (row: Batch, value: number | undefined) => {
+watch(paidSettlementMode, invalidateQuote, { flush: 'sync' })
+const clearSelection = () => { invalidateQuote(); batchDraft.value.clear(); clearedBatchRows.value.clear(); serialDraft.value.clear() }
+const setBatchQuantity = (row: Batch, value: number | null | undefined) => {
   invalidateQuote()
   if (!canQuoteReturn.value || loading.value || row.serial_tracking !== 0) return
-  if (value === undefined || value === 0) { batchDraft.value.delete(row.row_key); return }
+  if (value === null || value === undefined) clearedBatchRows.value.add(row.row_key)
+  else clearedBatchRows.value.delete(row.row_key)
+  if (value === null || value === undefined || value === 0) { batchDraft.value.delete(row.row_key); return }
   if (!Number.isSafeInteger(value) || value < 1 || value > Number(row.quantity) || (!batchDraft.value.has(row.row_key) && batchDraft.value.size >= 100)) {
     selectionError.value = '请填写有效待退数量，每次最多选择100条普通批次。'; return
   }
@@ -437,7 +475,10 @@ const toggleSerial = (row: Serial) => {
 }
 const calculateQuote = async () => {
   if (!props.visible || !canQuoteReturn.value || loading.value || quoting.value || !draftQuantity.value || !context.value || context.value.ledger_status !== 'verified') return
-  const input = { batches: [...batchDraft.value.values()].map(row => ({ row_key: row.row_key, quantity: Number(row.quantity) })), serial_ids: [...serialDraft.value.keys()] }
+  const input: AccessoryPurchaseReturnQuoteInput = {
+    batches: [...batchDraft.value.values()].map(row => ({ row_key: row.row_key, quantity: Number(row.quantity) })), serial_ids: [...serialDraft.value.keys()],
+    settlement_mode: context.value.purchase.payment_status === 'paid' ? paidSettlementMode.value : 'reduce_payable'
+  }
   if ((!stockVisible('serial_number') && input.serial_ids.length) || input.batches.length > 100 || input.serial_ids.length > 1000) return
   const request = quoteRequests.nextRequest(), expectedQuantity = draftQuantity.value
   const expectedCost = Math.round(Number(context.value.purchase.purchase_cost) * 100)
@@ -446,10 +487,16 @@ const calculateQuote = async () => {
     const response = await quoteAccessoryPurchaseReturn(props.purchaseId, input, request.signal)
     if (!request.isLatest()) return
     const result = response.data
+    const settlement = result?.settlement
     if (!response.success || !result || result.preview_only !== true || result.purchase_id !== props.purchaseId || result.quantity !== expectedQuantity ||
       !isMoneyInput(result.purchase_cost) || Math.round(Number(result.purchase_cost) * 100) !== expectedCost ||
       !isMoneyInput(result.total_amount) || Math.round(Number(result.total_amount) * 100) !== expectedCost * expectedQuantity ||
-      !['paid', 'unpaid'].includes(result.payment_status) || !Number.isSafeInteger(result.latest_event_id) || result.latest_event_id < 0 ||
+      result.payment_status !== context.value?.purchase.payment_status || !Number.isSafeInteger(result.latest_event_id) || result.latest_event_id < 0 ||
+      !settlement || settlement.mode !== input.settlement_mode ||
+      (['payable_reduction', 'refund_amount', 'credit_amount'] as const).some(key =>
+        !isMoneyInput(settlement[key]) || Math.round(Number(settlement[key]) * 100) !==
+          ((key === 'payable_reduction' && settlement.mode === 'reduce_payable' || key === 'refund_amount' && settlement.mode === 'supplier_refund' ||
+            key === 'credit_amount' && settlement.mode === 'supplier_credit') ? expectedCost * expectedQuantity : 0)) ||
       !Array.isArray(result.data) || !result.data.length || new Set(result.data.map(row => row?.row_key)).size !== result.data.length ||
       result.data.some(row => !row || !Number.isSafeInteger(row.store_id) || row.store_id < 1 ||
         (row.store_name !== null && typeof row.store_name !== 'string') || !Number.isSafeInteger(row.quantity) || row.quantity < 1 ||
@@ -526,6 +573,7 @@ const refresh = () => { clearSelection(); void load() }
 watch(canQuoteReturn, value => { if (!value) clearSelection() })
 watch(() => [props.visible, props.purchaseId, canViewReturnContext.value, fieldPermissions.permissions.value, stockVisible('serial_number')], () => {
   clearSelection()
+  paidSettlementMode.value = 'supplier_refund'
   requests.cancelLatest(); context.value = null; loading.value = false; failed.value = false; page.value = 1
   serialPage.value = 1; serialKeyword.value = ''; serialSearch.value = ''
   if (props.visible && canViewReturnContext.value) void load()

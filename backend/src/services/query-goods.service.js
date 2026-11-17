@@ -9,6 +9,7 @@ const { resolveStoreScope } = require('../utils/store-scope')
 const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const { readAftersaleSettlement } = require('../utils/sales-aftersale-settlement')
 const { readCheckoutOrder } = require('../utils/checkout-order-facts')
+const { readGiftReturnAgreement } = require('../utils/checkout-goods-facts')
 
 const reject = (message, statusCode = 400, code = 'VALIDATION_ERROR') => { throw Object.assign(new Error(message), { statusCode, code }) }
 const integer = (value, fallback, max) => {
@@ -66,6 +67,70 @@ const historyRecord = (row, options, replacement = null) => {
     business_time: row.business_time, created_at: row.created_at, remarks: row.remarks }
 }
 
+// 收据只展示仍属于客户的商品；金额优先按结算时保存的逐件分摊精确重算。
+const receiptGoods = row => {
+  const quantity = Number(row.quantity), returned = Number(row.returned_quantity || 0)
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || !Number.isSafeInteger(returned) || returned < 0 || returned > quantity) {
+    reject('商品退货数量异常，请核对原单售后历史', 409, 'CHECKOUT_FACTS_CONFLICT')
+  }
+  const remaining = quantity - returned
+  if (!remaining) return null
+  let snapshot = null
+  try {
+    snapshot = typeof row.receipt_snapshot === 'string' ? JSON.parse(row.receipt_snapshot) : row.receipt_snapshot
+  } catch { snapshot = null }
+  const originalSerials = Array.isArray(snapshot?.serial_numbers) ? snapshot.serial_numbers : []
+  const serials = Array.isArray(row.serial_numbers) ? row.serial_numbers : []
+  const serialSet = new Set(serials.map(value => String(value).toLowerCase()))
+  if (originalSerials.length === quantity && serials.length !== remaining) {
+    reject('商品退货数量与SN流水不一致，请核对原单售后历史', 409, 'CHECKOUT_FACTS_CONFLICT')
+  }
+  const indexes = originalSerials.length === quantity
+    ? originalSerials.map((value, index) => serialSet.has(String(value).toLowerCase()) ? index : null).filter(index => index !== null)
+    : Array.from({ length: remaining }, (_, index) => returned + index)
+  if (originalSerials.length === quantity && indexes.length !== remaining) {
+    reject('商品剩余SN与原单快照不一致，请核对原单售后历史', 409, 'CHECKOUT_FACTS_CONFLICT')
+  }
+  const units = Array.isArray(snapshot?.points_units) ? snapshot.points_units : []
+  const hasUnitFacts = Boolean(units.length && units.every(unit => Number.isSafeInteger(unit?.quantity) && unit.quantity > 0 &&
+    Number.isSafeInteger(unit?.points_used) && Number.isSafeInteger(unit?.deduction_cents) && Number.isSafeInteger(unit?.payable_cents)) &&
+    units.reduce((sum, unit) => sum + unit.quantity, 0) === quantity)
+  let selectedCount = 0, totalCentsFromUnits = 0, deductionCentsFromUnits = 0, pointsFromUnits = 0
+  if (hasUnitFacts) {
+    let unitIndex = 0, unitStart = 0
+    for (const index of indexes) {
+      while (unitIndex < units.length && index >= unitStart + units[unitIndex].quantity) {
+        unitStart += units[unitIndex].quantity
+        unitIndex += 1
+      }
+      const unit = units[unitIndex]
+      if (!unit || index < unitStart) continue
+      selectedCount += 1
+      totalCentsFromUnits += unit.payable_cents
+      deductionCentsFromUnits += unit.deduction_cents
+      pointsFromUnits += unit.points_used
+    }
+  }
+  if (Number(row.points_used || 0) > 0 && selectedCount !== remaining) {
+    reject('商品积分分摊缺失，无法生成准确的剩余商品凭证', 409, 'CHECKOUT_FACTS_CONFLICT')
+  }
+  const totalCents = selectedCount === remaining
+    ? totalCentsFromUnits
+    : Math.round(Number(row.total_price || 0) * 100 * remaining / quantity)
+  const deductionCents = row.deduction_amount === null || row.deduction_amount === undefined ? null
+    : selectedCount === remaining ? deductionCentsFromUnits
+      : Math.round(Number(row.deduction_amount) * 100 * remaining / quantity)
+  const pointsUsed = row.points_used === null || row.points_used === undefined ? null
+    : selectedCount === remaining ? pointsFromUnits
+      : Math.round(Number(row.points_used) * remaining / quantity)
+  const remainingSerials = originalSerials.length === quantity
+    ? indexes.map(index => originalSerials[index])
+    : serials
+  return { ...row, quantity: remaining, total_price: totalCents / 100,
+    deduction_amount: deductionCents === null ? null : deductionCents / 100, points_used: pointsUsed,
+    serial_numbers: remainingSerials }
+}
+
 class QueryGoodsService {
   constructor({ repository = new QueryGoodsRepository(), permissionCheck = hasUnifiedPermission, goodsReturns = new SalesGoodsReturnService() } = {}) {
     Object.assign(this, { repository, permissionCheck, goodsReturns })
@@ -90,7 +155,7 @@ class QueryGoodsService {
   }
   async authorize(actor) {
     if (!getActorId(actor)) reject('请先登录', 401, 'UNAUTHORIZED')
-    for (const permission of ['query:view', 'accessories:view']) {
+    for (const permission of ['query:view', 'query:goods-view']) {
       if (!await this.permissionCheck(actor, permission)) reject('无权查询商品销售记录', 403, 'PERMISSION_DENIED')
     }
   }
@@ -137,10 +202,11 @@ class QueryGoodsService {
     if (!validId(saleId)) reject('手机销售记录标识无效')
     const scope = resolveStoreScope(actor, null)
     const rows = await this.readSnapshot(connection => this.repository.phoneReceipt(scope, Number(saleId), connection))
-    return rows.map(({ id, name, brand_name, product_model, color_name, unit, quantity, unit_price,
-      total_price, sale_type, points_used, deduction_amount, serial_numbers }) => ({
+    return rows.map(receiptGoods).filter(Boolean).map(({ id, name, brand_name, product_model, color_name, unit, quantity, unit_price,
+      total_price, sale_type, points_used, deduction_amount, serial_numbers, receipt_snapshot }) => ({
       id, name, brand_name, product_model, color_name, unit, quantity, unit_price,
-      total_price, sale_type, points_used, deduction_amount, serial_numbers
+      total_price, sale_type, points_used, deduction_amount, serial_numbers,
+      ...readGiftReturnAgreement(receipt_snapshot, sale_type, Number(quantity))
     }))
   }
   async originalOrder(actor, id, source) {

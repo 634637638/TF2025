@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -14,7 +16,7 @@ const response = () => ({
   json(body) { this.body = body; return this }
 })
 
-const input = {
+const input = { store_id: 1,
   phone_id: 8,
   sale_id: 12,
   customer_id: 5,
@@ -49,6 +51,7 @@ const createHarness = ({ existing = null, insertId = 31, failPhotoValidation = f
     async withConnection(operation) {
       try { return await operation(connection) } finally { events.push('release') }
     },
+    async findSaleForUpdate() { return { id: input.sale_id, customer_id: input.customer_id, store_id: 1 } },
     async findByPhoneForUpdate(_connection, id) { events.push(['find', id]); return existing },
     async updateCustomerIdCard(_connection, id, card) { events.push(['idcard', id, card]) },
     async hasPhotoReference() { if (failPhotoValidation) throw Object.assign(new Error('国补照片链接无效'), { statusCode: 400 }); return false },
@@ -70,7 +73,7 @@ test('subsidy apply route preserves authentication, create permission, photo per
 
 test('subsidy apply service commits normalized application data and invalidates cache after commit', async () => {
   const { service, events, invalidations } = createHarness()
-  const result = await service.create(input, 19)
+  const result = await service.create(input, 19, scopedActor)
   assert.equal(result.status, 200)
   assert.deepEqual(result.body, {
     success: true,
@@ -89,12 +92,12 @@ test('subsidy apply service commits normalized application data and invalidates 
 
 test('subsidy apply rejects missing fields and duplicate applications without leaving a transaction open', async () => {
   const missing = createHarness()
-  assert.equal((await missing.service.create({ ...input, imei2: '' }, 19)).status, 400)
+  assert.equal((await missing.service.create({ ...input, imei2: '' }, 19, scopedActor)).status, 400)
   assert.deepEqual(missing.events, [])
   assert.deepEqual(missing.invalidations, [])
 
   const duplicate = createHarness({ existing: { id: 44, apply_status: 'pending' } })
-  const result = await duplicate.service.create(input, 19)
+  const result = await duplicate.service.create(input, 19, scopedActor)
   assert.equal(result.status, 400)
   assert.deepEqual(result.body.data, { existing_id: 44, apply_status: 'pending' })
   assert.deepEqual(duplicate.events.map(event => Array.isArray(event) ? event[0] : event), ['begin', 'find', 'rollback', 'release'])
@@ -112,7 +115,7 @@ test('国补申请非法姓名、电话和金额在取连接前拒绝，不写�
     { handler_info: { handler_phone: '138000000001' } }, { handler_info: [] }
   ]) {
     const harness = createHarness()
-    const result = await harness.service.create({ ...input, ...patch }, 19)
+    const result = await harness.service.create({ ...input, ...patch }, 19, scopedActor)
     assert.equal(result.status, 400, JSON.stringify(patch))
     assert.deepEqual(harness.events, [])
     assert.deepEqual(harness.invalidations, [])
@@ -122,7 +125,7 @@ test('国补申请非法姓名、电话和金额在取连接前拒绝，不写�
 test('国补申请保留合法姓名标点，按约定整理国家码手机号，不改原请求', async () => {
   const harness = createHarness()
   const request = { ...input, customer_name: "Anne O'Neil·张", customer_phone: '+86 138-0000-0000' }
-  assert.equal((await harness.service.create(request, 19)).status, 200)
+  assert.equal((await harness.service.create(request, 19, scopedActor)).status, 200)
   const created = harness.events.find(event => Array.isArray(event) && event[0] === 'create')[1]
   assert.equal(created.customer_phone, '13800000000')
   assert.equal(created.customer_name, request.customer_name)
@@ -134,7 +137,7 @@ test('subsidy apply rolls back failed photo validation and controller preserves 
   await assert.rejects(failed.service.create({
     ...input,
     subsidy_photos: ['/uploads/subsidy/photo.jpg?expires=1&signature=invalid&user=19']
-  }, 19), /国补照片链接无效/)
+  }, 19, scopedActor), /国补照片链接无效/)
   assert.deepEqual(failed.events.map(event => Array.isArray(event) ? event[0] : event), ['begin', 'find', 'idcard', 'rollback', 'release'])
   assert.deepEqual(failed.invalidations, [])
 

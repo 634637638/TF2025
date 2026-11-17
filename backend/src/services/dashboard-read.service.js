@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
 const BaseService = require('../core/base/base.service')
 const DashboardReadRepository = require('../repositories/dashboard-read.repository')
 const { isConnected } = require('../config/database')
@@ -26,19 +28,20 @@ class DashboardReadService extends BaseService {
       }
     }
 
+    const scope = resolveStoreScope(actor)
     const [userCount] = await this.repository.countUsers()
     const [accessoryCount] = await this.repository.countAccessories()
     const [customerCount] = await this.repository.countCustomers()
-    const [phoneStockCount] = await this.repository.countStockPhones()
-    const [todayRetailSalesAmount] = await this.repository.todayRetailAmount()
-    const [todayAccessorySalesAmount] = await this.repository.todayAccessoryAmount()
-    const [todayWholesaleSalesAmount] = await this.repository.todayWholesaleAmount()
+    const [phoneStockCount] = await this.repository.countStockPhones(scope)
+    const [todayRetailSalesAmount] = await this.repository.todayRetailAmount(scope)
+    const [todayAccessorySalesAmount] = await this.repository.todayAccessoryAmount(scope)
+    const [todayWholesaleSalesAmount] = await this.repository.todayWholesaleAmount(scope)
     const totalTodaySales = parseFloat(todayRetailSalesAmount[0].amount || 0)
         + parseFloat(todayAccessorySalesAmount[0].amount || 0)
         + parseFloat(todayWholesaleSalesAmount[0].amount || 0)
 
-    const [todaySalesCount] = await this.repository.todayAccessoryCount()
-    const [recentSales] = await this.repository.recentAccessorySales()
+    const [todaySalesCount] = await this.repository.todayAccessoryCount(scope)
+    const [recentSales] = await this.repository.recentAccessorySales(scope)
 
     return {
       stats: {
@@ -53,9 +56,10 @@ class DashboardReadService extends BaseService {
     }
   }
 
-  async getActivities() {
+  async getActivities(actor) {
     if (!this.connected()) return []
 
+    const scope = resolveStoreScope(actor)
     const sourceLimit = 8
     const [
       [phoneSales],
@@ -64,11 +68,11 @@ class DashboardReadService extends BaseService {
       [phoneInventory],
       [repairEvents]
     ] = await Promise.all([
-      this.repository.phoneSaleActivities(sourceLimit),
-      this.repository.accessorySaleActivities(sourceLimit),
-      this.repository.customerActivities(sourceLimit),
-      this.repository.inventoryActivities(sourceLimit),
-      this.repository.repairActivities(sourceLimit)
+      this.repository.phoneSaleActivities(sourceLimit, scope),
+      this.repository.accessorySaleActivities(sourceLimit, scope),
+      this.repository.customerActivities(sourceLimit, scope),
+      this.repository.inventoryActivities(sourceLimit, scope),
+      this.repository.repairActivities(sourceLimit, scope)
     ])
 
     const buildDescription = activity => {

@@ -110,7 +110,6 @@
       <el-form-item>
         <el-button
           type="primary"
-          size="large"
           :loading="loading"
           class="w-full"
           @click="handleRegister"

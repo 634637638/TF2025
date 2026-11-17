@@ -105,8 +105,8 @@ test('仪表盘 controller 保持 warning 参数、成功数据和错误响应',
   const calls = []
   const controller = new DashboardController({
     dashboardService: {
-      async getComprehensiveWarnings(filters) {
-        calls.push(['comprehensive', filters])
+      async getComprehensiveWarnings(filters, actor) {
+        calls.push(['comprehensive', filters, actor])
         return { success: true, data: { total_warnings: 2 } }
       },
       async getPhoneStockWarnings(filters) {
@@ -120,8 +120,9 @@ test('仪表盘 controller 保持 warning 参数、成功数据和错误响应',
   })
 
   const success = createResponse()
-  await controller.getComprehensiveWarnings({ query: { phone_threshold: '4', page_size: '12' } }, success)
-  assert.deepEqual(calls[0], ['comprehensive', { phone_threshold: '4', page_size: '12' }])
+  const actor = { id: 7 }
+  await controller.getComprehensiveWarnings({ query: { phone_threshold: '4', page_size: '12' }, user: actor }, success)
+  assert.deepEqual(calls[0], ['comprehensive', { phone_threshold: '4', page_size: '12' }, actor])
   assert.deepEqual(success.body.data, { total_warnings: 2 })
 
   const invalid = createResponse()

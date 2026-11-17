@@ -188,7 +188,6 @@
             <template #default="{ row }">
               <el-button
                 v-if="getSalesCount(row) > 0"
-                size="small"
                 type="primary"
                 plain
                 @click.stop="emit('viewSalesDetail', row)"
@@ -272,7 +271,6 @@
             <template #default="{ row }">
               <div class="my-salary-action-buttons action-buttons">
                 <el-button
-                  size="small"
                   type="primary"
                   plain
                   @click.stop="emit('viewRecord', row)"

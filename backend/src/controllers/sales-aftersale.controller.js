@@ -13,6 +13,7 @@ const phoneResponseKeys = {
 const goodsResponseKeys = {
   'basic_info.usage_type': ['sale_type', 'gift_return_unit_price', 'gift_return_total', 'remaining_gift_return_total', 'gift_agreement_state'],
   'basic_info.name': ['name', 'accessory_id'], 'basic_info.serial_number': ['serial_numbers', 'available_serial_numbers'],
+  'basic_info.unit': ['unit'],
   'stock_info.total_quantity': ['quantity', 'returned_quantity', 'remaining_quantity', 'total_amount', 'points_awarded', 'points_used', 'deduction_amount', 'gross_amount', 'gift_return_total', 'remaining_gift_return_total'],
   'price_info.total_price': ['total_amount', 'points_awarded', 'points_used', 'deduction_amount', 'gross_amount', 'gift_return_total', 'remaining_gift_return_total'],
   'price_info.unit_price': ['unit_price', 'total_amount', 'points_awarded', 'points_used', 'deduction_amount', 'gross_amount', 'gift_return_unit_price', 'gift_return_total', 'remaining_gift_return_total', 'gift_agreement_state']
@@ -22,7 +23,7 @@ class SalesAftersaleController {
   constructor({ service = new SalesAftersaleService(), goodsReturns = new SalesGoodsReturnService(), goodsExchanges = new SalesGoodsExchangeService(), phoneReturns = new SalesPhoneReturnService(), phoneAccess, goodsAccess, masking, logger = log } = {}) {
     Object.assign(this, { service, goodsReturns, goodsExchanges, phoneReturns, logger,
       phoneAccess: phoneAccess || new FieldAccessService({ moduleKey: 'query_queryview', responseKeys: phoneResponseKeys, masking, strict: true }),
-      goodsAccess: goodsAccess || new FieldAccessService({ moduleKey: 'accessories_accessoriesview', responseKeys: goodsResponseKeys, masking, strict: true }) })
+      goodsAccess: goodsAccess || new FieldAccessService({ moduleKey: 'query_queryview', fieldScope: 'goods', responseKeys: goodsResponseKeys, masking, strict: true }) })
   }
 
   async goodsReturn(req, res, mode, exchange = false) {

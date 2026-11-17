@@ -16,6 +16,22 @@ const response = () => ({
   }
 })
 
+test('员工工资候选和当前底薪复核无查看权限时返回403，不查询工资仓储', async () => {
+  const Service = require('../src/services/employee-salary.service')
+  const Controller = require('../src/controllers/employee-salary.controller')
+  const service = new Service({
+    getSalaryAccessScope: async () => ({ canView: false, isAdmin: false }),
+    repository: { async getSalaryList() { assert.fail('不得查询') }, async getCurrentSalaryRows() { assert.fail('不得查询') } }
+  })
+  const controller = new Controller({ service })
+  for (const method of ['list', 'current']) {
+    const res = response()
+    await controller[method]({ user: { id: 7 }, query: {} }, res)
+    assert.equal(res.statusCode, 403)
+    assert.equal(res.body.data, undefined)
+  }
+})
+
 test('employee salary routes preserve unified authentication and salary-records:view', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/employees.js'), 'utf8')
   assert.match(route, /router\.get\('\/salary-list', unifiedAuth, requirePermission\('salary-records:view'\), employeeSalaryController\.list\.bind\(employeeSalaryController\)\)/)
@@ -57,7 +73,7 @@ test('employee salary service scopes rows and maps effective salary fields', asy
     },
     async getSalaryAccessScope(userId) {
       calls.push(['scope', userId])
-      return { isAdmin: false }
+      return { canView: true, isAdmin: false }
     },
     now: () => new Date('2024-06-01T00:00:00.000Z')
   })

@@ -55,30 +55,25 @@ const crypto = require('crypto')
 const { getUploadSubdir } = require('../utils/upload-paths')
 const phoneMediaController = require('../controllers/phone-media.controller')
 const phoneProductController = new PhoneProductController()
+const { requirePhoneResourceAccess } = require('../middleware/phone-resource-access')
 
 const PHONE_MEDIA_VIEW_PERMISSIONS = [
   'sales:view',
   'inventory:view',
   'query:view',
   'h5-sold-products:view',
-  'h5-templates:view',
-  'h5-admin:view'
+  'h5-templates:view'
 ]
 const PHONE_MEDIA_EDIT_PERMISSIONS = [
   'inventory:edit',
   'query:edit',
-  'h5-templates:edit',
-  'h5-admin:edit',
-  'h5-sold-products:delete',
-  'h5-templates:delete',
-  'h5-admin:delete',
-  'inventory:delete'
+  'h5-templates:edit'
 ]
+const PHONE_MEDIA_DELETE_PERMISSIONS = [...PHONE_MEDIA_EDIT_PERMISSIONS, 'h5-sold-products:delete', 'h5-templates:delete', 'inventory:delete']
 const PHONE_MEDIA_UPLOAD_PERMISSIONS = [
   'inventory:edit',
   'query:edit',
   'h5-templates:create',
-  'h5-admin:create',
   'inventory:create'
 ]
 
@@ -127,6 +122,7 @@ const upload = multer({
 router.post('/:id/upload-image',
   unifiedAuth,
   requireAnyPermission(PHONE_MEDIA_UPLOAD_PERMISSIONS),
+  requirePhoneResourceAccess,
   upload.single('image'),
   phoneMediaController.uploadImage
 )
@@ -139,6 +135,7 @@ router.post('/:id/upload-image',
 router.get('/:id/images',
   unifiedAuth,
   requireAnyPermission(PHONE_MEDIA_VIEW_PERMISSIONS),
+  requirePhoneResourceAccess,
   phoneMediaController.list
 )
 
@@ -150,6 +147,7 @@ router.get('/:id/images',
 router.put('/:id/images/:imageId/primary',
   unifiedAuth,
   requireAnyPermission(PHONE_MEDIA_EDIT_PERMISSIONS),
+  requirePhoneResourceAccess,
   phoneMediaController.setPrimary
 )
 
@@ -162,6 +160,7 @@ router.put('/:id/images/:imageId/primary',
 router.put('/:id/images/reorder',
   unifiedAuth,
   requireAnyPermission(PHONE_MEDIA_EDIT_PERMISSIONS),
+  requirePhoneResourceAccess,
   phoneMediaController.reorder
 )
 
@@ -172,7 +171,8 @@ router.put('/:id/images/reorder',
  */
 router.delete('/:id/images/:imageId',
   unifiedAuth,
-  requireAnyPermission(PHONE_MEDIA_EDIT_PERMISSIONS),
+  requireAnyPermission(PHONE_MEDIA_DELETE_PERMISSIONS),
+  requirePhoneResourceAccess,
   phoneMediaController.remove
 )
 
@@ -188,6 +188,7 @@ router.delete('/:id/images/:imageId',
 router.get('/:id/h5-product',
   unifiedAuth,
   requirePermission('inventory:view'),
+  requirePhoneResourceAccess,
   phoneProductController.getH5Product.bind(phoneProductController)
 )
 
@@ -200,6 +201,7 @@ router.get('/:id/h5-product',
 router.put('/:id/h5-product',
   unifiedAuth,
   requirePermission('inventory:edit'),
+  requirePhoneResourceAccess,
   phoneProductController.updateH5Product.bind(phoneProductController)
 )
 
@@ -211,6 +213,7 @@ router.put('/:id/h5-product',
 router.post('/:id/inspection',
   unifiedAuth,
   requirePermission('inventory:edit'),
+  requirePhoneResourceAccess,
   phoneProductController.saveInspection.bind(phoneProductController)
 )
 
@@ -222,6 +225,7 @@ router.post('/:id/inspection',
 router.get('/:id/inspection',
   unifiedAuth,
   requirePermission('inventory:view'),
+  requirePhoneResourceAccess,
   phoneProductController.getInspection.bind(phoneProductController)
 )
 
@@ -273,6 +277,7 @@ const videoUpload = multer({
 router.post('/:id/upload-video',
   unifiedAuth,
   requireAnyPermission(PHONE_MEDIA_UPLOAD_PERMISSIONS),
+  requirePhoneResourceAccess,
   videoUpload.single('video'),
   phoneMediaController.uploadVideo
 )

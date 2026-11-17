@@ -1,3 +1,4 @@
+const { invalidateAuthProfiles } = require('../middleware/unified-auth')
 'use strict'
 
 const PermissionRoleManagementRepository = require('../repositories/permission-role-management.repository')
@@ -67,6 +68,7 @@ class PermissionRoleManagementService {
       throw createServiceError('角色名称已存在', 400)
     }
     await this.repository.update({ id, name, description, roleType: input.role_type, supportsRoleType })
+    invalidateAuthProfiles()
     await this.audit.logRoleOperation(req, 'edit', id, name, {
       description,
       code: storedCode,
@@ -110,6 +112,7 @@ class PermissionRoleManagementService {
     }
 
     await this.repository.updateStatus(id, isActive)
+    invalidateAuthProfiles()
     let affectedUsersCount = 0
     if (isActive === '0') {
       const userIds = await this.repository.listUserIdsByRole(id)

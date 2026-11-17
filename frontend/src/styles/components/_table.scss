@@ -174,6 +174,7 @@
 }
 
 // Remarks and descriptions stay complete without creating an unbounded column.
+:is(.data-table.el-table, .devices-table.el-table, .admin-data-table.el-table) .el-table__body td.wrapped-text-column .cell,
 .el-table__body-wrapper td.wrapped-text-column .cell {
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
@@ -518,14 +519,114 @@ body .tf-actions--fit-row .el-button > span {
   white-space: nowrap;
 }
 
-// 各操作语义只赋值已有颜色变量，公共表面合并输出，避免每次 include 重复生成声明。
-%tf-action-surface {
+// 先合并相同前缀，保持各分支的选择器优先级，避免 Sass extend 展开重复的长选择器。
+// 操作语义仅赋值已有颜色变量，表面及悬停/聚焦共用同一入口。
+body :where(.action-buttons, .table-actions, .tf-table-actions, .card-actions, .batch-actions-buttons) .el-button:is(
+  .el-button--danger,
+  .tf-button--danger,
+  .tf-button--delete,
+  .table-action--delete,
+  [title*=取消打款],
+  [title*=取消付款],
+  [title*=完成],
+  [title*=通过],
+  [title*=审批],
+  [title*=审核],
+  [title*=启用],
+  :has(.fa-check),
+  :has(.fa-check-circle),
+  [title*=禁用],
+  [title*=停用],
+  [title*=离职],
+  [title*=拒绝],
+  [title*=撤销],
+  [title*=重置],
+  [title*=导出],
+  [title*=下载],
+  [title*=上传],
+  [title*=同步],
+  [title*=刷新],
+  :has(.fa-download),
+  :has(.fa-upload),
+  :has(.fa-sync),
+  :has(.fa-refresh),
+  [title*=入库],
+  [title*=出库],
+  [title*=退库],
+  [title*=调货],
+  [title*=交付],
+  [title*=发货],
+  [title*=销售],
+  [title*=打款],
+  [title*=付款],
+  [title*=到账],
+  [title*=结算],
+  :has(.fa-wallet),
+  :has(.fa-credit-card),
+  :has(.fa-money-bill),
+  [title*=权限],
+  [title*=配置],
+  [title*=设置],
+  [title*=管理],
+  [title*=绑定],
+  :has(.fa-lock),
+  :has(.fa-cog),
+  :has(.fa-link),
+  :has(.fa-columns),
+  :has(.fa-user-tag),
+  [title*=置顶],
+  :has(.fa-thumbtack),
+  [title*=删除],
+  [title*=移除],
+  :has(.fa-trash),
+  [title*=编辑],
+  [title*=修改],
+  :has(.fa-edit),
+  :has(.fa-pen),
+  [title*=查看],
+  [title*=详情],
+  [title*=预览],
+  :has(.fa-eye),
+  :has(.fa-info-circle),
+  .el-button--info,
+  .btn-outline-primary,
+  .el-button--success,
+  .el-button--warning,
+  .el-button--primary
+),
+body .el-button:is(
+  .table-action--warning,
+  .table-action--export,
+  .table-action--transfer,
+  .table-action--finance,
+  .table-action--manage,
+  .table-action--neutral,
+  .table-action--success,
+  .mobile-action-btn-status,
+  .mobile-action-btn-approve,
+  .table-action--pin,
+  .table-action--delete,
+  .mobile-action-btn-delete,
+  .table-action--view,
+  .mobile-action-btn-view,
+  .mobile-action-btn-default,
+  .table-action--edit,
+  .mobile-action-btn-edit
+),
+body .btn-action:is(
+  .btn-permission,
+  .btn-field-permission,
+  .btn-role,
+  .btn-manage,
+  .btn-edit,
+  .btn-delete,
+  .btn-view
+) {
   background: var(--el-button-bg-color) !important;
   border-color: var(--el-button-border-color) !important;
   color: var(--el-button-text-color) !important;
 
-  &:hover,
-  &:focus {
+  &:is(:hover, :focus) {
     background: var(--el-button-hover-bg-color) !important;
     border-color: var(--el-button-hover-border-color) !important;
     color: var(--el-button-hover-text-color) !important;
@@ -533,7 +634,6 @@ body .tf-actions--fit-row .el-button > span {
 }
 
 @mixin tf-action-colors($bg, $border, $color, $hover-bg, $hover-border, $hover-color) {
-  @extend %tf-action-surface;
   --el-button-bg-color: #{$bg} !important;
   --el-button-border-color: #{$border} !important;
   --el-button-text-color: #{$color} !important;

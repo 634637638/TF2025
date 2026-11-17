@@ -16,7 +16,7 @@
       />
       <el-button
         v-if="canCreate"
-        v-permission="'salary-records:create'"
+        v-permission="'attendance:create'"
         type="primary"
         :disabled="!employee?.salary_template_id"
         @click="emit('add')"
@@ -140,8 +140,7 @@
           <div class="action-buttons">
             <el-button
               v-if="canEdit"
-              v-permission="'salary-records:edit'"
-              size="small"
+              v-permission="'attendance:edit'"
               type="primary"
               @click.stop="emit('edit', row)"
             >
@@ -150,8 +149,7 @@
             </el-button>
             <el-button
               v-if="canDelete"
-              v-permission="'salary-records:delete'"
-              size="small"
+              v-permission="'attendance:delete'"
               type="danger"
               @click.stop="row.id && emit('delete', row.id)"
             >
@@ -172,7 +170,7 @@
       <template #actions="{ row }">
         <el-button
           v-if="canEdit"
-          v-permission="'salary-records:edit'"
+          v-permission="'attendance:edit'"
           type="primary"
           @click.stop="attendanceDetailRunAction(() => emit('edit', row))"
         >
@@ -181,7 +179,7 @@
         </el-button>
         <el-button
           v-if="canDelete"
-          v-permission="'salary-records:delete'"
+          v-permission="'attendance:delete'"
           type="danger"
           @click.stop="attendanceDetailRunAction(() => row.id && emit('delete', row.id))"
         >

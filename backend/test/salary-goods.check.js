@@ -37,8 +37,11 @@ const fixture = (items = [item()], history = [], batchSize = 2) => {
     async execute(sql, params = []) {
       const text = sql.replace(/\s+/g, ' ').trim()
       queries.push({ sql: text, params }); calls.push('query')
+      if (text.startsWith('SET TRANSACTION')) {
+        if (failure === 'configure') throw new Error('configure-failed')
+        return [{}]
+      }
       if (failure === 'query') throw new Error('query-failed')
-      if (text.startsWith('SET TRANSACTION')) return [{}]
       if (/FROM sales_order_items/.test(text)) {
         assert.match(text, /o\.request_key IS NOT NULL AND o\.order_status = 'completed'/)
         assert.match(text, /LEFT JOIN accessory_sales/)
@@ -59,6 +62,7 @@ const fixture = (items = [item()], history = [], batchSize = 2) => {
       snapshot = structuredClone(state)
     },
     async rollback() { calls.push('rollback'); snapshot = undefined; if (failure === 'rollback') throw new Error('rollback-failed') },
+    destroy() { calls.push('destroy'); snapshot = undefined },
     release() { calls.push('release') }
   }
   const repository = new Repository({ database: () => ({ async getConnection() { calls.push('acquire'); return connection } }) })
@@ -252,16 +256,19 @@ test('数据库字符串时间和UTC Date均经北京时间核对，坏时间及
   await assert.rejects(fixture([original], [history]).service.preview(8, through), { code: 'SALARY_GOODS_CONFLICT' })
 })
 
-test('查询失败、事务启动失败或回滚失败均释放连接，不提交或创建任何业务记录', async () => {
-  for (const name of ['query', 'begin', 'rollback']) {
+test('提成预览配置、启动或回滚失败销毁连接，普通读取失败回滚后释放', async () => {
+  for (const name of ['configure', 'query', 'begin', 'rollback']) {
     const f = fixture(); f.fail(name)
     await assert.rejects(f.service.preview(8, through), new RegExp(`${name}-failed`))
     assert.equal(f.calls.at(-1), 'release')
-    assert.equal(f.calls.filter(call => call === 'rollback').length, name === 'rollback' ? 1 : 0)
+    assert.equal(f.calls.filter(call => call === 'rollback').length, ['query', 'rollback'].includes(name) ? 1 : 0)
+    assert.equal(f.calls.includes('destroy'), name !== 'query')
+    if (name !== 'query') assert.deepEqual(f.calls.slice(-2), ['destroy', 'release'])
   }
   const f = fixture(); f.repository.items = async () => { throw new Error('read-failed') }
   await assert.rejects(f.service.preview(8, through), /read-failed/)
   assert.deepEqual(f.calls.slice(-2), ['rollback', 'release'])
+  assert.equal(f.calls.includes('destroy'), false)
 })
 
 test('前置表或真实录入时间字段未就绪返回409，不伪造时间、不读业务记录也不执行DDL', async () => {

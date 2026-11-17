@@ -4,7 +4,7 @@ class RoleFieldPermissionsRepository {
   async findRoleForWrite(connection, roleId, supportsRoleIsActive, includeName = false) {
     const nameColumn = includeName ? ', name' : ''
     const [rows] = await connection.execute(
-      `SELECT id${nameColumn} FROM roles WHERE id = ? ${supportsRoleIsActive ? 'AND is_active = 1' : ''}`,
+      `SELECT id${nameColumn} FROM roles WHERE id = ? ${supportsRoleIsActive ? 'AND is_active = 1' : ''} FOR UPDATE`,
       [roleId]
     )
     return rows[0] || null

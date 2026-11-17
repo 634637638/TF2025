@@ -80,15 +80,6 @@
     flex-direction: column;
   }
 
-  .site-logo-actions {
-    width: 100%;
-  }
-
-  .site-logo-actions :deep(.el-button) {
-    flex: 1 1 calc(50% - 5px);
-    min-width: 0;
-  }
-
   .settings-card-row {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -170,12 +161,5 @@
 
   .price-config-grid > .price-watermark-settings {
     grid-column: auto;
-  }
-}
-
-@media (max-width: 479px) {
-  .site-logo-actions :deep(.el-button) {
-    width: 100%;
-    flex-basis: 100%;
   }
 }

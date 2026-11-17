@@ -117,8 +117,6 @@
                   v-if="canEdit"
                   plain
                   type="primary"
-                  size="small"
-                  class="btn-sm"
                   @click="handleEdit(banner)"
                 >
                   <i class="fas fa-edit mr-1" />编辑
@@ -127,8 +125,6 @@
                   v-if="canDelete"
                   plain
                   type="danger"
-                  size="small"
-                  class="btn-sm"
                   @click="handleDelete(banner)"
                 >
                   <i class="fas fa-trash mr-1" />删除
@@ -378,6 +374,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -1031,6 +1028,10 @@ const recordFields = computed<RecordDetailField[]>(() => {
   ] : []
 })
 
+
+usePageShortcuts('/H5-admin/page/banners', {
+  'shop-banner-create': { open: handleAdd }
+})
 </script>
 
 <style scoped lang="scss" src="./styles/banners/desktop.scss"></style>

@@ -44,6 +44,7 @@
                 :visible="showCustomerSearch && !selectedCustomer"
                 :keyword="formData.customer_phone"
                 :min-query-length="3"
+                :create-min-query-length="11"
                 @select="selectCustomer"
                 @create="prepareNewCustomer"
               />
@@ -399,6 +400,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 
 import type { FormInstance, FormItemRule } from 'element-plus'
@@ -425,6 +427,8 @@ import type { CustomerOption } from '@/services/customer-options'
 import type { ReferenceRecord } from '@/services/reference-options'
 import type { ModalProps, PreorderFormDraft, SuccessEmits, UpdateVisibleEmits } from '@/types'
 import { useNotification } from '@/composables/useNotification'
+const customerPermissions = usePagePermissions('customers')
+
 const globalNotifications = useNotification()
 
 
@@ -752,12 +756,14 @@ const handleNameInput = (value: string) => {
 }
 
 const enableCustomerNameEdit = () => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!selectedCustomer.value) return
   customerNameEditing.value = true
   nextTick(() => customerNameInputRef.value?.focus?.())
 }
 
 const handleCustomerNameTouchEnd = () => {
+  if (!customerPermissions.requirePermission('edit')) return
   const now = Date.now()
   const interval = now - customerNameLastTapAt.value
   customerNameLastTapAt.value = now
@@ -771,6 +777,7 @@ const handleCustomerNameBlur = () => {
 }
 
 const saveCustomerNameEdit = async () => {
+  if (!customerPermissions.requirePermission('edit')) return
   if (!selectedCustomer.value) {
     customerNameEditing.value = false
     return
@@ -821,7 +828,7 @@ const searchCustomers = async (keyword: string) => {
   latestSearchKeyword.value = keyword
   customerSearching.value = true
   try {
-    const records = await searchCustomerOptions(keyword, 'generic')
+    const records = await searchCustomerOptions(keyword, 'sales')
     if (latestSearchKeyword.value === keyword) {
       customerSearchResults.value = records
     }
@@ -855,6 +862,7 @@ const selectCustomer = (customer: CustomerSearchDropdownItem) => {
 }
 
 const prepareNewCustomer = () => {
+  if (!customerPermissions.requirePermission('create')) return
   showCustomerSearch.value = false
   nextTick(() => customerNameInputRef.value?.focus?.())
 }
@@ -971,6 +979,7 @@ const handleCreateSubmit = async () => {
       throw new Error('请输入有效的手机号码')
     }
 
+    if (!customerPermissions.requirePermission('create')) throw new Error('缺少新增客户权限')
     const customerResponse = await unifiedApi.post('/customers', {
       name: normalizedCustomerName,
       phone: normalizedCustomerPhone
@@ -1033,15 +1042,17 @@ const handleEditSubmit = async () => {
         throw new Error('请输入有效的手机号码')
       }
 
-      const customers = await searchCustomerOptions(normalizedCustomerPhone, 'generic')
+      const customers = await searchCustomerOptions(normalizedCustomerPhone, 'sales')
       const existingCustomer = customers.find(c => normalizeCustomerPhone(c.phone) === normalizedCustomerPhone)
 
       if (existingCustomer) {
         customerId = existingCustomer.id
         if (normalizePersonName(existingCustomer.name, 20) !== normalizedCustomerName) {
+          if (!customerPermissions.requirePermission('edit')) throw new Error('缺少编辑客户权限')
           await unifiedApi.put(`/customers/${customerId}`, { name: normalizedCustomerName })
         }
       } else if (normalizedCustomerName) {
+        if (!customerPermissions.requirePermission('create')) throw new Error('缺少新增客户权限')
         const newCustomerRes = await unifiedApi.post('/customers', {
           name: normalizedCustomerName,
           phone: normalizedCustomerPhone

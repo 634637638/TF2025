@@ -21,6 +21,15 @@
           >
             <template #actions>
               <el-button
+                v-if="queryMode === 'goods' && canSellGoods"
+                v-permission="{ permission: ['query:goods-sell', 'query:goods-gift'] }"
+                type="primary"
+                :disabled="!goodsPanel"
+                @click="goodsPanel?.openSale()"
+              >
+                商品销售
+              </el-button>
+              <el-button
                 v-if="queryMode === 'phone' && canCreate"
                 type="warning"
                 title="快速出库"
@@ -82,7 +91,7 @@
           </el-button>
           <el-button
             v-if="canViewGoods"
-            v-permission="'accessories:view'"
+            v-permission="'query:goods-view'"
             :type="queryMode === 'goods' ? 'primary' : 'default'"
             @click="queryMode = 'goods'"
           >
@@ -442,7 +451,6 @@
                             v-if="canEdit"
                             class="table-action table-action--edit"
                             type="primary"
-                            size="small"
                             title="编辑"
                             @click.stop="openEditModal(row)"
                           >
@@ -453,7 +461,6 @@
                             v-if="canDelete"
                             class="table-action table-action--delete"
                             type="danger"
-                            size="small"
                             title="删除"
                             @click.stop="deleteItem(row)"
                           >
@@ -464,7 +471,6 @@
                             v-if="canReturnToStock"
                             class="table-action table-action--warning"
                             type="warning"
-                            size="small"
                             title="退库"
                             @click.stop="confirmReturnToStock(row)"
                           >
@@ -665,7 +671,6 @@
                 <!-- 右上角删除按钮 -->
                 <el-button
                   type="danger"
-                  size="small"
                   circle
                   class="image-delete-btn"
                   @click.stop="deleteSingleImage(image)"
@@ -733,7 +738,8 @@
 <script setup lang="ts">
 import { confirmAction, alertAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { usePageShortcuts, useRouteDialog } from '@/composables/useRouteDialog'
 
 import { useAuthStore } from '@/stores/auth'
 import { useNotification } from '@/composables/useNotification'
@@ -771,6 +777,7 @@ import { logger } from '@/utils/logger'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
 import { MEDIA_UPLOAD_ACCEPT, prepareMediaFile, validateMediaFile } from '@/utils/upload-media'
 import { useMobile } from '@/composables/mobile'
+import { isInteractiveTableTarget } from '@/directives/table-double-tap'
 
 // 定义消息提示函数
 const QuickSaleModal = defineAsyncComponent(() => import('@/components/query/QuickSaleModal.vue'))
@@ -790,13 +797,23 @@ const globalNotifications = useNotification()
 
 // 使用 stores 和 composables
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const { success, handleApiError } = useNotification()
 const { canView, canCreate, canEdit, canDelete, canExport, hasPermission: hasQueryPagePermission, handleNoPermission } = usePagePermissions('query')
-const { canView: canViewGoods } = usePagePermissions('accessories')
+const canViewGoods = computed(() => canView.value && hasQueryPagePermission('goods-view'))
+const canSellGoods = computed(() => canView.value && canViewGoods.value &&
+  (hasQueryPagePermission('goods-sell') || hasQueryPagePermission('goods-gift')))
 const queryMode = ref<'phone' | 'goods'>('phone')
 const goodsPanel = ref<InstanceType<typeof QueryGoodsPanel> | null>(null)
-watch(canViewGoods, allowed => { if (!allowed) queryMode.value = 'phone' })
+watch([() => route.query.mode, canViewGoods, () => route.query.openSale], ([mode, allowed]) => {
+  queryMode.value = mode === 'goods' && allowed ? 'goods' : 'phone'
+}, { immediate: true })
+useRouteDialog({
+  path: '/query', flag: 'openSale', allowed: () => canSellGoods.value,
+  ready: () => queryMode.value === 'goods' && !!goodsPanel.value,
+  open: () => goodsPanel.value?.openSale()
+})
 const { refreshing, refresh, refreshData } = useRefreshData()
 const canReturnToStock = computed(() => hasQueryPagePermission('return-to-stock'))
 const { exportFile, buildDateFilename, sanitizeParams } = useImportExport()
@@ -1155,6 +1172,7 @@ const normalizeQueryItem = (item: unknown): QueryItem => {
     },
     销售信息: {
       sale_id: Number(rawItem.sale_id || 0),
+      has_checkout_order: rawItem.has_checkout_order === true,
       sale_type: String(rawItem.sale_type || ''),
       payment_method: String(rawItem.payment_method || ''),
       payment_channel: String(rawItem.payment_channel || ''),
@@ -2057,7 +2075,9 @@ const deleteAllImages = async () => {
       }
     )
 
-    await unifiedApi.delete(`/shop/products/${selectedPhoneId.value}/images`)
+    for (const image of productImages.value) {
+      await unifiedApi.delete(`/phones/${selectedPhoneId.value}/images/${image.id}`)
+    }
     globalNotifications.success('删除成功')
 
     // 清空图片列表
@@ -2266,12 +2286,10 @@ const handleCellDoubleClick = (item: QueryItem, _column: unknown) => {
   }
 }
 
-// 双击行打开详情模态框（仅移动端）
-const handleRowDoubleClick = (item: QueryItem) => {
-  // 仅移动端（<=1024px）打开详情模态框
-  if (windowWidth.value <= 1024) {
-    openDetailModal(item)
-  }
+// 普通字段双击共用设备详情；专用字段自行停止冒泡，操作控件沿用公共排除规则。
+const handleRowDoubleClick = (item: QueryItem, _column?: unknown, event?: MouseEvent) => {
+  if (isInteractiveTableTarget(event?.target ?? null)) return
+  openDetailModal(item)
 }
 
 // 双击全新机或二手机的成色单元格，打开图片/视频管理
@@ -2763,6 +2781,12 @@ onUnmounted(() => {
     clearTimeout(debounceTimer)
   }
 
+})
+
+usePageShortcuts('/query', {
+  'query-quick-sale': { open: openQuickSaleModal },
+  'query-phones': { open: () => { queryMode.value = 'phone' } },
+  'query-goods': { open: () => { queryMode.value = 'goods' } }
 })
 </script>
 

@@ -28,7 +28,6 @@
       <template #actions="{ loading: searchLoading }">
         <el-button
           type="primary"
-          size="small"
           :loading="searchLoading"
           :aria-busy="searchLoading"
           @click="emit('search')"
@@ -37,7 +36,6 @@
         </el-button>
         <el-button
           type="default"
-          size="small"
           :disabled="searchLoading"
           @click="emit('reset')"
         >
@@ -339,7 +337,7 @@
                   :type="isPaidSalaryRecord(row.payoutRecord) ? 'success' : 'info'"
                   size="small"
                 >
-                  {{ isPaidSalaryRecord(row.payoutRecord) ? '已发放' : '待发放' }}
+                  {{ isPaidSalaryRecord(row.payoutRecord) ? '已发放' : row.payoutRecord.status === 'approved' ? '待发放' : '待审批' }}
                 </el-tag>
                 <el-tooltip
                   v-if="!isPaidSalaryRecord(row.payoutRecord) && getRecalculationNotice(row.id)"
@@ -412,10 +410,9 @@
             <template #default="{ row }">
               <div class="payout-action-buttons action-buttons">
                 <el-button
-                  v-if="canCreate && !isPaidSalaryRecord(row.payoutRecord)"
-                  v-permission="'salary-records:create'"
+                  v-if="!isPaidSalaryRecord(row.payoutRecord) && (row.payoutRecord ? canEdit : canCreate && canPay && canApprove)"
+                  v-permission="row.payoutRecord ? 'salary-records:edit' : { permission: ['salary-records:create', 'salary-records:pay', 'salary-records:approve'], mode: 'all' }"
                   class="payout-action-button"
-                  size="small"
                   :type="row.payoutRecord ? 'warning' : 'primary'"
                   plain
                   @click.stop="row.payoutRecord ? emit('recalculate', row) : emit('settle', row)"
@@ -424,10 +421,25 @@
                   {{ row.payoutRecord ? '重算' : '结算' }}
                 </el-button>
                 <el-button
+                  v-if="row.payoutRecord && ['draft', 'pending'].includes(row.payoutRecord.status || '') && canApprove"
+                  v-permission="'salary-records:approve'"
+                  type="success"
+                  @click.stop="emit('approve', row)"
+                >
+                  审批
+                </el-button>
+                <el-button
+                  v-if="row.payoutRecord?.status === 'approved' && canPay && !isPaidSalaryRecord(row.payoutRecord)"
+                  v-permission="'salary-records:pay'"
+                  type="primary"
+                  @click.stop="emit('settle', row)"
+                >
+                  发放
+                </el-button>
+                <el-button
                   v-if="row.payoutRecord && canEdit && !isPaidSalaryRecord(row.payoutRecord)"
                   v-permission="'salary-records:edit'"
                   class="payout-action-button"
-                  size="small"
                   type="success"
                   plain
                   @click.stop="emit('edit', row)"
@@ -438,7 +450,6 @@
                   v-if="row.payoutRecord && canDelete && !isPaidSalaryRecord(row.payoutRecord)"
                   v-permission="'salary-records:delete'"
                   class="payout-action-button"
-                  size="small"
                   type="danger"
                   plain
                   @click.stop="emit('delete', row)"
@@ -454,17 +465,33 @@
           title="工资结算详情"
           :fields="mobileDetailFields"
           :record="mobileDetailRow"
-          :has-actions="mobileDetailRow !== null && !isPaidSalaryRecord(mobileDetailRow.payoutRecord) && (canCreate || (Boolean(mobileDetailRow.payoutRecord) && (canEdit || canDelete)))"
+          :has-actions="mobileDetailRow !== null && !isPaidSalaryRecord(mobileDetailRow.payoutRecord) && ((canCreate && canPay && canApprove) || (Boolean(mobileDetailRow.payoutRecord) && (canEdit || canDelete || canPay || canApprove)))"
         >
           <template #actions="{ row }">
             <el-button
-              v-if="canCreate && !isPaidSalaryRecord(row.payoutRecord)"
-              v-permission="'salary-records:create'"
+              v-if="!isPaidSalaryRecord(row.payoutRecord) && (row.payoutRecord ? canEdit : canCreate && canPay && canApprove)"
+              v-permission="row.payoutRecord ? 'salary-records:edit' : { permission: ['salary-records:create', 'salary-records:pay', 'salary-records:approve'], mode: 'all' }"
               :type="row.payoutRecord ? 'warning' : 'primary'"
               @click.stop="mobileDetailRunAction(() => row.payoutRecord ? emit('recalculate', row) : emit('settle', row))"
             >
               <i :class="row.payoutRecord ? 'fas fa-rotate' : 'fas fa-check'" />
               <span>{{ row.payoutRecord ? '重算' : '结算' }}</span>
+            </el-button>
+            <el-button
+              v-if="row.payoutRecord && ['draft', 'pending'].includes(row.payoutRecord.status || '') && canApprove"
+              v-permission="'salary-records:approve'"
+              type="success"
+              @click.stop="mobileDetailRunAction(() => emit('approve', row))"
+            >
+              审批
+            </el-button>
+            <el-button
+              v-if="row.payoutRecord?.status === 'approved' && canPay && !isPaidSalaryRecord(row.payoutRecord)"
+              v-permission="'salary-records:pay'"
+              type="primary"
+              @click.stop="mobileDetailRunAction(() => emit('settle', row))"
+            >
+              发放
             </el-button>
             <el-button
               v-if="row.payoutRecord && canEdit && !isPaidSalaryRecord(row.payoutRecord)"
@@ -533,6 +560,8 @@ const props = defineProps<{
   calculateLeave: (_employeeId: number, _days: number) => string | number
   calculateOvertime: (_employeeId: number, _hours: number) => string | number
   calculateWorkDays: (_employeeId: number) => string | number
+  canPay?: boolean
+  canApprove?: boolean
   canCreate: boolean
   canDelete: boolean
   canEdit: boolean
@@ -574,7 +603,7 @@ const getValue = (row: SalaryPayoutRow, field: keyof ReturnType<typeof currentVa
 
 const showActionColumn = computed(() => shouldShowActionColumn(
   props.canViewField('salary_salaryrecordsview', 'actions'),
-  [props.canCreate, props.canEdit, props.canDelete]
+  [props.canCreate && Boolean(props.canPay), props.canEdit, props.canDelete, Boolean(props.canPay), Boolean(props.canApprove)]
 ))
 const showStatusColumn = computed(() => shouldShowActionColumn(
   props.canViewField('salary_salaryrecordsview', 'salary_status'),
@@ -589,6 +618,7 @@ const emit = defineEmits<{
   recalculate: [row: SalaryPayoutRow]
   reset: []
   search: []
+  approve: [row: SalaryPayoutRow]
   settle: [row: SalaryPayoutRow]
   statusChange: []
   'update:month': [value: string]

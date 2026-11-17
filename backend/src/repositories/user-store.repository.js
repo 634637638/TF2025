@@ -1,4 +1,5 @@
-const { getDatabase, isConnected } = require('../config/database')
+const { withConnection } = require('../core/db/connection')
+const { getDatabase } = require('../config/database')
 const log = require('../utils/log')
 
 /**
@@ -22,11 +23,7 @@ class UserStoreRepository {
    */
   async getUserStores(userId) {
     try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
-      }
-
-      const pool = getDatabase()
+      const pool = this.database()
       const [rows] = await pool.execute(`
         SELECT
           us.id,
@@ -60,11 +57,7 @@ class UserStoreRepository {
    */
   async getStoreUsers(storeId) {
     try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
-      }
-
-      const pool = getDatabase()
+      const pool = this.database()
       const [rows] = await pool.execute(`
         SELECT
           us.id,
@@ -97,84 +90,39 @@ class UserStoreRepository {
    * @param {number} isPrimary - 是否为主门店
    * @returns {Promise<Object>} 关联结果
    */
-  async assignStoresToUser(userId, storeIds, assignedBy, isPrimary = 0) {
-    try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
+  async withUserBindingTransaction(userId, operation) {
+    return withConnection(this.database, async connection => {
+      await connection.beginTransaction()
+      try {
+        const [users] = await connection.execute('SELECT id FROM users WHERE id = ? FOR UPDATE', [userId])
+        if (!users.length) throw Object.assign(new Error('用户不存在'), { statusCode: 404 })
+        const result = await operation(connection)
+        await connection.commit()
+        return result
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
-
-      const pool = getDatabase()
-
-      // 转换为数组
-      const storeIdArray = Array.isArray(storeIds) ? storeIds : [storeIds]
-
-      // 删除用户现有的所有门店关联（如果要完全替换）
-      // await pool.execute('DELETE FROM user_stores WHERE user_id = ?', [userId]);
-
-      // 批量插入新的关联
-      const values = storeIdArray.map((storeId, index) => [
-        userId,
-        storeId,
-        isPrimary && index === 0 ? 1 : 0,
-        assignedBy
-      ])
-      const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ')
-      const flatValues = values.flat()
-
-      await pool.execute(`
-        INSERT IGNORE INTO ${this.tableName}
-        (user_id, store_id, is_primary, assigned_by)
-        VALUES ${placeholders}
-      `, flatValues)
-
-      return {
-        success: true,
-        message: `成功为用户关联 ${storeIdArray.length} 个门店`
-      }
-    } catch (error) {
-      log.error('关联用户门店失败:', error)
-      throw error
-    }
+    })
   }
 
-  /**
-   * 为门店关联用户（支持批量）
-   * @param {number} storeId - 门店ID
-   * @param {Array<number>|number} userIds - 用户ID或用户ID数组
-   * @param {number} assignedBy - 分配人ID
-   * @param {number} isPrimary - 是否为主门店
-   * @returns {Promise<Object>} 关联结果
-   */
-  async assignUsersToStore(storeId, userIds, assignedBy, isPrimary = 0) {
-    try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
-      }
-
-      const pool = getDatabase()
-
-      // 转换为数组
-      const userIdArray = Array.isArray(userIds) ? userIds : [userIds]
-
-      // 批量插入新的关联
-      const values = userIdArray.map(userId => [userId, storeId, isPrimary, assignedBy])
-      const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ')
-      const flatValues = values.flat()
-
-      await pool.execute(`
-        INSERT IGNORE INTO ${this.tableName}
-        (user_id, store_id, is_primary, assigned_by)
-        VALUES ${placeholders}
-      `, flatValues)
-
-      return {
-        success: true,
-        message: `成功为门店关联 ${userIdArray.length} 个用户`
-      }
-    } catch (error) {
-      log.error('关联门店用户失败:', error)
-      throw error
+  async assignStoresToUser(userId, storeIds, assignedBy, isPrimary = 0, replaceExisting = false) {
+    const ids = [...new Set(storeIds.map(Number))]
+    if (!ids.length || ids.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+      throw Object.assign(new Error('门店编号无效'), { statusCode: 400 })
     }
+    return this.withUserBindingTransaction(userId, async connection => {
+      const [stores] = await connection.execute(
+        `SELECT id FROM stores WHERE id IN (${ids.map(() => '?').join(',')}) AND status = 1 FOR UPDATE`, ids)
+      if (stores.length !== ids.length) throw Object.assign(new Error('部分门店不存在或已停用'), { statusCode: 400 })
+      if (replaceExisting) await connection.execute('DELETE FROM user_stores WHERE user_id = ?', [userId])
+      if (isPrimary) await connection.execute('UPDATE user_stores SET is_primary = 0 WHERE user_id = ?', [userId])
+      await connection.execute(`INSERT INTO user_stores (user_id, store_id, is_primary, assigned_by)
+        VALUES ${ids.map(() => '(?, ?, ?, ?)').join(', ')}
+        ON DUPLICATE KEY UPDATE is_primary = IF(VALUES(is_primary) = 1, 1, is_primary), assigned_by = VALUES(assigned_by)`,
+      ids.flatMap((id, index) => [userId, id, isPrimary && index === 0 ? 1 : 0, assignedBy]))
+      return { success: true, message: `成功为用户关联 ${ids.length} 个门店` }
+    })
   }
 
   /**
@@ -185,15 +133,9 @@ class UserStoreRepository {
    */
   async removeUserStore(userId, storeId) {
     try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
-      }
-
-      const pool = getDatabase()
-      await pool.execute(
-        'DELETE FROM user_stores WHERE user_id = ? AND store_id = ?',
-        [userId, storeId]
-      )
+      await this.withUserBindingTransaction(userId, connection => connection.execute(
+        'DELETE FROM user_stores WHERE user_id = ? AND store_id = ?', [userId, storeId]
+      ))
 
       return {
         success: true,
@@ -212,15 +154,9 @@ class UserStoreRepository {
    */
   async removeAllUserStores(userId) {
     try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
-      }
-
-      const pool = getDatabase()
-      const [result] = await pool.execute(
-        'DELETE FROM user_stores WHERE user_id = ?',
-        [userId]
-      )
+      const [result] = await this.withUserBindingTransaction(userId, connection => connection.execute(
+        'DELETE FROM user_stores WHERE user_id = ?', [userId]
+      ))
 
       return {
         success: true,
@@ -240,47 +176,14 @@ class UserStoreRepository {
    * @returns {Promise<Object>} 设置结果
    */
   async setPrimaryStore(userId, storeId) {
-    try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
-      }
-
-      const pool = getDatabase()
-
-      // 先取消该用户的所有主门店标记
-      await pool.execute(
-        'UPDATE user_stores SET is_primary = 0 WHERE user_id = ?',
-        [userId]
-      )
-
-      // 检查用户是否已关联该门店
-      const [existing] = await pool.execute(
-        'SELECT id FROM user_stores WHERE user_id = ? AND store_id = ?',
-        [userId, storeId]
-      )
-
-      if (existing.length === 0) {
-        // 如果未关联，先创建关联
-        await pool.execute(
-          'INSERT INTO user_stores (user_id, store_id, is_primary) VALUES (?, ?, 1)',
-          [userId, storeId]
-        )
-      } else {
-        // 如果已关联，更新为主门店
-        await pool.execute(
-          'UPDATE user_stores SET is_primary = 1 WHERE user_id = ? AND store_id = ?',
-          [userId, storeId]
-        )
-      }
-
-      return {
-        success: true,
-        message: '成功设置用户的主门店'
-      }
-    } catch (error) {
-      log.error('设置用户主门店失败:', error)
-      throw error
-    }
+    return this.withUserBindingTransaction(userId, async connection => {
+      const [stores] = await connection.execute('SELECT id FROM stores WHERE id = ? AND status = 1 FOR UPDATE', [storeId])
+      if (!stores.length) throw Object.assign(new Error('门店不存在或已停用'), { statusCode: 400 })
+      await connection.execute('UPDATE user_stores SET is_primary = 0 WHERE user_id = ?', [userId])
+      await connection.execute(`INSERT INTO user_stores (user_id,store_id,is_primary) VALUES (?,?,1)
+        ON DUPLICATE KEY UPDATE is_primary = 1`, [userId, storeId])
+      return { success: true, message: '成功设置用户的主门店' }
+    })
   }
 
   /**
@@ -290,11 +193,7 @@ class UserStoreRepository {
    */
   async getUserPrimaryStore(userId) {
     try {
-      if (!isConnected()) {
-        throw new Error('数据库未连接')
-      }
-
-      const pool = getDatabase()
+      const pool = this.database()
       const [rows] = await pool.execute(`
         SELECT
           s.id,

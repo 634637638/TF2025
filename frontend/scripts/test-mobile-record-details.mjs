@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { createServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { mobileDetailEntry, mobileDetailMocks } from './lib/mobile-detail-browser-fixture.mjs'
+import { mobileDetailEntry, mobileDetailMocks, attendanceDetailEntry, attendanceDetailFixture } from './lib/mobile-detail-browser-fixture.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const requireBackend = createRequire(resolve(root, '../backend/package.json'))
@@ -15,7 +15,11 @@ const temporary = await mkdtemp(join(tmpdir(), 'tf-mobile-records-'))
 const mocks = mobileDetailMocks(root)
 const screenshotDirectory = process.env.MOBILE_DETAIL_SCREENSHOT_DIR
 let server, browser
+const returngoodsOnly = process.argv.includes('--returngoods-only')
+const attendanceOnly = process.argv.includes('--attendance-only')
 const cases = [
+  ...[1, 2].map(index => ({ file: 'views/system/page/Returngoods.vue', selector: `.el-table__body tr.el-table__row:nth-child(${index})`, receiptReadonly: true, text: index === 1 ? '整单退款' : '整单补款' })),
+  { file: 'views/system/page/Returngoods.vue', selector: '.el-table__body tr.el-table__row:nth-child(3)', edit: '编辑' },
   { file: 'views/H5-admin/page/banners.vue', selector: '[data-mobile-record]', edit: '编辑' },
   { file: 'views/H5-admin/page/home-sections.vue', selector: '[data-mobile-record]', edit: '编辑' },
   { file: 'views/H5-admin/page/home-sections.vue', selector: '[data-section-product]', parentAction: '管理商品', expectedAction: '移除商品' },
@@ -38,14 +42,22 @@ const cases = [
   { file: 'views/data-optimization/page/DataCheckTab.vue', selector: '.duplicate-item', setupButton: '综合检查', edit: '编辑' },
   ...['phones', 'accessories', 'purchases'].map(tab => ({ file: 'components/ComprehensiveWarnings.vue', selector: '.el-table__body tr.el-table__row', tab }))
 ]
+const activeCases = cases.filter(item => !returngoodsOnly || item.file.endsWith('/Returngoods.vue'))
 try {
   if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true })
   server = await createServer({ root, configFile: false, envFile: false, cacheDir: join(temporary, 'vite'),
     resolve: { alias: { '@': resolve(root, 'src') } },
     optimizeDeps: { noDiscovery: true, include: ['vue', 'pinia', 'vue-router', 'element-plus', '@element-plus/icons-vue', 'vuedraggable', 'element-plus/es/components/focus-trap/index', 'dompurify', 'dayjs', 'dayjs/plugin/customParseFormat', 'dayjs/plugin/timezone', 'dayjs/plugin/utc', 'dayjs/plugin/relativeTime', 'dayjs/locale/zh-cn'] },
     plugins: [vue(), { name: 'isolated-mobile-records', enforce: 'pre',
-      resolveId(id) { if (id === '/__mobile-entry.js') return '\0mobile-entry' },
-      load(id) { return id === '\0mobile-entry' ? mobileDetailEntry : mocks.get(id) },
+      resolveId(id) {
+        if (id === '/__mobile-entry.js') return '\0mobile-entry'
+        if (attendanceOnly && id === '/__attendance-detail.vue') return join(root, '__attendance-detail.vue')
+      },
+      load(id) {
+        if (id === '\0mobile-entry') return attendanceOnly ? attendanceDetailEntry : mobileDetailEntry
+        if (attendanceOnly && id === join(root, '__attendance-detail.vue')) return attendanceDetailFixture(root)
+        return mocks.get(id)
+      },
       configureServer(vite) { vite.middlewares.use((req, res, next) => {
         if (req.url === '/__mobile.html') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end('<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head><body><div id="app"></div><script type="module" src="/__mobile-entry.js"></script></body></html>'); return }
         if (req.method !== 'GET' || req.url?.startsWith('/api/')) { res.statusCode = 403; res.end('隔离测试禁止业务请求'); return }
@@ -66,13 +78,70 @@ try {
   await page.setViewport({ width: 375, height: 932, isMobile: true, hasTouch: true })
   await page.goto(`${origin}/__mobile.html`, { waitUntil: 'networkidle0' })
   await page.waitForFunction('window.fixtureReady === true')
-  for (const width of [375, 430, 767]) for (const theme of ['light', 'dark']) {
-    await page.setViewport({ width, height: 932, isMobile: true, hasTouch: true })
+  if (attendanceOnly) {
+    for (const width of [320, 390, 767, 768, 1024, 1440]) for (const theme of ['light', 'dark']) {
+      await page.setViewport({ width, height: 932, isMobile: width < 768, hasTouch: width < 768 })
+      await page.evaluate(theme => { document.documentElement.dataset.theme = theme }, theme)
+      for (const type of ['leave', 'monthly_leave', 'overtime']) {
+        await page.evaluate(type => window.renderAttendanceDetail({ record: { record_type: type, monthly_leave_days: '1', overtime_hours: '2' } }), type)
+        await page.waitForFunction(() => !document.querySelector('.mobile-dialog-sheet-fade-enter-active,.dialog-fade-enter-active'))
+        const metrics = await page.evaluate(() => {
+          const panel = document.querySelector('.attendance-detail-dialog'), body = panel.querySelector('.el-dialog__body')
+          const descriptions = panel.querySelector('.el-descriptions'), table = descriptions.querySelector('table')
+          const cell = table.querySelector('td,th'), firstLabels = [...table.querySelector('tr').children]
+          return { panel: { left: panel.getBoundingClientRect().left, right: panel.getBoundingClientRect().right },
+            bodyWidth: body.clientWidth, bodyScroll: body.scrollWidth, tableWidth: table.getBoundingClientRect().width,
+            width: descriptions.getBoundingClientRect().width, border: parseFloat(getComputedStyle(cell).borderTopWidth), padding: parseFloat(getComputedStyle(cell).paddingLeft),
+            labels: [...table.querySelectorAll('.el-descriptions__label')].map(node => node.textContent.trim()),
+            tags: [...table.querySelectorAll('.el-tag')].map(node => ({ text: node.textContent.trim(), height: node.getBoundingClientRect().height, color: getComputedStyle(node).color, html: node.outerHTML })),
+            columns: firstLabels.length, widths: firstLabels.map(node => node.getBoundingClientRect().width),
+            footer: Boolean(panel.querySelector('.el-dialog__footer')) }
+        })
+        const label = `考勤详情 ${width}px/${theme}/${type}`
+        assert.ok(metrics.panel.left >= -1 && metrics.panel.right <= width + 1 && metrics.bodyScroll <= metrics.bodyWidth + 1, `${label} 不得横向溢出`)
+        assert.ok(Math.abs(metrics.tableWidth - metrics.width) <= 1 && metrics.border > 0 && metrics.padding > 0, `${label} 描述表须自带全宽、边框和单元格间距，不能依赖其他页面加载 CSS`)
+        assert.equal(metrics.columns, 2, `${label} 短字段须两列`)
+        assert.ok(metrics.tags.every(tag => tag.text && tag.height > 0 && tag.height <= 40), `${label} 类型与状态标签应完整紧凑显示 ${JSON.stringify(metrics.tags)}`)
+        assert.ok(metrics.widths.every(value => value >= metrics.width * 0.3), `${label} 字段不可挤在左侧`)
+        for (const [field, expected] of [['请假天数', 'leave'], ['休假天数', 'monthly_leave'], ['加班时长', 'overtime']]) {
+          assert.equal(metrics.labels.includes(field), type === expected, `${label} 只能展示本类型的时长字段`)
+        }
+        assert.equal(metrics.footer, false, `${label} 已通过的只读记录不留空 footer`)
+        results.push(label)
+      }
+      await page.evaluate(() => window.renderAttendanceDetail({ tab: 'my', hidden: ['attendance_myattendanceview:leave_type', 'attendance_myattendanceview:reason'], record: { employee_name: '员工长姓名'.repeat(8), approval_note: '长审批备注'.repeat(40) } }))
+      const hidden = await page.evaluate(() => {
+        const body = document.querySelector('.attendance-detail-dialog .el-dialog__body')
+        return { text: body.textContent, labels: [...body.querySelectorAll('.el-descriptions__label')].map(node => node.textContent.trim()), width: body.clientWidth, scroll: body.scrollWidth }
+      })
+      assert.ok(!hidden.labels.includes('请假类型') && !hidden.labels.includes('原因') && !hidden.text.includes('有事'), '本人字段权限应使用本人模块，不泄漏隐藏内容')
+      assert.ok(hidden.scroll <= hidden.width + 1, '长姓名和审批备注不得撑破弹窗')
+      if (screenshotDirectory && [390, 1440].includes(width) && theme === 'light') {
+        await page.evaluate(() => window.renderAttendanceDetail())
+        await page.screenshot({ path: join(screenshotDirectory, `attendance-detail-${width}.png`), fullPage: true })
+      }
+    }
+    assert.deepEqual(errors, [], '考勤详情浏览器运行异常')
+    console.log(`考勤查看浏览器通过：${results.length} 组类型/视口/主题，含长内容和本人字段隐藏；真实详情模板、公共组件及按需CSS，未登录、无业务请求。`)
+  }
+  for (const width of (attendanceOnly ? [] : returngoodsOnly ? [375, 430, 767, 768, 1440] : [375, 430, 767])) for (const theme of ['light', 'dark']) {
+    await page.setViewport({ width, height: 932, isMobile: width < 768, hasTouch: width < 768 })
+
     await page.evaluate(theme => { document.documentElement.dataset.theme = theme }, theme)
-    for (const item of cases) {
+    for (const item of activeCases) {
       const label = `${item.file} ${item.tab || item.selector} ${width} ${theme}`
       try {
-        await page.evaluate(item => window.renderMobileCase(item.file, Boolean(item.readonly)), item)
+        if (returngoodsOnly) {
+          // 每种凭据用独立页面状态，避免上一用例尚未关闭的编辑弹层影响本组。
+          await page.goto(`${origin}/__mobile.html`, { waitUntil: 'networkidle0' })
+          await page.waitForFunction('window.fixtureReady === true')
+          await page.evaluate(theme => { document.documentElement.dataset.theme = theme }, theme)
+        }
+        await page.evaluate(item => {
+          // 保留当前挂载任务，避免 CDP 等待期间 Promise 被垃圾回收。
+          window.fixtureRenderPromise = window.renderMobileCase(item.file, Boolean(item.readonly))
+          return window.fixtureRenderPromise
+        }, item)
         if (item.setupButton) await page.evaluate(text => [...document.querySelectorAll('button')].find(el => el.textContent.trim() === text).click(), item.setupButton)
         if (item.tabButton) await page.evaluate(text => [...document.querySelectorAll('.tab-navigation button')].find(el => el.textContent.trim() === text).click(), item.tabButton)
         if (item.tab) {
@@ -93,6 +162,19 @@ try {
         let target
         for (const candidate of record) if (await candidate.isVisible()) { target = candidate; break }
         assert.ok(target, '没有可见记录')
+        if (returngoodsOnly && width >= 768) {
+          const actions = await target.evaluate(element => [...element.querySelectorAll('button')].filter(button => button.getClientRects().length).map(button => button.textContent.trim()))
+          if (item.receiptReadonly) {
+            assert.deepEqual(actions, [], '联合退货凭据在桌面也不能编辑删除')
+            assert.ok((await target.evaluate(element => element.textContent)).includes(item.text), '桌面须区分整单退款/补款')
+          } else assert.deepEqual(actions, ['编辑', '删除'], '旧退库日志保留授权动作')
+          assert.deepEqual(await page.evaluate(() => window.fixtureWrites), [])
+          assert.deepEqual(await page.evaluate(() => window.fixtureUnknown), [])
+          assert.deepEqual(await page.evaluate(() => window.fixtureNotices.filter(item => item.kind === 'error')), [])
+          assert.deepEqual(errors, [])
+          results.push(label)
+          continue
+        }
         assert.equal(await target.evaluate(element => [...element.querySelectorAll('button,.el-switch')].filter(el => el.getClientRects().length).length), 0, '手机记录内不能保留业务操作按钮')
         await target.scrollIntoView()
         await target.tap()
@@ -111,7 +193,8 @@ try {
         assert.ok(metrics.left >= -1 && metrics.right <= width + 1 && metrics.scroll <= width + 1, '详情或页面横向溢出')
         if (metrics.columns) assert.equal(metrics.columns, 2, '短字段必须保持两列')
         assert.ok(!metrics.actions.includes('关闭'), '只读详情不能有纯关闭按钮')
-        if (item.readonly) assert.equal(metrics.actions.length, 0, '无操作权限不得有空操作区')
+        if (item.readonly || item.receiptReadonly) assert.equal(metrics.actions.length, 0, '只读记录不得有编辑删除入口')
+        if (item.text) assert.ok(await page.evaluate(text => [...document.querySelectorAll('.el-dialog')].filter(el => el.getClientRects().length).at(-1).textContent.includes(text), item.text), '手机详情缺少整单结算口径')
         if (item.expectedAction) assert.ok(metrics.actions.includes(item.expectedAction), '子列表缺少底部操作')
         if (screenshotDirectory && width === 375 && theme === 'light' && (item.parentAction || item.file.endsWith('/SystemView.vue'))) {
           await page.screenshot({ path: join(screenshotDirectory, `${item.file.replace(/\W+/g, '-')}-${item.selector.replace(/\W+/g, '-')}.png`), fullPage: true })
@@ -145,7 +228,7 @@ try {
         results.push(label)
       } catch (error) { throw new Error(`${label}: ${error.message}; 页面异常 ${errors.join('; ')}`, { cause: error }) }
     }
-    console.log(`手机详情及编辑浏览器通过：${width}px / ${theme}，${cases.length} 个页面或子列表`)
+    console.log(`手机详情及编辑浏览器通过：${width}px / ${theme}，${activeCases.length} 个页面或子列表`)
   }
   console.log(`隔离浏览器验证完成：${results.length} 组；真实Vue/Element/公共CSS，未登录、未连接数据库、无业务写入。`)
 } finally {

@@ -47,18 +47,18 @@ test('sales stats repository keeps inventory and current-month query contracts',
       }
     })
   })
-  assert.deepEqual(await repository.getPhoneCounts(), {
+  assert.deepEqual(await repository.getPhoneCounts({ allStores: false, storeIds: [2] }), {
     total_phones: 8,
     available_phones: 3,
     sold_phones: 4,
     reserved_phones: 1
   })
-  assert.deepEqual(await repository.getCurrentMonthSales(), { sold_this_month: 2, total_revenue: '125.50' })
+  assert.deepEqual(await repository.getCurrentMonthSales({ allStores: false, storeIds: [2] }), { sold_this_month: 2, total_revenue: '125.50' })
   assert.equal(calls.length, 2)
   assert.match(calls[0].sql, /COUNT\(CASE WHEN status = 'reserved' OR \(status = 'in_stock' AND COALESCE\(is_preordered, 0\) = 1\)/)
-  assert.match(calls[1].sql, /YEAR\(sale_time\) = YEAR\(CURRENT_DATE\)/)
-  assert.match(calls[1].sql, /MONTH\(sale_time\) = MONTH\(CURRENT_DATE\)/)
-  assert.deepEqual(calls.map(call => call.params), [undefined, undefined])
+  assert.match(calls[1].sql, /YEAR\(s\.sale_time\) = YEAR\(CURRENT_DATE\)/)
+  assert.match(calls[1].sql, /MONTH\(s\.sale_time\) = MONTH\(CURRENT_DATE\)/)
+  assert.deepEqual(calls.map(call => call.params), [[2], [2]])
 })
 
 test('sales stats controller returns the established success payload', async () => {

@@ -13,9 +13,9 @@ const createResponse = () => ({
   status(code) { this.statusCode = code; return this }
 })
 
-test('sales customer phone route preserves authentication and view permission', () => {
+test('sales customer phone route uses authenticated business candidate authorization', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/sales.js'), 'utf8')
-  assert.match(route, /router\.get\('\/customer\/phone\/:phone', unifiedAuth, requirePermission\('sales:view'\), salesCustomerPhoneController\.find\.bind\(salesCustomerPhoneController\)\)/)
+  assert.match(route, /router\.get\('\/customer\/phone\/:phone', unifiedAuth, requireCustomerSearchPermission, salesCustomerPhoneController\.find\.bind\(salesCustomerPhoneController\)\)/)
 })
 
 test('sales customer phone service rejects invalid phone formats without repository access', async () => {

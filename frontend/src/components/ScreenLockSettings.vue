@@ -47,7 +47,10 @@
                 class="tf-form-field--wide"
                 label="背景类型"
               >
-                <el-radio-group v-model="screenLockForm.backgroundType">
+                <el-radio-group
+                  v-model="screenLockForm.backgroundType"
+                  class="tf-state-selector"
+                >
                   <el-radio value="default">
                     默认背景
                   </el-radio>

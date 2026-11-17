@@ -25,8 +25,9 @@ const requiredTokens = [
   '--tf-z-message-box', '--tf-z-popper', '--tf-z-permission-tooltip'
 ]
 const requiredPublicReferences = {
-  'src/styles/components/_buttons.scss': ['--tf-radius-control', '--tf-font-body', '--tf-space-3', '--tf-space-4'],
-  'src/styles/components/_dialog-actions.scss': ['--tf-space-2', '--tf-space-4'],
+  // 默认命令按钮及弹窗操作共用小号基础令牌；字号不再映射旧的正文默认档。
+  'src/styles/components/_buttons.scss': ['--tf-radius-control', '--tf-type-scale-13', '--tf-button-small-base-height', '--tf-button-small-base-padding-x', '--tf-button-small-base-font-size', '--tf-space-3', '--tf-space-4'],
+  'src/styles/components/_dialog-actions.scss': ['--tf-space-2', '--tf-button-small-base-height', '--tf-button-small-base-padding-x', '--tf-button-small-base-font-size'],
   'src/styles/components/_dialog.scss': ['--tf-radius-dialog', '--tf-shadow-dialog', '--tf-font-section', '--tf-z-message-box', '--tf-z-popper'],
   'src/styles/components/_tabs.scss': ['--tf-radius-control', '--tf-font-body', '--tf-space-1', '--tf-space-4'],
   'src/styles/components/_pagination.scss': ['--tf-space-1', '--tf-space-2', '--tf-radius-control', '--tf-font-caption'],

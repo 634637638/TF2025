@@ -9,6 +9,7 @@ const definitions = {
   transfer_id: 'bigint unsigned', sale_id: 'bigint', operator_id: 'bigint', operator_name: 'varchar(100)', remarks: 'varchar(1000)', created_at: 'datetime'
 }
 const returnEventType = `${definitions.event_type.slice(0, -1)},'sale_return','gift_return')`
+const correctionEventTypes = [definitions.event_type, returnEventType].map(type => `${type.slice(0, -1)},'stock_correct')`)
 const nullable = new Set(['stock_in_id', 'purchase_cost', 'transfer_id', 'sale_id', 'operator_name', 'remarks'])
 const indexes = { PRIMARY: ['id'], idx_accessory_event_stock: ['accessory_id', 'store_id', 'id'], idx_accessory_event_purchase: ['stock_in_id', 'id'], idx_accessory_event_sale: ['sale_id', 'id'], idx_accessory_event_transfer: ['transfer_id', 'id'] }
 const DDL = `CREATE TABLE accessory_inventory_events (
@@ -31,7 +32,7 @@ async function inspect(db) {
   for (const [name, type] of Object.entries(definitions)) {
     const field = columns.find(row => row.COLUMN_NAME === name)
     const actual = field?.COLUMN_TYPE.replace(/(?:bigint|tinyint|int)\(\d+\)/g, value => value.slice(0, value.indexOf('(')))
-    if (!field || actual !== type && !(name === 'event_type' && actual === returnEventType) || field.IS_NULLABLE !== (nullable.has(name) ? 'YES' : 'NO')) throw new Error(`库存流水字段结构冲突：${name}`)
+    if (!field || actual !== type && !(name === 'event_type' && [returnEventType, ...correctionEventTypes].includes(actual)) || field.IS_NULLABLE !== (nullable.has(name) ? 'YES' : 'NO')) throw new Error(`库存流水字段结构冲突：${name}`)
   }
   const [entries] = await db.query("SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accessory_inventory_events' ORDER BY INDEX_NAME, SEQ_IN_INDEX")
   for (const [name, names] of Object.entries(indexes)) {
@@ -74,4 +75,4 @@ async function main() {
   finally { await db.end() }
 }
 if (require.main === module) main().catch(error => { console.error({ status: 'failed', code: error.code || 'ACCESSORY_INVENTORY_MIGRATION_ERROR', message: error.code ? '数据库或备份操作失败' : error.message }); process.exitCode = 1 })
-module.exports = { migrate, inspect, definitions, nullable, indexes, returnEventType }
+module.exports = { migrate, inspect, definitions, nullable, indexes, returnEventType, correctionEventTypes }

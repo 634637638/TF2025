@@ -16,7 +16,7 @@ class SubsidyPhoneDetailController {
     }
 
     try {
-      const detail = await this.service.getByPhoneId(phoneId)
+      const detail = await this.service.getByPhoneId(phoneId, req.user)
       if (!detail) {
         return res.status(404).json({ success: false, message: '仅已销售设备可申请国补' })
       }
@@ -25,6 +25,7 @@ class SubsidyPhoneDetailController {
       }
       return res.json({ success: true, message: '获取详情成功', data: detail })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 获取设备详情失败:', error)
       return res.status(500).json({ success: false, message: '获取详情失败', error: error.message })
     }

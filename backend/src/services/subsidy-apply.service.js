@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const log = require('../utils/log')
 const { validateSubsidyInput } = require('../utils/subsidy-input')
 const { clearCache } = require('../middleware/cache')
@@ -22,7 +24,7 @@ class SubsidyApplyService {
     this.now = now
   }
 
-  async create(input, userId) {
+  async create(input, userId, actor) {
     const checked = validateSubsidyInput(input)
     if (checked.error) return { status: 400, body: { success: false, message: checked.error } }
     input = checked.input
@@ -37,6 +39,14 @@ class SubsidyApplyService {
         await connection.beginTransaction()
         transactionStarted = true
 
+        const scope = resolveStoreScope(actor)
+        assertStoreInScope(scope, input.store_id)
+        const sale = await this.repository.findSaleForUpdate(connection, input.phone_id)
+        if (!sale) throw Object.assign(new Error('仅已销售设备可申请国补'), { statusCode: 400 })
+        assertStoreInScope(scope, sale.store_id)
+        if (Number(input.sale_id) !== Number(sale.id) || Number(input.customer_id) !== Number(sale.customer_id)) {
+          throw Object.assign(new Error('销售单或客户关联不一致'), { statusCode: 400 })
+        }
         const existing = await this.repository.findByPhoneForUpdate(connection, input.phone_id)
         if (existing) {
           await connection.rollback()

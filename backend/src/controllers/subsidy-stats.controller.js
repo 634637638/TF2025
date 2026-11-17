@@ -26,7 +26,7 @@ class SubsidyStatsController {
 
     try {
       const result = await this.service.getSummary({
-        userId: req.user.id,
+        userId: req.user.id, actor: req.user,
         query: req.query,
         onFiltersBuilt: details => mark('filters built', details)
       })
@@ -38,6 +38,7 @@ class SubsidyStatsController {
       res.json({ success: true, message: '获取统计数据成功', data: result.data })
       mark('response sent')
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       mark('failed', { error: error.message })
       this.logger.error('❌ 获取统计数据失败:', error)
       res.status(500).json({

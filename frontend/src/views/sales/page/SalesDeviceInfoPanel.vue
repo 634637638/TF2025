@@ -16,19 +16,6 @@
         <div class="table-number-badge device-number-position">
           {{ index + 1 }}
         </div>
-        <div class="device-image">
-          <Image
-            :src="getPhoneImageSrc(phone)"
-            :alt="phone.brand + ' ' + phone.model"
-            mode="eager"
-            :product-info="{
-              brand: phone.brand || '',
-              model: phone.model || '',
-              color: phone.color || '',
-              memory: phone.memory || ''
-            }"
-          />
-        </div>
         <div class="device-details">
           <div class="device-name">
             {{ [canViewSaleField('brand') ? phone.brand : '', canViewSaleField('model') ? phone.model : ''].filter(Boolean).join(' ') || '设备信息' }}
@@ -102,22 +89,6 @@
       v-else
       class="device-card compact"
     >
-      <div
-        v-if="!isMobile"
-        class="device-image"
-      >
-        <Image
-          :src="getPhoneImageSrc(selectedPhone)"
-          :alt="selectedPhone?.model"
-          mode="eager"
-          :product-info="{
-            brand: selectedPhone?.brand || '',
-            model: selectedPhone?.model || '',
-            color: selectedPhone?.color || '',
-            memory: selectedPhone?.memory || ''
-          }"
-        />
-      </div>
       <div class="device-details">
         <template v-if="isMobile">
           <div class="sale-mobile-device">
@@ -337,13 +308,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Image from '@/components/Image.vue'
 import { formatAmount } from '@/utils/format'
 import type { Phone } from '@/types'
 import {
   formatSalesDate as formatDate,
-  getNewConditionLabel,
-  getPhoneImageSrc
+  getNewConditionLabel
 } from '../sales-phone-helpers'
 
 const props = defineProps<{

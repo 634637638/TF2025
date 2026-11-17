@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_id: 1, store_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9] }
+
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -39,8 +41,8 @@ test('preorder read service normalizes stats and returns canonical shared option
       return [{ id: resource }]
     }
   })
-  assert.deepEqual(await service.getStats(), { pending_count: 3, matched_count: 0, delivered_count: 2, cancelled_count: 0 })
-  assert.deepEqual(await service.getOptions(), {
+  assert.deepEqual(await service.getStats( scopedActor), { pending_count: 3, matched_count: 0, delivered_count: 2, cancelled_count: 0 })
+  assert.deepEqual(await service.getOptions( scopedActor), {
     stores: [{ id: 4, name: '一店', sort_order: 1 }],
     brands: [{ id: 'brands' }],
     models: [{ id: 'models' }],
@@ -65,8 +67,9 @@ test('preorder list service validates filters and preserves default and bounded 
   const result = await service.list({
     page: '2', page_size: '150', status: 'pending', customer_id: '7', store_id: '3',
     search: '  张三  ', start_date: '2026-11-01', end_date: '2026-11-07'
-  })
+  }, scopedActor)
   assert.deepEqual(calls[0], {
+    scope: { allStores: false, requestedStoreId: 3, storeIds: [3] },
     filters: {
       status: 'pending', customer_id: '7', store_id: 3, brand_id: null, model_id: null,
       color_id: null, memory_id: null, search: '张三', start_date: '2026-11-01', end_date: '2026-11-07'
@@ -77,12 +80,13 @@ test('preorder list service validates filters and preserves default and bounded 
   assert.deepEqual(result.pagination, {
     page: 2, page_size: 100, total: 51, total_pages: 1, has_next: false, has_prev: true
   })
-  assert.deepEqual(await service.list({ start_date: '2026-02-30' }), { error: '日期格式必须为 YYYY-MM-DD' })
-  assert.deepEqual(await service.list({ start_date: '2026-11-08', end_date: '2026-11-07' }), { error: '开始日期不能晚于结束日期' })
-  assert.deepEqual(await service.list({ status: 'unknown' }), { error: '预定状态无效' })
-  assert.deepEqual(await service.list({ brand_id: '0' }), { error: 'brand_id 编号无效' })
-  const defaults = await service.list({})
+  assert.deepEqual(await service.list({ start_date: '2026-02-30' }, scopedActor), { error: '日期格式必须为 YYYY-MM-DD' })
+  assert.deepEqual(await service.list({ start_date: '2026-11-08', end_date: '2026-11-07' }, scopedActor), { error: '开始日期不能晚于结束日期' })
+  assert.deepEqual(await service.list({ status: 'unknown' }, scopedActor), { error: '预定状态无效' })
+  assert.deepEqual(await service.list({ brand_id: '0' }, scopedActor), { error: 'brand_id 编号无效' })
+  const defaults = await service.list({}, scopedActor)
   assert.deepEqual(calls.at(-1), {
+    scope: { allStores: false, requestedStoreId: null, storeIds: scopedActor.store_ids },
     filters: {
       status: null, customer_id: null, store_id: null, brand_id: null, model_id: null,
       color_id: null, memory_id: null, search: null, start_date: null, end_date: null
@@ -115,7 +119,7 @@ test('preorder read repository preserves status aggregation, store filtering, an
     })
   })
   await repository.getStats()
-  await repository.getStores()
+  await repository.getStores({ allStores: true })
   assert.match(calls[0], /status = 'pending'[\s\S]*status = 'arrived'[\s\S]*status = 'completed'[\s\S]*status = 'cancelled'/)
   assert.match(calls[1], /FROM stores WHERE status = 1 ORDER BY sort_order ASC, name ASC, id ASC/)
   assert.equal(releaseCount, 2)
@@ -340,7 +344,7 @@ test('matchable phone lookup enforces preorder status before querying inventory 
     },
     async getPreorderForMatching(_connection, id) {
       queries.push({ id })
-      return currentPreorder
+      return currentPreorder && { store_id: 1, ...currentPreorder }
     },
     async getCandidatePhones(connection, record) {
       const [phones] = await connection.execute('SELECT candidate phones', [record.id])
@@ -348,14 +352,14 @@ test('matchable phone lookup enforces preorder status before querying inventory 
     }
   } })
 
-  const result = await service.getMatchablePhones('9')
+  const result = await service.getMatchablePhones('9', scopedActor)
   assert.deepEqual(result, { phones: [{ id: 22, is_current: 1 }] })
   assert.equal(queries[0].id, '9')
   assert.equal(queries[1].params[0], 9)
   assert.equal(releaseCount, 1)
 
   currentPreorder = { ...preorder, status: 'completed' }
-  const invalid = await service.getMatchablePhones('9')
+  const invalid = await service.getMatchablePhones('9', scopedActor)
   assert.deepEqual(invalid, { error: 'invalid_status' })
   assert.equal(releaseCount, 2)
 })

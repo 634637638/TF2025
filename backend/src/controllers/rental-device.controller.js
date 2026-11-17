@@ -13,7 +13,7 @@ class RentalDeviceController {
 
   async listAvailable(req, res) {
     try {
-      const result = await this.service.listAvailable(req.query, req.user.id)
+      const result = await this.service.listAvailable(req.query, req.user.id, req.user)
       if (result.forbidden) {
         return res.status(403).json({
           success: false,
@@ -28,6 +28,7 @@ class RentalDeviceController {
       }
       return this.response.success(res, result.rows, '获取可售在库设备成功')
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('可租设备检索失败:', error)
       return this.response.serverError(res, '可租设备检索失败', error)
     }

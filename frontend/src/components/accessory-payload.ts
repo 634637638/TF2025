@@ -5,6 +5,7 @@ const optional = <T>(value: T | null | undefined): T | undefined =>
   value === null || value === undefined || value === '' ? undefined : value
 
 export const buildAccessoryStockInPayload = (source: AccessoryPayloadSource) => ({
+  inventory_time: source.inventory_time,
   usage_type: source.usage_type || 'sale',
   barcode: optional(source.barcode),
   accessory_id: optional(source.accessory_id),
@@ -33,6 +34,9 @@ export const buildAccessoryStockInPayload = (source: AccessoryPayloadSource) => 
 })
 
 export const buildAccessoryUpdatePayload = (source: AccessoryPayloadSource) => ({
+  free_film: source.free_film,
+  color_variants: source.color_variants?.map(row => ({ color_id: row.color_id,
+    ...(row.barcode === undefined ? {} : { barcode: row.barcode?.trim() || null }) })),
   name: optional(source.name),
   barcode: source.barcode === undefined ? undefined : source.barcode.trim() || null,
   category: source.category === undefined ? undefined : source.category.trim() || null,
@@ -53,6 +57,21 @@ export const buildAccessoryUpdatePayload = (source: AccessoryPayloadSource) => (
   description: optional(source.description),
   remarks: optional(source.remarks),
   image_url: optional(source.image_url)
+})
+
+/** 更正只能提交本批入库资料，不能顺便覆盖模板售价、名称、颜色等共享资料。 */
+export const buildAccessoryStockCorrectionPayload = (source: AccessoryPayloadSource) => ({
+  accessory_id: source.accessory_id,
+  brand_id: source.brand_id,
+  product_model: source.product_model?.trim() || null,
+  supplier_id: source.supplier_id,
+  store_id: source.store_id,
+  total_quantity: source.total_quantity,
+  purchase_cost: source.purchase_cost,
+  usage_type: source.usage_type,
+  serial_tracking: source.serial_tracking,
+  serial_numbers: source.serial_numbers,
+  remarks: source.remarks?.trim() || ''
 })
 
 export const buildAccessorySalePayload = (source: AccessoryPayloadSource) => ({

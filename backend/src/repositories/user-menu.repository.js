@@ -22,7 +22,7 @@ class UserMenuRepository {
       FROM menus m
       ${iconLeftJoin('m', 'i')}
       WHERE m.is_active = 1
-      ORDER BY m.parent_id, m.sort_order
+      ORDER BY m.parent_id, m.sort_order, m.id
     `)
     return rows
   }

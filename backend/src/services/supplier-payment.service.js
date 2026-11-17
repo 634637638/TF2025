@@ -1,3 +1,4 @@
+const { resolveStoreScope, assertStoreInScope, appendStoreScopeCondition } = require('../utils/store-scope')
 const { withConnection } = require('../core/db/connection')
 /**
  * 供应商打款服务层
@@ -8,24 +9,31 @@ const { normalizeDateTime } = require('../utils/time')
 const { randomUUID } = require('node:crypto')
 const log = require('../utils/log')
 
-async function executeQuery(sql, params) {
-  const db = getDatabase()
-  const [rows] = await db.execute(sql, params)
-  return rows
-}
-
 class SupplierPaymentService {
+  constructor({ database = getDatabase, ensureSchema = ensureSupplierPaymentSchema } = {}) {
+    this.database = database
+    this.ensureSchema = ensureSchema
+  }
+
+  async executeQuery(sql, params) {
+    const [rows] = await this.database().execute(sql, params)
+    return rows
+  }
+
   /**
    * 获取供应商应付统计
    * 统计所有有供应商的手机（包括在库和已销售）
    * 支持按销售状态筛选
    * 只排除划拨（supplier_proxy）的手机，批发（peer_transfer）的手机需要正常打款
    */
-  async getStatistics(filters = {}) {
+  async getStatistics(filters = {}, actor) {
     const { supplier_id, sale_status = 'all' } = filters
 
     let whereClause = 'WHERE p.supplier_id IS NOT NULL AND p.status != \'supplier_proxy\''
     const params = []
+    const scopeConditions = []
+    appendStoreScopeCondition(resolveStoreScope(actor, filters.store_id), 'p.store_id', scopeConditions, params)
+    if (scopeConditions.length) whereClause += ` AND ${scopeConditions.join(' AND ')}`
 
     if (supplier_id) {
       whereClause += ' AND p.supplier_id = ?'
@@ -44,7 +52,7 @@ class SupplierPaymentService {
 
     // 按供应商统计未付款和已付款手机
     // 未付款：payment_status IS NULL 或 payment_status != 'paid'
-    const stats = await executeQuery(`
+    const stats = await this.executeQuery(`
       SELECT
         s.id as supplier_id,
         s.name as supplier_name,
@@ -75,22 +83,21 @@ class SupplierPaymentService {
    * 不按供应商分组，直接统计总数
    * 只排除划拨（supplier_proxy）的手机，批发（peer_transfer）的手机需要正常打款
    */
-  async getSummaryStatistics(filters = {}) {
+  async getSummaryStatistics(filters = {}, actor) {
     const {
-      supplier_id, store_id, payment_status = 'all', sale_status = 'all',
+      supplier_id, payment_status = 'all', sale_status = 'all',
       keyword, start_date, end_date
     } = filters
 
     let whereClause = 'WHERE p.supplier_id IS NOT NULL AND p.status != \'supplier_proxy\''
     const params = []
+    const scopeConditions = []
+    appendStoreScopeCondition(resolveStoreScope(actor, filters.store_id), 'p.store_id', scopeConditions, params)
+    if (scopeConditions.length) whereClause += ` AND ${scopeConditions.join(' AND ')}`
 
     if (supplier_id) {
       whereClause += ' AND p.supplier_id = ?'
       params.push(supplier_id)
-    }
-    if (store_id) {
-      whereClause += ' AND p.store_id = ?'
-      params.push(store_id)
     }
     if (payment_status === 'unpaid') {
       whereClause += ' AND (p.payment_status IS NULL OR p.payment_status != \'paid\')'
@@ -128,7 +135,7 @@ class SupplierPaymentService {
     }
 
     // 直接统计总数
-    const summary = await executeQuery(`
+    const summary = await this.executeQuery(`
       SELECT
         COUNT(CASE WHEN (p.payment_status IS NULL OR p.payment_status != 'paid') THEN 1 END) as total_unpaid_count,
         COALESCE(SUM(CASE WHEN (p.payment_status IS NULL OR p.payment_status != 'paid') THEN p.purchase_cost ELSE 0 END), 0) as total_unpaid_amount,
@@ -155,12 +162,11 @@ class SupplierPaymentService {
    * 支持按销售状态筛选：sold(已售)/stock(在库)/all(全部)
    * 支持关键词搜索：IMEI、序列号、品牌、型号
    */
-  async getPhones(filters = {}) {
-    await ensureSupplierPaymentSchema()
+  async getPhones(filters = {}, actor) {
+    await this.ensureSchema()
 
     const {
       supplier_id,
-      store_id,
       payment_status = 'unpaid',
       sale_status = 'all',
       keyword,
@@ -180,16 +186,13 @@ class SupplierPaymentService {
     // 只排除划拨（supplier_proxy）的手机，批发（peer_transfer）的手机需要正常打款
     const whereConditions = ['p.supplier_id IS NOT NULL', 'p.status != \'supplier_proxy\'']
     const params = []
+    appendStoreScopeCondition(resolveStoreScope(actor, filters.store_id), 'p.store_id', whereConditions, params)
 
     if (supplier_id) {
       whereConditions.push('p.supplier_id = ?')
       params.push(supplier_id)
     }
 
-    if (store_id) {
-      whereConditions.push('p.store_id = ?')
-      params.push(store_id)
-    }
 
     // 打款状态筛选：未打款是 NULL 或 != 'paid'
     if (payment_status === 'unpaid') {
@@ -274,7 +277,7 @@ class SupplierPaymentService {
         m.name as model_name,
         c.name as color_name,
         mem.size as memory_name,
-        COALESCE(sale_st.name, st.name) as store_name,
+        st.name as store_name,
         CONCAT(br.name, ' ', m.name) as full_model_name,
         u1.name as inventory_operator_name,
         u2.name as sale_operator_name,
@@ -286,8 +289,6 @@ class SupplierPaymentService {
       LEFT JOIN colors c ON p.color_id = c.id
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN stores st ON p.store_id = st.id
-      LEFT JOIN sales sale ON sale.id = p.sale_id
-      LEFT JOIN stores sale_st ON sale.store_id = sale_st.id
       LEFT JOIN users u1 ON p.inventory_operator_id = u1.id
       LEFT JOIN users u2 ON p.sale_operator_id = u2.id
       LEFT JOIN users u3 ON p.payment_operator_id = u3.id
@@ -302,7 +303,7 @@ class SupplierPaymentService {
       ${shouldExportAll ? '' : `LIMIT ${validPageSize} OFFSET ${offset}`}
     `
 
-    const phones = await executeQuery(listSql, params)
+    const phones = await this.executeQuery(listSql, params)
 
     // 格式化数据，统一 payment_status：NULL 或 'paid' -> 'unpaid'
     const formattedPhones = phones.map(p => ({
@@ -336,7 +337,7 @@ class SupplierPaymentService {
     }))
 
     // 查询总数
-    const countResult = await executeQuery(`
+    const countResult = await this.executeQuery(`
       SELECT COUNT(*) AS total
       FROM phones p
       LEFT JOIN brands br ON p.brand_id = br.id
@@ -362,16 +363,16 @@ class SupplierPaymentService {
   /**
    * 批量打款
    */
-  async batchPayment({ phone_ids, payment_method, payment_time, payment_remarks, operator_id }) {
-    await ensureSupplierPaymentSchema()
-    const db = getDatabase()
+  async batchPayment({ phone_ids, payment_method, payment_time, payment_remarks, operator_id, actor }) {
+    await this.ensureSchema()
+    const db = this.database()
 
     // 验证手机ID - 查找未打款的手机（payment_status IS NULL 或 != 'paid'）
     return await withConnection(db, async connection => {
       try {
         await connection.beginTransaction()
         const [phones] = await connection.execute(`
-          SELECT id, imei, purchase_cost, supplier_id
+          SELECT id, store_id, imei, purchase_cost, supplier_id
           FROM phones
           WHERE id IN (${phone_ids.map(() => '?').join(',')})
             AND supplier_id IS NOT NULL
@@ -380,7 +381,8 @@ class SupplierPaymentService {
           FOR UPDATE
         `, phone_ids)
 
-        if (phones.length === 0) throw new Error('没有找到可打款的手机')
+        if (phones.length !== new Set(phone_ids.map(Number)).size) throw new Error('部分手机不存在或不符合打款条件，请重新核对')
+        for (const phone of phones) assertStoreInScope(resolveStoreScope(actor), phone.store_id)
 
         const paymentTime = normalizeDateTime(payment_time, false)
         if (!paymentTime) throw new Error('打款时间无效')
@@ -412,16 +414,16 @@ class SupplierPaymentService {
   /**
    * 单个手机打款
    */
-  async singlePayment({ phone_id, payment_method, payment_time, payment_remarks, operator_id }) {
-    await ensureSupplierPaymentSchema()
-    const db = getDatabase()
+  async singlePayment({ phone_id, payment_method, payment_time, payment_remarks, operator_id, actor }) {
+    await this.ensureSchema()
+    const db = this.database()
 
     // 获取手机信息
     return await withConnection(db, async connection => {
       try {
         await connection.beginTransaction()
         const [phones] = await connection.execute(`
-          SELECT id, imei, purchase_cost, supplier_id, payment_status, status
+          SELECT id, store_id, imei, purchase_cost, supplier_id, payment_status, status
           FROM phones
           WHERE id = ?
           FOR UPDATE
@@ -430,6 +432,7 @@ class SupplierPaymentService {
         if (!phones || phones.length === 0) throw new Error('手机不存在')
 
         const phone = phones[0]
+        assertStoreInScope(resolveStoreScope(actor), phone.store_id)
 
         if (phone.supplier_id === null || phone.supplier_id === undefined) throw new Error('该手机没有供应商')
         if (phone.status === 'supplier_proxy') throw new Error('划拨手机不可打款')
@@ -462,15 +465,15 @@ class SupplierPaymentService {
   /**
    * 批量取消打款
    */
-  async batchCancelPayment({ phone_ids }) {
-    await ensureSupplierPaymentSchema()
-    const db = getDatabase()
+  async batchCancelPayment({ phone_ids, actor }) {
+    await this.ensureSchema()
+    const db = this.database()
 
     return await withConnection(db, async connection => {
       try {
         await connection.beginTransaction()
         const [phones] = await connection.execute(`
-          SELECT id, imei, purchase_cost, supplier_id
+          SELECT id, store_id, imei, purchase_cost, supplier_id
           FROM phones
           WHERE id IN (${phone_ids.map(() => '?').join(',')})
             AND supplier_id IS NOT NULL
@@ -478,7 +481,8 @@ class SupplierPaymentService {
             AND payment_status = 'paid'
           FOR UPDATE
         `, phone_ids)
-        if (phones.length === 0) throw new Error('没有找到可取消打款的手机')
+        if (phones.length !== new Set(phone_ids.map(Number)).size) throw new Error('部分手机不存在或不符合取消打款条件，请重新核对')
+        for (const phone of phones) assertStoreInScope(resolveStoreScope(actor), phone.store_id)
 
         for (const phone of phones) {
           await connection.execute(`
@@ -504,9 +508,9 @@ class SupplierPaymentService {
   /**
    * 更新打款信息
    */
-  async updatePayment({ phone_id, payment_method, payment_time, payment_remarks }) {
-    await ensureSupplierPaymentSchema()
-    const db = getDatabase()
+  async updatePayment({ phone_id, payment_method, payment_time, payment_remarks, actor }) {
+    await this.ensureSchema()
+    const db = this.database()
 
     return await withConnection(db, async connection => {
       try {
@@ -516,7 +520,7 @@ class SupplierPaymentService {
         const [phones] = await connection.execute(`
           SELECT
             id,
-            imei,
+                  imei,
             supplier_id,
             payment_status,
             payment_method,
@@ -533,6 +537,7 @@ class SupplierPaymentService {
         }
 
         const phone = phones[0]
+        assertStoreInScope(resolveStoreScope(actor), phone.store_id)
 
         // 如果 payment_method 和 payment_time 都为 null，则是取消打款操作。
         if (payment_method === null && payment_time === null) {
@@ -576,7 +581,7 @@ class SupplierPaymentService {
         let batchPhones
         if (phone.payment_batch_id) {
           [batchPhones] = await connection.execute(`
-            SELECT id
+            SELECT id, store_id
             FROM phones
             WHERE payment_batch_id = ?
               AND supplier_id = ?
@@ -586,7 +591,7 @@ class SupplierPaymentService {
         } else if (phone.batch_payment_time) {
           // 兼容历史数据：没有批次编号时，回退到供应商和原始秒级时间。
           [batchPhones] = await connection.execute(`
-            SELECT id
+            SELECT id, store_id
             FROM phones
             WHERE supplier_id = ?
               AND payment_status = 'paid'
@@ -595,9 +600,10 @@ class SupplierPaymentService {
           `, [phone.supplier_id, phone.batch_payment_time])
         } else {
           // 历史脏数据没有打款时间时，仅更新当前记录，避免误合并其他批次。
-          batchPhones = [{ id: phone_id }]
+          batchPhones = [{ id: phone_id, store_id: phone.store_id }]
         }
 
+        for (const member of batchPhones) assertStoreInScope(resolveStoreScope(actor), member.store_id)
         const batchIds = batchPhones.map(item => item.id)
         if (batchIds.length === 0) {
           throw new Error('未找到可编辑的打款批次')
@@ -635,8 +641,8 @@ class SupplierPaymentService {
    * @param {string} payment_time - 历史记录回退使用的打款时间
    * @param {string|null} payment_batch_id - 新记录使用的批次编号
    */
-  async getPaymentBatchDetails(supplier_id, payment_time, payment_batch_id = null) {
-    await ensureSupplierPaymentSchema()
+  async getPaymentBatchDetails(supplier_id, payment_time, payment_batch_id = null, actor) {
+    await this.ensureSchema()
     log.debug('🔍 [批次详情] 查询参数:', { supplier_id, payment_time, payment_batch_id })
 
     const batchCondition = payment_batch_id
@@ -650,9 +656,12 @@ class SupplierPaymentService {
       ? [payment_batch_id, supplier_id]
       : [supplier_id, payment_time]
 
+    const scopeConditions = ['1=1']
+    appendStoreScopeCondition(resolveStoreScope(actor), 'p.store_id', scopeConditions, batchParams)
+
     // 直接使用数据库的格式化字符串进行精确匹配
     // 不在JavaScript中进行任何时区转换，避免时区问题
-    const phones = await executeQuery(`
+    const phones = await this.executeQuery(`
       SELECT
         p.id,
         p.imei,
@@ -685,7 +694,7 @@ class SupplierPaymentService {
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN stores st ON p.store_id = st.id
       LEFT JOIN users u ON p.payment_operator_id = u.id
-      WHERE ${batchCondition}
+      WHERE ${batchCondition} AND ${scopeConditions.join(' AND ')}
       ORDER BY p.sale_time DESC, p.payment_time DESC
     `, batchParams)
 

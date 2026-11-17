@@ -16,10 +16,11 @@ class SubsidyApprovalController {
     }
 
     try {
-      const updated = await this.service.approve(req.params.id, approved)
+      const updated = await this.service.approve(req.params.id, approved, req.user)
       if (!updated) return res.status(404).json({ success: false, message: '国补记录不存在' })
       return res.json({ success: true, message: approved ? '审批通过' : '审批拒绝' })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 审批失败:', error)
       return res.status(500).json({ success: false, message: '审批失败', error: error.message })
     }

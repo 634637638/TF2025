@@ -125,6 +125,15 @@
 }
 
 /* 详情项样式 */
+.attendance-detail-descriptions {
+  overflow-wrap: anywhere;
+}
+
+/* 本页详情两列等宽，避免日期或长姓名把另一列挤窄。 */
+.attendance-detail-descriptions :deep(.el-descriptions__table) {
+  table-layout: fixed;
+}
+
 .detail-item {
   display: inline-flex;
   align-items: center;

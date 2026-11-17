@@ -52,12 +52,18 @@ class SalaryGoodsService {
   async preview(employeeId, through) {
     this.input(employeeId, through)
     return this.repository.withConnection(async connection => {
-      await connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
-      await connection.beginTransaction()
+      let started = false
       try {
+        await connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY')
+        await connection.beginTransaction()
+        started = true
         return await this.readSources(connection, employeeId, through)
       } finally {
-        await connection.rollback()
+        if (!started) connection.destroy()
+        else {
+          try { await connection.rollback() }
+          catch (error) { connection.destroy(); throw error }
+        }
       }
     })
   }

@@ -79,6 +79,17 @@ test('缺少提醒策略时检查失败，提示同步后端配置目录', t => 
   assert.match(result.stderr, /backend\/src\/config/)
 })
 
+test('权限能力缺少权威中文名称时部署检查失败，不能继续使用另一套备用名称', t => {
+  const fixture = deployment(t)
+  const registryPath = path.join(fixture.root, 'src/config/module-permission-capabilities.json')
+  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'))
+  delete registry.actionLabels['stock-in']
+  fs.writeFileSync(registryPath, JSON.stringify(registry))
+  const result = fixture.run()
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /CONFIG_INVALID/)
+})
+
 test('发布漏传五级地区文件时拒绝通过，不等到用户保存才发现资源缺失', t => {
   const fixture = deployment(t)
   fs.unlinkSync(path.join(fixture.root, 'data/regions/2023-06-30/11.json.gz'))

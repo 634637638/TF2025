@@ -11,7 +11,7 @@ class SubsidyExportController {
 
   async exportExcel(req, res) {
     try {
-      const exportFile = await this.service.export({ userId: req.user.id, query: req.query })
+      const exportFile = await this.service.export({ userId: req.user.id, actor: req.user, query: req.query })
       res.setHeader('Content-Type', exportFile.mimeType)
       res.setHeader(
         'Content-Disposition',
@@ -20,6 +20,7 @@ class SubsidyExportController {
       res.setHeader('X-Export-Total', String(exportFile.total))
       return res.send(exportFile.buffer)
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 导出国补数据失败:', error)
       return res.status(500).json({
         success: false,

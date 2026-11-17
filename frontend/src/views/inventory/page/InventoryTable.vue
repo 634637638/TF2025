@@ -74,7 +74,6 @@
             >
               <el-button
                 type="primary"
-                size="small"
                 title="查看详情"
                 @click.stop="emit('view', item)"
               >
@@ -84,7 +83,6 @@
               <el-button
                 v-if="canSell"
                 type="warning"
-                size="small"
                 :disabled="!isPhoneSaleActionAvailable(item)"
                 :title="isPhoneSaleActionAvailable(item) ? '商品出库' : '当前状态不可销售出库'"
                 @click.stop="isPhoneSaleActionAvailable(item) && emit('quick-sale', item)"
@@ -95,7 +93,6 @@
               <el-button
                 v-if="canEdit"
                 type="success"
-                size="small"
                 title="编辑"
                 @click.stop="emit('edit', item)"
               >
@@ -105,7 +102,6 @@
               <el-button
                 v-if="canDelete"
                 type="danger"
-                size="small"
                 title="删除"
                 @click.stop="emit('delete', item)"
               >

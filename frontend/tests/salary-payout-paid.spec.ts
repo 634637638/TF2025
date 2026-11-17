@@ -20,7 +20,7 @@ const render = async (value: SalaryPayoutRecord | null, mobile = false, granted 
   const wrapper = mount(PayoutTab, { props: {
     actionColumnWidth: 250,
     calculateLeave: () => 333.33, calculateOvertime: () => 444.44, calculateWorkDays: () => 31,
-    canCreate: granted, canEdit: granted, canDelete: granted, canViewField: () => true,
+    canCreate: granted, canPay: granted, canApprove: granted, canEdit: granted, canDelete: granted, canViewField: () => true,
     formatPayoutTime: time => time, getAttendanceStats: () => ({ leave_days: 10, overtime_hours: 20,
       monthly_leave_days_used: 5, monthly_leave_days_available: 6, latest_leave_activity_at: null, latest_leave_record_date: null }),
     getBaseSalary: () => 9876.54, getIndex: index => index + 1, getPaymentMethodName: () => '现金',
@@ -28,7 +28,7 @@ const render = async (value: SalaryPayoutRecord | null, mobile = false, granted 
     isMobile: mobile, loading: false, month: '2026-10', page: 1, pageSize: 20,
     rows: [{ ...employee, payoutRecord: value }], searchExpanded: false, searchText: '', total: 1
   }, global: { plugins: [ElementPlus], components: { RecordDetailDialog }, stubs: { ElTabPane: { template: '<section><slot /></section>' },
-    UnifiedSearchPanel: true, Pagination: true, TableLoadingRow: true, DataEmptyState: true },
+    UnifiedSearchPanel: true, Pagination: true, TableLoadingRow: true, DataEmptyState: true, MobileDialog: { template: '<section><slot /><slot name="footer" /></section>' } },
   mocks: { $getNumberColumnWidth: () => 70 }, directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': {} } } })
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
@@ -81,4 +81,20 @@ it('工资筛选与动作保护按同一发放事实判断，包括零金额已�
   const table = useSalaryPayoutTable({ getEmployees: () => [employee], initialMonth: '2026-10', payoutList: list })
   table.payoutFilters.status = 'paid'; expect(table.salaryPayoutData.value).toHaveLength(1)
   table.payoutFilters.status = 'unpaid'; expect(table.salaryPayoutData.value).toHaveLength(0)
+})
+
+it('审批和发放分别授权，不由工资编辑权限替代', async () => {
+  const wrapper = await render(record({ status: 'pending', paid_at: null }), false, false)
+  await wrapper.setProps({ canEdit: true })
+  expect(actions(wrapper)).not.toContain('审批')
+  expect(actions(wrapper)).not.toContain('发放')
+  await wrapper.setProps({ canApprove: true })
+  expect(actions(wrapper)).toContain('审批')
+  await wrapper.findAll('button').find(button => button.text() === '审批')!.trigger('click')
+  expect(wrapper.emitted('approve')).toHaveLength(1)
+  await wrapper.setProps({ canApprove: false, canEdit: false, canPay: true,
+    rows: [{ ...employee, payoutRecord: record({ status: 'approved', paid_at: null }) }] })
+  expect(actions(wrapper)).not.toContain('审批')
+  expect(actions(wrapper)).not.toContain('编辑')
+  expect(actions(wrapper)).toContain('发放')
 })

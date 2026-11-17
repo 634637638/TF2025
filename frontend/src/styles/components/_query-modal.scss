@@ -1,13 +1,13 @@
-/* 综合查询编辑与快速出库共用的表单布局。 */
+/* 综合查询编辑、快速出库与商品入库共用的表单分区。 */
 .tf-query-modal-section {
   margin-bottom: var(--tf-space-6);
   padding: var(--tf-space-4) var(--tf-space-4) var(--tf-space-3);
   border: 1px solid var(--tf-color-surface-cool);
   border-radius: var(--tf-radius-panel);
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-cool-alt) 100%);
+  background: linear-gradient(180deg, var(--tf-dialog-surface) 0%, var(--tf-dialog-surface-soft) 100%);
 }
 
-.tf-query-modal-section:last-of-type {
+.tf-query-modal-section:last-child {
   margin-bottom: 0;
 }
 
@@ -22,7 +22,7 @@
   margin-bottom: var(--tf-space-4);
   padding-bottom: var(--tf-space-2);
   border-bottom: 2px solid var(--tf-color-blue-600);
-  color: var(--tf-color-neutral-800);
+  color: var(--tf-dialog-body-text);
   font-size: var(--tf-type-scale-15);
   font-weight: 700;
 }

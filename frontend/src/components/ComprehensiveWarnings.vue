@@ -24,6 +24,7 @@
       </div>
 
       <div
+        v-if="canViewAccessoryWarnings"
         class="overview-card"
         :class="{ active: activeTab === 'accessories' }"
         @click="showWarningDetail('accessories')"
@@ -100,7 +101,6 @@
             <el-button
               type="primary"
               link
-              size="small"
               @click="goToWarningConfig"
             >
               <i class="fas fa-cog" />
@@ -146,7 +146,7 @@
             align="center"
           >
             <template #default="{ row }">
-              <span class="warning-threshold-text">{{ row.warning_threshold || 3 }}</span>
+              <span class="warning-threshold-text">{{ row.warning_threshold ?? 3 }}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -157,7 +157,7 @@
           >
             <template #default="{ row }">
               <span
-                v-if="getStockDisplayText(row.stock_count, row.warning_threshold) === '缺货'"
+                v-if="getStockDisplayText(row.stock_count) === '缺货'"
                 class="out-of-stock-text"
               >
                 缺货
@@ -167,7 +167,7 @@
                 :type="getStockTagType(row.stock_count, row.warning_threshold)"
                 size="small"
               >
-                {{ getStockDisplayText(row.stock_count, row.warning_threshold) }}
+                {{ getStockDisplayText(row.stock_count) }}
               </el-tag>
             </template>
           </el-table-column>
@@ -195,7 +195,6 @@
                 <el-button
                   type="primary"
                   link
-                  size="small"
                   @click.stop="viewPhoneDetail(row)"
                 >
                   查看
@@ -213,6 +212,7 @@
 
       <!-- 配件库存预警 -->
       <div
+        v-if="canViewAccessoryWarnings"
         v-show="activeTab === 'accessories'"
         class="detail-section"
       >
@@ -247,7 +247,7 @@
           >
             <template #default="{ row }">
               <el-tag
-                :type="getStockTagType(row.stock)"
+                :type="getStockTagType(row.stock, row.min_stock)"
                 size="small"
               >
                 {{ row.stock }}
@@ -286,7 +286,6 @@
                 <el-button
                   type="primary"
                   link
-                  size="small"
                   @click.stop="goToAccessories"
                 >
                   查看
@@ -444,7 +443,7 @@
             show-icon
           >
             <template #default>
-              以下供应商超过 7 天未进货，建议及时联系补货
+              长期未入库供应商，请留意合作动向！
             </template>
           </el-alert>
         </div>
@@ -471,7 +470,7 @@
             width="120"
           >
             <template #default="{ row }">
-              {{ row.last_inventory_time || '无记录' }}
+              {{ formatGlobalDate(row.last_inventory_time, '无记录') }}
             </template>
           </el-table-column>
           <el-table-column
@@ -501,7 +500,6 @@
                 <el-button
                   type="primary"
                   link
-                  size="small"
                   @click.stop="goToSuppliers"
                 >
                   查看
@@ -583,6 +581,8 @@ import type { ComprehensiveWarningsData, PhoneStockWarning } from '@/types'
 import { useNotification } from '@/composables/useNotification'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import { usePagePermissions } from '@/composables/usePagePermissions'
+import { fieldPermissions } from '@/composables/useFieldPermissions'
 import type { RecordDetailField } from '@/types/component'
 const globalNotifications = useNotification()
 
@@ -590,6 +590,10 @@ const globalNotifications = useNotification()
 const router = useRouter()
 const authStore = useAuthStore()
 const { isMobile } = useMobile()
+const accessoryPermissions = usePagePermissions('accessories')
+const canViewAccessoryWarnings = computed(() => (accessoryPermissions.canView.value || authStore.hasPermission('dashboard:goods-warning')) &&
+  ['basic_info.name', 'stock_info.min_stock', 'stock_info.total_quantity'].every(field =>
+    fieldPermissions.isFieldVisible('accessories_accessoriesview', field)))
 
 // 响应式数据
 const loading = ref(false)
@@ -665,7 +669,7 @@ const accessoryDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'name', label: '配件', value: row.name, visible: true },
     { key: 'stock', label: '库存', value: row.stock, visible: true },
     { key: 'min', label: '最低库存', value: row.min_stock, visible: true },
-    { key: 'status', label: '库存状态', value: row.stock < row.min_stock ? '库存不足' : '正常', visible: true }
+    { key: 'status', label: '库存状态', value: row.status || (row.stock === 0 ? '已缺货' : row.stock <= row.min_stock ? '库存不足' : '正常'), visible: true }
   ] : []
 })
 const purchaseDetailFields = computed<RecordDetailField[]>(() => {
@@ -673,7 +677,7 @@ const purchaseDetailFields = computed<RecordDetailField[]>(() => {
   return row ? [
     { key: 'supplier', label: '供应商', value: row.supplier_name, visible: true },
     { key: 'days', label: '未入库天数', value: row.days_since_purchase, visible: true },
-    { key: 'last', label: '最近入库', value: row.last_inventory_time ? formatGlobalDate(row.last_inventory_time) : '-', visible: true }
+    { key: 'last', label: '最近入库', value: formatGlobalDate(row.last_inventory_time, '无记录'), visible: true }
   ] : []
 })
 
@@ -714,17 +718,14 @@ const showWarningDetail = (tab: string) => {
 
 // 获取库存标签类型（支持自定义阈值）
 const getStockTagType = (stock: number, threshold?: number) => {
-  const warningThreshold = threshold || 3
+  const warningThreshold = threshold ?? 3
   if (stock === 0) return 'danger'
-  if (stock < warningThreshold) return 'warning'
+  if (stock <= warningThreshold) return 'warning'
   return 'success'
 }
 
-const getStockDisplayText = (stock: number, threshold?: number) => {
-  const warningThreshold = threshold || 3
-  if (stock < warningThreshold) {
-    return '缺货'
-  }
+const getStockDisplayText = (stock: number) => {
+  if (stock === 0) return '缺货'
   return String(stock)
 }
 

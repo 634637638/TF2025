@@ -14,10 +14,11 @@ class SubsidyPhotosController {
 
   async getPhotos(req, res) {
     try {
-      const photos = await this.service.getPhotos(req.params.id, req.user.id)
+      const photos = await this.service.getPhotos(req.params.id, req.user.id, req.user)
       if (photos === null) return res.status(404).json({ success: false, message: '国补记录不存在' })
       return res.json({ success: true, data: { subsidy_photos: photos } })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('读取国补照片失败:', error)
       return res.status(500).json({ success: false, message: '读取国补照片失败', error: error.message })
     }
@@ -29,6 +30,7 @@ class SubsidyPhotosController {
       if (result.status !== 200) return ApiResponse.error(res, result.message, result.status)
       return ApiResponse.success(res, '照片上传成功', result.data)
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('上传国补照片失败:', error)
       return ApiResponse.error(res, error.message || '照片上传失败', 500)
     }
@@ -40,11 +42,13 @@ class SubsidyPhotosController {
         req.params.id,
         req.body?.subsidy_photos,
         req.body?.deleted_photos,
-        req.user.id
+        req.user.id,
+        req.user
       )
       if (result.status !== 200) return res.status(result.status).json({ success: false, message: result.message })
       return res.json({ success: true, message: '照片保存成功' })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('保存国补照片失败:', error)
       const statusCode = error.statusCode || 500
       return res.status(statusCode).json({
@@ -63,6 +67,7 @@ class SubsidyPhotosController {
         failed: result.failed.length
       })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('删除临时照片失败:', error)
       return ApiResponse.error(res, error.message || '删除临时照片失败', 500)
     }
@@ -70,10 +75,11 @@ class SubsidyPhotosController {
 
   async deleteRecord(req, res) {
     try {
-      const deleted = await this.service.deleteRecord(req.params.id)
+      const deleted = await this.service.deleteRecord(req.params.id, req.user)
       if (!deleted) return res.status(404).json({ success: false, message: '国补记录不存在' })
       return res.json({ success: true, message: '删除成功' })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 删除国补记录失败:', error)
       return res.status(500).json({ success: false, message: '删除失败', error: error.message })
     }

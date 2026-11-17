@@ -28,7 +28,6 @@
       <template #actions="{ loading: searchLoading }">
         <el-button
           type="primary"
-          size="small"
           :loading="searchLoading"
           :aria-busy="searchLoading"
           @click="emit('refresh')"
@@ -37,7 +36,6 @@
         </el-button>
         <el-button
           type="default"
-          size="small"
           :disabled="searchLoading"
           @click="emit('reset')"
         >
@@ -392,19 +390,17 @@
                 >
                   <el-button
                     v-permission="'salary-templates:edit'"
-                    size="small"
                     type="primary"
                     plain
                     @click.stop="emit('editTemplate', row)"
                   ><i class="fas fa-file-invoice-dollar" /><span class="btn-text">模板</span></el-button>
                 </span>
                 <span
-                  v-if="canViewRecords"
+                  v-if="canViewAttendance(row.id)"
                   class="employee-action-item"
                 >
                   <el-button
                     v-permission="'salary-records:view'"
-                    size="small"
                     type="success"
                     plain
                     @click.stop="emit('viewAttendance', row)"
@@ -412,7 +408,6 @@
                 </span>
                 <span class="employee-action-item">
                   <el-button
-                    size="small"
                     type="warning"
                     plain
                     @click.stop="emit('viewSales', row)"
@@ -439,7 +434,7 @@
               <i class="fas fa-file-invoice-dollar" /><span>模板</span>
             </el-button>
             <el-button
-              v-if="canViewRecords"
+              v-if="canViewAttendance(row.id)"
               v-permission="'salary-records:view'"
               type="success"
               @click.stop="mobileDetailRunAction(() => emit('viewAttendance', row))"
@@ -511,6 +506,7 @@ const props = defineProps<{
   calculateOvertime: (_employeeId: number, _hours: number) => string | number
   canEditTemplate: boolean
   canViewField: (_moduleKey: string, _fieldName: string) => boolean
+  canViewAttendance: (_id: number) => boolean
   canViewRecords: boolean
   employees: EmployeeRow[]
   filteredEmployees: EmployeeRow[]

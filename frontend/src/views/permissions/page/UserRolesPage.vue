@@ -116,7 +116,6 @@
               <el-button
                 v-if="ctx.canEdit"
                 type="primary"
-                size="small"
                 title="分配角色"
                 @click.stop="ctx.handleEditUserRoles(row)"
               >
@@ -124,7 +123,6 @@
               </el-button><el-button
                 v-if="ctx.canDelete"
                 type="danger"
-                size="small"
                 title="删除用户"
                 @click.stop="ctx.handleDeleteUser(row)"
               >

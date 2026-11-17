@@ -1,5 +1,6 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
 const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 
 const { getDatabase } = require('../config/database')
@@ -11,7 +12,7 @@ const {
   normalizePhoneStatus
 } = require('../utils/phone-status')
 
-const buildInventoryFilters = (query = {}, { includeLegacyDate = false } = {}) => {
+const buildInventoryFilters = (query = {}, { includeLegacyDate = false, scope } = {}) => {
   const {
     store_id, supplier_id, operator_id, status, search, brand, model,
     color, memory, is_new, date, date_start, date_end
@@ -19,6 +20,7 @@ const buildInventoryFilters = (query = {}, { includeLegacyDate = false } = {}) =
   const effectiveStatusSql = getEffectivePhoneStatusSql('p')
   const whereConditions = [`COALESCE(p.status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`]
   const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
+  if (scope) appendStoreScopeCondition(scope, 'p.store_id', whereConditions, queryParams)
 
   if (store_id) {
     whereConditions.push('p.store_id = ?')
@@ -210,7 +212,7 @@ class InventoryRepository {
 
   async findForRemoval(connection, id) {
     const [rows] = await connection.execute(
-      'SELECT id, imei, status, is_preordered FROM phones WHERE id = ?',
+      'SELECT id, imei, serial_number, status, is_preordered, store_id, supplier_id, purchase_cost, inventory_time, is_new FROM phones WHERE id = ? FOR UPDATE',
       [id]
     )
     return rows[0] || null
@@ -230,7 +232,7 @@ class InventoryRepository {
 
   async findForUpdate(connection, id) {
     const [rows] = await connection.execute(
-      'SELECT id, imei, status, is_preordered FROM phones WHERE id = ?',
+      'SELECT id, imei, serial_number, status, is_preordered, store_id, supplier_id, purchase_cost, inventory_time, is_new FROM phones WHERE id = ? FOR UPDATE',
       [id]
     )
     return rows[0] || null
@@ -308,13 +310,16 @@ class InventoryRepository {
     return { stats: stats[0], stores, brands }
   }
 
-  async stats(connection) {
-    const completedStatusSql = `COALESCE(status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`
-    const [total] = await connection.execute(`SELECT COUNT(*) AS total FROM phones WHERE ${completedStatusSql}`, COMPLETED_TRANSACTION_STATUSES)
-    const [inStock] = await connection.execute(`SELECT COUNT(*) AS inStock FROM phones WHERE ${completedStatusSql} AND is_new = 1`, COMPLETED_TRANSACTION_STATUSES)
-    const [sold] = await connection.execute(`SELECT COUNT(*) AS sold FROM phones WHERE ${completedStatusSql} AND is_new = 0`, COMPLETED_TRANSACTION_STATUSES)
-    const [value] = await connection.execute(`SELECT COALESCE(SUM(purchase_cost), 0) AS totalValue FROM phones WHERE ${completedStatusSql}`, COMPLETED_TRANSACTION_STATUSES)
-    return { total: total[0].total, inStock: inStock[0].inStock, sold: sold[0].sold, totalValue: value[0].totalValue }
+  async stats(connection, scope) {
+    const conditions = [`COALESCE(status, '') NOT IN (${COMPLETED_TRANSACTION_STATUSES.map(() => '?').join(', ')})`]
+    const params = [...COMPLETED_TRANSACTION_STATUSES]
+    appendStoreScopeCondition(scope, 'store_id', conditions, params)
+    const [rows] = await connection.execute(`SELECT COUNT(*) AS total,
+      COUNT(CASE WHEN is_new = 1 THEN 1 END) AS inStock,
+      COUNT(CASE WHEN is_new = 0 THEN 1 END) AS sold,
+      COALESCE(SUM(purchase_cost), 0) AS totalValue
+      FROM phones WHERE ${conditions.join(' AND ')}`, params)
+    return rows[0]
   }
 
   async validateQuickSaleReferences(connection, { brandId, modelId, colorId, memoryId }) {
@@ -328,7 +333,7 @@ class InventoryRepository {
   }
 
   async findCustomer(connection, phone) {
-    const [rows] = await connection.execute('SELECT id FROM customers WHERE phone = ?', [phone])
+    const [rows] = await connection.execute('SELECT id, name, apple_id FROM customers WHERE phone = ?', [phone])
     return rows[0] || null
   }
 

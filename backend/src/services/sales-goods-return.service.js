@@ -37,22 +37,16 @@ class SalesGoodsReturnService {
     Object.assign(this, { repository, accessories, pointsLedger, tableExists, permissionCheck, now })
   }
 
-  normalize(orderId, itemId, body, actor, quote) {
+  /** 退货和服务撤销共用身份、门店、日期及资金校验，不借用虚构原单ID。 */
+  normalizeOperation(body, actor, quote) {
     const actorId = getActorId(actor)
     if (!actorId) reject('请先登录', 'UNAUTHORIZED', 401)
-    if (!validId(orderId) || !validItemId(itemId)) reject('原单或商品明细标识无效')
-    only(body, ['request_key', 'store_id', 'quantity', 'serial_numbers', 'return_reason', 'reversal_date', 'remarks', 'restock_confirmed', 'settlement'])
     if (typeof body.request_key !== 'string' || !/^(?:[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i.test(body.request_key)) reject('退货请求标识无效，请重新打开办理窗口')
-    if (!validId(body.store_id) || !isIntegerInput(body.quantity) || Number(body.quantity) < 1 || Number(body.quantity) > 999999) reject('退回门店或数量无效')
+    if (!validId(body.store_id)) reject('办理门店无效')
     const storeId = assertStoreInScope(resolveStoreScope(actor, null), body.store_id)
-    if (!returnOptions.return_reason.includes(body.return_reason)) reject('请选择有效的退货原因')
-    if (body.restock_confirmed !== true) reject('请先人工核验退回实物可重新入库；待检、维修或报废暂不通过此入口办理')
     const time = typeof body.reversal_date === 'string' && normalizeDateTime(body.reversal_date, false)
     if (!time || normalizeDateTime(new Date(`${time.replace(' ', 'T')}+08:00`), false) !== time) reject('请选择有效的退货时间')
     if (body.remarks !== undefined && (typeof body.remarks !== 'string' || body.remarks.trim().length > 200)) reject('退货备注最多200字')
-    if (body.serial_numbers !== undefined && !Array.isArray(body.serial_numbers)) reject('退回SN必须是列表')
-    const serials = this.accessories.normalizeSerials(body.serial_numbers).sort()
-    if (serials.length && serials.length !== Number(body.quantity)) reject('SN数量与退货数量不一致')
     let settlement = null
     if (body.settlement !== undefined) {
       only(body.settlement, ['refund_amount', 'collection_amount', 'method', 'channel', 'confirmed'])
@@ -69,13 +63,29 @@ class SalesGoodsReturnService {
       } else if (settlement.method !== null || settlement.channel !== null) reject('无资金往来时不填写支付方式或渠道')
     }
     if (!quote && !settlement) reject('提交前请核对退款或补款结果')
-    return { request_key: body.request_key.toLowerCase(), actor_id: actorId, order_id: Number(orderId), item_id: Number(itemId),
-      store_id: storeId, quantity: Number(body.quantity), serial_numbers: serials, return_reason: body.return_reason,
-      time, remarks: body.remarks?.trim() || '', restock_confirmed: true, settlement }
+    return { request_key: body.request_key.toLowerCase(), actor_id: actorId, store_id: storeId,
+      time, remarks: body.remarks?.trim() || '', settlement }
+  }
+
+  normalize(orderId, itemId, body, actor, quote) {
+    if (!getActorId(actor)) reject('请先登录', 'UNAUTHORIZED', 401)
+    if (!validId(orderId) || !validItemId(itemId)) reject('原单或商品明细标识无效')
+    only(body, ['request_key', 'store_id', 'quantity', 'serial_numbers', 'return_reason', 'reversal_date', 'remarks', 'restock_confirmed', 'settlement'])
+    const common = this.normalizeOperation(body, actor, quote)
+    if (!isIntegerInput(body.quantity) || Number(body.quantity) < 1 || Number(body.quantity) > 999999) reject('退回数量无效')
+    if (!returnOptions.return_reason.includes(body.return_reason)) reject('请选择有效的退货原因')
+    if (body.restock_confirmed !== true) reject('请先人工核验退回实物可重新入库；待检、维修或报废暂不通过此入口办理')
+    if (body.serial_numbers !== undefined && !Array.isArray(body.serial_numbers)) reject('退回SN必须是列表')
+    const serials = this.accessories.normalizeSerials(body.serial_numbers).sort()
+    if (serials.length && serials.length !== Number(body.quantity)) reject('SN数量与退货数量不一致')
+    // 原请求摘要的字段顺序也是幂等契约；公共校验提取后仍保持原顺序。
+    return { request_key: common.request_key, actor_id: common.actor_id, order_id: Number(orderId), item_id: Number(itemId),
+      store_id: common.store_id, quantity: Number(body.quantity), serial_numbers: serials, return_reason: body.return_reason,
+      time: common.time, remarks: common.remarks, restock_confirmed: true, settlement: common.settlement }
   }
 
   async authorize(actor) {
-    for (const action of ['query:view', 'query:return-to-stock', 'accessories:view']) {
+    for (const action of ['query:view', 'query:return-to-stock', 'query:goods-view']) {
       if (!await this.permissionCheck(actor, action)) reject('无权办理商品退货', 'PERMISSION_DENIED', 403)
     }
   }
@@ -96,11 +106,19 @@ class SalesGoodsReturnService {
     await this.authorize(actor)
     return this.repository.withConnection(async connection => {
       await this.ready(connection)
-      await connection.beginTransaction()
+      let started = false
       try {
+        await connection.beginTransaction()
+        started = true
         const { plan } = await this.load(connection, { order_id: Number(orderId), item_id: Number(itemId), quantity: 0, serial_numbers: [] }, actor)
         return this.contextFacts(plan, Number(orderId), Number(itemId))
-      } finally { await connection.rollback() }
+      } finally {
+        if (!started) connection.destroy()
+        else {
+          try { await connection.rollback() }
+          catch (error) { connection.destroy(); throw error }
+        }
+      }
     })
   }
 
@@ -113,32 +131,46 @@ class SalesGoodsReturnService {
 
   async run(orderId, itemId, body, actor, quote) {
     const input = this.normalize(orderId, itemId, body, actor, quote)
+    return this.runInput(input, actor, quote)
+  }
+
+  /** 扩展售后共用持久幂等及整体重试，不复制连接或事务管理。 */
+  async runInput(input, actor, quote) {
     await this.authorize(actor)
     const hash = createHash('sha256').update(JSON.stringify(input)).digest('hex')
     return this.repository.withConnection(async connection => {
       await this.ready(connection)
       // 锁等待/死锁只能整体重跑事务，不在部分扣分或返库后继续执行。
       for (let attempt = 0; attempt < 3; attempt++) {
-        await connection.beginTransaction()
+        let started = false, rollbackOnly = quote, result
         try {
+          await connection.beginTransaction()
+          started = true
           const previous = await this.repository.request(connection, input.request_key)
           if (previous) {
             const scope = resolveStoreScope(actor, null)
             assertStoreInScope(scope, previous.original_store_id); assertStoreInScope(scope, previous.store_id)
             if (Number(previous.created_by) !== input.actor_id || previous.request_hash !== hash) reject('请求标识已按其他内容办理，请核对原售后单', 'CHECKOUT_RETURN_REQUEST_CONFLICT', 409)
-            const result = typeof previous.result_snapshot === 'string' ? JSON.parse(previous.result_snapshot) : previous.result_snapshot
-            await connection.rollback()
-            return { ...result, aftersale_id: Number(previous.id) }
+            const saved = typeof previous.result_snapshot === 'string' ? JSON.parse(previous.result_snapshot) : previous.result_snapshot
+            result = { ...saved, aftersale_id: Number(previous.id) }
+            rollbackOnly = true
+          } else {
+            result = await this.execute(connection, input, actor, hash, quote)
           }
-          const result = await this.execute(connection, input, actor, hash, quote)
-          if (quote) await connection.rollback()
-          else await connection.commit()
-          return result
+          if (!rollbackOnly) await connection.commit()
         } catch (error) {
-          await connection.rollback()
+          if (!started) { connection.destroy(); throw error }
+          try { await connection.rollback() }
+          catch (rollbackError) { connection.destroy(); throw rollbackError }
           if (attempt < 2 && ['ER_DUP_ENTRY', 'ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error.code)) continue
           throw error
         }
+        // 试算及原回执重放的结束回滚不进入业务重试捕获，失败只销毁一次。
+        if (rollbackOnly) {
+          try { await connection.rollback() }
+          catch (error) { connection.destroy(); throw error }
+        }
+        return result
       }
     })
   }
@@ -247,28 +279,36 @@ class SalesGoodsReturnService {
     }
   }
 
-  /** 原积分撤回/补退与原批次返库共用事务步骤；资金及售后单由外层一次结算。 */
-  async returnGoods(connection, input, actor, { order, row, plan }, key) {
+  /** 原积分撤回/补退独立于实物返库；调用方已锁定并核验原单，须同事务追加业务凭据。 */
+  async reverseGoodsPoints(connection, input, { order, plan }, key) {
     const pointEntries = []
     let recovery = 0, compensation = 0, delta = 0
     if (plan.points_awarded) {
       const result = await this.pointsLedger.returnAward(connection, { customerId: Number(order.customer_id), sourceType: 'checkout_item',
-        sourceId: input.item_id, points: plan.points_awarded, requestKey: `${key}:award` })
+        sourceId: input.item_id, points: plan.points_awarded, requestKey: `${key}:award`,
+        details: { reason: '商品退货', operator_id: input.actor_id, item_id: input.item_id } })
       recovery = result.recovery_cents; delta += result.points_delta; pointEntries.push(result.entry_id)
     }
     if (plan.points_used) {
       const result = await this.pointsLedger.returnRedemption(connection, { customerId: Number(order.customer_id), itemId: input.item_id,
-        points: plan.points_used, requestKey: `${key}:redeem` })
+        points: plan.points_used, requestKey: `${key}:redeem`,
+        details: { reason: '商品退货返还抵扣积分', operator_id: input.actor_id, item_id: input.item_id } })
       compensation = result.compensation_cents; delta += result.points_delta; pointEntries.push(result.entry_id)
     }
+    return { base: plan.payable_cents + plan.gift_refund_cents, recovery, compensation, delta, pointEntries }
+  }
+
+  /** 普通退货及换货仍返还原批次；资金及售后单由外层一次结算。 */
+  async returnGoods(connection, input, actor, loaded, key) {
+    const { row, plan } = loaded
+    const points = await this.reverseGoodsPoints(connection, input, loaded, key)
     const inventory = { inventory_event_ids: [] }
     if (input.quantity) {
       Object.assign(inventory, await this.accessories.returnSaleStock({ sale_id: Number(row.accessory_sale_id), store_id: input.store_id,
         quantity: input.quantity, serial_numbers: input.serial_numbers, request_key: `${key}:stock`, remarks: input.remarks }, actor, connection, { time: input.time }))
       if (inventory.remaining_quantity !== plan.remaining_quantity || Number(inventory.accessory_id) !== Number(row.accessory_id)) reject('原返库数量与售后凭据不一致', 'CHECKOUT_RETURN_CONFLICT', 409)
     }
-    const base = plan.payable_cents + plan.gift_refund_cents
-    return { base, recovery, compensation, delta, pointEntries, inventory }
+    return { ...points, inventory }
   }
 
   async execute(connection, input, actor, hash, quote) {

@@ -4,6 +4,8 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const UserMutationService = require('../src/services/user-mutation.service')
+const UserRoleAssignmentService = require('../src/services/user-role-assignment.service')
 const UserController = require('../src/controllers/user.controller')
 
 const createResponse = () => ({
@@ -50,6 +52,8 @@ const createTransactionalController = ({ execute, poolExecute, connected = true,
     async beginTransaction() { events.push('begin') },
     async execute(query, values) {
       events.push(['execute', query, values])
+      if (query.startsWith('SELECT r.id, r.name')) return [[], []]
+      if (query === 'SELECT id, username FROM users WHERE id = ?') return [[{ id: values[0], username: 'existing' }], []]
       return execute ? execute(query, values) : [[], []]
     },
     async commit() { events.push('commit') },
@@ -66,7 +70,15 @@ const createTransactionalController = ({ execute, poolExecute, connected = true,
   const controller = new UserController({
     getDatabase: () => pool,
     isConnected: () => connected,
-    passwordHasher: passwordHasher || (async password => `hashed:${password}`),
+    mutationService: new UserMutationService({
+      permissionCheck: async () => true,
+      database: () => pool,
+      passwordHasher: passwordHasher || (async password => `hashed:${password}`),
+      roleAssignment: new UserRoleAssignmentService({
+        permissionCheck: async () => true,
+        permissionLogs: { async logUserRoleOperation() {} }
+      })
+    }),
     logger: { error() {} }
   })
   return { controller, connection, events }

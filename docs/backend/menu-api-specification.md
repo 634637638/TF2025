@@ -1,12 +1,12 @@
 # 统一菜单 API 规范
 
-本文规定后台 PC、手机和平板端的用户菜单入口、权限来源及模块关联规则。最后核实日期：2026-10-07。
+本文规定后台 PC、手机和平板端的用户菜单入口、权限来源及模块关联规则。最后核实日期：2026-11-15（源码与隔离测试，不含云端数据复核）。
 
 ## 公共调用链
 
-前端统一通过 `frontend/src/stores/menu.ts` 的 `useMenuStore` 获取菜单，使用公共 Axios 封装调用 `GET /api/permissions/user-menu`。实际路由处理器为 `backend/src/permissions/menuPermissionFilter.js`。
+前端统一通过 `frontend/src/stores/menu.ts` 的 `useMenuStore` 获取菜单，使用公共 Axios 封装调用 `GET /api/permissions/user-menu`。实际路由为 `backend/src/routes/permission-management.js`，委托 `UserMenuController → UserMenuService → UserMenuRepository`。
 
-处理器和 `backend/src/services/unified-menu.service.js` 均复用 `access-control.service.js` 的 `getUserMenuVisibility`。不能声称所有路由都由统一菜单服务直接处理，也不能在页面或布局内另写角色名判断。
+`UserMenuService` 和 `backend/src/services/unified-menu.service.js` 均复用 `access-control.service.js` 的 `getUserMenuVisibility`。不能声称所有路由都由统一菜单服务直接处理，也不能在页面或布局内另写角色名判断。
 
 `/api/menus/*` 用于菜单管理 CRUD，不承担当前用户可见菜单查询。用户菜单接口需要 JWT 认证，返回如下结构：
 
@@ -50,6 +50,16 @@
 一级改为二级只改变 `parent_id`，不得改变该菜单的权限模块和页面授权。过滤先处理子菜单；只要有可见子菜单，父菜单即保留，包括父菜单自身关联模块被隐藏的情况。纯导航父节点无需额外授予业务权限。
 
 工资管理主菜单应绑定 `salary_salaryview`，而不是同名的工资记录子模块 `salary_salaryrecordsview`。“我的工资” Tab 使用 `salary_mysalaryview` 授权；不能为了显示工资主菜单而授予全部工资记录或模板权限。营销文案后台绑定 `marketing_marketingmanagementview`，不能绑定公开营销页模块。
+
+## 角色页面权限的菜单排序
+
+`GET /api/permissions/roles/:id/permissions` 沿用 `permissions:admin` 鉴权及原响应字段，模块数组按完整有效菜单排序。`RolePermissionsRepository.listMenuOrder` 只查询菜单 ID、父 ID、排序和模块关联，不读取图标或触发图标结构维护，也不使用当前用户菜单接口的数据做排序。
+
+`RolePermissionsService` 复用 `backend/src/utils/menu-hierarchy.js` 的 `buildHierarchicalMenu` 建树并按层级遍历；菜单读取与用户导航均以父 ID、`sort_order`、ID 稳定读取。同模块多次出现时取首个位置，空 `module_key` 按 `module_id` 解析。没有有效菜单的模块保留原相对顺序并置后，菜单读取异常沿用接口失败处理，不伪装成空菜单。
+
+排序不依赖查看人或目标角色的菜单授权，不能因此漏掉待配置模块；不写入角色、权限或菜单数据。前端分组与子页面位置遵循[页面权限展示顺序](../frontend/permission-capability-standards.md#页面权限的展示顺序)。菜单调序后下次读取生效，不新增前端请求或排序缓存。
+
+隔离回归入口为 `backend/test/role-permissions-controller.check.js` 和 `frontend/tests/permission-page-groups.spec.ts`，覆盖层级调序、同序号、重复绑定、无菜单保留、目标角色授权差异及分组开关。
 
 ## 管理写入的输入边界
 

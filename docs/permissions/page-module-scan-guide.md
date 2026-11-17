@@ -2,7 +2,7 @@
 
 > **文档说明**：说明 TF2025 在 `src/views` 目录下新增页面后，模块扫描器如何识别“独立页面”和“子组件”，以及推荐的命名和目录规范。
 >
-> **最后更新**：2026-08-24
+> **最后更新**：2026-11-15
 > **版本**：v1.1.0
 > **维护者**：TF2025 开发团队
 
@@ -17,12 +17,21 @@
 
 ## 核心原则
 
+- 扫描注册与业务母子归属是两个维度。有独立路由及权限模块的页面仍可作为某个母页面的子页面；分组展示不改变独立鉴权。判定、登记和验收统一遵循[母页面、子页面与权限模块](../frontend/permission-capability-standards.md#母页面子页面与权限模块)，本文不另建归属规则。
 - 扫描器只识别“真正的页面模块”，不应把弹窗和局部组件误扫成模块。
 - 页面是否能被扫描，不只看目录，还看它是不是一个真实路由页面。
 - 顶层 `src/views/<module>/*.vue` 文件也必须被路由直接引用，不再仅凭文件存在自动注册。
 - `modules.key` 必须稳定，不能因为目录整理而频繁变化。
 - `page/` 是页面子目录，不等于里面所有文件都是模块页面。
 - 扫描到模块不代表自动拥有 CRUD；动作必须在共享能力清单明确登记。
+
+## 模块查询与权限数量
+
+模块管理通过 `GET /api/modules/registered` 读取全部已注册模块（含停用），响应保留 `data.total` 和 `data.modules`。每个模块的 `permission_count` 由 `ModuleScanner.getRegisteredModules()` 复用 `getModulePermissionTypes(module.key).length` 派生，动作唯一来源为 `backend/src/config/module-permission-capabilities.json`。
+
+该数量代表模块支持的业务动作数，不含导航权限 `menu_view`；未分配给任何角色也保留真实能力数量，不随角色数量、重复授权行或模块启停变化。未登记模块沿用公共最小权限回退 `view`，不根据历史授权记录补造 CRUD。列表、网格及本地查看详情使用同一字段；此读取不修改模块、角色或授权记录。接口使用统一认证及 `module-management:view`；普通修改使用 `module-management:edit`。创建/删除同时要求对应模块动作和 `permissions:admin`，扫描、注册、同步仍要求权限管理员。无需计数字段迁移。
+
+正式回归入口为 `backend/test/module-management-controller.check.js` 和 `frontend/tests/module-management.spec.ts`，覆盖能力清单、停用模块、历史错误计数覆盖、展示顺序、视图切换及添加提交状态。
 
 ## 当前扫描规则
 
@@ -194,7 +203,7 @@ src/views/<module>/page/<ComponentName>Card.vue
 
 ## 落地建议
 
-菜单的一级/二级位置只由 `parent_id` 决定，不改变角色授权。主菜单必须关联实际路由主页面模块，不能因显示名称相同关联到子 Tab。例如“工资管理”使用 `salary_salaryview`，“工资记录”使用 `salary_salaryrecordsview`，“我的工资”使用 `salary_mysalaryview`。
+菜单的一级/二级位置只由 `parent_id` 决定，不改变角色授权。主菜单必须关联实际路由主页面模块，不能因显示名称相同关联到子 Tab。例如“工资管理”使用 `salary_salaryview`，“工资计算”使用 `salary_salaryrecordsview`，“我的工资”使用 `salary_mysalaryview`。
 
 扫描器的增量关联和全量修复统一委托 `menu-module-linker.service.js`，禁止另建重复特殊映射。明确规则优先于模块名称和数据库查询顺序，规范模块尚未注册时也不能让同名子模块抢占主菜单。模块关联修复不向普通角色自动发放权限。
 

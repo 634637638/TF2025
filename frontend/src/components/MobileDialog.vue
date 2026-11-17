@@ -97,7 +97,6 @@
               >
                 <el-button
                   v-if="showCancelButton"
-                  size="large"
                   :disabled="loading"
                   @click="handleCancel"
                 >
@@ -105,7 +104,6 @@
                 </el-button>
                 <el-button
                   type="primary"
-                  size="large"
                   :loading="loading"
                   @click="handleConfirm"
                 >

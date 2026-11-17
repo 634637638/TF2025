@@ -1,5 +1,7 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
 const { PREORDER_RESPONSE_FIELDS, PREORDER_STATUS_LABELS } = require('../config/preorder-response.constants')
@@ -17,7 +19,9 @@ class PreorderReadRepository {
     this.database = database
   }
 
-  async getStats() {
+  async getStats(scope) {
+    const conditions = []; const params = []
+    appendStoreScopeCondition(scope, 'store_id', conditions, params)
     return withConnection(this.database(), async connection => {
       const [rows] = await connection.execute(`
         SELECT
@@ -25,8 +29,8 @@ class PreorderReadRepository {
           SUM(CASE WHEN status = 'arrived' THEN 1 ELSE 0 END) as matched_count,
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as delivered_count,
           SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count
-        FROM preorders
-      `)
+        FROM preorders WHERE ${conditions.length ? conditions.join(' AND ') : '1=1'}
+      `, params)
       return rows[0]
     })
   }
@@ -69,9 +73,10 @@ class PreorderReadRepository {
     return executor ? read(executor) : withConnection(this.database(), read)
   }
 
-  async list({ filters, page, pageSize }) {
+  async list({ scope, filters, page, pageSize }) {
     const conditions = ['1=1']
     const params = []
+    appendStoreScopeCondition(scope, 'p.store_id', conditions, params)
 
     if (filters.status) {
       conditions.push('p.status = ?')
@@ -177,22 +182,25 @@ class PreorderReadRepository {
     })
   }
 
-  async getStores() {
+  async getStores(scope) {
+    const conditions = ['status = 1']; const params = []
+    appendStoreScopeCondition(scope, 'id', conditions, params)
     return withConnection(this.database(), async connection => {
       const [stores] = await connection.query(
-        'SELECT id, name, sort_order FROM stores WHERE status = 1 ORDER BY sort_order ASC, name ASC, id ASC'
+        `SELECT id, name, sort_order FROM stores WHERE ${conditions.join(' AND ')} ORDER BY sort_order ASC, name ASC, id ASC`, params
       )
       return stores
     })
   }
 
-  async getMatchablePreorders({ brand_id, model_id, color_id, memory_id, store_id }) {
+  async getMatchablePreorders({ brand_id, model_id, color_id, memory_id, store_id }, scope) {
     return withConnection(this.database(), async connection => {
       const conditions = [
         "p.status = 'pending'",
         '(p.brand_id = ? AND p.model_id = ? AND p.color_id = ? AND p.memory_id = ?)'
       ]
       const params = [brand_id, model_id, color_id, memory_id]
+      appendStoreScopeCondition(scope, 'p.store_id', conditions, params)
       if (store_id) {
         conditions.push('(p.store_id IS NULL OR p.store_id = ?)')
         params.push(store_id)
@@ -243,7 +251,7 @@ class PreorderReadRepository {
 
   async getPreorderForMatching(connection, id) {
     const [preorders] = await connection.execute(
-      `SELECT id, status, matched_phone_id, brand_id, model_id, color_id, memory_id, is_new
+      `SELECT id, store_id, status, matched_phone_id, brand_id, model_id, color_id, memory_id, is_new
        FROM preorders
        WHERE id = ?`,
       [id]
@@ -251,7 +259,9 @@ class PreorderReadRepository {
     return preorders[0] || null
   }
 
-  async getCandidatePhones(connection, preorder) {
+  async getCandidatePhones(connection, preorder, scope) {
+    const conditions = ['1=1']; const scopeParams = []
+    appendStoreScopeCondition(scope, 'p.store_id', conditions, scopeParams)
     const [phones] = await connection.execute(
       `SELECT
          p.id,
@@ -271,7 +281,7 @@ class PreorderReadRepository {
        LEFT JOIN colors c ON p.color_id = c.id
        LEFT JOIN memories mem ON p.memory_id = mem.id
        LEFT JOIN stores st ON p.store_id = st.id
-       WHERE p.status IN ('in_stock', 'reserved')
+       WHERE ${conditions.join(' AND ')} AND p.status IN ('in_stock', 'reserved')
          AND (COALESCE(p.is_preordered, 0) = 0 OR p.id = ?)
          AND NOT EXISTS (
            SELECT 1
@@ -288,6 +298,7 @@ class PreorderReadRepository {
        ORDER BY p.inventory_time ASC, p.id ASC`,
       [
         preorder.matched_phone_id || 0,
+        ...scopeParams,
         preorder.matched_phone_id || 0,
         preorder.id,
         preorder.brand_id,

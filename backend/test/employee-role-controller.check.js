@@ -20,11 +20,11 @@ test('employee role routes preserve their distinct permissions and delegate to c
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/employees.js'), 'utf8')
   assert.match(route, /router\.get\('\/system-roles', unifiedAuth, requirePermission\('permissions:admin'\), employeeRoleController\.systemRoles\.bind\(employeeRoleController\)\)/)
   assert.match(route, /router\.get\('\/roles', unifiedAuth, requirePermission\('employee:view'\), employeeRoleController\.list\.bind\(employeeRoleController\)\)/)
-  assert.match(route, /router\.post\('\/roles', unifiedAuth, requirePermission\('employee:create'\), employeeRoleController\.create\.bind\(employeeRoleController\)\)/)
-  assert.match(route, /router\.put\('\/roles\/:id', unifiedAuth, requirePermission\('employee:edit'\), employeeRoleController\.update\.bind\(employeeRoleController\)\)/)
-  assert.match(route, /router\.delete\('\/roles\/:id', unifiedAuth, requirePermission\('employee:delete'\), employeeRoleController\.delete\.bind\(employeeRoleController\)\)/)
-  assert.match(route, /router\.post\('\/:id\/roles', unifiedAuth, requirePermission\('employee:edit'\), employeeRoleController\.assign\.bind\(employeeRoleController\)\)/)
-  assert.match(route, /router\.delete\('\/:employeeId\/roles\/:roleId', unifiedAuth, requirePermission\('employee:edit'\), employeeRoleController\.remove\.bind\(employeeRoleController\)\)/)
+  assert.match(route, /router\.post\('\/roles', unifiedAuth, requirePermission\('permissions:admin'\), employeeRoleController\.create\.bind\(employeeRoleController\)\)/)
+  assert.match(route, /router\.put\('\/roles\/:id', unifiedAuth, requirePermission\('permissions:admin'\), employeeRoleController\.update\.bind\(employeeRoleController\)\)/)
+  assert.match(route, /router\.delete\('\/roles\/:id', unifiedAuth, requirePermission\('permissions:admin'\), employeeRoleController\.delete\.bind\(employeeRoleController\)\)/)
+  assert.match(route, /router\.post\('\/:id\/roles', unifiedAuth, requirePermission\('permissions:admin'\), employeeRoleController\.assign\.bind\(employeeRoleController\)\)/)
+  assert.match(route, /router\.delete\('\/:employeeId\/roles\/:roleId', unifiedAuth, requirePermission\('permissions:admin'\), employeeRoleController\.remove\.bind\(employeeRoleController\)\)/)
 })
 
 test('employee role repository retains active-role contract and user counts', async () => {
@@ -52,7 +52,7 @@ test('employee role repository retains active-role contract and user counts', as
 test('employee role controller preserves success response shapes and server errors', async () => {
   const EmployeeRoleController = require('../src/controllers/employee-role.controller')
   const roles = [{ id: 5, name: '销售' }]
-  const controller = new EmployeeRoleController({ repository: {
+  const controller = new EmployeeRoleController({ permissionCheck: async () => true, audit: { async logRoleOperation() {}, async logPermissionOperation() {} }, repository: {
     async getActiveSystemRoles() { return roles },
     async getRolesWithUserCount() { return roles }
   } })
@@ -68,7 +68,7 @@ test('employee role controller preserves success response shapes and server erro
   assert.equal(rolesResponse.body.success, true)
   assert.deepEqual(rolesResponse.body.data, { roles })
 
-  const failedController = new EmployeeRoleController({ repository: {
+  const failedController = new EmployeeRoleController({ permissionCheck: async () => true, audit: { async logRoleOperation() {}, async logPermissionOperation() {} }, repository: {
     async getActiveSystemRoles() { throw new Error('database unavailable') },
     async getRolesWithUserCount() { throw new Error('database unavailable') }
   } })
@@ -108,7 +108,7 @@ test('employee role repository creates, updates and deletes with parameterized S
 
 test('employee role controller keeps validation, conflicts, not-found, in-use and success responses', async () => {
   const EmployeeRoleController = require('../src/controllers/employee-role.controller')
-  const controller = new EmployeeRoleController({ repository: {
+  const controller = new EmployeeRoleController({ permissionCheck: async () => true, audit: { async logRoleOperation() {}, async logPermissionOperation() {} }, repository: {
     async createRole(input) { return input.name === '重复' ? { duplicate: true } : { role: { id: 7, ...input } } },
     async updateRole(input) {
       if (input.id === '404') return { notFound: true }
@@ -219,7 +219,7 @@ test('employee role repository replaces assignments atomically, accepts empty ro
 test('employee role assignment and removal controllers preserve input and result responses', async () => {
   const EmployeeRoleController = require('../src/controllers/employee-role.controller')
   const calls = []
-  const controller = new EmployeeRoleController({ repository: {
+  const controller = new EmployeeRoleController({ permissionCheck: async () => true, audit: { async logRoleOperation() {}, async logPermissionOperation() {} }, repository: {
     async assignRoles(employeeId, roleIds) {
       calls.push(['assign', employeeId, roleIds])
       return roleIds.length ? { employee: { id: employeeId, role_ids: roleIds.join(',') } } : { employee: { id: employeeId, role_ids: null } }

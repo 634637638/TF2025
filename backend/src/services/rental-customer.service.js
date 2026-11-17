@@ -1,5 +1,8 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
+const CustomerMutationAccessService = require('./customer-mutation-access.service')
 const RentalCustomerRepository = require('../repositories/rental-customer.repository')
 const dataMaskingService = require('./data-masking.service')
 const { searchCustomers } = require('./customer-search.service')
@@ -20,6 +23,7 @@ class RentalCustomerService {
     masking = dataMaskingService,
     customerSearch = searchCustomers,
     operatorSearch = searchOperators,
+    customerAccess = new CustomerMutationAccessService(),
     validateIdCard = isValidIdCard
   } = {}) {
     if (!repository || typeof repository.getActiveStores !== 'function'
@@ -33,6 +37,7 @@ class RentalCustomerService {
       || typeof validateIdCard !== 'function') {
       throw new TypeError('RentalCustomerService requires customer, permission, and search dependencies')
     }
+    this.customerAccess = customerAccess
     this.repository = repository
     this.masking = masking
     this.customerSearch = customerSearch
@@ -91,7 +96,7 @@ class RentalCustomerService {
       username: operator.username,
       name: operator.name || operator.username
     }))
-    const stores = hiddenFields.has(SALES_STORE) ? [] : await this.repository.getActiveStores()
+    const stores = hiddenFields.has(SALES_STORE) ? [] : await this.repository.getActiveStores(resolveStoreScope(user))
     return { operators, stores, pagination: operatorResult.pagination }
   }
 
@@ -110,10 +115,11 @@ class RentalCustomerService {
     return { name, phone, idCard }
   }
 
-  async create(body) {
+  async create(body, actor) {
     const customer = this.normalizeCustomerInput(body)
     const existing = await this.repository.findByPhone(customer.phone)
     if (existing) {
+      await this.customerAccess.require(actor, 'edit')
       await this.repository.updateExistingIdentity({ id: existing.id, ...customer })
       return { existing: true, customer: { ...existing, name: customer.name, id_card: customer.idCard } }
     }

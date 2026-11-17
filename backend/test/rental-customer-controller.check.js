@@ -26,8 +26,8 @@ const repositoryStub = overrides => ({
 test('rental customer routes preserve authorization, field guards, and personnel audit middleware', () => {
   assert.match(routeSource, /router\.get\('\/customers', requireAnyPermission\(\['rentals:view', 'rentals:create'\]\), rentalCustomerController\.search\.bind/)
   assert.match(routeSource, /router\.get\('\/sales-options', requireAnyPermission\(\['rentals:view', 'rentals:create'\]\), auditUnpaginatedPersonnelSearch\('rentals-sales-options'\), rentalCustomerController\.getSalesOptions\.bind/)
-  assert.match(routeSource, /router\.post\('\/customers', requirePermission\('rentals:create'\), rejectHiddenCustomerWriteFields, rentalCustomerController\.create\.bind/)
-  assert.match(routeSource, /router\.put\('\/customers\/:id', requirePermission\('rentals:create'\), rejectHiddenCustomerWriteFields, rentalCustomerController\.update\.bind/)
+  assert.match(routeSource, /router\.post\('\/customers', requirePermission\('rentals:create'\), requirePermission\('customers:create'\), rejectHiddenCustomerWriteFields, rentalCustomerController\.create\.bind/)
+  assert.match(routeSource, /router\.put\('\/customers\/:id', requirePermission\('rentals:create'\), requirePermission\('customers:edit'\), rejectHiddenCustomerWriteFields, rentalCustomerController\.update\.bind/)
 })
 
 test('rental customer service short-circuits short search and masks hidden fields', async () => {
@@ -84,7 +84,8 @@ test('rental customer service reuses existing customers and creates normalized n
     masking: { async getUserFieldPermissions() { return { hiddenFields: [] } } },
     customerSearch: async () => ({ records: [] }),
     operatorSearch: async () => ({ records: [] }),
-    validateIdCard: () => true
+    validateIdCard: () => true,
+    customerAccess: { async require() {} }
   })
   const body = { name: ' 新客户 ', phone: '13800000000', id_card: ' abcd ' }
   const reused = await service.create(body)

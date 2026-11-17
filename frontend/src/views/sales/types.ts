@@ -55,6 +55,16 @@ export interface BatchSaleItem {
   sale_price: string
 }
 
+export interface SalesProfitLine {
+  key: string
+  type: 'phone' | 'goods'
+  name: string
+  quantity: number
+  purchase_cost: number | null
+  sale_price: number
+  sale_type?: 'sale' | 'gift'
+}
+
 export interface SalesNamedOption {
   id?: number | string
   name?: string

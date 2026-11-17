@@ -245,6 +245,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import '@/styles/analytics-cards.css'
 import { computed, defineAsyncComponent, ref, watch, onMounted } from 'vue'
 import {
@@ -264,7 +265,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { extractResponseData } from '@/utils/api-response'
-import { getCachedStores, getCachedSuppliers } from '@/services/reference-options'
+import { getStores, getCachedSuppliers } from '@/services/reference-options'
 import type { Store, Supplier } from '@/types'
 
 const SalesAnalytics = defineAsyncComponent(() => import('./page/SalesAnalytics.vue'))
@@ -278,6 +279,9 @@ const { success, error } = useNotification()
 const { exportTextFile, buildDateFilename } = useImportExport()
 
 const { canView, canExport, handleNoPermission } = usePagePermissions('analytics')
+const inventoryPermissions = usePagePermissions('inventory')
+const customerPermissions = usePagePermissions('customers')
+const salaryRecordPermissions = usePagePermissions('salary-records')
 const ANALYTICS_MODULE_KEY = 'analytics_analyticsview'
 
 // 公共检索参数
@@ -459,6 +463,9 @@ const canViewAnyAnalyticsField = (fieldKeys: readonly string[]) => {
 
 const visibleAnalyticsTabs = computed(() => {
   return analyticsTabs.filter(tab => (
+    (tab.key !== 'inventory' || inventoryPermissions.canView.value) &&
+    (tab.key !== 'customers' || customerPermissions.canView.value) &&
+    (tab.key !== 'employee' || salaryRecordPermissions.canView.value) &&
     canViewAnalyticsField(tab.accessField) &&
     canViewAnyAnalyticsField(tab.contentFields)
   ))
@@ -586,7 +593,7 @@ const getSearchSummary = () => {
 // 加载店铺列表
 const loadStoreList = async () => {
   try {
-    const response = await getCachedStores(true)
+    const response = await getStores({ strictScope: true })
     if (response.success) {
       const stores = extractResponseData<Store[]>(response)
       storeList.value = Array.isArray(stores) ? sortOptionsByOrder(stores) : []
@@ -682,6 +689,15 @@ onMounted(() => {
   loadSupplierList()  // 加载供应商列表
 })
 
+
+usePageShortcuts('/analytics', {
+  'analytics-sales': { open: () => { activeTab.value = 'sales' }, allowed: () => visibleAnalyticsTabs.value.some(tab => tab.key === 'sales') },
+  'analytics-inventory': { open: () => { activeTab.value = 'inventory' }, allowed: () => visibleAnalyticsTabs.value.some(tab => tab.key === 'inventory') },
+  'analytics-customers': { open: () => { activeTab.value = 'customers' }, allowed: () => visibleAnalyticsTabs.value.some(tab => tab.key === 'customers') },
+  'analytics-employee': { open: () => { activeTab.value = 'employee' }, allowed: () => visibleAnalyticsTabs.value.some(tab => tab.key === 'employee') },
+  'analytics-transfer': { open: () => { activeTab.value = 'transfer' }, allowed: () => visibleAnalyticsTabs.value.some(tab => tab.key === 'transfer') },
+  'analytics-profit': { open: () => { activeTab.value = 'profit' }, allowed: () => visibleAnalyticsTabs.value.some(tab => tab.key === 'profit') }
+})
 </script>
 
 <style lang="scss" scoped>

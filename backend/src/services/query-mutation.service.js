@@ -1,5 +1,6 @@
 'use strict'
 
+const PhoneMutationAccessService = require('./phone-mutation-access.service')
 const BaseService = require('../core/base/base.service')
 const QueryRepository = require('../repositories/query.repository')
 const { StoreScopeError } = require('../utils/store-scope')
@@ -9,9 +10,10 @@ const { normalizeReturnStockInfo } = require('./return-stock-validation')
 const { assertStandaloneSale } = require('../utils/sale-input')
 
 class QueryMutationService extends BaseService {
-  constructor({ repository = new QueryRepository(), reversePoints = defaultReversePoints } = {}) {
+  constructor({ repository = new QueryRepository(), reversePoints = defaultReversePoints, access = new PhoneMutationAccessService() } = {}) {
     super()
     this.repository = repository
+    this.access = access
     this.reversePoints = reversePoints
   }
 
@@ -86,7 +88,7 @@ class QueryMutationService extends BaseService {
     })
   }
 
-  async deletePhoneRecord(phoneId, storeScope = {}) {
+  async deletePhoneRecord(phoneId, storeScope = {}, actor) {
     return this.repository.withConnection(async connection => {
       try {
         // 开始事务
@@ -99,6 +101,7 @@ class QueryMutationService extends BaseService {
         if (!storeScope.allStores && !storeScope.storeIds?.includes(Number(phoneRows[0].store_id))) {
           throw new StoreScopeError('无权操作该门店数据')
         }
+        await this.access.authorize(actor, phoneRows[0], 'delete')
         assertStandaloneSale(phoneRows[0].checkout_order_id)
 
         // 1. 删除关联的销售记录

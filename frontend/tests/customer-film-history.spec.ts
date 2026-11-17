@@ -42,7 +42,7 @@ it('关闭父详情、切换客户及失去任一必要动作权限立即卸载�
   await wrapper.setProps({ customer: { ...customer, id: 10 } })
   expect(wrapper.findComponent(Dialog).exists()).toBe(false)
   await open(wrapper); expect(wrapper.findComponent(Dialog).props('customer').id).toBe(10)
-  for (const key of ['customers', 'query', 'accessories', 'film'] as const) {
+  for (const key of ['customers', 'query', 'film'] as const) {
     access[key] = false; await flushPromises()
     expect(wrapper.text()).toBe(''); expect(wrapper.findComponent(Dialog).exists()).toBe(false)
     access[key] = true; await flushPromises(); await open(wrapper)
@@ -68,4 +68,11 @@ it('没有有效客户ID或身份内容时不开放入口，不能通过默认�
   for (const value of [null, { ...customer, id: 0 }, { ...customer, name: '' }, { ...customer, phone: '' }]) {
     await wrapper.setProps({ customer: value }); expect(wrapper.text()).toBe('')
   }
+})
+
+it('贴膜历史不要求进入商品管理页面的查看权限', async () => {
+  access.accessories = false
+  const wrapper = await render()
+  await open(wrapper)
+  expect(wrapper.findComponent(Dialog).exists()).toBe(true)
 })

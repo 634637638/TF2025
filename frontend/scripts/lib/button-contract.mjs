@@ -16,7 +16,7 @@ export function auditCommandButtonSizes(source) {
     ['.el-button.el-button--small:not(.is-circle)', '-small', ['height', 'min-height', 'padding-inline', 'font-size']],
     ['.el-button.el-button--large:not(.is-circle)', '-large', ['height', 'min-height']]
   ]
-  return specifications.flatMap(([selector, suffix, properties]) => {
+  const findings = specifications.flatMap(([selector, suffix, properties]) => {
     const body = rules.find(rule => rule[1].includes(selector))?.[2]
     if (!body) return [`缺少普通按钮 ${suffix || 'default'} 公共尺寸入口`]
     const declarations = new Map(body.split(';').map(declaration => {
@@ -30,6 +30,18 @@ export function auditCommandButtonSizes(source) {
         ? [] : [`普通按钮 ${suffix || 'default'} 的 ${property} 必须复用公共尺寸令牌`]
     })
   })
+  const defaults = rules.find(rule => rule[1].trim() === ':root')?.[2] || ''
+  for (const [property, token] of [
+    ['--tf-button-height', '--tf-button-small-base-height'],
+    ['--tf-button-padding-x', '--tf-button-small-base-padding-x'],
+    ['--tf-button-font-size', '--tf-button-small-base-font-size'],
+    ['--tf-toolbar-button-height', '--tf-button-small-base-height'],
+    ['--tf-toolbar-button-padding-x', '--tf-button-small-base-padding-x'],
+    ['--tf-toolbar-button-font-size', '--tf-button-small-base-font-size']
+  ]) {
+    if (!defaults.includes(`${property}: var(${token});`)) findings.push(`电脑端 ${property} 默认必须复用公共小号基础令牌`)
+  }
+  return findings
 }
 
 /** 批量操作显式小号必须映射公共令牌，不能把页面规格变成第二套尺寸源。 */
@@ -48,6 +60,33 @@ function classNames(node) {
     : prop.type === 7 && prop.name === 'bind' && prop.arg?.content === 'class' && prop.exp
       ? [...prop.exp.content.matchAll(/['"]([^'"]+)['"]/g)].map(match => match[1])
       : []).flatMap(value => value.split(/\s+/)).filter(Boolean)
+}
+
+/** 业务按钮跟随公共默认，仅标杆页的尺寸演示可显式声明。 */
+export function auditButtonSizeDeclarations(source, { allowPreview = false } = {}) {
+  const { descriptor, errors } = parse(source)
+  if (errors.length) throw new Error(`无法解析 Vue 模板：${errors[0]}`)
+  const findings = []
+  const visit = node => {
+    if (node.type === 1) {
+      const button = ['el-button', 'ElButton', 'el-button-group', 'ImportExportActions'].includes(node.tag)
+      const classes = classNames(node)
+      const preview = allowPreview && node.props.some(prop => prop.type === 6 && prop.name === 'data-button-size-preview')
+      for (const prop of node.props) {
+        const name = prop.type === 6 ? prop.name : prop.type === 7 ? prop.arg?.content : undefined
+        const dimension = button && name === 'size'
+          || node.tag === 'PublicPriceHeader' && ['action-size', 'actionSize'].includes(name)
+          || classes.includes('batch-actions-buttons') && name === 'data-size'
+        if (dimension && !preview) findings.push({ line: prop.loc.start.line, message: '业务按钮不得重复声明尺寸，应直接跟随公共默认规格' })
+      }
+      if (button && classes.some(name => ['btn-sm', 'btn-lg'].includes(name))) {
+        findings.push({ line: node.loc.start.line, message: '业务按钮不得使用 btn-sm/btn-lg 尺寸类，应直接跟随公共默认规格' })
+      }
+    }
+    for (const child of node.children || []) visit(child)
+  }
+  if (descriptor.template) visit(descriptor.template.ast)
+  return findings
 }
 
 /** 只识别实际按钮独占的 class，避免把按钮组、图标、单选按钮等误当作命令按钮。 */

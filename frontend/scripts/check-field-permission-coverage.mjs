@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { build } from 'esbuild'
 
 const frontendRoot = resolve(import.meta.dirname, '..')
 const projectRoot = resolve(frontendRoot, '..')
@@ -8,6 +9,7 @@ const moduleFieldsPath = resolve(frontendRoot, 'src/config/moduleFields.js')
 
 const sourcesByModule = {
   query: ['src/views/query/QueryView.vue'],
+  query_goods: ['src/views/query/page', 'src/components/accessory-field-permissions.ts', 'src/components/query/CheckoutOrderDialog.vue'],
   inventory: ['src/views/inventory'],
   sales: ['src/views/sales', 'src/views/sales/sales-field-permissions.ts', 'src/components/query/QuickSaleModal.vue'],
   brands: ['src/views/brands/BrandsView.vue'],
@@ -69,7 +71,10 @@ if (!existsSync(registryPath) || !existsSync(moduleFieldsPath)) {
 
 const registry = JSON.parse(readFileSync(registryPath, 'utf8'))
 const contracts = registry.contracts || {}
-const moduleFieldsSource = readFileSync(moduleFieldsPath, 'utf8')
+// 读取实际字段登记，覆盖由公共元数据派生的页面子范围。
+const bundled = await build({ entryPoints: [moduleFieldsPath], bundle: true, write: false,
+  format: 'esm', platform: 'node', alias: { '@': resolve(frontendRoot, 'src') } })
+const { MODULE_FIELDS } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`)
 
 const collectModuleSourceFiles = (relativePaths) => {
   const files = []
@@ -89,13 +94,8 @@ const collectModuleSourceFiles = (relativePaths) => {
   return files.filter(({ path }) => /\.(vue|ts|js)$/.test(path))
 }
 
-const moduleStarts = [...moduleFieldsSource.matchAll(/^  ([A-Za-z0-9_-]+): \{/gm)]
-for (let index = 0; index < moduleStarts.length; index += 1) {
-  const moduleName = moduleStarts[index][1]
-  const start = moduleStarts[index].index
-  const end = index + 1 < moduleStarts.length ? moduleStarts[index + 1].index : moduleFieldsSource.length
-  const moduleSource = moduleFieldsSource.slice(start, end)
-  const fieldIds = [...moduleSource.matchAll(/id:\s*['"]([^'"]+)/g)].map(match => match[1])
+for (const [moduleName, definition] of Object.entries(MODULE_FIELDS)) {
+  const fieldIds = definition.fields.map(field => field.id)
   const sourceFiles = collectModuleSourceFiles(sourcesByModule[moduleName] || [])
 
   if (!sourceFiles.length) {
@@ -113,6 +113,10 @@ for (let index = 0; index < moduleStarts.length; index += 1) {
     if (!candidates.some(candidate => source.includes(candidate))) {
       findings.push(`${moduleName}: 字段未在页面或字段权限适配器中使用 ${fieldId}`)
     }
+    if (MODULE_FIELDS[moduleName].fields.find(field => field.id === fieldId)?.editable &&
+      !/isFieldEditable|canEdit[A-Za-z]*Field|canEditField/.test(source)) {
+      findings.push(`${moduleName}: 可编辑字段没有字段级编辑判断 ${fieldId}`)
+    }
   }
 }
 
@@ -129,4 +133,4 @@ if (findings.length) {
   process.exit(1)
 }
 
-console.log(`字段权限覆盖审计通过：${moduleStarts.length} 个模块均已登记页面源文件并接入字段显示判断。`)
+console.log(`字段权限覆盖审计通过：${Object.keys(MODULE_FIELDS).length} 个模块及字段范围均已登记页面源文件并接入字段显示判断；可编辑字段已检查编辑判断。`)

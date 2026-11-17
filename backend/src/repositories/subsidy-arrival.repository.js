@@ -1,5 +1,7 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 
 class SubsidyArrivalRepository {
@@ -7,12 +9,14 @@ class SubsidyArrivalRepository {
     this.getDb = getDb
   }
 
-  async confirmArrival(id) {
+  async confirmArrival(id, scope) {
+    const conditions = ['id = ?']; const scopeParams = []
+    appendStoreScopeCondition(scope, 'store_id', conditions, scopeParams)
     const [result] = await this.getDb().execute(`
       UPDATE national_subsidies
       SET arrival_time = NOW()
-      WHERE id = ?
-    `, [id])
+      WHERE ${conditions.join(' AND ')}
+    `, [id, ...scopeParams])
     return result.affectedRows !== 0
   }
 }

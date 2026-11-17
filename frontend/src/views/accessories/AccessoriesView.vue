@@ -13,16 +13,16 @@
       >
         <template #actions>
           <el-button
-            v-if="canCreate"
-            type="primary"
+            v-if="canStockIn"
+            class="tf-button--transfer"
             @click="openStockInModal"
           >
             <i class="fas fa-box" />
-            配件入库
+            商品入库
           </el-button>
           <el-button
             v-if="canCreate"
-            type="success"
+            type="primary"
             @click="openArchiveModal"
           >
             <i class="fas fa-file-alt" />
@@ -30,15 +30,15 @@
           </el-button>
           <el-button
             v-if="canCatalogView"
+            class="tf-button--manage"
             @click="router.push('/accessories/catalog')"
           >
             <i class="fas fa-sliders-h" />
             设置
           </el-button>
           <el-button
-            type="info"
+            class="tf-button--refresh"
             :loading="refreshing"
-            plain
             :disabled="refreshing"
             @click="handleRefresh"
           >
@@ -60,7 +60,7 @@
             :type="activeMode === 'stock' ? 'primary' : 'default'"
             @click="switchMode('stock')"
           >
-            库存查询
+            商品库存
           </el-button>
           <el-button
             role="tab"
@@ -75,8 +75,23 @@
           <div
             class="tf-tab-panel"
             role="tabpanel"
-            :aria-label="isTemplateMode ? '商品模板' : '库存查询'"
+            :aria-label="isTemplateMode ? '商品模板' : '商品库存'"
           >
+            <el-alert
+              v-if="filterOptionsError"
+              :title="filterOptionsError"
+              type="error"
+              :closable="false"
+            >
+              <el-button
+                link
+                type="primary"
+                :loading="filterOptionsLoading"
+                @click="loadFilterOptions"
+              >
+                重新加载筛选项
+              </el-button>
+            </el-alert>
             <UnifiedSearchPanel
               v-model:expanded="searchExpanded"
               :loading="loading"
@@ -85,20 +100,111 @@
             >
               <template #primary>
                 <el-input
+                  v-if="canViewAccessoryField('name')"
                   v-model="searchKeyword"
-                  placeholder="搜索配件名称、商品类型、品牌或型号..."
+                  placeholder="搜索商品名称、型号或条形码"
+                  aria-label="商品名称"
                   clearable
+                  :maxlength="200"
                   @keyup.enter="handleSearch"
+                  @clear="handleSearch"
                   @click.stop
                 >
                   <template #prefix>
                     <i class="fas fa-search" />
                   </template>
                 </el-input>
+              </template>
+              <div
+                v-if="canViewAccessoryField('category')"
+                class="form-group filter-item"
+                data-field="category"
+              >
                 <el-select
-                  v-if="isTemplateMode && canViewAccessoryField('status')"
-                  v-model="templateStatus"
-                  placeholder="模板状态"
+                  v-model="filters.category"
+                  placeholder="商品类型"
+                  aria-label="商品类型"
+                  clearable
+                  filterable
+                  :loading="filterOptionsLoading"
+                  @change="handleSearch"
+                >
+                  <el-option
+                    v-for="item in filterOptions.categories"
+                    :key="String(item.id)"
+                    :label="item.name"
+                    :value="item.name || ''"
+                  />
+                </el-select>
+              </div>
+              <div
+                v-if="canViewAccessoryField('brand_name')"
+                class="form-group filter-item"
+                data-field="brand_id"
+              >
+                <el-select
+                  v-model="filters.brand_id"
+                  placeholder="品牌"
+                  aria-label="品牌"
+                  clearable
+                  filterable
+                  :loading="filterOptionsLoading"
+                  @change="handleSearch"
+                >
+                  <el-option
+                    v-for="item in filterOptions.brands"
+                    :key="String(item.id)"
+                    :label="item.name"
+                    :value="Number(item.id)"
+                  />
+                </el-select>
+              </div>
+              <div
+                v-if="canViewAccessoryField('model_name')"
+                class="form-group filter-item"
+                data-field="model_name"
+              >
+                <el-input
+                  v-model="filters.model_name"
+                  placeholder="适配型号（支持模糊检索）"
+                  aria-label="适配型号"
+                  clearable
+                  :maxlength="200"
+                  @keyup.enter="handleSearch"
+                  @clear="handleSearch"
+                />
+              </div>
+              <div
+                v-if="canViewAccessoryField('color_name')"
+                class="form-group filter-item"
+                data-field="color_id"
+              >
+                <el-select
+                  v-model="filters.color_id"
+                  placeholder="颜色"
+                  aria-label="颜色"
+                  clearable
+                  filterable
+                  :loading="filterOptionsLoading"
+                  @change="handleSearch"
+                >
+                  <el-option
+                    v-for="item in filterOptions.colors"
+                    :key="String(item.id)"
+                    :label="item.name"
+                    :value="Number(item.id)"
+                  />
+                </el-select>
+              </div>
+              <div
+                v-if="canViewAccessoryField('status')"
+                class="form-group filter-item"
+                data-field="status"
+              >
+                <el-select
+                  v-model="listStatus"
+                  placeholder="状态"
+                  aria-label="状态"
                   @change="handleSearch"
                 >
                   <el-option
@@ -114,7 +220,7 @@
                     :value="0"
                   />
                 </el-select>
-              </template>
+              </div>
             </UnifiedSearchPanel>
 
             <div class="table-container table-section admin-panel admin-table-panel">
@@ -158,12 +264,11 @@
                       description="暂无配件数据"
                     >
                       <el-button
-                        v-if="canCreate"
-                        type="primary"
-                        size="small"
+                        v-if="isTemplateMode ? canCreate : canStockIn"
+                        :class="isTemplateMode ? 'tf-button--save' : 'tf-button--transfer'"
                         @click="isTemplateMode ? openArchiveModal() : openStockInModal()"
                       >
-                        {{ isTemplateMode ? '商品模版' : '配件入库' }}
+                        {{ isTemplateMode ? '商品模版' : '商品入库' }}
                       </el-button>
                     </DataEmptyState>
                   </template>
@@ -182,7 +287,7 @@
                   <el-table-column
                     v-if="canViewAccessoryField('name')"
                     prop="name"
-                    label="配件名称"
+                    label="商品名称"
                     :min-width="accessoryNameColumnWidth"
                     align="center"
                   >
@@ -206,7 +311,7 @@
                   <el-table-column
                     v-if="!isTemplateMode && canViewAccessoryField('brand_name')"
                     prop="brand_name"
-                    label="配件品牌"
+                    label="品牌"
                     min-width="104"
                     align="center"
                   >
@@ -222,7 +327,45 @@
                     align="center"
                   >
                     <template #default="{ row }">
-                      {{ row.compatible_model_names || [row.model_brand_name, row.model_name].filter(Boolean).join(' ') || '通用' }}
+                      <el-tooltip
+                        v-if="getAccessoryModelDetails(row) !== '通用'"
+                        :content="getAccessoryModelDetails(row)"
+                        placement="top"
+                        :trigger="isTouchDevice ? 'click' : ['hover', 'focus']"
+                        :popper-style="{ maxWidth: 'calc(100vw - var(--spacing-lg) * 2)', maxHeight: '50dvh', overflowY: 'auto' }"
+                        :popper-options="{ modifiers: [{ name: 'preventOverflow', options: { altAxis: true } }] }"
+                      >
+                        <span
+                          tabindex="0"
+                          class="accessory-model-summary"
+                        >{{ getAccessoryModelSummary(row) }}</span>
+                      </el-tooltip>
+                      <span
+                        v-else
+                        class="accessory-model-summary"
+                      >通用</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    v-if="canViewAccessoryField('color_name')"
+                    label="颜色"
+                    min-width="108"
+                    align="center"
+                    class-name="wrapped-text-column"
+                  >
+                    <template #default="{ row }">
+                      {{ getAccessoryColors(row) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column
+                    v-if="isTemplateMode && canViewAccessoryField('barcode')"
+                    label="条形码"
+                    min-width="156"
+                    align="center"
+                    class-name="wrapped-text-column"
+                  >
+                    <template #default="{ row }">
+                      {{ getAccessoryBarcodes(row) }}
                     </template>
                   </el-table-column>
                   <el-table-column
@@ -300,7 +443,7 @@
                       <el-button
                         v-if="!isMobile && canView && (Number(row.serial_tracking) !== 1 || canViewAccessoryField('serial_number'))"
                         text
-                        class="btn btn-text"
+                        class="table-inline-action table-action--view"
                         :aria-label="`查看${row.name || '商品'}的剩余库存明细与店铺`"
                         @click.stop="viewAccessoryDetails(row)"
                       >
@@ -336,15 +479,14 @@
                   <el-table-column
                     v-if="!isMobile && showActionColumn"
                     label="操作"
-                    :width="$getActionColumnWidth(1 + Number(canCreate) + Number(canEdit) + Number(canDelete) + Number(canTransfer && !isTemplateMode))"
+                    :width="$getActionColumnWidth(['详情', ...(canStockIn ? ['入库'] : []), ...(!isTemplateMode && canTransfer ? ['划拨'] : []), ...(canEdit ? ['编辑'] : []), ...(canEdit && !isTemplateMode ? ['编辑档案'] : []), ...(canDelete ? ['删除'] : [])])"
                     align="center"
                     class-name="actions-column"
                   >
                     <template #default="{ row }">
                       <div class="action-buttons">
                         <el-button
-                          type="primary"
-                          size="small"
+                          class="table-action table-action--view"
                           title="详情"
                           @click.stop="viewAccessoryDetails(row)"
                         >
@@ -352,9 +494,8 @@
                           <span>详情</span>
                         </el-button>
                         <el-button
-                          v-if="canCreate && isAccessoryEnabled(row)"
-                          type="primary"
-                          size="small"
+                          v-if="canStockIn && isAccessoryEnabled(row)"
+                          class="table-action table-action--transfer"
                           @click.stop="stockInAccessory(row)"
                         >
                           <i class="fas fa-box" /><span>入库</span>
@@ -362,26 +503,32 @@
                         <el-button
                           v-if="!isTemplateMode && canTransfer"
                           v-permission="'accessories:transfer'"
-                          type="warning"
-                          size="small"
+                          class="table-action table-action--transfer"
                           @click.stop="transferAccessory(row)"
                         >
                           <i class="fas fa-exchange-alt" /><span>划拨</span>
                         </el-button>
                         <el-button
                           v-if="canEdit"
-                          type="success"
-                          size="small"
-                          title="编辑"
+                          class="table-action table-action--edit"
+                          :title="isTemplateMode ? '编辑商品模板' : '更正原入库'"
                           @click.stop="editAccessory(row)"
                         >
                           <i class="fas fa-edit" />
                           <span>编辑</span>
                         </el-button>
                         <el-button
+                          v-if="canEdit && !isTemplateMode"
+                          class="table-action table-action--edit"
+                          title="更正商品档案并同步历史商品资料"
+                          @click.stop="editProductProfile(row)"
+                        >
+                          <i class="fas fa-pen-to-square" />
+                          <span>编辑档案</span>
+                        </el-button>
+                        <el-button
                           v-if="canDelete && isAccessoryEnabled(row)"
-                          type="danger"
-                          size="small"
+                          class="table-action table-action--delete"
                           title="删除（停用），保留历史记录"
                           @click.stop="deleteAccessory(row)"
                         >
@@ -415,13 +562,14 @@
       <AccessoryDetailsModal
         v-if="showDetailsModal && selectedAccessory"
         :accessory="selectedAccessory"
-        :has-actions="canEdit || (canCreate && isAccessoryEnabled(selectedAccessory)) || (!isTemplateMode && canTransfer) || (canDelete && isAccessoryEnabled(selectedAccessory))"
+        :has-actions="canEdit || (canStockIn && isAccessoryEnabled(selectedAccessory)) || (!isTemplateMode && canTransfer) || (canDelete && isAccessoryEnabled(selectedAccessory))"
         @close="closeDetailsModal"
+        @success="handleInventoryAdjusted"
       >
         <template #actions>
           <el-button
-            v-if="canCreate && isAccessoryEnabled(selectedAccessory)"
-            type="primary"
+            v-if="canStockIn && isAccessoryEnabled(selectedAccessory)"
+            class="tf-button--transfer"
             @click.stop="runAccessoryDetailAction(stockInAccessory)"
           >
             <i class="fas fa-box" /><span>入库</span>
@@ -429,17 +577,24 @@
           <el-button
             v-if="!isTemplateMode && canTransfer"
             v-permission="'accessories:transfer'"
-            type="warning"
+            class="tf-button--transfer"
             @click.stop="runAccessoryDetailAction(transferAccessory)"
           >
             <i class="fas fa-exchange-alt" /><span>划拨</span>
           </el-button>
           <el-button
             v-if="canEdit"
-            type="success"
+            type="primary"
             @click.stop="runAccessoryDetailAction(editAccessory)"
           >
             <i class="fas fa-edit" /><span>编辑</span>
+          </el-button>
+          <el-button
+            v-if="canEdit && !isTemplateMode"
+            type="primary"
+            @click.stop="runAccessoryDetailAction(editProductProfile)"
+          >
+            <i class="fas fa-pen-to-square" /><span>编辑档案</span>
           </el-button>
           <el-button
             v-if="canDelete && isAccessoryEnabled(selectedAccessory)"
@@ -464,6 +619,8 @@
         :accessory="selectedAccessory || undefined"
         :archive-only="archiveOnlyModal"
         :stock-in-only="stockInOnlyModal"
+        :stock-edit-only="stockEditOnlyModal"
+        :profile-edit-only="profileEditOnlyModal"
         @success="handleSaved"
       />
     </PermissionGate>
@@ -474,6 +631,7 @@
 import { formatAmount } from '@/utils/format'
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { usePageShortcuts, useRouteDialog } from '@/composables/useRouteDialog'
 
 import { useLoadingState } from '@/composables'
 import { useMobile } from '@/composables/mobile'
@@ -492,6 +650,8 @@ import { logger } from '@/utils/logger'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { canViewAccessoryField } from '@/components/accessory-field-permissions'
+import { getAccessoryEntryOptions, type AccessoryEntryOptions } from '@/services/reference-options'
+import { sortOptionsByOrder } from '@/utils/option-sort'
 const globalNotifications = useNotification()
 const router = useRouter()
 
@@ -511,14 +671,15 @@ const AccessoryDetailsModal = defineAsyncComponent(() => import('@/components/Ac
 const AccessoryStockInModal = defineAsyncComponent(() => import('@/components/AccessoryStockInModal.vue'))
 
 const { canView, canCreate, canEdit, canDelete, handleNoPermission, hasPermission, requirePermission } = usePagePermissions('accessories')
+const canStockIn = computed(() => hasPermission('stock-in'))
 const canTransfer = computed(() => hasPermission('transfer'))
 const { canView: canCatalogView } = usePagePermissions('accessories-catalog')
 const showActionColumn = computed(() => shouldShowActionColumn(
   canViewAccessoryField('operations'),
-  [canCreate.value, canEdit.value, canDelete.value, canTransfer.value]
+  [canCreate.value, canStockIn.value, canEdit.value, canDelete.value, canTransfer.value]
 ))
-const { refreshing, refresh } = useRefreshData()
-const { isMobile } = useMobile()
+const { refreshing, refreshData: refresh } = useRefreshData()
+const { isMobile, isTouchDevice } = useMobile()
 const { loading } = useLoadingState()
 const { confirm } = useNotification()
 
@@ -528,16 +689,24 @@ const accessories = ref<AccessoryRecord[]>([])
 const total = ref(0)
 const activeMode = ref<'stock' | 'templates'>('stock')
 const isTemplateMode = computed(() => activeMode.value === 'templates')
-const templateStatus = ref<'all' | 0 | 1>('all')
+const listStatus = ref<'all' | 0 | 1>(1)
 const { nextRequest, isCanceledError } = useLatestRequest()
 const templateEditRequest = useLatestRequest()
+const profileEditOnlyModal = ref(false)
+const detailRefreshRequest = useLatestRequest()
 const showDetailsModal = ref(false)
 const showStockInModal = ref(false)
 const archiveOnlyModal = ref(false)
 const stockInOnlyModal = ref(false)
+const stockEditOnlyModal = ref(false)
 const selectedAccessory = ref<AccessoryRecord | null>(null)
 const searchExpanded = ref(false)
 const searchKeyword = ref('')
+const filters = ref<{ category?: string; brand_id?: number; model_name: string; color_id?: number }>({ model_name: '' })
+const filterOptions = ref<Pick<AccessoryEntryOptions, 'categories' | 'brands' | 'colors'>>({ categories: [], brands: [], colors: [] })
+const filterOptionsLoading = ref(false)
+const filterOptionsError = ref('')
+const filterOptionsRequest = useLatestRequest()
 const currentPage = ref(1)
 const itemsPerPage = ref(16)
 
@@ -554,6 +723,14 @@ const accessoryCategoryColumnWidth = computed(() => getTextColumnMinWidth(
 ))
 
 const getAccessoryRowKey = (accessory: AccessoryRecord) => String(accessory.id)
+const getAccessoryModelDetails = (accessory: AccessoryRecord) => accessory.compatible_model_names ||
+  [accessory.model_brand_name, accessory.model_name].filter(Boolean).join(' ') || '通用'
+const getAccessoryModelSummary = (accessory: AccessoryRecord) => accessory.compatible_brand_names ||
+  accessory.model_brand_name || (getAccessoryModelDetails(accessory) === '通用' ? '通用' : '已选型号')
+const getAccessoryColors = (accessory: AccessoryRecord) => isTemplateMode.value && accessory.color_variants?.length
+  ? accessory.color_variants.map(variant => variant.color_name || '-').join('、') : accessory.color_name || '-'
+const getAccessoryBarcodes = (accessory: AccessoryRecord) => accessory.color_variants?.length
+  ? accessory.color_variants.map(variant => `${canViewAccessoryField('color_name') ? `${variant.color_name || '-'}：` : ''}${variant.barcode || '未填写'}`).join('；') : accessory.barcode || '-'
 
 const getTotalStock = (accessory: AccessoryRecord) => Number(accessory.total_stock ?? 0)
 
@@ -572,7 +749,8 @@ const handleSearch = async () => {
 
 const handleReset = async () => {
   searchKeyword.value = ''
-  templateStatus.value = 'all'
+  filters.value = { model_name: '' }
+  listStatus.value = isTemplateMode.value ? 'all' : 1
   await handleSearch()
 }
 
@@ -590,7 +768,31 @@ const formatPrice = (price?: number | string) => {
   return formatAmount(price)
 }
 
-const loadAccessories = async (showLoadingState = true) => {
+const loadFilterOptions = async () => {
+  if (!canView.value) return
+  const request = filterOptionsRequest.nextRequest()
+  filterOptionsLoading.value = true
+  filterOptionsError.value = ''
+  try {
+    const response = await getAccessoryEntryOptions()
+    if (!request.isLatest() || !canView.value) return
+    const data = response.data
+    if (!response.success || !data || ![data.categories, data.brands, data.colors].every(Array.isArray)) throw new Error('筛选选项响应无效')
+    filterOptions.value = {
+      categories: sortOptionsByOrder(data.categories), brands: sortOptionsByOrder(data.brands), colors: sortOptionsByOrder(data.colors)
+    }
+    return true
+  } catch (err) {
+    if (!request.isLatest() || filterOptionsRequest.isCanceledError(err)) return
+    logger.error('加载商品筛选选项失败', err)
+    filterOptionsError.value = getRequestErrorMessage(err, '筛选选项加载失败，请重试')
+    return false
+  } finally {
+    if (request.isLatest()) filterOptionsLoading.value = false
+  }
+}
+
+const loadAccessories = async (showLoadingState = true, preserveOnError = false): Promise<boolean | undefined> => {
   if (!canView.value) return
   const request = nextRequest()
   try {
@@ -601,25 +803,35 @@ const loadAccessories = async (showLoadingState = true) => {
         mode: isTemplateMode.value ? 'templates' : 'inventory',
         page: currentPage.value,
         page_size: itemsPerPage.value,
-        search: searchKeyword.value.trim() || undefined,
-        status: canViewAccessoryField('status') ? (isTemplateMode.value ? templateStatus.value : 1) : undefined
+        search: canViewAccessoryField('name') ? searchKeyword.value.trim() || undefined : undefined,
+        category: canViewAccessoryField('category') ? filters.value.category || undefined : undefined,
+        brand_id: canViewAccessoryField('brand_name') ? filters.value.brand_id || undefined : undefined,
+        model_name: canViewAccessoryField('model_name') ? filters.value.model_name.trim() || undefined : undefined,
+        color_id: canViewAccessoryField('color_name') ? filters.value.color_id || undefined : undefined,
+        status: canViewAccessoryField('status') ? listStatus.value : undefined
       },
       signal: request.signal,
+      showError: false,
       useCache: false
     })
     if (!request.isLatest()) return
+    if (!response.success) throw new Error(response.message || '加载商品数据失败')
     accessories.value = response.data?.data || []
     total.value = Number(response.data?.pagination.total || 0)
     if (currentPage.value > totalPages.value) {
       currentPage.value = totalPages.value
-      await loadAccessories(showLoadingState)
+      return await loadAccessories(showLoadingState, preserveOnError)
     }
+    return true
   } catch (err) {
     if (!request.isLatest() || isCanceledError(err)) return
     logger.error('加载配件数据失败', err)
-    accessories.value = []
-    total.value = 0
+    if (!preserveOnError) {
+      accessories.value = []
+      total.value = 0
+    }
     error.value = '加载配件数据失败，请稍后重试'
+    return false
   } finally {
     if (request.isLatest()) loading.value = false
   }
@@ -627,31 +839,54 @@ const loadAccessories = async (showLoadingState = true) => {
 
 const handleSaved = async () => {
   selectedAccessory.value = null
-  await loadAccessories()
+  if (await loadAccessories(true, true) === false) {
+    globalNotifications.warning('保存已成功，列表刷新失败，请点击刷新；请勿重复提交或入库。')
+  }
+}
+
+const handleInventoryAdjusted = async () => {
+  const accessoryId = selectedAccessory.value?.id
+  if (!accessoryId || !canView.value) return
+  const request = detailRefreshRequest.nextRequest()
+  if (await loadAccessories(false, true) === false) {
+    if (request.isLatest()) globalNotifications.warning('盘点已保存，列表刷新失败，请点击刷新；请勿重复提交。')
+    return
+  }
+  if (!request.isLatest() || !canView.value || !showDetailsModal.value || selectedAccessory.value?.id !== accessoryId) return
+  const updated = accessories.value.find(row => row.id === accessoryId)
+  if (updated) selectedAccessory.value = updated
 }
 
 const handleRefresh = async () => {
-  await refresh(() => loadAccessories(false))
-  if (!error.value) globalNotifications.success('数据刷新成功')
+  await refresh(async () => {
+    const results = await Promise.all([loadAccessories(false, true), loadFilterOptions()])
+    if (results.includes(false)) throw new Error('刷新商品列表或筛选选项失败')
+  }, { successMessage: '数据刷新成功', errorMessage: '刷新失败，请重试' })
 }
 
 const openStockInModal = () => {
-  if (!canCreate.value) {
-    handleNoPermission('create')
+  if (!canStockIn.value) {
+    handleNoPermission('stock-in')
     return
   }
   selectedAccessory.value = null
+  stockEditOnlyModal.value = false
+  profileEditOnlyModal.value = false
   stockInOnlyModal.value = false
   archiveOnlyModal.value = false
   showStockInModal.value = true
 }
 
+useRouteDialog({ path: '/accessories', flag: 'openStockIn', allowed: () => canView.value && canStockIn.value, open: openStockInModal })
+
 const stockInAccessory = (accessory: AccessoryRecord) => {
-  if (!canCreate.value) {
-    handleNoPermission('create')
+  if (!canStockIn.value) {
+    handleNoPermission('stock-in')
     return
   }
   selectedAccessory.value = accessory
+  stockEditOnlyModal.value = false
+  profileEditOnlyModal.value = false
   archiveOnlyModal.value = false
   stockInOnlyModal.value = true
   showStockInModal.value = true
@@ -663,6 +898,8 @@ const openArchiveModal = () => {
     return
   }
   selectedAccessory.value = null
+  stockEditOnlyModal.value = false
+  profileEditOnlyModal.value = false
   stockInOnlyModal.value = false
   archiveOnlyModal.value = true
   showStockInModal.value = true
@@ -678,6 +915,18 @@ const editAccessory = async (accessory: AccessoryRecord) => {
     handleNoPermission('edit')
     return
   }
+  if (!isTemplateMode.value) {
+    templateEditRequest.cancelLatest()
+    selectedAccessory.value = accessory
+    stockEditOnlyModal.value = true
+    profileEditOnlyModal.value = false
+    stockInOnlyModal.value = false
+    archiveOnlyModal.value = false
+    showStockInModal.value = true
+    return
+  }
+  stockEditOnlyModal.value = false
+  profileEditOnlyModal.value = false
   const request = templateEditRequest.nextRequest()
   try {
     const template = accessory.template_id
@@ -701,6 +950,20 @@ const editAccessory = async (accessory: AccessoryRecord) => {
   }
 }
 
+const editProductProfile = (accessory: AccessoryRecord) => {
+  if (!canEdit.value) {
+    handleNoPermission('edit')
+    return
+  }
+  templateEditRequest.cancelLatest()
+  stockEditOnlyModal.value = false
+  profileEditOnlyModal.value = true
+  stockInOnlyModal.value = false
+  archiveOnlyModal.value = false
+  selectedAccessory.value = accessory
+  showStockInModal.value = true
+}
+
 const deleteAccessory = async (accessory: AccessoryRecord) => {
   if (!canDelete.value) {
     handleNoPermission('delete')
@@ -720,8 +983,11 @@ const deleteAccessory = async (accessory: AccessoryRecord) => {
 
   try {
     await api.delete(`/accessories/${accessory.template_id || accessory.id}`)
-    await loadAccessories()
-    globalNotifications.success('商品模板已删除（停用），历史记录已保留')
+    if (await loadAccessories(true, true) === false) {
+      globalNotifications.warning('商品模板已删除（停用），列表刷新失败，请点击刷新；请勿重复删除。')
+    } else {
+      globalNotifications.success('商品模板已删除（停用），历史记录已保留')
+    }
   } catch (err) {
     logger.error('删除配件失败', err)
     globalNotifications.error(getRequestErrorMessage(err, '删除失败，请重试'))
@@ -729,6 +995,7 @@ const deleteAccessory = async (accessory: AccessoryRecord) => {
 }
 
 const closeDetailsModal = () => {
+  detailRefreshRequest.cancelLatest()
   showDetailsModal.value = false
   selectedAccessory.value = null
 }
@@ -747,7 +1014,7 @@ onMounted(async () => {
     loading.value = false
     return
   }
-  await loadAccessories()
+  await Promise.all([loadAccessories(), loadFilterOptions()])
 })
 
 const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDetailDoubleClick } = useMobileTableDetail<AccessoryRecord>({
@@ -759,6 +1026,12 @@ const runAccessoryDetailAction = (action: (row: AccessoryRecord) => unknown) => 
   closeDetailsModal()
   return action(row)
 }
+
+usePageShortcuts('/accessories', {
+  'goods-template-create': { open: openArchiveModal },
+  'goods-stock': { open: () => switchMode('stock') },
+  'goods-templates': { open: () => switchMode('templates') }
+})
 </script>
 
 <style scoped>

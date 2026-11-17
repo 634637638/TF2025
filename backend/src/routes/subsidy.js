@@ -4,7 +4,7 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 const crypto = require('crypto')
-const { unifiedAuth, requirePermission } = require('../middleware/unified-auth')
+const { unifiedAuth, requirePermission, requireAnyPermission, loadCurrentAuthUser } = require('../middleware/unified-auth')
 const { cacheMiddleware } = require('../middleware/cache')
 const { CACHE_TTL } = require('../config/constants')
 const ApiResponse = require('../utils/response')
@@ -130,7 +130,8 @@ const authenticateSubsidyFileAccess = async (req, res, next) => {
       signature: req.query.signature
     })
     if (!valid) return ApiResponse.error(res, '照片链接无效或已过期', 403)
-
+    req.user = await loadCurrentAuthUser(req.query.user)
+    if (!req.user) return ApiResponse.error(res, '用户不存在或已禁用', 403)
     return next()
   } catch (error) {
     return ApiResponse.error(res, '照片链接无效或已过期', 403)
@@ -252,7 +253,7 @@ router.get('/stats/summary', unifiedAuth, requirePermission('subsidy:view'), cac
  */
 router.post('/upload/photo', unifiedAuth, requireSubsidyUpload, handleSubsidyPhotoUpload, subsidyPhotosController.uploadPhoto.bind(subsidyPhotosController))
 
-router.get('/files/*', authenticateSubsidyFileAccess, subsidyFileController.getFile.bind(subsidyFileController))
+router.get('/files/*', authenticateSubsidyFileAccess, requireAnyPermission(['subsidy:view', 'subsidy:upload']), subsidyFileController.getFile.bind(subsidyFileController))
 
 /**
  * 删除临时照片（未保存的上传照片）

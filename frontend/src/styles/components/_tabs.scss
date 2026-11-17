@@ -91,6 +91,87 @@
   font-size: var(--tf-type-scale-14);
 }
 
+/* Mutually exclusive choices share TAB button tokens without page-navigation semantics. */
+.tf-state-selector.el-radio-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tf-tabs-gap);
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.tf-state-selector:not(:has(.el-radio-button)) .el-radio {
+  height: var(--tf-tabs-height);
+  margin-right: var(--tf-space-3);
+  color: var(--tf-tab-color);
+  font-size: var(--tf-tab-font-size);
+  font-weight: var(--tf-tab-font-weight);
+}
+
+.tf-state-selector:not(:has(.el-radio-button)) .el-radio__input.is-checked .el-radio__inner {
+  border-color: var(--tf-tab-active-border);
+  background: var(--tf-tab-active-bg);
+}
+
+.tf-state-selector:not(:has(.el-radio-button)) .el-radio__input.is-checked + .el-radio__label {
+  color: var(--tf-tab-active-bg);
+}
+
+.tf-state-selector .el-radio-button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.tf-state-selector .el-radio-button__inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tf-tabs-gap);
+  width: 100%;
+  height: var(--tf-tabs-height);
+  min-height: var(--tf-tabs-height);
+  box-sizing: border-box;
+  padding-inline: var(--tf-tab-padding-x);
+  border: 1px solid var(--tf-tab-border) !important;
+  border-left: 1px solid var(--tf-tab-border) !important;
+  border-radius: var(--tf-tab-radius) !important;
+  background: var(--tf-tab-bg);
+  box-shadow: var(--tf-tab-shadow);
+  color: var(--tf-tab-color);
+  font-size: var(--tf-tab-font-size);
+  font-weight: var(--tf-tab-font-weight);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tf-state-selector .el-radio-button__inner:hover,
+.tf-state-selector .el-radio-button__original-radio:focus-visible + .el-radio-button__inner {
+  border-color: var(--tf-tab-hover-border) !important;
+  background: var(--tf-tab-hover-bg);
+  box-shadow: var(--tf-tab-hover-shadow);
+  color: var(--tf-tab-hover-color);
+}
+
+.tf-state-selector .el-radio-button__original-radio:checked + .el-radio-button__inner {
+  border-color: var(--tf-tab-active-border) !important;
+  background: var(--tf-tab-active-bg) !important;
+  box-shadow: var(--tf-tab-active-shadow) !important;
+  color: var(--tf-tab-active-color) !important;
+}
+
+.tf-state-selector .el-radio-button.is-disabled .el-radio-button__inner {
+  border-color: var(--tf-tab-border) !important;
+  background: var(--tf-tab-bg);
+  box-shadow: none;
+  color: var(--tf-color-neutral-400);
+  cursor: not-allowed;
+}
+
 /* 页头标签复用同一套 TAB 令牌，容器保持顶部栏白色。 */
 .tf-topbar-tabs {
   display: flex;

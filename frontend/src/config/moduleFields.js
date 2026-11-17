@@ -324,6 +324,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.imei',
+        editable: true,
         name: 'IMEI码',
         group: '基本信息',
         type: FIELD_TYPES.TEXT,
@@ -334,6 +335,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.serial_number',
+        editable: true,
         name: '序列号',
         group: '基本信息',
         type: FIELD_TYPES.TEXT,
@@ -342,6 +344,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.brand',
+        editable: true,
         name: '品牌',
         group: '基本信息',
         type: FIELD_TYPES.TEXT,
@@ -352,6 +355,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.model',
+        editable: true,
         name: '型号',
         group: '基本信息',
         type: FIELD_TYPES.TEXT,
@@ -362,6 +366,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.color',
+        editable: true,
         name: '颜色',
         group: '基本信息',
         type: FIELD_TYPES.TEXT,
@@ -371,6 +376,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.memory',
+        editable: true,
         name: '内存',
         group: '基本信息',
         type: FIELD_TYPES.TEXT,
@@ -380,6 +386,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.is_new',
+        editable: true,
         name: '成色',
         group: '基本信息',
         type: FIELD_TYPES.BOOLEAN,
@@ -389,6 +396,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'basic.status',
+        editable: true,
         name: '库存状态',
         group: '基本信息',
         type: FIELD_TYPES.SELECT,
@@ -399,6 +407,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'supplier_info.supplier_name',
+        editable: true,
         name: '供应商',
         group: '关联信息',
         type: FIELD_TYPES.TEXT,
@@ -408,6 +417,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'store_info.store_name',
+        editable: true,
         name: '店铺',
         group: '关联信息',
         type: FIELD_TYPES.TEXT,
@@ -433,6 +443,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'time_info.inventory_time',
+        editable: true,
         name: '入库时间',
         group: '时间信息',
         type: FIELD_TYPES.DATE,
@@ -442,6 +453,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'price_info.purchase_cost',
+        editable: true,
         name: '入库价格',
         group: '价格信息',
         type: FIELD_TYPES.CURRENCY,
@@ -451,6 +463,7 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'other_info.remarks',
+        editable: true,
         name: '备注',
         group: '其他信息',
         type: FIELD_TYPES.TEXT,
@@ -4915,6 +4928,65 @@ function resolveModuleConfig(moduleId) {
   }
 
   return null
+}
+
+// 商品查询沿用原字段ID；独立字段范围只登记查询、成交及追溯资料。
+MODULE_FIELDS.query_goods = {
+  name: '商品模式', icon: 'fas fa-shopping-bag', category: '查询模块',
+  fields: MODULE_FIELDS.accessories.fields.filter(field => [
+    'basic_info.sequence', 'basic_info.name', 'basic_info.barcode', 'basic_info.batch_no',
+    'basic_info.category', 'basic_info.brand_name', 'basic_info.specifications', 'basic_info.color_name',
+    'basic_info.model_name', 'basic_info.supplier_name', 'basic_info.unit', 'basic_info.usage_type',
+    'basic_info.serial_tracking', 'basic_info.serial_number', 'basic_info.image_url',
+    'stock_info.total_stock', 'price_info.purchase_cost',
+    'price_info.sale_price', 'price_info.unit_price', 'price_info.total_price', 'price_info.profit',
+    'stock_info.total_quantity', 'stock_info.distribution', 'customer_info.customer_name',
+    'customer_info.customer_phone', 'other_info.remarks', 'time_info.created_at',
+    'time_info.inventory_time', 'operator_info.operator_name', 'system_info.operations'
+  ].includes(field.id)).map(field => {
+    const labels = {
+      'basic_info.sequence': '商品单号', 'basic_info.name': '商品名称',
+      'basic_info.usage_type': '销售类型', 'price_info.purchase_cost': '采购成本',
+      'price_info.sale_price': '参考售价', 'price_info.unit_price': '销售单价',
+      'price_info.total_price': '收款金额',
+      'stock_info.total_quantity': '销售数量',
+      'stock_info.distribution': '销售门店', 'time_info.created_at': '销售时间',
+      'operator_info.operator_name': '销售员'
+    }
+    const name = labels[field.id] || field.name
+    const descriptions = {
+      'basic_info.sequence': '包含关联单号',
+      'basic_info.usage_type': '销售或赠送',
+      'price_info.total_price': '同时控制积分和售后金额',
+      'stock_info.total_quantity': '包含已退和未退数量',
+      'time_info.created_at': '包含售后时间'
+    }
+    return { ...field, name, description: descriptions[field.id] || `控制${name}显示` }
+  })
+}
+
+// 只有页面已有字段级编辑入口的字段才开放“编辑”状态，动作权限仍由页面与服务端单独校验。
+const EDITABLE_FIELD_IDS = {
+  brands: ['brand.name', 'brand.status', 'brand.business_scope', 'brand.sort_order'],
+  models: ['model.name', 'model.brand_name', 'model.status', 'model.sort_order'],
+  colors: ['color.name', 'color.code', 'color.status', 'color.sort_order'],
+  memories: ['memory.capacity', 'memory.type', 'memory.status', 'memory.sort_order'],
+  employees: ['employee.name', 'employee.username', 'employee.phone', 'employee.email', 'employee.status', 'employee.role_ids', 'employee.hire_date'],
+  suppliers: ['supplier.name', 'supplier.contact_person', 'supplier.phone', 'supplier.address', 'supplier.status', 'supplier.business_scope', 'supplier.sort_order', 'supplier.bank_info', 'supplier.tax_number', 'supplier.remarks'],
+  stores: ['store.name', 'store.address', 'store.phone', 'store.manager', 'store.status', 'store.sort_order'],
+  customers: ['customer.name', 'customer.phone', 'customer.id_card', 'customer.email', 'customer.wechat', 'customer.qq', 'customer.apple_id', 'customer.address', 'customer.district', 'customer.town', 'customer.village', 'customer.customer_type', 'customer.vip_level', 'customer.gender', 'customer.birthday', 'customer.balance', 'customer.points', 'customer.blacklist', 'customer.city', 'customer.province', 'customer.remarks', 'customer.member_number', 'customer.status'],
+  sales: ['sale.supplier_id', 'sale.store_id', 'sale.brand', 'sale.model', 'sale.color', 'sale.memory', 'sale.serial_number', 'sale.imei', 'sale.purchase_cost', 'sale.sale_price', 'sale.sale_time', 'sale.payment_method', 'sale.transaction_no', 'sale.operator_id', 'sale.inventory_time', 'sale.condition', 'sale.remarks'],
+  attendance: ['attendance.record_type', 'attendance.leave_type', 'attendance.reason', 'attendance.overtime_hours', 'attendance.status', 'attendance.approval_note'],
+  subsidy: ['customer_info.customer_name', 'customer_info.customer_phone', 'customer_info.customer_idcard', 'device_info.imei1', 'device_info.imei2', 'device_info.serial_number', 'device_info.brand', 'device_info.model', 'device_info.color', 'device_info.memory', 'price_info.sale_price', 'store_info.store_name', 'time_info.sale_time', 'handler_info.has_different_handler', 'handler_info.handler_name', 'handler_info.handler_phone', 'handler_info.handler_idcard', 'other_info.remarks'],
+  salary: ['template.name', 'template.description', 'template.base_salary', 'template.commission_type', 'template.commission_new_fixed', 'template.commission_used_fixed', 'template.commission_percentage', 'template.goods_commission_rule', 'template.overtime_hourly_rate', 'template.rest_days', 'template.auto_raise_enabled', 'template.auto_raise_months', 'template.auto_raise_amount', 'template.auto_raise_max_salary', 'template.is_active', 'salary.salary_template_name', 'salary.base_salary', 'salary.leave_deduction', 'salary.overtime_pay', 'salary.status', 'salary.paid_at', 'salary.payment_method', 'attendance.record_date', 'attendance.record_type', 'attendance.leave_type', 'attendance.reason', 'attendance.status']
+}
+
+for (const [moduleKey, fieldIds] of Object.entries(EDITABLE_FIELD_IDS)) {
+  const module = MODULE_FIELDS[moduleKey]
+  const editableIds = new Set(fieldIds)
+  for (const field of module?.fields || []) {
+    if (editableIds.has(field.id)) field.editable = true
+  }
 }
 
 export function getModuleFields(moduleId) {

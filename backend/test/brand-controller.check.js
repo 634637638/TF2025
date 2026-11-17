@@ -261,3 +261,45 @@ test('手机新增品牌引用和选项排除配件品牌，原交易读取不�
   const brandValidation = calls.findLast(({ sql }) => sql.includes('SELECT id FROM brands WHERE id'))
   assert.match(brandValidation.sql, /business_scope IN \('phone', 'both'\)/)
 })
+
+for (const method of ['list', 'getStats', 'suggest']) {
+  test(`品牌${method}数据库读取超时交给公共错误边界返回503，不误报500`, async () => {
+    const BrandController = require('../src/controllers/brand.controller')
+    const errorHandler = require('../src/middleware/error-handler')
+    for (const code of ['ETIMEDOUT', 'ECONNRESET', 'PROTOCOL_CONNECTION_LOST']) {
+      const failure = Object.assign(new Error('synthetic database connection failure'), { code })
+      const controller = new BrandController({ service: { async [method]() { throw failure } } })
+      const req = { query: {}, method: 'GET', originalUrl: '/api/brands', requestId: 'synthetic-brand-read' }
+      const res = createResponse()
+      let forwarded = 0
+      await controller[method](req, res, error => {
+        forwarded++
+        assert.equal(error, failure)
+        return errorHandler(error, req, res, () => {})
+      })
+      assert.equal(forwarded, 1)
+      assert.equal(res.statusCode, 503)
+      assert.equal(res.body.code, 'DB_CONNECTION_ERROR')
+      assert.equal(res.body.message, '服务器内部错误，请稍后重试')
+      assert.equal(res.body.request_id, req.requestId)
+      assert.equal(res.body.error, undefined)
+      assert.equal(res.body.stack, undefined)
+    }
+  })
+}
+
+test('品牌创建超时不重放写入，普通列表程序错误仍为500', async () => {
+  const BrandController = require('../src/controllers/brand.controller')
+  let writes = 0
+  const controller = new BrandController({ service: {
+    async create() { writes++; throw Object.assign(new Error('synthetic timeout'), { code: 'ETIMEDOUT' }) },
+    async list() { throw new Error('synthetic program error') }
+  } })
+  const write = createResponse()
+  await controller.create({ body: {} }, write)
+  assert.equal(write.statusCode, 500)
+  assert.equal(writes, 1)
+  const read = createResponse()
+  await controller.list({ query: {} }, read, () => assert.fail('程序错误不应作为可恢复数据库故障'))
+  assert.equal(read.statusCode, 500)
+})

@@ -101,75 +101,97 @@
       v-else-if="allowed && checkoutChecklist && (canViewGoods || !checkoutChecklist.accessories.length)"
       class="checkout-return-checklist"
     >
-      <h3>共同结算原单配件核对</h3>
-      <p>订单 {{ checkoutChecklist.order_no }}；数量已扣除此前办理的商品售后。</p>
-      <div class="table-wrapper">
-        <el-table
-          :data="checkoutChecklist.accessories"
-          class="data-table"
-          row-key="item_id"
+      <h3>{{ checkoutTitle }}</h3>
+      <div class="return-accessory-list">
+        <article
+          v-for="row in checkoutChecklist.accessories"
+          :key="row.item_id"
+          class="return-accessory-card"
         >
-          <el-table-column
-            v-if="canViewAccessoryField('name')"
-            prop="name"
-            label="商品"
-            min-width="140"
-          />
-          <el-table-column
-            v-if="canViewAccessoryField('usage_type')"
-            label="类型"
-            min-width="90"
+          <div class="return-accessory-card__header">
+            <strong>{{ canViewAccessoryField('name') ? row.name || '-' : '商品' }}</strong>
+            <el-text
+              v-if="canViewAccessoryField('usage_type')"
+              :type="row.sale_type === 'gift' ? 'danger' : 'success'"
+              class="return-sale-type"
+            >
+              {{ row.sale_type === 'gift' ? '赠送' : '收费' }}
+            </el-text>
+          </div>
+          <div class="return-accessory-card__facts">
+            <span v-if="canViewAccessoryField('total_quantity')">{{ accessoryQuantityLabel(row) }} {{ row.quantity ?? '-' }}</span>
+            <span
+              v-if="canViewAccessoryField('total_quantity')"
+              class="status-badge"
+              :class="{ returned: Number(row.returned_quantity) > 0 }"
+            >
+              已退 {{ row.returned_quantity ?? '-' }}
+            </span>
+            <span v-if="canViewAccessoryField('total_quantity')">剩余 {{ row.remaining_quantity ?? '-' }}</span>
+            <span v-if="showAccessoryPrice && row.sale_type !== 'gift'">价格 {{ accessoryPrice(row) === null ? '未记录' : `${formatAmount(accessoryPrice(row))}元` }}</span>
+            <span v-if="showAccessoryPrice && row.sale_type === 'gift'">价格 {{ giftPriceSummary(row) }}</span>
+            <span v-if="canViewAccessoryField('serial_number')">SN {{ row.serial_numbers === null ? '-' : row.serial_numbers.length ? row.serial_numbers.join('、') : '无' }}</span>
+          </div>
+          <div
+            v-if="canViewAccessoryField('total_quantity') && canViewAccessoryField('serial_number')"
+            class="return-accessory-card__return"
           >
-            <template #default="{ row }">
-              {{ row.sale_type === 'gift' ? '赠品' : '收费商品' }}
-            </template>
-          </el-table-column>
-          <el-table-column
-            v-if="canViewAccessoryField('total_quantity')"
-            prop="quantity"
-            label="原数量"
-            min-width="84"
-          />
-          <el-table-column
-            v-if="canViewAccessoryField('total_quantity')"
-            prop="returned_quantity"
-            label="已退"
-            min-width="76"
-          />
-          <el-table-column
-            v-if="canViewAccessoryField('total_quantity')"
-            prop="remaining_quantity"
-            label="剩余"
-            min-width="76"
-          />
-          <el-table-column
-            v-if="canViewAccessoryField('serial_number')"
-            label="未退 SN"
-            min-width="150"
-          >
-            <template #default="{ row }">
-              {{ row.available_serial_numbers?.join('、') || '-' }}
-            </template>
-          </el-table-column>
-          <el-table-column
-            v-if="showGiftAgreement"
-            label="剩余赠品约定金额"
-            min-width="150"
-          >
-            <template #default="{ row }">
-              {{ row.sale_type === 'gift' ? (row.remaining_gift_return_total === null ? '未约定' : formatCurrency(row.remaining_gift_return_total)) : '-' }}
-            </template>
-          </el-table-column>
-          <template #empty>
-            <DataEmptyState
-              description="该手机没有关联配件或赠品"
-              size="compact"
+            <div class="return-accessory-card__return-label">
+              退回数量 {{ returnQuantity(row) }}
+            </div>
+            <div class="return-accessory-card__control">
+              <el-select
+                v-if="row.serial_numbers?.length"
+                v-model="returnDraft(row).serial_numbers"
+                multiple
+                filterable
+                :disabled="submitting"
+                :aria-label="`${accessoryLabel(row)}本次退回SN`"
+                placeholder="选择本次退回SN"
+              >
+                <el-option
+                  v-for="sn in row.available_serial_numbers || []"
+                  :key="sn"
+                  :value="sn"
+                  :label="sn"
+                />
+              </el-select>
+              <el-input-number
+                v-else
+                v-model="returnDraft(row).quantity"
+                :min="0"
+                :max="row.remaining_quantity || 0"
+                :precision="0"
+                :controls="false"
+                :disabled="submitting"
+                :aria-label="`${accessoryLabel(row)}本次退回数量`"
+              />
+              <el-text
+                v-if="returnAmountSummary(row)"
+                :type="row.sale_type === 'gift' ? 'danger' : 'success'"
+                class="return-amount-summary"
+              >
+                {{ returnAmountSummary(row) }}
+              </el-text>
+            </div>
+            <el-alert
+              v-if="row.sale_type === 'gift' && missingGift(row) && row.gift_return_unit_price === null"
+              type="warning"
+              title="原单未约定赠品未退金额，无法计算扣款，请退回赠品后办理。"
+              :closable="false"
+              class="return-gift-charge"
             />
-          </template>
-        </el-table>
+          </div>
+        </article>
+        <DataEmptyState
+          v-if="!checkoutChecklist.accessories.length"
+          description="该手机没有关联配件或赠品"
+          size="compact"
+        />
       </div>
       <PhoneReturnForm
         :checklist="checkoutChecklist"
+        :accessories="returnAccessories"
         @cancel="handleCancel"
         @busy="submitting = $event"
         @success="checkoutReturned"
@@ -354,13 +376,13 @@ import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import type { ModelValueProps, ReturnDeviceInfo as DeviceInfo, SuccessEmits, UpdateModelValueEmits } from '@/types'
 import { useNotification } from '@/composables/useNotification'
-import { formatCurrency } from '@/utils/format'
+import { formatAmount } from '@/utils/format'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { getPhoneReturnChecklist } from '@/api/sales-checkout'
 import { isPhoneReturnSource } from '@/utils/sales-checkout'
-import { canViewAccessoryField } from '@/components/accessory-field-permissions'
+import { canViewQueryGoodsField as canViewAccessoryField } from '@/components/accessory-field-permissions'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import type { PhoneReturnChecklist } from '@/types/sales-checkout'
+import type { PhoneReturnAccessoryDraft, PhoneReturnChecklist, PhoneReturnAccessoryCheck } from '@/types/sales-checkout'
 import PhoneReturnForm from './PhoneReturnForm.vue'
 const globalNotifications = useNotification()
 
@@ -388,12 +410,54 @@ const checklistLoading = ref(false)
 const checklistFailed = ref(false)
 const checklistError = ref('')
 const checkoutChecklist = ref<PhoneReturnChecklist | null>(null)
+const returnAccessories = ref<PhoneReturnAccessoryDraft[]>([])
 const standaloneSale = ref(false)
 const { canView, hasPermission } = usePagePermissions('query')
 const allowed = computed(() => canView.value && hasPermission('return-to-stock'))
-const { canView: canViewGoods } = usePagePermissions('accessories')
+const canViewGoods = computed(() => hasPermission('goods-view'))
 const canSubmitReturn = computed(() => allowed.value && standaloneSale.value && !checklistLoading.value && !checklistFailed.value && !submitting.value)
-const showGiftAgreement = computed(() => canViewAccessoryField('usage_type') && canViewAccessoryField('total_quantity') && canViewAccessoryField('unit_price') && canViewAccessoryField('total_price'))
+const checkoutTitle = computed(() => {
+  if (!canViewAccessoryField('usage_type')) return '关联商品'
+  const items = checkoutChecklist.value?.accessories || []
+  const hasSale = items.some(item => item.sale_type === 'sale'), hasGift = items.some(item => item.sale_type === 'gift')
+  if (hasSale && hasGift) return '存在收费-赠送商品'
+  if (hasSale) return '存在收费商品'
+  if (hasGift) return '存在赠送商品'
+  return '关联商品'
+})
+const showAccessoryPrice = computed(() => canViewAccessoryField('usage_type') && canViewAccessoryField('unit_price'))
+const accessoryPrice = (item: PhoneReturnChecklist['accessories'][number]) => item.sale_type === 'gift' ? item.gift_return_unit_price : item.unit_price
+const accessoryQuantityLabel = (item: PhoneReturnAccessoryCheck) => item.sale_type === 'gift' ? '赠送数量' : item.sale_type === 'sale' ? '购买数量' : '商品数量'
+const accessoryLabel = (item: PhoneReturnAccessoryCheck) => canViewAccessoryField('name') && item.name ? item.name : '商品'
+const giftPriceSummary = (item: PhoneReturnAccessoryCheck) => item.gift_return_unit_price === null || item.quantity === null
+  ? '未记录'
+  : `${formatAmount(Math.max(0, item.quantity - returnQuantity(item)))}×${formatAmount(item.gift_return_unit_price)}元=${formatAmount(Math.max(0, item.quantity - returnQuantity(item)) * item.gift_return_unit_price)}元`
+const initializeReturnAccessories = (checklist: PhoneReturnChecklist | null) => {
+  returnAccessories.value = (checklist?.accessories || []).map(item => ({
+    item_id: item.item_id,
+    quantity: item.sale_type === 'gift' ? item.remaining_quantity || 0 : 0,
+    serial_numbers: item.sale_type === 'gift' ? [...item.available_serial_numbers || []] : []
+  }))
+}
+watch(checkoutChecklist, initializeReturnAccessories, { immediate: true })
+const returnDraft = (item: PhoneReturnAccessoryCheck) => returnAccessories.value.find(row => row.item_id === item.item_id)!
+const returnQuantity = (item: PhoneReturnAccessoryCheck) => {
+  const row = returnDraft(item)
+  const quantity = item.serial_numbers?.length ? row.serial_numbers.length : row.quantity
+  return Number.isSafeInteger(quantity) && quantity >= 0 ? quantity : 0
+}
+const missingGift = (item: PhoneReturnAccessoryCheck) => item.sale_type === 'gift'
+  ? Math.max(0, (item.remaining_quantity || 0) - returnQuantity(item))
+  : 0
+const returnAmountSummary = (item: PhoneReturnAccessoryCheck) => {
+  if (item.sale_type === 'sale' && returnQuantity(item) > 0 && item.unit_price !== null) {
+    return `（退回${formatAmount(returnQuantity(item) * item.unit_price)}元）`
+  }
+  if (item.sale_type === 'gift' && missingGift(item) > 0 && item.gift_return_unit_price !== null) {
+    return `（扣除${formatAmount(missingGift(item) * item.gift_return_unit_price)}元）`
+  }
+  return ''
+}
 const beforeClose = (done: (cancel?: boolean) => void) => { if (!submitting.value) done() }
 const checkoutReturned = () => { submitting.value = false; emit('success'); handleCancel() }
 
@@ -433,6 +497,7 @@ const loadChecklist = async () => {
   const phoneId = Number(props.deviceInfo?.id)
   requests.cancelLatest()
   checkoutChecklist.value = null
+  returnAccessories.value = []
   standaloneSale.value = false
   checklistFailed.value = false
   checklistLoading.value = false
@@ -445,6 +510,7 @@ const loadChecklist = async () => {
     if (!response.success || !isPhoneReturnSource(response.data, phoneId)) throw new Error('原单核对响应无效，请刷新后重试')
     if (response.data.mode === 'checkout') {
       if (response.data.accessories.length && !canViewGoods.value) throw new Error('无权查看关联配件，无法完成原单核对')
+      initializeReturnAccessories(response.data)
       checkoutChecklist.value = response.data
     }
     else standaloneSale.value = true
@@ -461,6 +527,7 @@ const handleCancel = () => {
   requests.cancelLatest()
   standaloneSale.value = false
   checkoutChecklist.value = null
+  returnAccessories.value = []
   checklistLoading.value = false
   resetForm()
   dialogVisible.value = false
@@ -513,6 +580,7 @@ watch(
       requests.cancelLatest()
       checklistLoading.value = false
       checkoutChecklist.value = null
+      returnAccessories.value = []
       checklistFailed.value = false
       standaloneSale.value = false
     }
@@ -604,6 +672,81 @@ watch(
   &.used {
     background: var(--tf-color-amber-100);
     color: var(--tf-color-amber-800);
+  }
+}
+
+.return-sale-type {
+  font-weight: 700;
+}
+
+.return-accessory-list {
+  display: grid;
+  gap: var(--tf-space-3);
+}
+
+.return-accessory-card {
+  display: grid;
+  gap: var(--tf-space-2);
+  min-width: 0;
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-slate-200);
+  border-radius: var(--tf-radius-control);
+  background: var(--color-bg-white);
+}
+
+.return-accessory-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-2);
+  min-width: 0;
+
+  strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.return-accessory-card__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2) var(--tf-space-4);
+  color: var(--tf-color-slate-600);
+}
+
+.return-accessory-card__return {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.25fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--tf-space-2);
+  min-width: 0;
+}
+
+.return-accessory-card__return-label {
+  color: var(--tf-color-slate-700);
+  font-weight: 600;
+}
+
+.return-accessory-card__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tf-space-2);
+  min-width: 0;
+}
+
+.return-amount-summary {
+  font-weight: 600;
+}
+
+.return-gift-charge {
+  grid-column: 1 / -1;
+  margin-top: var(--tf-space-1);
+}
+
+@media (max-width: 479px) {
+  .return-accessory-card__return {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

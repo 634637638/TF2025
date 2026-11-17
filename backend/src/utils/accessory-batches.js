@@ -1,6 +1,8 @@
 'use strict'
 
-const fail = message => { throw Object.assign(new Error(message), { statusCode: 409, code: 'INVENTORY_LEDGER_CONFLICT' }) }
+const fail = (message, code = 'INVENTORY_LEDGER_CONFLICT') => {
+  throw Object.assign(new Error(message), { statusCode: 409, code })
+}
 const cents = value => value === null || value === undefined ? null : Math.round(Number(value) * 100)
 const batchKey = row => JSON.stringify([row.stock_in_id ? Number(row.stock_in_id) : null, cents(row.purchase_cost), row.usage_type, Number(row.serial_tracking)])
 
@@ -28,11 +30,9 @@ const openingBatches = (quantity, serials) => {
 }
 
 /** 普通库存按原采购日期/批次先进先出，SN按实物来源；调用方提供稳定排序的余额。 */
-const allocateBatches = ({ balances, quantity, serials = [], operation = 'transfer', remarks = '' }) => {
+const allocateBatches = ({ balances, quantity, serials = [], operation = 'transfer' }) => {
   const allocations = []
   const take = (row, count) => {
-    if (operation === 'sale' && row.usage_type === 'gift') return false
-    if (operation === 'gift' && row.usage_type !== 'gift' && !remarks.trim()) return false
     allocations.push({ stock_in_id: row.stock_in_id ? Number(row.stock_in_id) : null,
       purchase_cost: row.purchase_cost === null || row.purchase_cost === undefined ? null : Number(row.purchase_cost),
       usage_type: row.usage_type, serial_tracking: Number(row.serial_tracking), quantity: count })
@@ -47,16 +47,18 @@ const allocateBatches = ({ balances, quantity, serials = [], operation = 'transf
       const key = batchKey(row), group = pending.get(key) || { row, quantity: 0 }
       group.quantity++; pending.set(key, group)
     }
-    for (const { row, quantity: count } of pending.values()) if (!take(row, count)) fail(operation === 'sale' ? '赠送用途商品不能按收费销售' : '收费或历史库存转赠送须填写原因')
+    for (const { row, quantity: count } of pending.values()) take(row, count)
   } else {
     let remaining = quantity
     for (const row of balances) {
       if (Number(row.serial_tracking) !== 0 || Number(row.quantity) <= 0) continue
       const count = Math.min(remaining, Number(row.quantity))
-      if (count && take(row, count)) remaining -= count
+      if (count) { take(row, count); remaining -= count }
       if (!remaining) break
     }
-    if (remaining) fail(operation === 'sale' ? '可收费批次库存不足，赠送库存不能收费销售' : operation === 'gift' ? '可赠送库存不足，收费或历史库存转赠送须填写原因' : '可划拨批次库存不足')
+    if (remaining) {
+      fail(operation === 'transfer' ? '可划拨库存不足' : '可用库存不足')
+    }
   }
   const costKnown = allocations.every(row => row.purchase_cost !== null)
   const costCents = costKnown ? allocations.reduce((sum, row) => sum + cents(row.purchase_cost) * row.quantity, 0) : null

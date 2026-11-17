@@ -58,7 +58,7 @@
         </div>
         <div
           v-if="canViewField('serial_number')"
-          class="bg-gradient-serial tf-detail-field--wide"
+          class="bg-gradient-serial"
         >
           <div class="text-xs opacity-80 mb-1">
             序列号
@@ -82,7 +82,7 @@
 
       <!-- 编辑表单 -->
       <div class="inventory-edit-form-shell">
-        <div class="inventory-edit-form-grid tf-form-layout tf-form-grid">
+        <div class="inventory-edit-form-grid tf-form-layout tf-form-grid tf-form-row tf-form-row--three">
           <!-- 供应商 -->
           <div
             v-if="canViewField('supplier_name')"
@@ -189,10 +189,14 @@
             </el-select>
           </div>
 
-          <div class="inventory-edit-status-field form-group">
+          <div
+            v-if="canViewField('status')"
+            class="inventory-edit-status-field form-group"
+          >
             <label class="form-label">状态</label>
             <el-select
               v-model="editForm.status"
+              :disabled="!canEditField('status')"
               placeholder="选择状态"
               teleported
               fit-input-width
@@ -337,19 +341,20 @@
             </el-select>
           </div>
 
-          <!-- 序列号和IMEI（手机端一行展示） -->
+          <!-- 序列号和IMEI共用公共两列行组。 -->
           <div
             v-if="canViewField('serial_number') || canViewField('imei')"
-            class="inventory-edit-serial-imei-row tf-form-row tf-form-row--mobile-single"
+            class="inventory-edit-serial-imei-row tf-form-row"
           >
             <!-- 序列号 -->
             <div
               v-if="canViewField('serial_number')"
-              class="inventory-edit-serial-field"
+              class="inventory-edit-serial-field form-group"
             >
               <label class="form-label">序列号</label>
               <el-input
                 v-model="editForm.serial_number"
+                v-identifier-input="'device-serial'"
                 placeholder="请输入序列号"
                 maxlength="18"
                 :disabled="!canEditField('serial_number')"
@@ -359,7 +364,7 @@
             <!-- IMEI -->
             <div
               v-if="canViewField('imei')"
-              class="inventory-edit-imei-field"
+              class="inventory-edit-imei-field form-group"
             >
               <label class="form-label">IMEI</label>
               <div
@@ -370,6 +375,7 @@
               >
                 <el-input
                   v-model="editForm.imei"
+                  v-identifier-input="noImeiMode ? 'device-serial' : 'imei'"
                   :class="{ 'tf-imei-input--no-imei': noImeiMode }"
                   :placeholder="noImeiMode ? '' : '请输入15位IMEI'"
                   :maxlength="noImeiMode ? 30 : 15"
@@ -487,7 +493,7 @@ interface PhoneStatusOption {
   value: string
 }
 
-defineProps<{
+const props = defineProps<{
   brandModels: string[]
   brands: NamedOption[]
   canEditField: (_field: string) => boolean
@@ -515,7 +521,9 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
-const toggleNoImei = () => emit('toggle-no-imei')
+const toggleNoImei = () => {
+  if (props.canEditField('imei')) emit('toggle-no-imei')
+}
 const {
   handleTouchEnd: handleImeiTouchEnd,
   handleDoubleClick: handleImeiDoubleClick

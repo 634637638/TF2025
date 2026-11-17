@@ -50,6 +50,19 @@ test('site settings controller preserves disconnected, read and save responses',
   assert.equal(failed.body.message, '服务器内部错误，请稍后重试')
 })
 
+test('site settings controller forwards database availability failures to the unified handler', async () => {
+  const forwarded = []
+  const error = Object.assign(new Error('cloud database timeout'), { code: 'ETIMEDOUT' })
+  const result = new SiteSettingsController({
+    service: { isConnected: () => true, async getPublicSettings() { throw error } },
+    logger: { warn() {} }
+  })
+
+  await result.getPublic({}, response(), forwardedError => forwarded.push(forwardedError))
+
+  assert.deepEqual(forwarded, [error])
+})
+
 test('site settings service returns canonical defaults and filters public fields', async () => {
   const service = new SiteSettingsService({
     connected: () => true,

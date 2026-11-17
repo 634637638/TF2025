@@ -2,14 +2,16 @@
 
 const ApiResponse = require('../utils/response')
 const log = require('../utils/log')
+const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const AnalyticsEmployeeSummaryService = require('../services/analytics-employee-summary.service')
 const { parseOptionalInt } = require('../utils/analytics-query')
 
 class AnalyticsEmployeeSummaryController {
-  constructor({ service = new AnalyticsEmployeeSummaryService(), response = ApiResponse, logger = log } = {}) {
+  constructor({ service = new AnalyticsEmployeeSummaryService(), response = ApiResponse, logger = log, permissionCheck = hasUnifiedPermission } = {}) {
     this.service = service
     this.response = response
     this.logger = logger
+    this.permissionCheck = permissionCheck
   }
 
   async salaryTrend(req, res) {
@@ -27,7 +29,7 @@ class AnalyticsEmployeeSummaryController {
 
   async attendance(req, res) {
     try {
-      const data = await this.service.getAttendanceDistribution(parseOptionalInt(req.query.store_id))
+      const data = await this.service.getAttendanceDistribution(parseOptionalInt(req.query.store_id), req.analyticsEmployeeId)
       return this.response.success(res, data, '获取出勤统计成功')
     } catch (error) {
       if (error.message === '数据库连接失败') return this.response.serverError(res, '数据库连接失败')
@@ -41,7 +43,8 @@ class AnalyticsEmployeeSummaryController {
       const data = await this.service.getAttendanceSummary({
         startDate: req.query.start_date,
         endDate: req.query.end_date,
-        storeId: parseOptionalInt(req.query.store_id)
+        storeId: parseOptionalInt(req.query.store_id),
+        employeeId: req.analyticsEmployeeId
       })
       return this.response.success(res, data, '获取考勤记录成功')
     } catch (error) {
@@ -60,7 +63,8 @@ class AnalyticsEmployeeSummaryController {
       const data = await this.service.getEmployeePerformance({
         metric,
         pageSize,
-        storeId: parseOptionalInt(req.query.store_id)
+        storeId: parseOptionalInt(req.query.store_id),
+        includeAttendance: Boolean(req.user) && await this.permissionCheck(req.user, 'attendance:view:all')
       })
       return this.response.success(res, data, '获取员工业绩排行成功')
     } catch (error) {
@@ -76,7 +80,8 @@ class AnalyticsEmployeeSummaryController {
       const data = await this.service.getEmployeeOverview({
         startDate: req.query.start_date,
         endDate: req.query.end_date,
-        storeId: parseOptionalInt(req.query.store_id)
+        storeId: parseOptionalInt(req.query.store_id),
+        includeAttendance: Boolean(req.user) && await this.permissionCheck(req.user, 'attendance:view:all')
       })
       return this.response.success(res, data, '获取员工分析数据成功')
     } catch (error) {

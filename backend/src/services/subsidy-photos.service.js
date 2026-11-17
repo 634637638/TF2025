@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const log = require('../utils/log')
 const fs = require('node:fs')
 const path = require('node:path')
@@ -36,9 +38,11 @@ class SubsidyPhotosService {
     this.invalidateCache = invalidateCache
   }
 
-  async getPhotos(recordId, userId) {
-    const storedPhotos = await this.repository.getPhotos(recordId)
-    if (storedPhotos === null) return null
+  async getPhotos(recordId, userId, actor) {
+    const record = await this.repository.getPhotos(recordId)
+    if (!record) return null
+    assertStoreInScope(resolveStoreScope(actor), record.store_id)
+    const storedPhotos = record.subsidy_photos
 
     let photos = []
     if (storedPhotos) {
@@ -51,7 +55,7 @@ class SubsidyPhotosService {
     return (Array.isArray(photos) ? photos : []).map(photo => buildProtectedSubsidyPhotoUrl(photo, userId))
   }
 
-  async updatePhotos(recordId, submittedPhotos, deletedPhotos, userId) {
+  async updatePhotos(recordId, submittedPhotos, deletedPhotos, userId, actor) {
     if (!Array.isArray(submittedPhotos) || !submittedPhotos.every(photo => typeof photo === 'string')) {
       return { status: 400, message: '国补照片格式不正确' }
     }
@@ -73,6 +77,7 @@ class SubsidyPhotosService {
           return { status: 404, message: '国补记录不存在' }
         }
 
+        assertStoreInScope(resolveStoreScope(actor), record.store_id)
         const previousPhotos = this.parsePhotos(record.subsidy_photos)
         const previousPaths = new Map(previousPhotos.map(photo => {
           const safePath = this.getSafePhotoPath(photo)
@@ -223,11 +228,19 @@ class SubsidyPhotosService {
     return { empty: false, deleted, failed }
   }
 
-  async deleteRecord(recordId) {
-    const record = await this.repository.findRecordForDelete(recordId)
+  async deleteRecord(recordId, actor) {
+    const record = await this.repository.withConnection(async connection => {
+      await connection.beginTransaction()
+      try {
+        const row = await this.repository.findRecordForDelete(recordId, connection)
+        if (!row) { await connection.rollback(); return null }
+        assertStoreInScope(resolveStoreScope(actor), row.store_id)
+        await this.repository.deleteRecord(recordId, connection)
+        await connection.commit()
+        return row
+      } catch (error) { await connection.rollback(); throw error }
+    })
     if (!record) return false
-
-    await this.repository.deleteRecord(recordId)
     if (record.subsidy_photos) {
       try {
         const photos = typeof record.subsidy_photos === 'string'

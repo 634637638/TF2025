@@ -17,7 +17,7 @@ const validatePayment = async (body, status = 'sold') => {
     findDuplicateImei: async () => { throw afterValidation }
   }
   try {
-    await new PhoneUpdateService({ repository }).update({ params: { id: '11' }, body })
+    await new PhoneUpdateService({ repository, access: { async authorize() {} } }).update({ params: { id: '11' }, body })
     assert.fail('必须在读取边界结束')
   } catch (error) {
     return error === afterValidation ? null : error.message

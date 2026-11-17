@@ -1,5 +1,6 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
 const { isConnected } = require('../config/database')
 const DashboardRepository = require('../repositories/dashboard.repository')
 const AnalyticsInventoryRepository = require('../repositories/analytics-inventory.repository')
@@ -15,16 +16,17 @@ class AnalyticsInventoryService {
     this.connected = connected
   }
 
-  async getOverview({ storeId, supplierId }) {
+  async getOverview({ storeId, supplierId, actor }) {
     if (!this.connected()) {
       const error = new Error('数据库连接失败')
       error.statusCode = 500
       throw error
     }
 
+    const scope = resolveStoreScope(actor, storeId)
     const [overview, warnings] = await Promise.all([
       this.turnoverRepository.getOverviewData({ storeId, supplierId }),
-      this.repository.getModelStockWarnings(undefined, 500, { storeId, supplierId })
+      this.repository.getModelStockWarnings(undefined, 500, { scope, storeId, supplierId })
     ])
     const { summary, brands, turnover, suppliers } = overview
     const summaryData = summary || {}
@@ -175,14 +177,15 @@ class AnalyticsInventoryService {
     }))
   }
 
-  async getLowStock({ limit, storeId, supplierId }) {
+  async getLowStock({ limit, storeId, supplierId, actor }) {
     if (!this.connected()) {
       const error = new Error('数据库连接失败')
       error.statusCode = 500
       throw error
     }
 
-    const warnings = await this.repository.getModelStockWarnings(undefined, limit, { storeId, supplierId })
+    const scope = resolveStoreScope(actor, storeId)
+    const warnings = await this.repository.getModelStockWarnings(undefined, limit, { scope, storeId, supplierId })
     return (warnings || []).map((item, index) => {
       const currentStock = parseInt(item.stock_count, 10) || 0
       const reorderPoint = parseInt(item.warning_threshold, 10) || 0

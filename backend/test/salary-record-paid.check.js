@@ -23,7 +23,8 @@ const harness = (initial = original(), entries = null) => {
   const connection = {
     async beginTransaction() { fail('begin'); this.before = structuredClone(record); this.claimsBefore = structuredClone(claims) },
     async commit() { fail('commit') },
-    async rollback() { calls.push('rollback'); record = this.before; claims = this.claimsBefore },
+    async rollback() { fail('rollback'); record = this.before; claims = this.claimsBefore },
+    destroy() { calls.push('destroy') },
     release() { calls.push('release') },
     async execute(sql, params) {
       const text = sql.replace(/\s+/g, ' ').trim()
@@ -116,6 +117,51 @@ test('首次发放来自公共北京时间，重复请求保留首次事实且�
   assert.ok(h.queries.filter(query => /^SELECT/.test(query.sql)).every(query => /FOR UPDATE$/.test(query.sql)))
 })
 
+test('已发工资预览直接返回原记录，不因当前模板或公式失效而重新计算', async () => {
+  for (const state of [{ status: 'paid', paid_at: '2026-11-01 09:00:00' },
+    { status: 'paid', paid_at: null }, { status: 'approved', paid_at: '2026-11-01 09:00:00' }]) {
+    const h = harness(original(state)), before = structuredClone(h.record)
+    h.calculator.calculateSalary = async () => { h.calls.push('calculate'); throw new Error('当前工资模板已停用') }
+    const preview = await h.service.calculateSalary(period.employee_id, period.period_start, period.period_end)
+    assert.equal(preview.id, before.id)
+    assert.equal(preview.commission_amount, before.commission_amount)
+    assert.equal(preview.net_salary, before.net_salary)
+    assert.equal(preview.commission_detail, before.commission_detail)
+    assert.equal(preview.paid_at, before.paid_at)
+    assert.equal(preview.status, before.status)
+    assert.deepEqual(h.record, before)
+    assert.equal(h.calls.includes('calculate'), false)
+    assert.ok(h.calls.includes('lock'))
+    assert.equal(h.queries.some(query => /^(UPDATE|INSERT|DELETE)/.test(query.sql)), false)
+    assert.equal(h.claims.length, 0)
+  }
+})
+
+test('已发工资预览仍核对全部周期记录，重复周期不能绕过历史冲突检查', async () => {
+  const h = harness(original({ status: 'paid', paid_at: '2026-11-01 09:00:00' }))
+  h.calculator.calculateSalary = async () => { throw new Error('不能调用当前公式') }
+  h.repository.lockPeriodRecords = async () => [structuredClone(h.record), { ...h.record, id: 16 }]
+  await assert.rejects(h.service.calculateSalary(period.employee_id, period.period_start, period.period_end), code('SALARY_PERIOD_CONFLICT'))
+  assert.equal(h.queries.some(query => /^(UPDATE|INSERT|DELETE)/.test(query.sql)), false)
+  assert.deepEqual(h.calls.slice(-2), ['rollback', 'release'])
+})
+
+test('工资预览计算期间发放，锁内复核仍返回首次已发事实而非新计算金额', async () => {
+  const h = harness(), paid = original({ status: 'paid', paid_at: '2026-11-13 15:00:00' })
+  h.calculator.calculateSalary = async () => {
+    h.calls.push('calculate'); h.record = structuredClone(paid)
+    return original({ commission_amount: 999, net_salary: 2999 })
+  }
+  const preview = await h.service.calculateSalary(period.employee_id, period.period_start, period.period_end)
+  assert.equal(preview.commission_amount, paid.commission_amount)
+  assert.equal(preview.net_salary, paid.net_salary)
+  assert.equal(preview.paid_at, paid.paid_at)
+  assert.deepEqual(h.record, paid)
+  assert.ok(h.calls.includes('lock'))
+  assert.equal(h.queries.some(query => /^(UPDATE|INSERT|DELETE)/.test(query.sql)), false)
+  assert.deepEqual(h.calls.slice(-2), ['commit', 'release'])
+})
+
 test('状态异常但有发放时间同样保护；草稿、无效支付方式不发放', async () => {
   for (const action of [service => service.updateSalaryRecord(15, { net_salary: 1 }), service => service.deleteSalaryRecord(15), service => service.markAsPaid(15)]) {
     const h = harness(original({ paid_at: '2026-11-01 09:00:00' }))
@@ -175,6 +221,14 @@ test('首次创建锁员工和周期，同周期重复提交不产生第二笔�
   assert.deepEqual(locked[1].params, [7, '2026-10-01', '2026-10-31'])
 })
 
+test('新增工资省略审批状态时保存待审，不继承计算预览的已审批状态', async () => {
+  const h = harness(null)
+  const input = original({ id: undefined })
+  delete input.status
+  await h.service.createSalaryRecord(input, 22)
+  assert.equal(h.record.status, 'pending')
+})
+
 test('未发工资重算保留创建人和审批状态，采用最新计算金额与明细', async () => {
   const h = harness()
   const updated = await h.service.saveCalculatedSalary(period, 22)
@@ -199,7 +253,19 @@ for (const failure of ['isolation', 'begin', 'query', 'commit']) test(`事务${f
   await assert.rejects(h.service.markAsPaid(15), new RegExp(`failure:${failure}`))
   assert.equal(h.calls.at(-1), 'release')
   if (['query', 'commit'].includes(failure)) { assert.equal(h.calls.at(-2), 'rollback'); assert.equal(h.record.status, 'approved') }
-  else assert.equal(h.calls.includes('rollback'), false)
+  else {
+    assert.equal(h.calls.includes('rollback'), false)
+    assert.deepEqual(h.calls.slice(-2), ['destroy', 'release'])
+  }
+  assert.equal(h.calls.includes('destroy'), ['isolation', 'begin'].includes(failure))
+})
+
+test('工资回滚失败必须销毁连接，不将未结束事务放回连接池', async () => {
+  const h = harness(original({ status: 'draft' })); h.fail('rollback')
+  await assert.rejects(h.service.markAsPaid(15), /failure:rollback/)
+  assert.deepEqual(h.calls.slice(-3), ['rollback', 'destroy', 'release'])
+  assert.equal(h.calls.includes('commit'), false)
+  assert.equal(h.record.status, 'draft')
 })
 
 test('无效编号/日期拒绝，缺失记录和重复周期给出业务错误', async () => {
@@ -215,7 +281,7 @@ test('无效编号/日期拒绝，缺失记录和重复周期给出业务错误'
 
 test('工资写入控制器映射409、404、400及错误码，不把业务冲突误报500', async t => {
   const Controller = require('../src/controllers/salary-record.controller').constructor
-  const controller = new Controller({ masking: { async getUserFieldPermissions() { return { hiddenFields: [] } }, filterSensitiveFields: rows => rows } })
+  const controller = new Controller({ hasPermission: async () => true, masking: { async getUserFieldPermissions() { return { hiddenFields: [] } }, filterSensitiveFields: rows => rows } })
   for (const [method, args, status, errorCode] of [
     ['updateSalaryRecord', { params: { id: 15 }, body: {} }, 409, 'SALARY_RECORD_PAID'],
     ['deleteSalaryRecord', { params: { id: 15 } }, 404, 'NOT_FOUND'],
@@ -254,6 +320,23 @@ test('正式保存与首次发放复用真实核销编排，商品净额只加�
   assert.equal(h.claims.length, 2)
   const locked = h.queries.filter(row => /FOR UPDATE$/.test(row.sql))
   assert.match(locked[0].sql, /FROM users/)
+})
+
+test('已发商品工资预览保留提成及退货核销摘要，不重读后来来源或追加账', async () => {
+  const entries = [earned(), reversed()], h = harness(null, entries)
+  const saved = await h.service.saveCalculatedSalary(period, 9)
+  const paid = await h.service.markAsPaid(saved.data.id)
+  const originalClaims = structuredClone(h.claims), before = structuredClone(h.record)
+  entries.push(earned({ order_id: 11, order_item_id: 51, accessory_sale_id: 21, source_key: 'goods_sale:51' }))
+  h.calculator.calculateSalary = async () => { throw new Error('不能重新计算已发工资') }
+  h.service.goods.prepare = async () => { throw new Error('不能替换已发商品来源') }
+  const writes = h.queries.filter(query => /^(UPDATE|INSERT|DELETE)/.test(query.sql)).length
+  const preview = await h.service.calculateSalary(period.employee_id, period.period_start, period.period_end)
+  assert.deepEqual(preview, paid)
+  assert.equal(preview.goods_commission.net_amount, 6.66)
+  assert.deepEqual(h.claims, originalClaims)
+  assert.deepEqual(h.record, before)
+  assert.equal(h.queries.filter(query => /^(UPDATE|INSERT|DELETE)/.test(query.sql)).length, writes)
 })
 
 test('手工提成与商品净额独立，保存和状态编辑不重复加；商品扣回可使提成为负数', async () => {
@@ -325,6 +408,24 @@ test('后期核销重核已发真实金额，原工资被改后不能把完整�
   assert.deepEqual(h.claims, claims)
 })
 
+test('工资记录只读和可编辑范围在业务写入前核验，null和零值也不能绕过', async () => {
+  const Controller = require('../src/controllers/salary-record.controller').constructor
+  for (const permissions of [{ readonlyFields: ['salary.base_salary'] },
+    { editableFields: ['salary.commission_amount'] }]) {
+    let writes = 0
+    const controller = new Controller({ hasPermission: async () => true, masking: {
+      async getUserFieldPermissions() { return permissions }, filterSensitiveFields: rows => rows
+    }, service: { async updateSalaryRecord() { writes++; return {} } } })
+    for (const base_salary of [0, null, 100]) {
+      const res = { status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } }
+      await controller.updateSalaryRecord({ user: { id: 7 }, params: { id: 1 }, body: { base_salary } }, res)
+      assert.equal(res.statusCode, 403)
+      assert.equal(res.body.code, 'FIELD_PERMISSION_DENIED')
+    }
+    assert.equal(writes, 0)
+  }
+})
+
 test('字段权限在写入前读取，摘要随提成字段递归遮蔽，本人只读使用本人模块', async () => {
   const Controller = require('../src/controllers/salary-record.controller').constructor
   let writes = 0
@@ -332,11 +433,11 @@ test('字段权限在写入前读取，摘要随提成字段递归遮蔽，本�
     modules.push(module); assert.equal(options.strict, true); return { hiddenFields: ['salary.commission_amount'] }
   }, filterSensitiveFields: rows => rows }
   const h = harness(null, [earned()]), saved = (await h.service.saveCalculatedSalary(period, 9)).data
-  const controller = new Controller({ masking: mask, service: {
+  const controller = new Controller({ hasPermission: async () => true, masking: mask, service: {
     async getSalaryRecords() { return { records: [{ ...saved, status: 'paid' }] } },
     async updateSalaryRecord() { writes++; return { data: saved } }
   } })
-  controller.getSalaryScope = async () => ({ isAdmin: false })
+  controller.getSalaryScope = async () => ({ canView: true, isAdmin: false })
   const response = () => ({ status(value) { this.statusCode = value; return this }, json(value) { this.body = value; return this } })
   const read = response()
   await controller.getSalaryRecords({ user: { id: 7 }, query: {} }, read)
@@ -362,7 +463,8 @@ test('重算保存按锁定后的存在状态核对create或edit权限，拒绝�
     const controller = new Controller({ service: h.service, masking: {
       async getUserFieldPermissions() { return { hiddenFields: [] } }, filterSensitiveFields: rows => rows
     }, async hasPermission(_user, module, action, connection) {
-      assert.equal(module, 'salary_salaryrecordsview'); assert.equal(typeof connection.execute, 'function')
+      assert.equal(module, 'salary_salaryrecordsview'); if (action === 'approve') return false
+      assert.equal(typeof connection.execute, 'function')
       actions.push(action); return false
     } })
     const before = structuredClone(h.record), res = { status(value) { this.statusCode = value; return this }, json(body) { this.body = body; return this } }

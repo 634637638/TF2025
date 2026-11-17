@@ -27,9 +27,10 @@ class SalesInventoryReportController {
     if (supplierId && (!Number.isSafeInteger(parsedSupplierId) || parsedSupplierId <= 0)) return ApiResponse.badRequest(res, '供应商编号无效')
 
     try {
-      const data = await this.service.getSummary(req.query)
+      const data = await this.service.getSummary(req.query, req.user)
       return res.json({ success: true, message: '获取库存统计成功', data })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 获取库存统计失败:', error)
       return ApiResponse.serverError(res, '获取库存统计失败', error)
     }
@@ -41,10 +42,11 @@ class SalesInventoryReportController {
     if (!req.query.brand) return res.status(400).json({ success: false, message: '缺少必需参数: brand' })
 
     try {
-      const result = await this.service.getDetail(req.query, pageSize)
+      const result = await this.service.getDetail(req.query, pageSize, req.user)
       if (result.notFoundBrand) return res.status(404).json({ success: false, message: `未找到品牌: ${result.brand}` })
       return res.json({ success: true, data: result.rows, message: '获取库存明细成功' })
     } catch (error) {
+      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('❌ 获取库存明细失败:', error)
       return ApiResponse.serverError(res, '获取库存明细失败', error)
     }

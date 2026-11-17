@@ -1,5 +1,7 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 
 class SubsidyAuditRepository {
@@ -7,12 +9,14 @@ class SubsidyAuditRepository {
     this.getDb = getDb
   }
 
-  async markAudited(recordId) {
+  async markAudited(recordId, scope) {
+    const conditions = ['id = ?']; const scopeParams = []
+    appendStoreScopeCondition(scope, 'store_id', conditions, scopeParams)
     const [result] = await this.getDb().execute(`
       UPDATE national_subsidies
       SET apply_time = NOW()
-      WHERE id = ?
-    `, [recordId])
+      WHERE ${conditions.join(' AND ')}
+    `, [recordId, ...scopeParams])
     return result.affectedRows > 0
   }
 }

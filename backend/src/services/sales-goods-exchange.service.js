@@ -1,5 +1,7 @@
 'use strict'
 
+const { hasGoodsPermission } = require('../utils/goods-permission')
+
 const { createHash } = require('node:crypto')
 const SalesGoodsReturnService = require('./sales-goods-return.service')
 const SalesCheckoutService = require('./sales-checkout.service')
@@ -23,7 +25,7 @@ class SalesGoodsExchangeService extends SalesGoodsReturnService {
   }
 
   async authorize(actor) {
-    for (const action of ['query:view', 'query:exchange', 'accessories:view']) {
+    for (const action of ['query:view', 'query:exchange', 'query:goods-view']) {
       if (!await this.permissionCheck(actor, action)) reject('无权办理商品换货', 'PERMISSION_DENIED', 403)
     }
   }
@@ -67,7 +69,7 @@ class SalesGoodsExchangeService extends SalesGoodsReturnService {
     const giftRefund = plan.gift_charge_aftersale_id !== null
     const replacementType = giftRefund ? 'sale' : plan.item.sale_type
     if (input.replacement.sale_type !== replacementType) reject(giftRefund ? '已结清扣款的赠品按原实际扣款抵付，换入商品须按收费商品办理' : '换货须保持原收费或赠送用途；赠品更换不重新约定未退扣款金额')
-    if (!await this.permissionCheck(actor, replacementType === 'gift' ? 'accessories:gift' : 'accessories:create')) reject('缺少替换商品销售或赠送权限', 'PERMISSION_DENIED', 403)
+    if (!await hasGoodsPermission(actor, replacementType === 'gift' ? 'gift' : 'create', this.permissionCheck)) reject('缺少替换商品销售或赠送权限', 'PERMISSION_DENIED', 403)
     const config = await this.checkout.getPointsConfig(connection)
     const pointsSnapshot = input.replacement.redeem_points ? await this.pointsLedger.snapshot(connection, Number(order.customer_id), { preserveSources: true }) : null
     const original = await this.returnGoods(connection, input, actor, loaded, `gx:${input.request_key}`)

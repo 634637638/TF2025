@@ -1664,7 +1664,8 @@
   gap: 8px;
 }
 
-.section-title i {
+.permissions-view .section-title > i,
+.permissions-view .section-title-left > i {
   color: var(--tf-color-neutral-500);
 }
 
@@ -1781,6 +1782,41 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+}
+
+/* 三态控件始终独占一行，避免窄弹窗或窄内容区把字段名称压成竖排。 */
+.field-switch-item--tri-state .field-switch-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.field-switch-item--tri-state .field-switch-title,
+.field-switch-item--tri-state .field-switch-title strong {
+  width: 100%;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.field-switch-item--tri-state .field-switch-action,
+.field-switch-item--tri-state .field-switch-action .tf-state-selector {
+  width: 100%;
+  min-width: 0;
+}
+
+.field-switch-item--tri-state .field-switch-action .tf-state-selector {
+  display: flex;
+}
+
+.field-switch-item--tri-state .field-switch-action .el-radio-button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.field-switch-item--tri-state .field-switch-action .el-radio-button__inner {
+  width: 100%;
+  padding-inline: 8px;
 }
 
 .field-visibility-text {
@@ -1923,6 +1959,7 @@
     max-width: none;
     justify-content: flex-start;
   }
+
 }
 
 @media (max-width: 767px) {

@@ -1,18 +1,38 @@
 'use strict'
 
 const { moneyCents } = require('./sale-input')
+const { isIntegerInput } = require('./input-values')
 const { readGoodsCommission } = require('./goods-commission')
 const reject = (message, statusCode = 409, code = 'CHECKOUT_FACTS_CONFLICT') => {
   throw Object.assign(new Error(message), { statusCode, code })
 }
 const points = value => ['number', 'string'].includes(typeof value) && /^\d+$/.test(String(value)) &&
   Number.isSafeInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 2147483647
+// 纯金额/分摊规划可不带关联ID；数据库事实有ID时统一按安全整数读取BIGINT。
+const identity = value => {
+  if (value === undefined || value === null) return value
+  if (!isIntegerInput(value) || Number(value) <= 0) reject('关联商品原单标识异常')
+  return Number(value)
+}
 const parseSnapshot = value => {
   try {
     const parsed = typeof value === 'string' ? JSON.parse(value) : value
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed
   } catch { /* 原单损坏时拒绝猜测或读取当前商品资料补齐。 */ }
   reject('原商品快照异常，请核对原单')
+}
+
+/** 凭证与售后共用原赠品约定解析，缺失不当作零元，不取当前售价。 */
+function readGiftReturnAgreement(value, saleType, quantity) {
+  const snapshot = parseSnapshot(value)
+  if (!['sale', 'gift'].includes(saleType) || snapshot.sale_type !== saleType ||
+    !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999999) reject('赠品原单约定归属异常')
+  const raw = snapshot.gift_return_unit_price
+  const cents = raw === undefined || raw === null ? null : moneyCents(raw)
+  if (raw !== undefined && raw !== null && (saleType !== 'gift' || cents === null || cents * quantity >= 10000000000)) reject('赠品原单约定金额异常')
+  return { gift_return_unit_price: cents === null ? null : cents / 100,
+    gift_return_total: cents === null ? null : cents * quantity / 100,
+    gift_agreement_state: saleType === 'gift' ? cents === null ? 'not_recorded' : 'recorded' : null }
 }
 
 /** 核对原商品数量、金额、积分、SN及赠品约定，不读取当前售价补造历史。 */
@@ -45,18 +65,15 @@ function readCheckoutGoods(row) {
   const serials = snapshot.serial_numbers
   if (!Array.isArray(serials) || serials.some(serial => typeof serial !== 'string' || !serial.trim()) ||
     new Set(serials).size !== serials.length || (serials.length && serials.length !== quantity)) reject('关联商品原单SN凭据异常')
-  const rawAgreement = snapshot.gift_return_unit_price
-  const agreement = rawAgreement === undefined || rawAgreement === null ? null : moneyCents(rawAgreement)
-  if (rawAgreement !== undefined && rawAgreement !== null && (snapshot.sale_type !== 'gift' || agreement === null || agreement * quantity >= 10000000000)) reject('赠品原单约定金额异常')
-  const item = { item_id: row.item_id, accessory_id: row.accessory_id, accessory_sale_id: row.accessory_sale_id,
+  const agreement = readGiftReturnAgreement(snapshot, snapshot.sale_type, quantity)
+  const item = { item_id: identity(row.item_id), accessory_id: identity(row.accessory_id), accessory_sale_id: identity(row.accessory_sale_id),
     sale_type: snapshot.sale_type, name: typeof snapshot.name === 'string' ? snapshot.name : null,
+    unit: typeof snapshot.unit === 'string' ? snapshot.unit : null,
     quantity, unit_price: price / 100, points_used: used, deduction_amount: deduction / 100, gross_amount: gross / 100, total_amount: total / 100, points_awarded: Number(row.points_awarded), serial_numbers: serials,
-    gift_return_unit_price: agreement === null ? null : agreement / 100,
-    gift_return_total: agreement === null ? null : agreement * quantity / 100,
-    gift_agreement_state: snapshot.sale_type === 'gift' ? agreement === null ? 'not_recorded' : 'recorded' : null }
+    ...agreement }
   const commission = readGoodsCommission(snapshot.commission, { employeeId: row.sale_operator_id, quantity, saleType: snapshot.sale_type, paidCents: total,
     purchaseCostCents: row.purchase_cost === null ? null : moneyCents(row.purchase_cost) ?? undefined, pointsUsed: used })
   return { item, units: snapshot.points_units, commission }
 }
 
-module.exports = { readCheckoutGoods }
+module.exports = { readCheckoutGoods, readGiftReturnAgreement }

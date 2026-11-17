@@ -10,9 +10,9 @@ class SalesStatsController {
     this.logger = logger
   }
 
-  async getStats(_req, res) {
+  async getStats(req, res) {
     try {
-      const data = await this.service.getStats()
+      const data = await this.service.getStats(req.user)
       return res.json({ success: true, message: '获取销售统计成功', data })
     } catch (error) {
       this.logger.error('❌ 获取销售统计失败:', error)

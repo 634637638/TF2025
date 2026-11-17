@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope } = require('../utils/store-scope')
+
 const { clearCache } = require('../middleware/cache')
 const SubsidyAuditRepository = require('../repositories/subsidy-audit.repository')
 
@@ -9,8 +11,8 @@ class SubsidyAuditService {
     this.invalidateCache = invalidateCache
   }
 
-  async audit(recordId) {
-    const updated = await this.repository.markAudited(recordId)
+  async audit(recordId, actor) {
+    const updated = await this.repository.markAudited(recordId, resolveStoreScope(actor))
     if (updated) this.invalidateCache('/subsidy')
     return updated
   }

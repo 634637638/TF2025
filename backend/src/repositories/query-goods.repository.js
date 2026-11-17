@@ -13,7 +13,7 @@ const archive = (field, current) => `CASE WHEN i.id IS NOT NULL THEN NULLIF(JSON
 const product = {
   name: archive('name', 'COALESCE(t.name, a.name)'),
   barcode: archive('barcode', 'COALESCE(t.barcode, a.barcode)'),
-  product_model: archive('product_model', 'a.product_model'),
+  product_model: archive('product_model', 'IF(a.template_id IS NULL, a.product_model, t.product_model)'),
   category: archive('category', 'COALESCE(c.name, t.category, a.category)'),
   brand_name: archive('brand_name', 'b.name'),
   color_name: archive('color_name', 'color.name'),
@@ -34,7 +34,7 @@ const returnedQuantity = `(SELECT COALESCE(SUM(re.quantity_delta), 0) FROM acces
   WHERE re.sale_id = s.id AND re.event_type IN ('sale_return', 'gift_return'))`
 const fields = `s.id, s.sale_no, s.accessory_id, s.sale_type, s.store_id, st.name AS store_name,
   s.customer_name, s.customer_phone, s.quantity, s.unit_price, s.total_price, s.purchase_cost,
-  s.profit, s.operator_name, s.sale_time, s.remarks, o.order_no, ps.invoice_number AS linked_phone_invoice,
+  s.profit, s.operator_name, s.created_at AS sale_time, s.remarks, o.order_no, ps.invoice_number AS linked_phone_invoice,
   i.points_awarded, o.id AS order_id, i.id AS order_item_id,
   ${returnedQuantity} AS returned_quantity, s.quantity - ${returnedQuantity} AS remaining_quantity,
   CASE WHEN i.id IS NULL THEN NULL ELSE COALESCE(JSON_EXTRACT(i.snapshot, '$.points_used'), 0) END AS points_used,
@@ -59,7 +59,7 @@ class QueryGoodsRepository {
     appendStoreScopeCondition(scope, 'o.store_id', conditions, params)
     const [headers] = await connection.query(`SELECT o.id, o.order_no, o.customer_name, o.customer_phone, o.store_id,
       st.name AS store_name, seller.name AS operator_name, o.customer_id, o.operator_id,
-      o.order_date AS sale_time, o.remarks, o.total_amount, o.final_amount, o.paid_amount, o.points_awarded
+      o.created_at AS sale_time, o.remarks, o.total_amount, o.final_amount, o.paid_amount, o.points_awarded
       FROM sales_orders o ${sourceJoin} LEFT JOIN stores st ON st.id = o.store_id
       LEFT JOIN users seller ON seller.id = o.operator_id
       WHERE ${conditions.join(' AND ')}`, params)
@@ -85,8 +85,8 @@ class QueryGoodsRepository {
     // 仅由客户定向历史服务设置；公开商品列表不接受customer_id筛选。
     if (query.customer_id !== undefined) { conditions.push('s.customer_id = ?'); params.push(query.customer_id) }
     if (query.sale_type) { conditions.push('s.sale_type = ?'); params.push(query.sale_type) }
-    if (query.start_date) { conditions.push('s.sale_time >= ?'); params.push(`${query.start_date} 00:00:00`) }
-    if (query.end_date) { conditions.push('s.sale_time <= ?'); params.push(`${query.end_date} 23:59:59`) }
+    if (query.start_date) { conditions.push('s.created_at >= ?'); params.push(`${query.start_date} 00:00:00`) }
+    if (query.end_date) { conditions.push('s.created_at <= ?'); params.push(`${query.end_date} 23:59:59`) }
     if (query.keyword) {
       const matches = []
       for (const field of searchFields) {
@@ -109,7 +109,7 @@ class QueryGoodsRepository {
     const { where, params } = this.filters(scope, query, searchFields)
     const [counts] = await connection.query(`SELECT COUNT(*) AS total ${joins} ${where}`, params)
     const [rows] = await connection.query(`SELECT ${fields}${query.customer_id !== undefined ? ', ps.store_id AS linked_phone_store_id' : ''} ${joins} ${where}
-      ORDER BY s.sale_time DESC, s.id DESC LIMIT ? OFFSET ?`, [...params, query.page_size, (query.page - 1) * query.page_size])
+      ORDER BY s.created_at DESC, s.id DESC LIMIT ? OFFSET ?`, [...params, query.page_size, (query.page - 1) * query.page_size])
     return { data: rows, pagination: buildPagination(query.page, query.page_size, Number(counts[0].total)) }
   }
 
@@ -138,7 +138,7 @@ class QueryGoodsRepository {
     const conditions = ['ps.id = ?'], params = [saleId]
     appendStoreScopeCondition(scope, 'ps.store_id', conditions, params)
     appendStoreScopeCondition(scope, 's.store_id', conditions, params)
-    const [rows] = await connection.query(`SELECT ${fields} ${joins}
+    const [rows] = await connection.query(`SELECT ${fields}, i.snapshot AS receipt_snapshot ${joins}
       JOIN sales_order_items pi ON pi.sale_id = ps.id AND pi.item_type = 'phone' AND pi.order_id = i.order_id
       WHERE ${conditions.join(' AND ')} ORDER BY i.id`, params)
     if (!rows.length) return []
@@ -146,6 +146,8 @@ class QueryGoodsRepository {
     const [serials] = await connection.query(`SELECT DISTINCT se.sale_id, sn.serial_number
       FROM accessory_serial_events se JOIN accessory_serials sn ON sn.id = se.serial_id
       WHERE se.sale_id IN (${ids.map(() => '?').join(',')}) AND se.event_type IN ('sale', 'gift')
+        AND NOT EXISTS (SELECT 1 FROM accessory_serial_events returned
+          WHERE returned.sale_id = se.sale_id AND returned.serial_id = se.serial_id AND returned.event_type = 'return')
       ORDER BY se.sale_id, sn.serial_number`, ids)
     return rows.map(row => ({ ...row, serial_numbers: serials.filter(serial => Number(serial.sale_id) === Number(row.id)).map(serial => serial.serial_number) }))
   }

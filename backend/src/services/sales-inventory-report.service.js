@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, appendStoreScopeCondition } = require('../utils/store-scope')
+
 const SalesInventoryReportRepository = require('../repositories/sales-inventory-report.repository')
 const { COMPLETED_TRANSACTION_STATUSES } = require('../utils/phone-status')
 
@@ -18,13 +20,10 @@ class SalesInventoryReportService {
     this.repository = repository
   }
 
-  buildScope({ storeId, supplierId, isNew, startDate, endDate } = {}) {
+  buildScope({ actor, storeId, supplierId, isNew, startDate, endDate } = {}) {
     const whereConditions = [COMPLETED_STATUS_SQL]
     const queryParams = [...COMPLETED_TRANSACTION_STATUSES]
-    if (storeId !== null && storeId !== undefined && !Number.isNaN(Number(storeId))) {
-      whereConditions.push('p.store_id = ?')
-      queryParams.push(storeId)
-    }
+    appendStoreScopeCondition(resolveStoreScope(actor, storeId), 'p.store_id', whereConditions, queryParams)
     if (supplierId !== null && supplierId !== undefined && !Number.isNaN(Number(supplierId))) {
       whereConditions.push('p.supplier_id = ?')
       queryParams.push(supplierId)
@@ -46,9 +45,10 @@ class SalesInventoryReportService {
     return { whereConditions, queryParams }
   }
 
-  async getSummary(query = {}) {
+  async getSummary(query = {}, actor) {
     const { whereConditions, queryParams } = this.buildScope({
-      storeId: query.store_id ? Number.parseInt(String(query.store_id), 10) : null,
+      actor,
+      storeId: query.store_id,
       supplierId: query.supplier_id ? Number.parseInt(String(query.supplier_id), 10) : null,
       isNew: query.is_new,
       startDate: String(query.start_date ?? '').trim(),
@@ -77,12 +77,12 @@ class SalesInventoryReportService {
     return this.repository.getSummary({ whereConditions, queryParams })
   }
 
-  async getDetail(query = {}, pageSize) {
+  async getDetail(query = {}, pageSize, actor) {
     const condition = query.condition
     const isNew = condition && condition.trim() ? (condition === '全新' ? 1 : 0) : null
     const supplierId = query.supplier_id ? parseInt(query.supplier_id, 10) : null
     const storeId = query.store_id ? parseInt(query.store_id, 10) : null
-    const { whereConditions, queryParams } = this.buildScope({ storeId, supplierId, isNew })
+    const { whereConditions, queryParams } = this.buildScope({ actor, storeId, supplierId, isNew })
     const brandId = await this.repository.findExactId('brand', query.brand)
     if (brandId === null) return { notFoundBrand: true, brand: query.brand }
 

@@ -142,7 +142,6 @@
               <div class="card-header-actions">
                 <span class="header-chip">组织结构</span>
                 <el-button
-                  size="small"
                   @click="toggleRoleChartType"
                 >
                   {{ roleChartType === 'pie' ? '柱状图' : '饼图' }}
@@ -226,6 +225,7 @@
               <h3>工资趋势分析</h3>
               <el-radio-group
                 v-model="salaryTrendPeriod"
+                class="tf-state-selector"
                 size="small"
               >
                 <el-radio-button value="6">
@@ -248,7 +248,7 @@
 
       <!-- 出勤统计 -->
       <el-col
-        v-if="canViewEmployeeField('attendance_chart')"
+        v-if="canViewAttendance && canViewEmployeeField('attendance_chart')"
         :xs="24"
         :sm="24"
         :md="8"
@@ -321,7 +321,6 @@
                 </el-select>
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportPerformance"
                 >
                   导出
@@ -441,6 +440,7 @@
               </template>
             </el-table-column>
             <el-table-column
+              v-if="attendancePermissions.canView.value"
               prop="attendance_rate"
               label="出勤率"
               min-width="90"
@@ -489,7 +489,7 @@
 
       <!-- 考勤详情 -->
       <el-col
-        v-if="canViewEmployeeField('attendance_records_table')"
+        v-if="canViewAttendance && canViewEmployeeField('attendance_records_table')"
         :xs="24"
         :sm="24"
         :md="8"
@@ -506,7 +506,6 @@
               >
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportAttendance"
                 >
                   导出
@@ -642,6 +641,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -675,6 +675,9 @@ const emit = defineEmits<LoadingChangeEmits>()
 const { success: _success, error, warning } = useNotification()
 const { canViewField: canViewEmployeeField, canViewAnyField: canViewAnyEmployeeField } = useAnalyticsFieldVisibility('employee')
 const { exportTextFile, buildDateFilename } = useImportExport()
+const attendancePermissions = usePagePermissions('attendance')
+const ownAttendancePermissions = usePagePermissions('my-attendance')
+const canViewAttendance = computed(() => attendancePermissions.canView.value || ownAttendancePermissions.canView.value)
 
 // 响应式数据
 const employeeData = ref({
@@ -746,8 +749,8 @@ const attendanceSummary = ref({
 })
 
 const showEmployeePrimaryCharts = computed(() => canViewAnyEmployeeField(['role_distribution_chart', 'sales_compare_chart']))
-const showEmployeeSecondaryCharts = computed(() => canViewAnyEmployeeField(['salary_trend_chart', 'attendance_chart']))
-const showEmployeeTableSection = computed(() => canViewAnyEmployeeField(['performance_table', 'attendance_records_table']))
+const showEmployeeSecondaryCharts = computed(() => canViewEmployeeField('salary_trend_chart') || (canViewAttendance.value && canViewEmployeeField('attendance_chart')))
+const showEmployeeTableSection = computed(() => canViewEmployeeField('performance_table') || (canViewAttendance.value && canViewEmployeeField('attendance_records_table')))
 
 // 图表引用
 const roleChartRef = ref<HTMLElement>()
@@ -855,7 +858,7 @@ const loadEmployeeData = async (showLoadingState = true) => {
     // 使用 analyticsService 获取员工统计数据（使用缓存）
     const [employeeRes, attendanceRes] = await Promise.all([
       useCachedRequest(cacheKeyEmployee, () => analyticsService.getEmployeeAnalytics(params), DEFAULT_CACHE_TTL.STATIC),
-      useCachedRequest(cacheKeyAttendance, () => analyticsService.getAttendanceSummary(params), DEFAULT_CACHE_TTL.STATIC)
+      canViewAttendance.value ? useCachedRequest(cacheKeyAttendance, () => analyticsService.getAttendanceSummary(params), DEFAULT_CACHE_TTL.STATIC) : Promise.resolve(null)
     ])
 
     const analyticsData = employeeRes.data
@@ -887,7 +890,7 @@ const loadEmployeeData = async (showLoadingState = true) => {
       }
     }
 
-    if (attendanceRes.success && attendanceRes.data) {
+    if (attendanceRes?.success && attendanceRes.data) {
       attendanceSummary.value = {
         totalRecords: attendanceRes.data.summary?.totalRecords || 0,
         employeeCount: attendanceRes.data.summary?.employeeCount || 0,
@@ -1200,7 +1203,7 @@ const updateSalaryTrendChart = async () => {
 }
 
 const updateAttendanceChart = async () => {
-  if (!attendanceChart) return
+  if (!attendanceChart || !canViewAttendance.value) return
 
   try {
     // 从API获取真实数据（使用缓存）
@@ -1294,7 +1297,7 @@ const exportAttendance = () => {
 }
 
 const generatePerformanceCSV = () => {
-  const headers = ['排名', '姓名', '绑定店铺', '全新销量', '二手销量', '总销售额', '批发', '划拨', '出勤率', '在途工资', '趋势']
+  const headers = ['排名', '姓名', '绑定店铺', '全新销量', '二手销量', '总销售额', '批发', '划拨', ...(attendancePermissions.canView.value ? ['出勤率'] : []), '在途工资', '趋势']
   const rows = employeePerformance.value.map((item, index: number) => [
     index + 1,
     item.name,
@@ -1304,7 +1307,7 @@ const generatePerformanceCSV = () => {
     item.total_sales || 0,
     item.wholesale_count || 0,
     item.allocation_count || 0,
-    `${(item.attendance_rate || 0).toFixed(1)}%`,
+    ...(attendancePermissions.canView.value ? [`${(item.attendance_rate || 0).toFixed(1)}%`] : []),
     item.salary || 0,
     item.trend === 'up' ? '↑' : item.trend === 'down' ? '↓' : '→'
   ])
@@ -1406,7 +1409,7 @@ const employeeDetailFields = computed<RecordDetailField[]>(() => {
     { key: 'total_sales', label: '总销售额', value: formatAmount(row.total_sales || 0), visible: canViewEmployeeField('performance_table') },
     { key: 'wholesale_count', label: '批发', value: row.wholesale_count || 0, visible: canViewEmployeeField('performance_table') },
     { key: 'allocation_count', label: '划拨', value: row.allocation_count || 0, visible: canViewEmployeeField('performance_table') },
-    { key: 'attendance_rate', label: '出勤率', value: (row.attendance_rate || 0).toFixed(1), visible: canViewEmployeeField('performance_table') },
+    { key: 'attendance_rate', label: '出勤率', value: (row.attendance_rate || 0).toFixed(1), visible: attendancePermissions.canView.value && canViewEmployeeField('performance_table') },
     { key: 'salary', label: '在途工资', value: formatAmount(row.salary || 0), visible: canViewEmployeeField('performance_table') },
     { key: 'field9', label: '趋势', value: row.trend === 'up' ? '↑' : row.trend === 'down' ? '↓' : '→', visible: canViewEmployeeField('performance_table') }
   ]

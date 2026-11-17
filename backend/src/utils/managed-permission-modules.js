@@ -1,31 +1,9 @@
 'use strict'
 
-const { getModulePermissionMetadata } = require('../config/module-permission-actions')
+const { getModulePermissionMetadata, MODULE_PERMISSION_TYPES } = require('../config/module-permission-actions')
 const { normalizeModuleKey } = require('./moduleKeyNormalizer')
 
-const ENSURED_PERMISSION_MODULE_KEYS = [
-  'standards_standardsauditview',
-  'attendance_attendanceview',
-  'attendance_myattendanceview',
-  'system_gitmanagement',
-  'backup_backupview',
-  'data_optimization_dataoptimizationview',
-  'permissions_modulemanagementview',
-  'salary_salaryview',
-  'salary_mysalaryview',
-  'salary_salaryrecordsview',
-  'salary_salarytemplatesview',
-  'price_list_pricelistview',
-  'price_list_synclogview',
-  'h5_admin_h5_adminview',
-  'h5_admin_templatesview',
-  'h5_admin_soldproductsview',
-  'h5_admin_configview',
-  'h5_admin_homesectionsview',
-  'h5_admin_bannersview',
-  'h5_admin_ordersview',
-  'guide_guidemanagementview'
-]
+const ENSURED_PERMISSION_MODULE_KEYS = Object.freeze(Object.keys(MODULE_PERMISSION_TYPES))
 
 function normalizeManagedModuleKey(moduleKey) {
   return normalizeModuleKey(moduleKey)

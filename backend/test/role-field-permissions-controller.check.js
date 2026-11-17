@@ -138,7 +138,7 @@ test('role field permissions service handles legacy role schema and empty module
   assert.deepEqual(calls[2].slice(1), [{}, '05', 'inventory'])
 })
 
-test('role field permissions service normalizes stored JSON and falls back for malformed config', async () => {
+test('role field permissions service rejects malformed stored JSON for every module', async () => {
   const warnings = []
   const service = new Service({
     databaseProvider: () => ({}),
@@ -156,12 +156,19 @@ test('role field permissions service normalizes stored JSON and falls back for m
     logger: { debug() {}, warn(...args) { warnings.push(args) } }
   })
 
-  const result = await service.getByRole('5')
-  assert.deepEqual(result.field_permissions.inventory.field_config, { hidden_fields: ['cost'] })
-  assert.equal(result.field_permissions.inventory.created_at, 'created')
-  assert.deepEqual(result.field_permissions.sales.field_config, { hidden_fields: [] })
-  assert.equal(result.total_modules, 2)
+  await assert.rejects(service.getByRole('5'), /字段权限配置无效/)
   assert.equal(warnings.length, 1)
+})
+
+test('三态角色字段配置统一严格校验并保留只读与编辑字段', async () => {
+  const { normalizeFieldConfig } = require('../src/utils/field-permission-normalizer')
+  const config = { hidden_fields: ['customer.phone'], readonly_fields: ['customer.email'], editable_fields: ['customer.name'] }
+  assert.deepEqual(normalizeFieldConfig(config, { strict: true }), config)
+  for (const invalid of [
+    { hidden_fields: [null] },
+    { readonly_fields: 'customer.email' },
+    { editable_fields: [' customer.name'] }
+  ]) assert.equal(normalizeFieldConfig(invalid, { strict: true }), null)
 })
 
 test('role field permissions repository binds IDs and optional module key with active-schema filtering', async () => {
@@ -343,4 +350,72 @@ test('role field permission repository binds write IDs and serialized configurat
   assert.match(calls[1].sql, /modules WHERE `key` = \? AND is_active = 1/)
   assert.match(calls[3].sql, /UPDATE role_field_permissions/)
   assert.match(calls[4].sql, /INSERT INTO role_field_permissions/)
+})
+
+test('商品字段保存归综合查询的独立范围，保留手机、只读和可编辑配置，手机保存也保留商品范围', async () => {
+  let stored = { hidden_fields: ['basic_info.imei'], editable_fields: ['other_info.remarks'] }
+  const legacy = { hidden_fields: ['price_info.purchase_cost'], editable_fields: ['other_info.remarks'] }
+  const connection = { async beginTransaction() {}, async commit() {}, async rollback() {}, release() {} }
+  const service = new Service({ databaseProvider: () => ({ async getConnection() { return connection } }), columnExists: async () => true,
+    repository: {
+      async findRole() { return { id: 1, name: '角色' } },
+      async findRoleForWrite() { return { id: 1 } }, async findModuleForWrite() { return { key: 'query_queryview' } },
+      async findExistingFieldPermission(_connection, _role, _key, includeConfig) { assert.equal(includeConfig, true); return { id: 1, field_config: stored } },
+      async updateFieldPermission(_connection, _role, key, serialized) { assert.equal(key, 'query_queryview'); stored = JSON.parse(serialized) },
+      async listFieldPermissions(_database, _role, key) { return [{ module_key: key, field_config: key === 'query_queryview' ? stored : legacy }] }
+    }, logger: { debug() {}, warn() {} } })
+  assert.deepEqual((await service.getByRole(1, 'query_queryview', 'goods')).field_permissions.query_queryview.field_config.hidden_fields,
+    ['price_info.purchase_cost'])
+  await service.saveForRole(1, 'query_queryview', { hidden_fields: ['price_info.profit'] }, null, 'goods')
+  assert.deepEqual(stored, { hidden_fields: ['basic_info.imei'], editable_fields: ['other_info.remarks'], scopes: { goods: { hidden_fields: ['price_info.profit'], editable_fields: ['other_info.remarks'] } } })
+  await service.saveForRole(1, 'query_queryview', { hidden_fields: ['customer_info.customer_phone'] })
+  assert.deepEqual(stored.scopes.goods.hidden_fields, ['price_info.profit'])
+  assert.deepEqual((await service.getByRole(1, 'query_queryview', 'goods')).field_permissions.query_queryview.field_config.hidden_fields, ['price_info.profit'])
+  await service.saveForRole(1, 'query_queryview', { hidden_fields: [] }, null, 'goods')
+  assert.deepEqual(stored.hidden_fields, ['customer_info.customer_phone'])
+  assert.deepEqual((await service.getByRole(1, 'query_queryview', 'goods')).field_permissions.query_queryview.field_config.hidden_fields, [])
+  await assert.rejects(service.saveForRole(1, 'accessories_accessoriesview', { hidden_fields: [] }, null, 'goods'), { statusCode: 400 })
+})
+
+test('库存三态配置保留旧编辑范围，隐藏入口和批量保存不能清掉只读规则，编辑范围变化有审计', async () => {
+  let stored = { hidden_fields: [], readonly_fields: ['price_info.purchase_cost'], editable_fields: ['basic.imei', 'price_info.purchase_cost'] }
+  const audit = []
+  const connection = { async beginTransaction() {}, async commit() {}, async rollback() {}, release() {} }
+  const service = new Service({
+    databaseProvider: () => ({ async getConnection() { return connection } }), columnExists: async () => true,
+    logger: { debug() {}, warn() {} }, clearPermissionCache() {},
+    permissionLogs: { async logPermissionOperation(...args) { audit.push(args.at(-1)) } },
+    repository: {
+      async findRoleForWrite() { return { id: 5, name: '库存角色' } },
+      async findModuleForWrite() { return { key: 'inventory_inventoryview', name: '库存管理' } },
+      async findExistingFieldPermission(_connection, _role, _key, includeConfig) { assert.equal(includeConfig, true); return { id: 1, field_config: stored } },
+      async updateFieldPermission(_connection, _role, _key, serialized) { stored = JSON.parse(serialized) }
+    }
+  })
+  await service.saveForRole(5, 'inventory_inventoryview', { hidden_fields: ['basic.serial_number'] })
+  assert.deepEqual(stored.readonly_fields, ['price_info.purchase_cost'])
+  assert.deepEqual(stored.editable_fields, ['basic.imei', 'price_info.purchase_cost'])
+  await service.saveBatchForRole(5, { inventory_inventoryview: { hidden_fields: [] } })
+  assert.deepEqual(stored.readonly_fields, ['price_info.purchase_cost'])
+  await service.saveForRole(5, 'inventory_inventoryview', { readonly_fields: [] }, { user: { id: 7 } })
+  assert.deepEqual(stored.readonly_fields, [])
+  assert.deepEqual(audit[0].previous_readonly_fields, ['price_info.purchase_cost'])
+  assert.deepEqual(audit[0].readonly_fields, [])
+  assert.deepEqual(stored.editable_fields, ['basic.imei', 'price_info.purchase_cost'])
+  stored = '{broken-config'
+  await assert.rejects(service.saveForRole(5, 'inventory_inventoryview', { hidden_fields: [] }), /字段权限配置无效/)
+})
+
+test('三态只读配置拒绝无效列表，不将错误输入转换成解除限制', async () => {
+  const { normalizeFieldConfig, normalizeStoredFieldConfig } = require('../src/utils/field-permission-normalizer')
+  const controller = new Controller({ service: { async saveForRole() { assert.fail('无效配置不可保存') } }, logger: { debug() {}, error() {} } })
+  for (const readonly of [null, 'price_info.purchase_cost', [0], [' '], [' basic.imei']]) {
+    assert.equal(normalizeFieldConfig({ readonly_fields: readonly }), null)
+    for (const method of ['save', 'update']) {
+      const res = response()
+      await controller[method]({ params: { role_id: '5' }, body: { module_key: 'inventory_inventoryview', field_config: { readonly_fields: readonly } } }, res)
+      assert.equal(res.statusCode, 400)
+    }
+  }
+  assert.deepEqual(normalizeStoredFieldConfig({ field_config: { readonly_fields: ['basic.imei', 'basic.imei'] } }, { strict: true }).readonlyFields, ['basic.imei'])
 })

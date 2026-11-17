@@ -51,10 +51,35 @@ test('原混合单完整展示购买/赠品、SN及抵扣净额；原快照白�
   assert.deepEqual(output.items[1].serial_numbers, ['000SN1', '000SN2'])
   assert.equal(output.items[2].sale_type, 'gift')
   assert.equal(output.items[2].total_amount, 0)
+  assert.equal(output.items[2].gift_agreement_state, 'not_recorded')
   assert.equal(output.items[1].linked_phone_sale_no, 'PHONE-A')
   for (const row of output.items) {
     for (const key of ['snapshot', 'purchase_cost', 'sale_operator_id', 'accessory_id', 'customer_id']) assert.equal(key in row, false)
   }
+})
+
+test('整单赠品原约定缺失、零元和正金额分别展示，不加入原成交或实收', () => {
+  for (const price of [undefined, null, 0, 12.34]) {
+    const data = fixture(), gift = data.items[2]
+    gift.quantity = gift.goods_quantity = 3
+    gift.snapshot.gift_return_unit_price = price
+    const result = readCheckoutOrder(data.header, data.items), row = result.items[2]
+    assert.equal(row.gift_return_unit_price, price ?? null)
+    assert.equal(row.gift_return_total, price === undefined || price === null ? null : price === 0 ? 0 : 37.02)
+    assert.equal(row.gift_agreement_state, price === undefined || price === null ? 'not_recorded' : 'recorded')
+    assert.equal(row.total_amount, 0); assert.equal(result.paid_amount, 115)
+    assert.equal(result.items[0].gift_agreement_state, null)
+    assert.equal(result.items[1].gift_return_total, null)
+  }
+})
+
+test('整单赠品约定损坏或收费商品夹带约定时拒绝，不能生成看似有效的凭证', () => {
+  for (const price of ['bad', true, -1, 0.001, 100000000]) {
+    const data = fixture(); data.items[2].snapshot.gift_return_unit_price = price
+    assert.throws(() => readCheckoutOrder(data.header, data.items), { statusCode: 409 })
+  }
+  const data = fixture(); data.items[1].snapshot.gift_return_unit_price = 10
+  assert.throws(() => readCheckoutOrder(data.header, data.items), { statusCode: 409 })
 })
 
 test('多台手机及各自赠品保留真实归属，退货后仍展示原单而非当前库存', async () => {
@@ -139,7 +164,7 @@ test('来源必须是真实销售ID，双模块权限在仓储之前校验', asy
 })
 
 const controllerFor = (hidden = {}) => new Controller({ service: serviceFor(fixture()), masking: {
-  async getUserFieldPermissions(_id, module, options) { assert.equal(options.strict, true); return { hiddenFields: hidden[module] || [] } },
+  async getUserFieldPermissions(_id, module, options) { assert.equal(options.strict, true); return { hiddenFields: hidden[options.fieldScope === 'goods' ? 'query_goods' : module] || [] } },
   filterSensitiveFields(rows) { return rows }
 }, logger: { error() {} } })
 const read = async controller => {
@@ -161,24 +186,27 @@ test('手机与商品分别按本模块脱敏，共享头使用两模块交集�
 
 for (const field of ['basic_info.usage_type', 'stock_info.total_quantity', 'price_info.unit_price', 'price_info.total_price']) {
   test(`隐藏商品${field}同步隐藏整组资金与整单合计`, async () => {
-    const res = await read(controllerFor({ accessories_accessoriesview: [field] }))
+    const res = await read(controllerFor({ query_goods: [field] }))
     assert.equal(res.body.data.items[1].total_amount, null)
     assert.equal(res.body.data.items[1].points_used, null)
+    for (const key of ['gift_return_unit_price', 'gift_return_total', 'gift_agreement_state']) {
+      assert.equal(res.body.data.items[2][key], null)
+    }
     assert.equal(res.body.data.final_amount, null)
     assert.equal(res.body.data.items[0].total_amount, 100)
   })
 }
 
 test('隐藏商品单号不能从手机行或关联手机单号绕回', async () => {
-  const res = await read(controllerFor({ accessories_accessoriesview: ['basic_info.sequence'] }))
+  const res = await read(controllerFor({ query_goods: ['basic_info.sequence'] }))
   assert.equal(res.body.data.order_no, null)
   assert.ok(res.body.data.items.every(row => row.sale_no === null && row.linked_phone_sale_no === null))
 })
 
 test('任何模块字段权限读取故障均关闭整单响应，不能返回部分未脱敏事实', async () => {
-  for (const module of ['accessories_accessoriesview', 'query_queryview']) {
+  for (const module of ['query_goods', 'query_queryview']) {
     const controller = new Controller({ service: serviceFor(fixture()), masking: {
-      async getUserFieldPermissions(_id, key) { if (key === module) throw new Error('isolated failure'); return { hiddenFields: [] } },
+      async getUserFieldPermissions(_id, key, options) { if ((options.fieldScope === 'goods' ? 'query_goods' : key) === module) throw new Error('isolated failure'); return { hiddenFields: [] } },
       filterSensitiveFields(rows) { return rows }
     }, logger: { error() {} } })
     const res = await read(controller)

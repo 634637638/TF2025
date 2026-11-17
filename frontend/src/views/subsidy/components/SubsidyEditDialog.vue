@@ -165,6 +165,7 @@
           >
             <el-input
               v-model="editForm.serial_number"
+              v-identifier-input="'device-serial'"
               placeholder="请输入序列号"
               clearable
               :disabled="!canEditField('serial_number')"
@@ -180,6 +181,7 @@
             >
               <el-input
                 v-model="editForm.imei1"
+                v-identifier-input="'imei'"
                 placeholder="请输入IMEI1"
                 clearable
                 :disabled="!canEditField('imei1')"
@@ -193,6 +195,7 @@
             >
               <el-input
                 v-model="editForm.imei2"
+                v-identifier-input="'imei'"
                 placeholder="请输入IMEI2"
                 clearable
               />

@@ -1,218 +1,33 @@
 # 权限缓存刷新说明
 
-## 问题描述
+适用于前端权限界面及后端认证身份缓存。权限的三层边界见[页面权限能力规范](../frontend/permission-capability-standards.md#页面数据范围与动作三层边界)。
 
-当您在权限管理页面 (`https://localhost:5176/permissions`) 修改了角色的权限配置后，其他用户（或您自己）在页面上看到的按钮可能还是旧的权限状态。这是因为：
+## 服务端失效
 
-1. **前端权限缓存**: 用户登录时，权限会被加载到浏览器缓存中
-2. **指令缓存**: `v-permission` 指令使用缓存的权限数据
-3. **实时性问题**: 权限修改后，需要刷新才能生效
+`backend/src/middleware/unified-auth.js` 的 `invalidateAuthProfiles(userIds)` 按用户 ID 清理身份缓存，不传参数则清空。角色动作、菜单或字段权限变更、角色状态/类型变更、用户角色分配、旧 `/users` 账户变更以及员工账户变更成功后调用。下一次同令牌请求重新读取身份和权限，停用账户不能复用旧身份，停用角色不参与权限加载。
 
-## 解决方案
+用户门店绑定的新增、替换、主店设置、单店移除和清空均在事务内锁定用户；替换时删除旧绑定与写入新绑定同事务提交，失败保留旧绑定。所有绑定修改均失效该用户身份缓存（部分写入失败也失效）。权限读取异常必须向上返回失败，不可把异常转为空权限后判定目标为非管理员。已核验的空权限数组为明确拒绝结果，不再次回退查询。统一认证从当前 `user_stores` 与有效门店关联读取门店范围及主店，不使用 JWT 签发时的门店快照；未绑定时返回空范围。
 
-### 方案1: 自动刷新（已实现）
+权限缓存清理不撤销 JWT 本身；每个业务动作仍通过统一鉴权及对象、门店、字段范围检查。多进程部署的本地缓存按各进程失效和 3 秒 TTL 收敛，不承诺跨进程广播；发布及紧急撤权应重启全部后端实例。回归 `backend/test/auth-profile-invalidation.check.js` 使用模拟持久层，不连接业务库。
 
-权限管理系统已经实现了自动刷新功能：
+## 业务响应缓存
 
-1. **修改自己的角色权限**: 当您在权限管理页面修改**当前登录用户所属角色**的权限时，系统会自动调用 `authStore.fetchUserInfo()` 刷新权限
+`backend/src/middleware/cache.js` 对已登录请求、携带 Authorization 或 Cookie 的请求以及显式禁用缓存的入口统一设置 `no-store`，直接执行控制器，不读取或写入整包响应缓存。门店解绑、角色或字段变更后，每次业务请求重新经过当前身份、门店及字段检查；不能以 10 秒查询缓存替代授权。前端 `unifiedApi` 同样禁止携带认证头的请求使用本地响应缓存，并遵守服务端 `Cache-Control: no-store/private`，不能用旧缓存替换刚返回的脱敏响应。匿名且无凭据的公开 GET 仍可使用原 TTL 缓存。回归见 `backend/test/query-cache-route.check.js`。
 
-2. **自动触发条件**:
-   ```javascript
-   // 在 PermissionsView.vue 中，保存权限后会检查：
-   if (authStore.user?.role_id === selectedRoleId.value) {
-     await authStore.fetchUserInfo() // 自动刷新当前用户权限
-   }
-   ```
+## 前端刷新
 
-### 方案2: 手动刷新（推荐用于测试）
+业务门店下拉统一使用 `getStores({ strictScope: true })`；门店范围与当前账号相关，公共入口始终通过 `unifiedApi` 发起 `useCache:false` 请求，不把门店范围放进页面缓存。用户分配门店的管理界面使用 `getStores()` 获取完整门店选项；前端候选列表不能替代后端业务对象检查。
 
-如果您修改了其他角色的权限，或者想立即查看效果：
+国补照片签名校验后复用 `loadCurrentAuthUser` 装配当前有效身份，不复用旧身份缓存；再检查国补查看/上传权限、当前照片关联门店及字段。已入库照片引用必须属于授权店；未保存的照片仅允许签名所属、仍有上传权限且具备门店范围的用户预览。照片响应为 `private, no-store`；已显示或已下载内容不能因撤权从客户端追溯移除。
 
-1. **重新登录**:
-   - 退出登录
-   - 重新登录
-   - 系统会加载最新的权限
+权限管理保存后沿用 `PermissionsView.vue` 的公共权限刷新流程；其他用户已打开的页面可能暂留旧按钮，刷新页面或重新登录会重新加载。组件通过 `useAuthStore`、`usePagePermissions` 和 `v-permission` 消费同一结果，不另建权限缓存或请求实例。路由与指令统一调用 `authStore.hasPermission`，不能直接使用原始权限数组补救认证失败。
 
-2. **刷新页面**:
-   - 按 `Ctrl + R` (Windows) 或 `Cmd + R` (Mac)
-   - 或点击浏览器的刷新按钮
-   - 页面重新加载时会重新获取权限
+本地缓存仅恢复登录上下文；有无 session token、缓存角色是否完整都必须重新核验身份与权限。核验中拒绝授权；任一响应无效或服务不可用时清空授权结果、保持未就绪，可重试获取；401 或令牌撤销/过期清除登录，不恢复旧缓存。登录和刷新响应中的状态 0 保持停用；明确的空权限列表不得回退到旧摘要，服务端空角色列表不得恢复缓存角色。登录及令牌刷新仅在有效成功响应后恢复授权。正式前端回归为 `frontend/tests/auth-permission-state.spec.ts`、`route-permissions.spec.ts`、`permission-directive.spec.ts`。
 
-### 方案3: 强制刷新权限缓存
+主动退出先通过统一 API 调用 `/auth/logout`，待在途刷新完成后注销最新会话，再清理本地状态；退出期间的身份或刷新响应不得恢复旧权限。注销失败时仍清除本地身份并提示服务器注销未确认，不能声称 HttpOnly Cookie 已删除。
 
-在浏览器控制台执行：
+按钮暂留不能使后端放行。验收应分别检查：授权后页面/按钮可用，撤权后 API 拒绝，刷新后界面同步；不要通过修改浏览器存储测试服务端授权。
 
-```javascript
-// 刷新权限并重新加载页面
-import { useAuthStore } from '@/stores/auth'
-const authStore = useAuthStore()
-await authStore.fetchUserInfo()
-window.location.reload()
-```
+## 验证
 
-或者在任意组件中：
-
-```typescript
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-const refreshPermissions = async () => {
-  await authStore.fetchUserInfo()
-  window.location.reload()
-}
-```
-
-## 测试步骤
-
-### 测试权限修改是否生效
-
-1. **准备测试账户**:
-   - 销售员账户: `3333` / `636363`
-   - 管理员账户: `sadmin` / `123456`
-
-2. **修改权限**:
-   ```
-   1. 使用管理员账户登录
-   2. 访问权限管理页面: https://localhost:5176/permissions
-   3. 选择"销售员"角色
-   4. 取消勾选"subsidy:delete"权限
-   5. 点击"保存权限配置"
-   ```
-
-3. **验证权限**:
-   ```
-   方式1 - 使用销售员账户:
-   1. 退出登录
-   2. 使用销售员账户(3333)登录
-   3. 访问国补管理页面
-   4. 检查"删除"按钮是否隐藏
-
-   方式2 - 自动刷新(如果修改的是自己的角色):
-   1. 保存权限后，系统会自动刷新
-   2. 直接查看国补管理页面
-   3. 按F12打开控制台，查看权限日志
-   ```
-
-## 调试方法
-
-### 查看当前用户权限
-
-在浏览器控制台执行：
-
-```javascript
-// 查看所有权限
-import { useAuthStore } from '@/stores/auth'
-const authStore = useAuthStore()
-console.log('当前用户权限:', authStore.userPermissions)
-
-// 检查特定权限
-console.log('是否有删除权限:', authStore.hasPermission('subsidy:delete'))
-console.log('是否有编辑权限:', authStore.hasPermission('subsidy:edit'))
-```
-
-### 验证权限指令
-
-在控制台查看权限指令状态：
-
-```javascript
-// 查看所有带权限指令的元素
-document.querySelectorAll('[v-permission], [v-cloak]')
-```
-
-## 常见问题
-
-### Q1: 修改权限后，页面按钮还是显示/隐藏错误？
-
-**A**: 这是因为浏览器缓存了权限数据。解决方法：
-1. 退出登录后重新登录
-2. 或者按 `Ctrl + Shift + R` 强制刷新页面（清除缓存）
-
-### Q2: 权限管理页面保存成功，但权限没生效？
-
-**A**: 检查以下几点：
-1. 确认修改的是正确的角色
-2. 确认当前登录用户属于该角色
-3. 尝试退出登录后重新登录
-
-### Q3: 如何实时查看权限变化？
-
-**A**: 优先使用浏览器开发工具临时查看；确需在开发组件中短时监听时使用统一 logger，并在验证后删除该临时代码：
-
-```vue
-<script setup>
-import { watch } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { logger } from '@/utils/logger'
-
-const authStore = useAuthStore()
-
-// 监听权限变化
-watch(() => authStore.userPermissions, (newPerms) => {
-  logger.debug('权限已更新:', newPerms)
-  // 执行相应的更新操作
-}, { deep: true })
-</script>
-```
-
-## 最佳实践
-
-1. **权限修改后立即测试**:
-   - 修改权限后，使用被修改角色的测试账户登录
-   - 验证页面按钮和功能是否符合预期
-
-2. **定期清理缓存**:
-   - 开发时，定期清除浏览器缓存
-   - 或使用隐私/无痕模式测试
-
-3. **使用明确的权限名称**:
-   - 权限名称使用 `模块:操作` 格式，如 `subsidy:delete`
-   - 避免使用模糊的权限名称
-
-4. **测试所有权限组合**:
-   - 测试有权限的情况
-   - 测试无权限的情况
-   - 测试部分权限的情况
-
-## 技术细节
-
-### 权限加载流程
-
-```
-1. 用户登录
-   ↓
-2. 调用 /auth/user 获取用户信息
-   ↓
-3. 调用 /permissions/user-permissions 获取权限列表
-   ↓
-4. 将权限保存到 authStore.permissions
-   ↓
-5. userPermissions (computed) 自动更新
-   ↓
-6. v-permission 指令读取最新权限
-   ↓
-7. 显示/隐藏对应元素
-```
-
-### 权限刷新触发时机
-
-1. **用户登录** - 自动加载权限
-2. **修改自己的角色权限** - 自动刷新权限
-3. **调用 fetchUserInfo()** - 手动刷新权限
-4. **页面刷新** - 重新加载权限
-
-## 相关文件
-
-- **权限指令**: `/frontend/src/directives/permissionDirective.ts`
-- **权限Store**: `/frontend/src/stores/auth.ts`
-- **权限管理页面**: `/frontend/src/views/permissions/PermissionsView.vue`
-- **权限Composable**: `/frontend/src/composables/usePermissions.ts`
-
-## 总结
-
-权限系统的缓存机制是为了提高性能，但需要在权限修改后手动刷新。如果您在开发过程中频繁修改权限，建议：
-
-1. 使用无痕模式测试
-2. 或者修改代码，在权限修改成功后自动刷新页面
-3. 或者在浏览器中安装"自动刷新"扩展
-
-这样可以确保每次看到的都是最新的权限状态。
+运行 `cd backend && ENV_FILE=test/missing-unit-env RUN_DB_TESTS=false node --test test/auth-profile-invalidation.check.js test/permission-boundaries.check.js`。真实角色登录及多实例撤权需另行验收，不把隔离通过写成云端已生效。

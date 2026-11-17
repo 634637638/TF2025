@@ -112,7 +112,7 @@ async function fixture({ serial = false, agreement = 5, phoneAward = 0, redempti
     return operation(db)
   })
   const options = { repository: repo, accessories: f.service, pointsLedger: f.pointsLedger,
-    permissionCheck: async (user, action) => !denied.includes(action), tableExists: async () => true, columnExists: async () => true, now: () => time }
+    permissionCheck: async (user, action) => !['query:goods-sell', 'query:goods-gift'].includes(action) && !denied.includes(action), tableExists: async () => true, columnExists: async () => true, now: () => time }
   const service = new PhoneReturns(options), goodsReturns = new GoodsReturns(options)
   return { ...f, service, goodsReturns, calls, fail(value) { failure = value },
     quote: (changes = {}, user = actor) => service.quote(10, 20, body(changes), user),
@@ -266,7 +266,7 @@ test('原销售错位、过期、未完成、金额/积分异常、漏核对商�
     await assert.rejects(f.submit(), { statusCode: 409 })
     assert.equal(f.state.returnHeaders.length, 0)
   }
-  for (const permission of ['query:view', 'query:return-to-stock', 'accessories:view', 'accessories:gift']) {
+  for (const permission of ['query:view', 'query:return-to-stock', 'query:goods-view', 'accessories:gift']) {
     const f = await fixture({ denied: [permission] }); await assert.rejects(f.submit(), { statusCode: 403 })
   }
   const f = await fixture()
@@ -331,4 +331,34 @@ test('共同手机售后控制器先核验手机及商品必要字段权限，�
     const declaration = route.split('\n').find(row => row.includes(`'/checkout/:orderId/phones/:saleId/return${suffix}'`))
     assert.match(declaration, /unifiedAuth, requirePermission\('query:view'\), requirePermission\('query:return-to-stock'\)/)
   }
+})
+
+
+test('联合手机退货共用旧退库处理意向选项，保存事实并按退库返还库存；变更意向不能复用已成交请求', async () => {
+  const options = require('../src/config/return-stock-options.json')
+  for (const return_type of options.return_type) for (const handle_method of options.handle_method) {
+    const f = await fixture()
+    const result = await f.submit({ return_type, handle_method })
+    const fact = JSON.parse(f.state.returnItems.find(row => row.original_item_id === 50).fact_snapshot)
+    assert.equal(fact.return_type, return_type)
+    assert.equal(fact.handle_method, handle_method)
+    assert.equal(f.state.phoneSale.phone_status, 'in_stock')
+    assert.equal(f.state.phoneSale.phone_store_id, 2)
+    assert.equal(f.state.phoneSale.sale_status, 'cancelled')
+    assert.deepEqual(await f.submit({ return_type, handle_method }), result)
+    await assert.rejects(f.submit({ return_type: return_type === '退货处理' ? '申请换货' : '退货处理', handle_method }), { code: 'CHECKOUT_RETURN_REQUEST_CONFLICT' })
+    assert.equal(f.state.returnHeaders.length, 1)
+  }
+})
+
+test('未知、空值及对象形式的处理意向在售后事务之前拒绝；旧请求不新增字段影响幂等摘要', async () => {
+  const f = await fixture()
+  for (const field of ['return_type', 'handle_method']) for (const value of ['', null, {}, '无效选项']) {
+    await assert.rejects(f.quote({ [field]: value }), { code: 'CHECKOUT_RETURN_INVALID', statusCode: 400 })
+  }
+  assert.equal(f.state.returnHeaders.length, 0)
+  assert.equal(f.state.commits, 0)
+  const input = f.service.normalize(10, 20, body(), actor, true)
+  assert.equal(Object.hasOwn(input, 'return_type'), false)
+  assert.equal(Object.hasOwn(input, 'handle_method'), false)
 })

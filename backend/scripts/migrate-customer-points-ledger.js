@@ -8,7 +8,7 @@ const definitions = {
   customer_points_entries: {
     columns: {
       id: ['bigint unsigned', 'NO'], customer_id: ['int', 'NO'],
-      entry_type: ["enum('award','revoke','redeem')", 'NO'], source_type: ["enum('phone_sale','checkout_item')", 'NO'],
+      entry_type: ["enum('award','revoke','redeem')", 'NO'], source_type: ["enum('phone_sale','checkout_item','opening_balance','manual_adjustment')", 'NO'],
       source_id: ['bigint unsigned', 'NO'], points: ['int', 'NO'], untracked_points: ['int unsigned', 'NO'],
       balance_after: ['int unsigned', 'NO'], amount_cents: ['bigint unsigned', 'YES'], points_per_yuan: ['int unsigned', 'YES'],
       redemption_item_id: ['bigint unsigned', 'YES'], source_snapshot: ['json', 'NO'], created_at: ['datetime', 'NO']
@@ -18,7 +18,7 @@ const definitions = {
     sql: `CREATE TABLE customer_points_entries (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
       customer_id INT NOT NULL, entry_type ENUM('award','revoke','redeem') NOT NULL,
-      source_type ENUM('phone_sale','checkout_item') NOT NULL, source_id BIGINT UNSIGNED NOT NULL,
+      source_type ENUM('phone_sale','checkout_item','opening_balance','manual_adjustment') NOT NULL, source_id BIGINT UNSIGNED NOT NULL,
       points INT NOT NULL, untracked_points INT UNSIGNED NOT NULL DEFAULT 0, balance_after INT UNSIGNED NOT NULL,
       amount_cents BIGINT UNSIGNED NULL, points_per_yuan INT UNSIGNED NULL, redemption_item_id BIGINT UNSIGNED NULL,
       source_snapshot JSON NOT NULL, created_at DATETIME NOT NULL,

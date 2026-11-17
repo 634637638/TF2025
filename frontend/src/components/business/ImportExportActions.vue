@@ -5,7 +5,6 @@
     :plain="importPlain"
     :disabled="importDisabled"
     :loading="importLoading"
-    :size="size"
     :title="importTitle"
     @click="emit('import')"
   >
@@ -19,7 +18,6 @@
     :plain="exportPlain"
     :disabled="exportDisabled"
     :loading="exportLoading"
-    :size="size"
     :title="exportTitle"
     @click="emit('export')"
   >
@@ -50,7 +48,6 @@ interface Props {
   exportPlain?: boolean
   importTitle?: string
   exportTitle?: string
-  size?: 'large' | 'default' | 'small'
 }
 
 interface Emits {
@@ -78,8 +75,7 @@ withDefaults(defineProps<Props>(), {
   importPlain: false,
   exportPlain: false,
   importTitle: '导入数据',
-  exportTitle: '导出数据',
-  size: 'default'
+  exportTitle: '导出数据'
 })
 
 const emit = defineEmits<Emits>()

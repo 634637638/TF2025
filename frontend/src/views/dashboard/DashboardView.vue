@@ -205,6 +205,8 @@
             </article>
           </section>
 
+          <DashboardQuickAccess ref="shortcutsRef" />
+
           <!-- 综合预警 -->
           <ComprehensiveWarnings v-if="canViewField('warnings.comprehensive')" />
 
@@ -274,6 +276,7 @@ import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { announcementsApi } from '@/api/announcements'
 import type { SiteAnnouncement } from '@/types'
 import RichContent from '@/components/RichContent.vue'
+import DashboardQuickAccess from './page/DashboardQuickAccess.vue'
 
 // 使用通知服务
 const {
@@ -296,6 +299,7 @@ const canViewField = (fieldKey: string) => fieldPermissions.isFieldVisible(DASHB
 
 // 待审批提醒组件引用
 const pendingApprovementsRef = ref<InstanceType<typeof PendingApprovals> | null>(null)
+const shortcutsRef = ref<InstanceType<typeof DashboardQuickAccess> | null>(null)
 
 // 使用站点设置store
 const siteSettingsStore = useSiteSettingsStore()
@@ -398,6 +402,7 @@ const refreshData = async () => {
     unifiedApi.clearCache('/dashboard')
     unifiedApi.clearCache('/system/announcements')
     await loadDashboardData(false)
+    await shortcutsRef.value?.load()
     // 刷新待审批提醒
     if (pendingApprovementsRef.value?.refresh) {
       await pendingApprovementsRef.value.refresh()

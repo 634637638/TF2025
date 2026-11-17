@@ -11,9 +11,9 @@ const createResponse = () => ({
   status(code) { this.statusCode = code; return this }
 })
 
-test('sales customer search route preserves authentication and view permission', () => {
+test('sales customer search route uses authenticated business candidate authorization', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/sales.js'), 'utf8')
-  assert.match(route, /router\.get\('\/customers', unifiedAuth, requirePermission\('sales:view'\), salesCustomerSearchController\.search\.bind\(salesCustomerSearchController\)\)/)
+  assert.match(route, /router\.get\('\/customers', unifiedAuth, requireCustomerSearchPermission, salesCustomerSearchController\.search\.bind\(salesCustomerSearchController\)\)/)
 })
 
 test('sales customer search returns the existing empty response for terms shorter than two characters', async () => {

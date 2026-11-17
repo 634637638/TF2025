@@ -9,7 +9,7 @@ import {
   getCachedMemories,
   getModels,
   searchOperators,
-  getCachedStores,
+  getStores,
   getCachedSuppliers
 } from '@/services/reference-options'
 import type { ReferenceRecord } from '@/services/reference-options'
@@ -62,7 +62,7 @@ export const useInventoryBaseOptions = ({
 
   const loadStores = async () => {
     try {
-      const response = await getCachedStores()
+      const response = await getStores({ strictScope: true })
       if (response.success) {
         const storesArray = Array.isArray(response.data)
           ? response.data.map(item => ({

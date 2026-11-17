@@ -340,7 +340,6 @@
               <el-button
                 v-if="canEdit"
                 type="primary"
-                size="small"
                 title="合并到第一条"
                 @click="handleMergeGroup(group)"
               >
@@ -350,7 +349,6 @@
               <el-button
                 v-if="canDelete"
                 type="danger"
-                size="small"
                 title="删除重复项"
                 @click="handleDeleteGroup(group)"
               >
@@ -414,7 +412,6 @@
                 <el-button
                   v-if="canEdit"
                   type="info"
-                  size="small"
                   title="编辑"
                   @click="handleEditItem(item)"
                 >
@@ -423,7 +420,6 @@
                 <el-button
                   v-if="itemIndex !== 0 && canDelete"
                   type="danger"
-                  size="small"
                   title="删除"
                   @click="handleDeleteItem(item, itemIndex, group)"
                 >

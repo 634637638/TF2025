@@ -204,7 +204,6 @@
                   description="暂无品牌数据"
                 >
                   <el-button
-                    size="small"
                     type="info"
                     @click="loadBrands()"
                   >
@@ -320,7 +319,6 @@
                       v-if="canEdit"
                       v-permission="'brands:edit'"
                       type="primary"
-                      size="small"
                       @click.stop="editBrand(row)"
                     >
                       <i class="fas fa-edit" /><span>编辑</span>
@@ -328,7 +326,6 @@
                       v-if="canDelete"
                       v-permission="'brands:delete'"
                       type="danger"
-                      size="small"
                       @click.stop="deleteBrand(row)"
                     >
                       <i class="fas fa-trash" /><span>删除</span>
@@ -444,6 +441,7 @@
             >
               <el-radio-group
                 v-model="formData.status"
+                class="tf-state-selector"
                 :disabled="!canEditField('status')"
               >
                 <el-radio :value="1">
@@ -483,6 +481,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { ref, onMounted, computed } from 'vue'
 import unifiedApi from '@/utils/unified-api'
 import { extractResponseData } from '@/utils/api-response'
@@ -550,11 +549,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('brands_brandsview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('brands_brandsview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
@@ -641,6 +636,7 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
     tableLoading.value = true
   }
 
+  const request = brandListRequest.nextRequest()
   try {
     const params: QueryParams = {
       page: pagination.value.page,
@@ -657,10 +653,10 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
       params._t = Date.now()
     }
 
-    const request = brandListRequest.nextRequest()
     const response = await unifiedApi.get('/brands', {
       params,
       useCache: !bustCache,
+      showError: false,
       signal: request.signal
     })
 
@@ -692,28 +688,30 @@ const loadBrands = async (bustCache = false, silentError = false, _showLoadingSt
         has_next: Boolean(apiPagination.has_next),
         has_prev: Boolean(apiPagination.has_prev)
       }
+      return true
     } else {
-      brands.value = []
-      pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
       if (!silentError) {
+        brands.value = []
+        pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
         error(`获取品牌列表失败: ${response.message || '未知错误'}`)
       }
+      return false
     }
   } catch (err: unknown) {
-    if (brandListRequest.isCanceledError(err)) {
+    if (!request.isLatest() || brandListRequest.isCanceledError(err)) {
       return
     }
 
     logger.error('获取品牌列表失败:', err)
-    brands.value = []
-    pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
-
-    // 使用统一的错误处理
+    // 保存已确认成功时，刷新失败保留已有行，由提交入口提示具体结果。
     if (!silentError) {
+      brands.value = []
+      pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
       handleApiError(err, '获取品牌列表失败')
     }
+    return false
   } finally {
-    if (_showLoadingState) {
+    if (request.isLatest()) {
       tableLoading.value = false
     }
   }
@@ -751,9 +749,8 @@ const handlePaginationChange = (page: number, pageSize: number) => {
 // 刷新数据 - 使用统一的 composable
 const handleRefresh = async () => {
   await refresh(async () => {
-    await loadBrands(true, false, false)
-  })
-  success('数据刷新成功', { duration: 2000 })
+    if (await loadBrands(true, true, false) === false) throw new Error('刷新品牌列表失败')
+  }, { successMessage: '数据刷新成功', errorMessage: '刷新失败，请重试' })
 }
 
 const editBrand = (brand: Brand) => {
@@ -894,12 +891,13 @@ const submitForm = async () => {
 
       response = await unifiedApi.post('/brands', submitData, { showError: false })
       if (response.success) {
-        success(response.message || '品牌创建成功', {
-          title: '操作成功',
-          duration: 3000
-        })
         closeModal()
-        await loadBrands(true, false, false)
+        const refreshed = await loadBrands(true, true, false)
+        if (refreshed === false) {
+          warning('品牌已创建，列表刷新失败，请点击刷新；请勿重复提交。')
+        } else {
+          success(response.message || '品牌创建成功', { title: '操作成功', duration: 3000 })
+        }
       } else {
         error(`创建品牌失败: ${response.message || '未知错误'}`)
       }
@@ -921,12 +919,13 @@ const submitForm = async () => {
 
       response = await unifiedApi.put(`/brands/${currentEditingId.value}`, submitData, { showError: false })
       if (response.success) {
-        success(response.message || '品牌更新成功', {
-          title: '操作成功',
-          duration: 3000
-        })
         closeModal()
-        await loadBrands(true, false, false)
+        const refreshed = await loadBrands(true, true, false)
+        if (refreshed === false) {
+          warning('品牌已更新，列表刷新失败，请点击刷新；请勿重复提交。')
+        } else {
+          success(response.message || '品牌更新成功', { title: '操作成功', duration: 3000 })
+        }
       } else {
         error(`更新品牌失败: ${response.message || '未知错误'}`)
       }
@@ -982,7 +981,9 @@ const { savingOrder, handleSortOrderChange, handleRowMove: handleBrandRowMove } 
   endpoint: '/brands',
   moduleName: '品牌管理',
   canEdit,
-  reload: () => loadBrands(true, false, false)
+  reload: async () => {
+    if (await loadBrands(true, true, false) === false) throw new Error('品牌排序已保存，列表刷新失败')
+  }
 })
 
 useElementTableSortable({
@@ -1028,6 +1029,10 @@ onMounted(async () => {
 
   await initFieldPermissions()
   await Promise.all([loadBrands(), loadStats()])
+})
+
+usePageShortcuts('/brands', {
+  'brand-create': { open: handleCreateBrand }
 })
 </script>
 

@@ -8,24 +8,85 @@ const { appendStoreScopeCondition } = require('../utils/store-scope')
 const { hasColumn } = require('../utils/schema-inspector')
 const { purchaseSnapshotText } = require('../utils/accessory-purchase-snapshot')
 const { appendPurchaseStoreScope } = require('../utils/accessory-purchase-scope')
+const { normalizedModelSql, escapeLikePattern } = require('../utils/search')
+const AccessoryTemplateColorRepository = require('./accessory-template-color.repository')
 
-// 品牌库存商品继承模板的共享资料；品牌、厂家型号和库存仍归实际商品。
+// 品牌库存商品继承模板的共享资料；品牌、采购来源和库存仍归实际商品。
 const templateField = field => `IF(a.template_id IS NULL, a.${field}, t.${field})`
-const ACCESSORY_STATUS = 'IF(a.template_id IS NULL, a.status, IFNULL(LEAST(a.status, t.status), 0))'
-const ACCESSORY_SELECT_FIELDS = `
+const ACCESSORY_STATUS = templateField('status')
+const ACCESSORY_SELECT_FIELDS = (purchaseCost = 'a.purchase_cost') => `
   a.id, a.template_id,
-  ${['name', 'barcode', 'category_id', 'model_id', 'color_id', 'sale_price', 'unit_id', 'description', 'image_url', 'serial_tracking', 'min_stock'].map(field => `${templateField(field)} AS ${field}`).join(',\n  ')},
+  ${['name', 'barcode', 'category_id', 'model_id', 'color_id', 'sale_price', 'unit_id', 'description', 'image_url', 'serial_tracking', 'min_stock', 'product_model', 'remarks'].map(field => `${templateField(field)} AS ${field}`).join(',\n  ')},
   COALESCE(ac.name, ${templateField('category')}) AS category,
   COALESCE(au.name, ${templateField('unit')}) AS unit,
-  a.product_model, a.brand_id, a.supplier_id, a.purchase_cost,
+  a.brand_id, a.supplier_id, ${purchaseCost} AS purchase_cost,
   ${ACCESSORY_STATUS} AS status,
-  a.remarks, a.created_at, a.updated_at
+  a.created_at, a.updated_at
 `
 
+// 展示进价取授权范围内最近一笔有效采购；不改商品主档或历史交易成本。
+function purchaseCostProjection(scope) {
+  if (!scope) return { sql: 'a.purchase_cost', params: [] }
+  const conditions = ['si.accessory_id = a.id', "si.status = 'completed'"], params = []
+  appendPurchaseStoreScope(scope, 'si', conditions, params)
+  return { sql: `COALESCE((SELECT si.purchase_cost FROM accessory_stock_in si
+    WHERE ${conditions.join(' AND ')} ORDER BY si.inventory_time DESC, si.id DESC LIMIT 1), a.purchase_cost)`, params }
+}
+
 class AccessoryRepository extends BaseRepository {
-  constructor({ columnExists = hasColumn } = {}) {
+  constructor({ columnExists = hasColumn, templateColors = new AccessoryTemplateColorRepository() } = {}) {
     super('accessories')
     this.columnExists = columnExists
+    this.templateColors = templateColors
+  }
+
+  /** 积分范围选项仅公开商品档案，不返回库存、成本或供应商。 */
+  async getPointsProducts({ categoryIds = [], ids = [], search = '', page = 1, pageSize = 50 } = {}) {
+    const conditions = [], params = []
+    if (ids.length) {
+      conditions.push(`a.id IN (${ids.map(() => '?').join(',')})`)
+      params.push(...ids)
+    } else {
+      conditions.push(`${ACCESSORY_STATUS} = 1`, '(a.template_id IS NOT NULL OR EXISTS (SELECT 1 FROM accessory_stock ps WHERE ps.accessory_id = a.id))')
+    }
+    if (categoryIds.length) {
+      conditions.push(`${templateField('category_id')} IN (${categoryIds.map(() => '?').join(',')})`)
+      params.push(...categoryIds)
+    }
+    if (search) {
+      conditions.push(`(${templateField('name')} LIKE ? OR ${templateField('product_model')} LIKE ? OR b.name LIKE ?)`)
+      const keyword = `%${escapeLikePattern(search)}%`
+      params.push(keyword, keyword, keyword)
+    }
+    const from = `FROM accessories a LEFT JOIN accessories t ON t.id = a.template_id
+      LEFT JOIN brands b ON b.id = a.brand_id LEFT JOIN colors c ON c.id = ${templateField('color_id')}
+      WHERE ${conditions.length ? conditions.join(' AND ') : '1 = 0'}`
+    const [count] = await this.queryRows(`SELECT COUNT(*) AS total ${from}`, params)
+    const data = await this.queryRows(`SELECT a.id, ${templateField('name')} AS name,
+      ${templateField('category_id')} AS category_id, ${templateField('product_model')} AS product_model,
+      b.name AS brand_name, c.name AS color_name, ${ACCESSORY_STATUS} AS status
+      ${from} ORDER BY a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`, params)
+    return { data: data.map(row => ({ ...row, id: Number(row.id), category_id: Number(row.category_id), status: Number(row.status) })),
+      pagination: { page, page_size: pageSize, total: Number(count.total) } }
+  }
+
+  async filmReady(executor) {
+    return this.columnExists('accessories', 'free_film', executor)
+  }
+
+  async filmSelect(executor) {
+    const ready = await this.filmReady(executor)
+    return `${ready ? templateField('free_film') : 'NULL'} AS free_film`
+  }
+
+  /** 共用分类首行串行化模板配置与适配范围变更，不创建业务锁记录。 */
+  async lockFilmConfiguration(executor, data = {}) {
+    if (!await this.filmReady(executor)) {
+      if (data.free_film !== undefined) throw Object.assign(new Error('模板贴膜结构尚未就绪，请先完成迁移'), { statusCode: 409, code: 'FILM_SERVICE_NOT_READY' })
+      return false
+    }
+    await this.queryRows('SELECT id FROM accessory_categories ORDER BY id LIMIT 1 FOR UPDATE', [], executor)
+    return true
   }
 
   async queryRows(sql, params = [], executor) {
@@ -34,18 +95,36 @@ class AccessoryRepository extends BaseRepository {
   }
 
   /** 销售候选只读取所选授权门店，不返回采购成本或其他门店库存。 */
-  async getSaleOptions({ storeId, search, searchFields, page, pageSize, filmOnly = false }) {
-    if (filmOnly && !await this.columnExists('accessory_categories', 'film_enabled')) {
-      throw Object.assign(new Error('贴膜类型字段尚未就绪，请先完成迁移'), { statusCode: 409, code: 'FILM_SERVICE_NOT_READY' })
-    }
-    const columns = { name: templateField('name'), barcode: templateField('barcode'), brand_name: 'b.name', product_model: 'a.product_model' }
+  async getSaleOptions({ storeId, search, searchFields, page, pageSize, filmOnly = false, filmFreeOnly, filmModelId, searchMode, exactMatch = false, includePurchaseCost = false }) {
+    const category = `COALESCE(sale_category.name, ${templateField('category')})`
+    const columns = { name: templateField('name'), category, barcode: templateField('barcode'), brand_name: 'b.name', product_model: templateField('product_model') }
     const conditions = ['st.store_id = ?', 'st.quantity > 0', `${ACCESSORY_STATUS} = 1`]
     const params = [storeId]
-    if (filmOnly) conditions.push(`EXISTS (SELECT 1 FROM accessory_categories fc WHERE fc.id = ${templateField('category_id')} AND fc.status = 1 AND fc.film_enabled = 1)`)
-    if (search) {
+    const serialCount = "(SELECT COUNT(*) FROM accessory_serials sn WHERE sn.accessory_id = a.id AND sn.store_id = st.store_id AND sn.status = 'in_stock')"
+    if (searchMode === 'regular') conditions.push(`st.quantity > ${serialCount}`)
+    if (searchMode === 'serial' && !searchFields.includes('serial_number')) conditions.push('1 = 0')
+    if (filmOnly) {
+      // 贴膜候选只允许膜类目录，避免把手机壳、数据线等普通配件混入办理流程。
+      conditions.push(`EXISTS (SELECT 1 FROM accessory_categories fc WHERE fc.id = ${templateField('category_id')} AND fc.status = 1 AND fc.name LIKE '%膜%')`)
+      if (filmFreeOnly === true) conditions.push(`${templateField('free_film')} = 1`)
+      // 收费模式允许选择免费专用膜并按正常价格收费；只有免费模式需要限定开关。
+      if (filmModelId) {
+        conditions.push(`(EXISTS (SELECT 1 FROM accessory_compatible_models fm WHERE fm.accessory_id = COALESCE(a.template_id,a.id) AND fm.model_id = ?) OR (NOT EXISTS (SELECT 1 FROM accessory_compatible_models fm WHERE fm.accessory_id = COALESCE(a.template_id,a.id)) AND (${templateField('model_id')} IS NULL OR ${templateField('model_id')} = ?)))`)
+        params.push(filmModelId, filmModelId)
+      }
+    }
+    if (exactMatch) {
+      if (searchMode === 'serial' && searchFields.includes('serial_number')) conditions.push('picked_sn.serial_number = ?')
+      else if (searchMode === 'regular' && searchFields.includes('barcode')) conditions.push(`${columns.barcode} = ?`)
+      else conditions.push('1 = 0')
+      if ((searchMode === 'serial' && searchFields.includes('serial_number')) || (searchMode === 'regular' && searchFields.includes('barcode'))) params.push(search)
+    } else if (searchMode === 'serial' && search) {
+      conditions.push('picked_sn.serial_number LIKE ?')
+      params.push(`%${search}%`)
+    } else if (search) {
       const matches = searchFields.filter(field => columns[field]).map(field => `${columns[field]} LIKE ?`)
       params.push(...matches.map(() => `%${search}%`))
-      if (searchFields.includes('serial_number')) {
+      if (!searchMode && searchFields.includes('serial_number')) {
         matches.push("EXISTS (SELECT 1 FROM accessory_serials sn WHERE sn.accessory_id = a.id AND sn.store_id = st.store_id AND sn.status = 'in_stock' AND sn.serial_number LIKE ?)")
         params.push(`%${search}%`)
       }
@@ -53,27 +132,34 @@ class AccessoryRepository extends BaseRepository {
     }
     const from = `FROM accessory_stock st JOIN accessories a ON a.id = st.accessory_id
       LEFT JOIN accessories t ON t.id = a.template_id LEFT JOIN brands b ON b.id = a.brand_id
+      LEFT JOIN accessory_categories sale_category ON sale_category.id = ${templateField('category_id')}
+      LEFT JOIN colors sale_color ON sale_color.id = ${templateField('color_id')}
+      LEFT JOIN accessory_units sale_unit ON sale_unit.id = ${templateField('unit_id')}
+      ${searchMode === 'serial' ? 'JOIN accessory_serials picked_sn ON picked_sn.accessory_id = a.id AND picked_sn.store_id = st.store_id AND picked_sn.status = \'in_stock\'' : ''}
       WHERE ${conditions.join(' AND ')}`
     const [count] = await this.queryRows(`SELECT COUNT(*) AS total ${from}`, params)
     const data = await this.queryRows(`SELECT a.id, ${templateField('name')} AS name,
-      ${templateField('barcode')} AS barcode, b.name AS brand_name, a.product_model,
-      ${templateField('sale_price')} AS sale_price, st.quantity,
-      (SELECT COUNT(*) FROM accessory_serials sn WHERE sn.accessory_id = a.id AND sn.store_id = st.store_id AND sn.status = 'in_stock') AS serial_quantity
-      ${from} ORDER BY ${templateField('name')}, b.name, a.id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`, params)
+      ${templateField('barcode')} AS barcode, ${category} AS category, b.name AS brand_name, ${templateField('product_model')} AS product_model,
+      sale_color.name AS color_name, COALESCE(sale_unit.name, ${templateField('unit')}) AS unit,
+      ${templateField('sale_price')} AS sale_price${includePurchaseCost ? ', a.purchase_cost AS purchase_cost' : ''},
+      ${searchMode === 'regular' ? `st.quantity - ${serialCount}` : searchMode === 'serial' ? '1' : 'st.quantity'} AS quantity,
+      ${searchMode === 'regular' ? '0' : searchMode === 'serial' ? '1' : serialCount} AS serial_quantity
+      ${searchMode === 'serial' ? ', picked_sn.serial_number' : ''}
+      ${from} ORDER BY ${templateField('name')}, b.name, a.id${searchMode === 'serial' ? ', picked_sn.serial_number' : ''} LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`, params)
     return { data, pagination: { page, page_size: pageSize, total: Number(count.total) } }
   }
 
   async getProductCatalog() {
-    const filmReady = await this.columnExists('accessory_categories', 'film_enabled')
+    const filmReady = await this.filmReady()
     const [categories, units] = await Promise.all([
-      this.getProductCategories(filmReady),
+      this.getProductCategories(),
       this.queryRows('SELECT id, name, status, sort_order, created_at, updated_at FROM accessory_units ORDER BY sort_order, name, id')
     ])
     return { categories, units, film_ready: filmReady }
   }
 
-  async getProductCategories(filmReady = false) {
-    return this.queryRows(`SELECT id, name, status, sort_order, description, ${filmReady ? 'film_enabled' : 'NULL AS film_enabled'},
+  async getProductCategories() {
+    return this.queryRows(`SELECT id, name, status, sort_order, description,
       created_at, updated_at FROM accessory_categories ORDER BY sort_order, name, id`)
   }
 
@@ -81,22 +167,18 @@ class AccessoryRepository extends BaseRepository {
     const tables = { category: 'accessory_categories', unit: 'accessory_units' }
     const table = tables[kind]
     if (!table) throw new Error('不支持的商品资料类型')
-    const filmWrite = kind === 'category' && data.film_enabled !== undefined
-    if (filmWrite && !await this.columnExists('accessory_categories', 'film_enabled')) {
-      throw Object.assign(new Error('贴膜类型字段尚未就绪，请先完成迁移'), { statusCode: 409, code: 'FILM_SERVICE_NOT_READY' })
-    }
+    if (data.film_enabled !== undefined) throw Object.assign(new Error('贴膜配置已移至商品模板'), { statusCode: 400, code: 'VALIDATION_ERROR' })
     if (id) {
       const [result] = await this.executePrepared(
-        `UPDATE ${table} SET name = ?, status = ?, sort_order = ?, ${kind === 'category' ? 'description = ?,' : ''}${filmWrite ? 'film_enabled = ?,' : ''} updated_at = NOW() WHERE id = ?`,
+        `UPDATE ${table} SET name = ?, status = ?, sort_order = ?, ${kind === 'category' ? 'description = ?,' : ''} updated_at = NOW() WHERE id = ?`,
         kind === 'category'
-          ? [data.name, data.status, data.sort_order, data.description, ...(filmWrite ? [data.film_enabled ? 1 : 0] : []), id]
+          ? [data.name, data.status, data.sort_order, data.description, id]
           : [data.name, data.status, data.sort_order, id]
       )
       return result.affectedRows > 0
     }
-    const columns = (kind === 'category' ? 'name, status, sort_order, description' : 'name, status, sort_order') + (filmWrite ? ', film_enabled' : '')
+    const columns = kind === 'category' ? 'name, status, sort_order, description' : 'name, status, sort_order'
     const values = kind === 'category' ? [data.name, data.status, data.sort_order, data.description] : [data.name, data.status, data.sort_order]
-    if (filmWrite) values.push(data.film_enabled ? 1 : 0)
     const [result] = await this.executePrepared(`INSERT INTO ${table} (${columns}) VALUES (${values.map(() => '?').join(', ')})`, values)
     return result.insertId
   }
@@ -144,6 +226,7 @@ class AccessoryRepository extends BaseRepository {
     const brandOption = row => ({ id: row.id, name: row.name, status: row.status, sort_order: row.sort_order })
     options.model_brands = options.brands.filter(row => (Number(row.status) === 1 && row.business_scope !== 'accessory') || Number(row.id) === Number(current.model_brand_id)).map(brandOption)
     options.brands = options.brands.filter(row => (Number(row.status) === 1 && row.business_scope !== 'phone') || Number(row.id) === Number(current.brand_id)).map(brandOption)
+    options.film_ready = await this.filmReady()
     options.categories = await this.queryRows(
       'SELECT id, name, status, sort_order FROM accessory_categories WHERE status = 1 OR id = ? ORDER BY sort_order, name, id',
       [current.category_id || null]
@@ -182,6 +265,8 @@ class AccessoryRepository extends BaseRepository {
         category,
         brand_id,
         model_id,
+        model_name,
+        color_id,
         supplier_id,
         status = 1,
         search,
@@ -194,11 +279,22 @@ class AccessoryRepository extends BaseRepository {
       const offset = (normalizedPage - 1) * normalized_page_size
       const conditions = []
       const params = []
+      const templateColorsReady = mode === 'templates' && executor && await this.templateColors.ready(executor)
+      const modelNameColumn = `CONCAT_WS(' ', mb.name, m.name, (
+        SELECT GROUP_CONCAT(CONCAT_WS(' ', search_brand.name, search_model.name))
+        FROM accessory_compatible_models search_am
+        INNER JOIN models search_model ON search_model.id = search_am.model_id
+        INNER JOIN brands search_brand ON search_brand.id = search_model.brand_id
+        WHERE search_am.accessory_id = COALESCE(a.template_id, a.id)
+      ))`
 
       const stockConditions = ['current_stock.accessory_id = a.id'], stockParams = []
       appendStoreScopeCondition(options.store_scope, 'current_stock.store_id', stockConditions, stockParams)
       const stockExists = `EXISTS (SELECT 1 FROM accessory_stock current_stock WHERE ${stockConditions.join(' AND ')})`
-      if (mode === 'templates') conditions.push('a.template_id IS NULL')
+      if (mode === 'templates') {
+        conditions.push('a.template_id IS NULL')
+        if (templateColorsReady) conditions.push('NOT EXISTS (SELECT 1 FROM accessory_template_colors variant WHERE variant.accessory_id = a.id)')
+      }
       else {
         conditions.push(mode === 'inventory' ? stockExists : `(a.template_id IS NULL OR ${stockExists})`)
         params.push(...stockParams)
@@ -218,13 +314,41 @@ class AccessoryRepository extends BaseRepository {
       }
 
       if (brand_id) {
-        conditions.push('a.brand_id = ?')
-        params.push(brand_id)
+        if (mode === 'templates') {
+          const brandStockConditions = ['brand_stock.accessory_id = branded_product.id'], brandStockParams = []
+          appendStoreScopeCondition(options.store_scope, 'brand_stock.store_id', brandStockConditions, brandStockParams)
+          const linkedTemplate = templateColorsReady
+            ? '(branded_product.template_id = a.id OR branded_product.template_id IN (SELECT brand_variant.accessory_id FROM accessory_template_colors brand_variant WHERE brand_variant.template_id = a.id))'
+            : 'branded_product.template_id = a.id'
+          conditions.push(`(a.brand_id = ? OR EXISTS (SELECT 1 FROM accessories branded_product
+            WHERE branded_product.brand_id = ? AND ${linkedTemplate}
+              AND EXISTS (SELECT 1 FROM accessory_stock brand_stock WHERE ${brandStockConditions.join(' AND ')})))`)
+          params.push(brand_id, brand_id, ...brandStockParams)
+        } else {
+          conditions.push('a.brand_id = ?')
+          params.push(brand_id)
+        }
       }
 
       if (model_id) {
-        conditions.push('EXISTS (SELECT 1 FROM accessory_compatible_models am WHERE am.accessory_id = COALESCE(a.template_id, a.id) AND am.model_id = ?)')
-        params.push(model_id)
+        conditions.push(`(${templateField('model_id')} = ? OR EXISTS (SELECT 1 FROM accessory_compatible_models am WHERE am.accessory_id = COALESCE(a.template_id, a.id) AND am.model_id = ?))`)
+        params.push(model_id, model_id)
+      }
+
+      if (model_name?.trim() === '通用') {
+        conditions.push(`(${templateField('model_id')} IS NULL AND NOT EXISTS (SELECT 1 FROM accessory_compatible_models am WHERE am.accessory_id = COALESCE(a.template_id, a.id)))`)
+      } else if (model_name?.trim()) {
+        for (const keyword of model_name.trim().split(/\s+/u).filter(Boolean)) {
+          conditions.push(`CONVERT(${normalizedModelSql(modelNameColumn)} USING utf8mb4) COLLATE utf8mb4_unicode_ci LIKE CONVERT(${normalizedModelSql('?')} USING utf8mb4) COLLATE utf8mb4_unicode_ci ESCAPE '!'`)
+          params.push(`%${escapeLikePattern(keyword)}%`)
+        }
+      }
+
+      if (color_id) {
+        conditions.push(templateColorsReady
+          ? `(${templateField('color_id')} = ? OR EXISTS (SELECT 1 FROM accessory_template_colors selected_color WHERE selected_color.template_id = a.id AND selected_color.color_id = ?))`
+          : `${templateField('color_id')} = ?`)
+        params.push(color_id, ...(templateColorsReady ? [color_id] : []))
       }
 
       if (supplier_id) {
@@ -235,19 +359,26 @@ class AccessoryRepository extends BaseRepository {
       if (search) {
         const allowedSearchColumns = {
           name: templateField('name'), barcode: templateField('barcode'), category: `COALESCE(ac.name, ${templateField('category')})`,
-          brand_name: 'b.name', product_model: 'a.product_model',
-          model_name: `CONCAT_WS(' ', mb.name, m.name, (
-            SELECT GROUP_CONCAT(CONCAT_WS(' ', search_brand.name, search_model.name))
-            FROM accessory_compatible_models search_am
-            INNER JOIN models search_model ON search_model.id = search_am.model_id
-            INNER JOIN brands search_brand ON search_brand.id = search_model.brand_id
-            WHERE search_am.accessory_id = COALESCE(a.template_id, a.id)
-          ))`
+          brand_name: 'b.name', product_model: templateField('product_model'), color_name: 'c.name',
+          model_name: modelNameColumn
         }
-        const searchColumns = search_fields.map(field => allowedSearchColumns[field]).filter(Boolean)
-        if (searchColumns.length) {
-          conditions.push(`(${searchColumns.map(column => `CONVERT(${column} USING utf8mb4) COLLATE utf8mb4_unicode_ci LIKE CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`).join(' OR ')})`)
-          params.push(...searchColumns.map(() => `%${search}%`))
+        const searchColumns = search_fields.filter(field => Object.hasOwn(allowedSearchColumns, field)).map(field => ({
+          column: field === 'barcode' ? allowedSearchColumns[field] : normalizedModelSql(allowedSearchColumns[field]),
+          parameter: field === 'barcode' ? '?' : normalizedModelSql('?')
+        }))
+        // 多关键词共同限定同一商品；名称和型号复用公共标准化规则，不在前端二次过滤。
+        for (const keyword of search.trim().split(/\s+/u).filter(Boolean)) {
+          if (!searchColumns.length) break
+          const matches = searchColumns.map(({ column, parameter }) => `CONVERT(${column} USING utf8mb4) COLLATE utf8mb4_unicode_ci LIKE CONVERT(${parameter} USING utf8mb4) COLLATE utf8mb4_unicode_ci ESCAPE '!'`)
+          params.push(...searchColumns.map(() => `%${escapeLikePattern(keyword)}%`))
+          for (const field of ['barcode', 'color_name'].filter(field => templateColorsReady && search_fields.includes(field))) {
+            matches.push(`EXISTS (SELECT 1 FROM accessory_template_colors variant
+              JOIN accessories color_product ON color_product.id = variant.accessory_id
+              LEFT JOIN colors variant_color ON variant_color.id = variant.color_id
+              WHERE variant.template_id = a.id AND ${field === 'barcode' ? 'color_product.barcode' : 'variant_color.name'} LIKE ? ESCAPE '!')`)
+            params.push(`%${escapeLikePattern(keyword)}%`)
+          }
+          conditions.push(`(${matches.join(' OR ')})`)
         }
       }
 
@@ -262,21 +393,24 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN brands b ON b.id = a.brand_id
         LEFT JOIN models m ON m.id = ${templateField('model_id')}
         LEFT JOIN brands mb ON mb.id = m.brand_id
+        LEFT JOIN colors c ON ${templateField('color_id')} = c.id
         ${whereClause}
       `
       const countResult = await this.queryRows(countQuery, params, executor)
       const total = countResult && countResult.length > 0 ? countResult[0].total : 0
 
       // 查询列表
+      const cost = purchaseCostProjection(mode === 'templates' ? undefined : options.store_scope)
       const query = `
         SELECT
-          ${ACCESSORY_SELECT_FIELDS},
+          ${ACCESSORY_SELECT_FIELDS(cost.sql)}, ${await this.filmSelect(executor)},
           b.name as brand_name,
           m.name as model_name,
           m.brand_id as model_brand_id,
           mb.name as model_brand_name,
           cm.model_ids,
           cm.compatible_model_names,
+          cm.compatible_brand_names,
           c.name as color_name,
           s.name as supplier_name,
           COALESCE(SUM(ast.quantity), 0) as total_stock,
@@ -292,7 +426,8 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN (
           SELECT am.accessory_id,
                  GROUP_CONCAT(DISTINCT am.model_id ORDER BY am.model_id) AS model_ids,
-                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names
+                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names,
+                 GROUP_CONCAT(DISTINCT model_brand.name ORDER BY model_brand.name SEPARATOR ' / ') AS compatible_brand_names
           FROM accessory_compatible_models am
           INNER JOIN models compatible_model ON compatible_model.id = am.model_id
           INNER JOIN brands model_brand ON model_brand.id = compatible_model.brand_id
@@ -307,10 +442,10 @@ class AccessoryRepository extends BaseRepository {
         LIMIT ? OFFSET ?
       `
 
-      const accessories = await this.queryRows(query, [...stockJoinParams, ...params, normalized_page_size, offset], executor)
+      const accessories = await this.queryRows(query, [...cost.params, ...stockJoinParams, ...params, normalized_page_size, offset], executor)
 
       return {
-        data: accessories,
+        data: await this.templateColors.attach(accessories, executor),
         pagination: {
           page: normalizedPage,
           page_size: normalized_page_size,
@@ -329,17 +464,19 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 根据ID获取配件详情
    */
-  async getAccessoryById(id, executor, { forUpdate = false } = {}) {
+  async getAccessoryById(id, executor, { forUpdate = false, currentRead = false, storeScope } = {}) {
     try {
+      const cost = purchaseCostProjection(storeScope)
       const query = `
         SELECT
-          ${ACCESSORY_SELECT_FIELDS},
+          ${ACCESSORY_SELECT_FIELDS(cost.sql)}, ${await this.filmSelect(executor)},
           b.name as brand_name,
           m.name as model_name,
           m.brand_id as model_brand_id,
           mb.name as model_brand_name,
           cm.model_ids,
           cm.compatible_model_names,
+          cm.compatible_brand_names,
           c.name as color_name,
           s.name as supplier_name
         FROM accessories a
@@ -352,7 +489,8 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN (
           SELECT am.accessory_id,
                  GROUP_CONCAT(DISTINCT am.model_id ORDER BY am.model_id) AS model_ids,
-                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names
+                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names,
+                 GROUP_CONCAT(DISTINCT model_brand.name ORDER BY model_brand.name SEPARATOR ' / ') AS compatible_brand_names
           FROM accessory_compatible_models am
           INNER JOIN models compatible_model ON compatible_model.id = am.model_id
           INNER JOIN brands model_brand ON model_brand.id = compatible_model.brand_id
@@ -361,11 +499,11 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN colors c ON ${templateField('color_id')} = c.id
         LEFT JOIN suppliers s ON a.supplier_id = s.id
         WHERE a.id = ?
-        ${forUpdate ? 'FOR UPDATE' : ''}
+        ${forUpdate ? 'FOR UPDATE' : currentRead ? 'LOCK IN SHARE MODE' : ''}
       `
 
-      const accessories = await this.queryRows(query, [id], executor)
-      return accessories && accessories.length > 0 ? accessories[0] : null
+      const accessories = await this.queryRows(query, [...cost.params, id], executor)
+      return accessories && accessories.length > 0 ? (await this.templateColors.attach(accessories, executor, { currentRead }))[0] : null
     } catch (error) {
       log.error('获取配件详情失败:', error)
       throw error
@@ -375,17 +513,19 @@ class AccessoryRepository extends BaseRepository {
   /**
    * 根据条形码获取配件
    */
-  async getAccessoryByBarcode(barcode, executor, { includeInactive = false } = {}) {
+  async getAccessoryByBarcode(barcode, executor, { includeInactive = false, storeScope } = {}) {
     try {
+      const cost = purchaseCostProjection(storeScope)
       const query = `
         SELECT
-          ${ACCESSORY_SELECT_FIELDS},
+          ${ACCESSORY_SELECT_FIELDS(cost.sql)}, ${await this.filmSelect(executor)},
           b.name as brand_name,
           m.name as model_name,
           m.brand_id as model_brand_id,
           mb.name as model_brand_name,
           cm.model_ids,
           cm.compatible_model_names,
+          cm.compatible_brand_names,
           c.name as color_name,
           s.name as supplier_name
         FROM accessories a
@@ -398,7 +538,8 @@ class AccessoryRepository extends BaseRepository {
         LEFT JOIN (
           SELECT am.accessory_id,
                  GROUP_CONCAT(DISTINCT am.model_id ORDER BY am.model_id) AS model_ids,
-                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names
+                 GROUP_CONCAT(DISTINCT CONCAT(model_brand.name, ' ', compatible_model.name) ORDER BY model_brand.name, compatible_model.name SEPARATOR ', ') AS compatible_model_names,
+                 GROUP_CONCAT(DISTINCT model_brand.name ORDER BY model_brand.name SEPARATOR ' / ') AS compatible_brand_names
           FROM accessory_compatible_models am
           INNER JOIN models compatible_model ON compatible_model.id = am.model_id
           INNER JOIN brands model_brand ON model_brand.id = compatible_model.brand_id
@@ -409,8 +550,8 @@ class AccessoryRepository extends BaseRepository {
         WHERE a.barcode = ? ${includeInactive ? '' : 'AND a.status = 1'}
       `
 
-      const accessories = await this.queryRows(query, [barcode], executor)
-      return accessories && accessories.length > 0 ? accessories[0] : null
+      const accessories = await this.queryRows(query, [...cost.params, barcode], executor)
+      return accessories && accessories.length > 0 ? (await this.templateColors.attach(accessories, executor))[0] : null
     } catch (error) {
       log.error('根据条形码获取配件失败:', error)
       throw error
@@ -422,12 +563,14 @@ class AccessoryRepository extends BaseRepository {
    */
   async createAccessory(data, executor) {
     try {
+      const filmWrite = data.free_film !== undefined
+      if (filmWrite && !await this.filmReady(executor)) throw Object.assign(new Error('模板贴膜结构尚未就绪'), { statusCode: 409, code: 'FILM_SERVICE_NOT_READY' })
       const query = `
         INSERT INTO accessories (
           name, barcode, category, category_id, product_model, brand_id, model_id, color_id, supplier_id,
           purchase_cost, sale_price, unit, unit_id, status,
-          description, remarks, image_url, template_id, serial_tracking, min_stock
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          description, remarks, image_url, template_id, serial_tracking, min_stock${filmWrite ? ', free_film' : ''}
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${filmWrite ? ', ?' : ''})
       `
 
       const params = [
@@ -450,7 +593,8 @@ class AccessoryRepository extends BaseRepository {
         data.image_url || null,
         data.template_id || null,
         data.serial_tracking ? 1 : 0,
-        data.min_stock ?? 5
+        data.min_stock ?? 5,
+        ...(filmWrite ? [data.free_film] : [])
       ]
 
       const [result] = await (executor || this.getConnection()).query(query, params)
@@ -459,6 +603,31 @@ class AccessoryRepository extends BaseRepository {
       log.error('创建配件失败:', error)
       throw error
     }
+  }
+
+  /** 只同步商品展示资料，交易数量、金额、成本、SN与历史身份均保留。 */
+  async syncProductProfileSnapshots(id, rootId, executor) {
+    const profile = `JSON_SET(SNAPSHOT_COLUMN,
+      '$.brand_id', product.brand_id, '$.brand_name', brand.name,
+      '$.name', IF(product.template_id IS NULL, product.name, template.name),
+      '$.category', COALESCE(category.name, IF(product.template_id IS NULL, product.category, template.category)),
+      '$.product_model', IF(product.template_id IS NULL, product.product_model, template.product_model), '$.color_name', color.name,
+      '$.unit', COALESCE(unit.name, IF(product.template_id IS NULL, product.unit, template.unit)))`
+    const historyJoins = `JOIN accessories product ON product.id = ROW_ACCESSORY_ID
+      LEFT JOIN accessories template ON template.id = product.template_id
+      LEFT JOIN brands brand ON brand.id = product.brand_id
+      LEFT JOIN accessory_categories category ON category.id = IF(product.template_id IS NULL, product.category_id, template.category_id)
+      LEFT JOIN colors color ON color.id = IF(product.template_id IS NULL, product.color_id, template.color_id)
+      LEFT JOIN accessory_units unit ON unit.id = IF(product.template_id IS NULL, product.unit_id, template.unit_id)`
+    await executor.query(`UPDATE accessory_stock_in si ${historyJoins.replaceAll('ROW_ACCESSORY_ID', 'si.accessory_id')}
+      SET si.updated_at = si.updated_at,
+        si.product_snapshot = CASE WHEN si.product_snapshot IS NULL THEN NULL ELSE ${profile.replaceAll('SNAPSHOT_COLUMN', 'si.product_snapshot')} END
+      WHERE product.id = ? OR product.template_id = ?`, [rootId, rootId])
+    await executor.query(`UPDATE sales_order_items i
+      LEFT JOIN accessory_sales s ON s.id = i.accessory_sale_id AND i.item_type = 'accessory'
+      ${historyJoins.replaceAll('ROW_ACCESSORY_ID', 'COALESCE(i.accessory_id, s.accessory_id)')}
+      SET i.snapshot = ${profile.replaceAll('SNAPSHOT_COLUMN', 'i.snapshot')}
+      WHERE i.item_type = 'accessory' AND (product.id = ? OR product.template_id = ?) AND i.snapshot IS NOT NULL`, [rootId, rootId])
   }
 
   /** 根模板行锁串行化同一模板的品牌建档，唯一索引提供最终约束。 */
@@ -656,7 +825,7 @@ class AccessoryRepository extends BaseRepository {
       const allowedFields = [
         'name', 'barcode', 'category', 'category_id', 'product_model', 'brand_id', 'model_id', 'color_id',
         'supplier_id', 'purchase_cost', 'sale_price',
-        'unit', 'unit_id', 'status', 'description', 'remarks', 'image_url', 'serial_tracking', 'min_stock'
+        'unit', 'unit_id', 'status', 'description', 'remarks', 'image_url', 'serial_tracking', 'min_stock', 'free_film'
       ]
       allowedFields.forEach(field => {
         if (data[field] !== undefined) {
@@ -696,9 +865,9 @@ class AccessoryRepository extends BaseRepository {
     await connection.query(`INSERT INTO accessory_compatible_models (accessory_id, model_id) VALUES ${values}`, params)
   }
 
-  async getCompatibleModelIds(accessoryId, executor) {
+  async getCompatibleModelIds(accessoryId, executor, { forUpdate = false } = {}) {
     const rows = await this.queryRows(
-      'SELECT model_id FROM accessory_compatible_models WHERE accessory_id = ? ORDER BY model_id',
+      `SELECT model_id FROM accessory_compatible_models WHERE accessory_id = ? ORDER BY model_id${forUpdate ? ' FOR UPDATE' : ''}`,
       [accessoryId], executor
     )
     return rows.map(row => Number(row.model_id))
@@ -921,7 +1090,7 @@ class AccessoryRepository extends BaseRepository {
   /** 模板锁内当前锁定读最终资料，避免等待模板锁前建立的RR旧快照；供应商取本次采购。 */
   async purchaseSnapshotSource(accessoryId, supplierId, storeId, executor) {
     const [rows] = await executor.query(`SELECT a.id AS accessory_id, s.id AS supplier_id, st.id AS store_id,
-      COALESCE(t.name, a.name) AS name, b.name AS brand_name, a.product_model,
+      COALESCE(t.name, a.name) AS name, b.name AS brand_name, ${templateField('product_model')} AS product_model,
       c.name AS color_name, COALESCE(category.name, t.category, a.category) AS category,
       COALESCE(unit.name, t.unit, a.unit) AS unit, s.name AS supplier_name, st.name AS store_name
       FROM accessories a LEFT JOIN accessories t ON t.id = a.template_id
@@ -945,7 +1114,16 @@ class AccessoryRepository extends BaseRepository {
     const [rows] = await executor.query(`SELECT id, batch_no, accessory_id, supplier_id, store_id, quantity, purchase_cost, total_amount,
       DATE_FORMAT(inventory_time, '%Y-%m-%d %H:%i:%s') AS inventory_time,
       distribution, operator_id, status, request_hash FROM accessory_stock_in WHERE request_key = ?`, [key])
-    return rows[0] || null
+    const row = rows[0]
+    if (row?.status === 'cancelled') {
+      row.corrected = false
+      const [tables] = await executor.query("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'accessory_stock_corrections'")
+      if (tables.length) {
+        const [corrections] = await executor.query('SELECT id FROM accessory_stock_corrections WHERE source_stock_in_id = ? LIMIT 1', [row.id])
+        row.corrected = corrections.length === 1
+      }
+    }
+    return row || null
   }
 
   /** 创建原采购与请求凭据，跟随外层库存事务一起提交。 */
@@ -1068,7 +1246,7 @@ class AccessoryRepository extends BaseRepository {
           asi.product_snapshot,
           ${templateField('name')} AS name,
           ${templateField('barcode')} AS barcode,
-          a.template_id, a.brand_id, b.name AS brand_name, a.product_model,
+          a.template_id, a.brand_id, b.name AS brand_name, ${templateField('product_model')} AS product_model,
           s.name as supplier_name,
           st.name as store_name
         FROM accessory_stock_in asi

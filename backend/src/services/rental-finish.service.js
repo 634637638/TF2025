@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 const { withConnection } = require('../core/db/connection')
 const RentalFinishRepository = require('../repositories/rental-finish.repository')
@@ -20,7 +22,7 @@ class RentalFinishService {
     this.withConnection = withConnectionFn
   }
 
-  async finish(rentalId) {
+  async finish(rentalId, actor) {
     rentalId = parseRentalId(rentalId)
     await this.ensureSchema()
     return this.withConnection(this.databaseProvider, async connection => {
@@ -28,6 +30,9 @@ class RentalFinishService {
         await connection.beginTransaction()
         const rental = await this.repository.getForUpdate(connection, rentalId)
         if (!rental) throw new Error('租赁合同不存在')
+        const scope = resolveStoreScope(actor)
+        assertStoreInScope(scope, rental.store_id)
+        assertStoreInScope(scope, rental.source_store_id)
         if (rental.status !== 'active' && rental.status !== 'overdue') throw new Error('该合同已经结束')
         if (isBuyoutMode(rental.billing_mode)) throw new Error('到期买断合同不能执行归还')
 

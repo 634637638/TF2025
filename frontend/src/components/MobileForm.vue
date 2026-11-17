@@ -149,6 +149,7 @@
         <el-radio-group
           v-else-if="field.type === 'radio'"
           :model-value="getRadioValue(field)"
+          class="tf-state-selector"
           :disabled="field.disabled"
           :direction="isMobile ? 'vertical' : 'horizontal'"
           @update:model-value="setFieldValue(field, $event)"
@@ -279,14 +280,12 @@
       <slot name="actions">
         <el-button
           v-if="showCancel"
-          :size="isMobile ? 'large' : 'default'"
           @click="handleCancel"
         >
           {{ cancelText }}
         </el-button>
         <el-button
           type="primary"
-          :size="isMobile ? 'large' : 'default'"
           :loading="loading"
           @click="handleSubmit"
         >

@@ -20,8 +20,8 @@ const Dialog = { props: { modelValue: Boolean, beforeClose: { type: Function, re
 const wrappers: ReturnType<typeof mount>[] = []
 const render = () => {
   const wrapper = mount(AccessoryCatalogView, { global: { plugins: [ElementPlus],
-    stubs: { PermissionGate: Slot, PageHeader: Slot, MobileDialog: Dialog, DataEmptyState: true },
-    directives: { 'tf-loading': {}, permission: {} }, config: { globalProperties: { $getNumberColumnWidth: () => 72, $getActionColumnWidth: () => 100 } }
+    stubs: { PermissionGate: Slot, PageHeader: Slot, MobileDialog: Dialog, RecordDetailDialog: true, DataEmptyState: true },
+    directives: { 'tf-loading': {}, permission: {}, 'table-double-tap': {} }, config: { globalProperties: { $getNumberColumnWidth: () => 72, $getActionColumnWidth: () => 100 } }
   } })
   wrappers.push(wrapper)
   return wrapper
@@ -129,26 +129,25 @@ describe('配件设置与店铺库存', () => {
     expect(wrapper.text()).not.toContain('店铺库存读取失败')
   })
 
-  it('已迁移类型显示贴膜标记，编辑保留真实值并允许关闭；新增默认不启用', async () => {
+  it('类型不再管理贴膜规则，即使遗留类型标记存在，编辑和新增也不提交贴膜字段', async () => {
     mocks.get.mockImplementation(async (url: string) => url.endsWith('/settings') ? settings : { data: {
       film_ready: true, categories: [{ id: 1, name: '钢化膜', status: 1, sort_order: 0, film_enabled: 1 }], units: [] } })
     const wrapper = render()
     await flushPromises()
-    expect(wrapper.text()).toContain('用于贴膜')
+    expect(wrapper.text()).not.toContain('用于贴膜')
     await wrapper.findAll('button').find(item => item.text() === '编辑')!.trigger('click')
     const dialog = wrapper.get('.catalog-dialog')
-    expect(dialog.findComponent(ElSwitch).props('modelValue')).toBe(true)
-    dialog.findComponent(ElSwitch).vm.$emit('update:modelValue', false)
+    expect(dialog.findAllComponents(ElSwitch)).toHaveLength(1)
+    expect(dialog.text()).not.toContain('用于贴膜')
     await dialog.findAll('button').find(item => item.text() === '保存')!.trigger('click')
     await flushPromises()
     expect(mocks.put).toHaveBeenCalledWith('/accessories/catalog/category/1', {
-      name: '钢化膜', status: 1, sort_order: 0, description: '', film_enabled: false }, { showError: false })
+      name: '钢化膜', status: 1, sort_order: 0, description: '' }, { showError: false })
     await wrapper.findAll('button').find(item => item.text() === '新增类型')!.trigger('click')
-    expect(wrapper.get('.catalog-dialog').findComponent(ElSwitch).props('modelValue')).toBe(false)
     await wrapper.get('.catalog-dialog').findComponent(ElInput).setValue('水凝膜')
     await wrapper.get('.catalog-dialog').findAll('button').find(item => item.text() === '保存')!.trigger('click')
     await flushPromises()
-    expect(mocks.post).toHaveBeenCalledWith('/accessories/catalog/category', expect.objectContaining({ name: '水凝膜', film_enabled: false }), { showError: false })
+    expect(mocks.post).toHaveBeenCalledWith('/accessories/catalog/category', { name: '水凝膜', sort_order: 0, status: 1, description: '' }, { showError: false })
   })
 
   it('未迁移目录不展示或提交贴膜字段，单位始终只保存自身资料', async () => {

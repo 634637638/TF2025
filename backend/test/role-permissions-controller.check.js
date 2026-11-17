@@ -4,6 +4,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const test = require('node:test')
+const { DatabaseSync } = require('node:sqlite')
 const Controller = require('../src/controllers/role-permissions.controller')
 const Service = require('../src/services/role-permissions.service')
 const Repository = require('../src/repositories/role-permissions.repository')
@@ -66,7 +67,8 @@ test('role permissions service marks assigned actions and preserves database sou
       async listRolePermissions(...args) {
         calls.push(['permissions', ...args])
         return [{ module_key: 'inventory', permission_type: 'view' }]
-      }
+      },
+      async listMenuOrder() { calls.push(['menus']); return [] }
     },
     mergeModules: rows => rows,
     permissionTypesForModule: () => ['view', 'edit'],
@@ -89,7 +91,58 @@ test('role permissions service marks assigned actions and preserves database sou
   assert.equal(result.meta.from_database, true)
   assert.equal(result.meta.db_module_count, 1)
   assert.match(result.message, /1 个数据库中的模块/)
-  assert.deepEqual(calls.map(([kind]) => kind), ['column', 'role', 'modules', 'permissions'])
+  assert.deepEqual(calls.map(([kind]) => kind), ['column', 'role', 'modules', 'permissions', 'menus'])
+})
+
+test('页面权限按完整有效菜单的层级与排序返回，不因目标角色未授权或隐藏导航而缺项', async t => {
+  const db = new DatabaseSync(':memory:')
+  t.after(() => db.close())
+  db.exec(`CREATE TABLE modules (id INTEGER PRIMARY KEY, key TEXT);
+    CREATE TABLE menus (id INTEGER PRIMARY KEY, parent_id INTEGER, sort_order INTEGER, module_key TEXT, module_id INTEGER, is_active INTEGER);
+    INSERT INTO modules VALUES (30, 'sales');
+    INSERT INTO menus VALUES
+      (1,0,0,'dashboard',NULL,1), (2,0,10,NULL,NULL,1),
+      (3,2,2,'accessories',NULL,1), (4,2,1,'',30,1),
+      (5,0,20,NULL,NULL,1), (6,5,0,'salary',NULL,1),
+      (7,0,1,'system',NULL,0), (8,0,30,'sales',NULL,1),
+      (9,999,40,'query',NULL,1), (10,0,0,'tied',NULL,1);`)
+  const database = { async execute(sql, params = []) { return [db.prepare(sql).all(...params)] } }
+  const repository = new Repository()
+  const rows = ['accessories', 'salary', 'system', 'dashboard', 'sales', 'query', 'unbound', 'tied']
+    .map(module_key => ({ module_key, module_name: module_key, module_category: 'business' }))
+  const service = new Service({ databaseProvider: () => database, columnExists: async () => true,
+    repository: {
+      async findRole(_database, id) { return { id, name: '角色' } },
+      async listModules() { return rows },
+      async listRolePermissions(_database, id) { return id === 1 ? [{ module_key: 'sales', permission_type: 'view' }] : [] },
+      listMenuOrder: repository.listMenuOrder.bind(repository)
+    },
+    mergeModules: modules => modules,
+    permissionTypesForModule: () => ['view'], normalizeModuleKey: value => value, normalizeType: value => value })
+  const keys = result => result.modules.map(module => module.module_key)
+  const expected = ['dashboard', 'tied', 'sales', 'accessories', 'salary', 'query', 'system', 'unbound']
+  const assigned = await service.getByRole(1), hidden = await service.getByRole(2)
+  assert.deepEqual(keys(assigned), expected)
+  assert.deepEqual(keys(hidden), expected)
+  assert.equal(hidden.modules.every(module => module.permissions.every(permission => !permission.assigned)), true)
+  assert.equal(assigned.modules.find(module => module.module_key === 'sales').permissions[0].assigned, true)
+  assert.equal(new Set(keys(hidden)).size, rows.length)
+  assert.equal(hidden.meta.total_modules, rows.length)
+  // 目录排序和子菜单排序由同一菜单树解释，调整后下一次读取立即体现。
+  db.exec('UPDATE menus SET sort_order = 3 WHERE id = 4')
+  assert.deepEqual(keys(await service.getByRole(2)), ['dashboard', 'tied', 'accessories', 'sales', 'salary', 'query', 'system', 'unbound'])
+  db.exec('UPDATE menus SET sort_order = 5 WHERE id = 5')
+  assert.deepEqual(keys(await service.getByRole(2)), ['dashboard', 'tied', 'salary', 'accessories', 'sales', 'query', 'system', 'unbound'])
+  db.exec('DELETE FROM menus')
+  assert.deepEqual(keys(await service.getByRole(2)), rows.map(row => row.module_key))
+})
+
+test('页面权限菜单排序读取失败明确失败，不将读取异常伪装为无菜单', async () => {
+  const service = new Service({ databaseProvider: () => ({}), columnExists: async () => true,
+    repository: { async findRole() { return { id: 1 } }, async listModules() { return [] }, async listRolePermissions() { return [] },
+      async listMenuOrder() { throw new Error('菜单读取失败') } },
+    mergeModules: rows => rows, moduleScannerFactory: () => ({ async scanViewsDirectory() { return [] } }), logger: { debug() {} } })
+  await assert.rejects(service.getByRole(1), /菜单读取失败/)
 })
 
 test('role permissions service scans modules when the database has none and uses fallback on scan failure', async () => {
@@ -100,7 +153,8 @@ test('role permissions service scans modules when the database has none and uses
     repository: {
       async findRole() { return { id: 4, name: '主管' } },
       async listModules() { return [] },
-      async listRolePermissions() { return [] }
+      async listRolePermissions() { return [] },
+      async listMenuOrder() { return [] }
     },
     moduleScannerFactory,
     mergeModules: rows => rows.map(row => ({ ...row, module_key: row.module_key || row.key })),
@@ -118,8 +172,8 @@ test('role permissions service scans modules when the database has none and uses
   assert.match(scanned.message, /建议先在模块管理中同步模块/)
 
   const fallback = await createService(() => ({ async scanViewsDirectory() { throw new Error('scan unavailable') } })).getByRole('4')
-  assert.ok(fallback.modules.some(module => module.module_key === 'dashboard'))
-  assert.ok(fallback.modules.some(module => module.module_key === 'sales'))
+  assert.ok(fallback.modules.some(module => module.module_key === 'dashboard_dashboardview'))
+  assert.ok(fallback.modules.some(module => module.module_key === 'sales_salesview'))
   assert.equal(warnings.length, 1)
 })
 

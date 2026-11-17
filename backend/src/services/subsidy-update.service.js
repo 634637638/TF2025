@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const fs = require('node:fs')
 const path = require('node:path')
 const log = require('../utils/log')
@@ -35,12 +37,28 @@ class SubsidyUpdateService {
     this.logger = logger
   }
 
-  async update(id, input) {
+  async update(id, input, actor) {
+    const checked = validateSubsidyInput(input)
+    if (checked.error) return { status: 400, body: { success: false, message: checked.error } }
+    const result = await this.repository.withTransaction(repository => this.updateRecord(id, input, actor, repository))
+    if (result.status === 200) {
+      const namingInput = await this.repository.getPhotoDirectoryNamingInput(id)
+      if (namingInput) await this.syncPhotoDirectory(id, result.photos, namingInput)
+      delete result.photos
+      this.invalidateCache('/subsidy')
+    }
+    return result
+  }
+
+  async updateRecord(id, input, actor, repository) {
     const checked = validateSubsidyInput(input)
     if (checked.error) return { status: 400, body: { success: false, message: checked.error } }
     input = checked.input
-    const existing = await this.repository.findExisting(id)
+    const existing = await repository.findExisting(id)
     if (!existing) return { status: 404, body: { success: false, message: '国补记录不存在' } }
+    const scope = resolveStoreScope(actor)
+    assertStoreInScope(scope, existing.store_id)
+    if (input.store_id !== undefined) assertStoreInScope(scope, input.store_id)
 
     const updateFields = []
     const updateValues = []
@@ -56,7 +74,7 @@ class SubsidyUpdateService {
       if (input.store_id === null || input.store_id === '') {
         updateFields.push('store_id = NULL', 'store_name = NULL')
       } else {
-        const storeName = await this.repository.getStoreName(input.store_id)
+        const storeName = await repository.getStoreName(input.store_id)
         if (!storeName) {
           return { status: 400, body: { success: false, message: '选择的店铺不存在' } }
         }
@@ -74,7 +92,7 @@ class SubsidyUpdateService {
     this.appendHandlerFields(input, updateFields, updateValues)
 
     if (input.customer_idcard !== undefined) {
-      await this.repository.updateCustomerIdCard(
+      await repository.updateCustomerIdCard(
         existing.customer_id,
         input.customer_idcard ? input.customer_idcard.trim() : null
       )
@@ -92,26 +110,23 @@ class SubsidyUpdateService {
         customerValues.push(input.customer_phone)
       }
       if (customerFields.length) {
-        await this.repository.updateCustomer(existing.customer_id, customerFields, customerValues)
+        await repository.updateCustomer(existing.customer_id, customerFields, customerValues)
       }
     }
-    await this.repository.updateSubsidy(id, updateFields, updateValues)
+    await repository.updateSubsidy(id, updateFields, updateValues)
 
-    const namingInput = await this.repository.getPhotoDirectoryNamingInput(id)
-    if (namingInput) await this.syncPhotoDirectory(id, existing.subsidy_photos, namingInput)
 
     if (input.sale_time !== undefined) {
-      const phoneId = await this.repository.getPhoneId(id)
+      const phoneId = await repository.getPhoneId(id)
       if (phoneId) {
         let saleTime = null
         if (input.sale_time === '') saleTime = null
         else if (input.sale_time) saleTime = `${input.sale_time} 00:00:00`
-        await this.repository.updatePhoneSaleTime(phoneId, saleTime)
+        await repository.updatePhoneSaleTime(phoneId, saleTime)
       }
     }
 
-    this.invalidateCache('/subsidy')
-    return { status: 200, body: { success: true, message: '更新成功' } }
+    return { status: 200, photos: existing.subsidy_photos, body: { success: true, message: '更新成功' } }
   }
 
   appendDirectFields(input, fields, values) {

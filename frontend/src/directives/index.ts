@@ -8,6 +8,7 @@ import { installPermissionDirective } from './permission'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { useLoadingStore } from '@/stores/loading'
 import { vTableDoubleTap } from './table-double-tap'
+import { vIdentifierInput } from './identifier-input'
 import InlineLoading from '@/components/InlineLoading.vue'
 
 type DirectiveHandler = (...args: unknown[]) => unknown
@@ -17,7 +18,6 @@ interface DirectiveElement extends HTMLElement {
   _debounceHandler?: EventListener
   _throttleHandler?: EventListener
   _longPressCleanup?: () => void
-  _infiniteScrollObserver?: IntersectionObserver
   _lazyPlaceholder?: HTMLElement
   _numberHandler?: EventListener
   _rippleHandler?: EventListener
@@ -232,57 +232,6 @@ export const vLongPress: Directive = {
   }
 }
 
-// 无限滚动指令
-export const vInfiniteScroll: Directive = {
-  mounted(el: HTMLElement, binding: DirectiveBinding<{
-    fn: DirectiveHandler
-    distance?: number
-    disabled?: boolean
-  }>) {
-    const { fn, distance = 100, disabled = false } = binding.value
-
-    if (disabled) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            fn()
-          }
-        })
-      },
-      {
-        rootMargin: `${distance}px`
-      }
-    )
-
-    observer.observe(el)
-    ;(el as DirectiveElement)._infiniteScrollObserver = observer
-  },
-  updated(el: HTMLElement, binding: DirectiveBinding<{
-    fn: DirectiveHandler
-    distance?: number
-    disabled?: boolean
-  }>) {
-    const { disabled } = binding.value
-    const observer = (el as DirectiveElement)._infiniteScrollObserver
-
-    if (observer) {
-      if (disabled) {
-        observer.disconnect()
-      } else {
-        observer.observe(el)
-      }
-    }
-  },
-  unmounted(el: HTMLElement) {
-    const observer = (el as DirectiveElement)._infiniteScrollObserver
-    if (observer) {
-      observer.disconnect()
-    }
-  }
-}
-
 // 懒加载指令
 export const vLazy: Directive = {
   mounted(el: HTMLImageElement, binding: DirectiveBinding<string>) {
@@ -433,6 +382,7 @@ function showLoading(el: HTMLElement, text: string) {
   const existingText = el.querySelector('.tf2025-loading-spinner span')
   if (existingText) {
     existingText.textContent = text
+    existingText.setAttribute('title', text)
     return
   }
 
@@ -456,6 +406,7 @@ function showLoading(el: HTMLElement, text: string) {
   icon.className = 'tf2025-loading-spinner__icon'
   const message = document.createElement('span')
   message.textContent = text
+  message.title = text
   loading.append(icon, message)
 
   el.appendChild(overlay)
@@ -549,12 +500,12 @@ export function installDirectives(app: App) {
   app.directive('debounce', vDebounce)
   app.directive('throttle', vThrottle)
   app.directive('long-press', vLongPress)
-  app.directive('infinite-scroll', vInfiniteScroll)
   app.directive('lazy', vLazy)
   app.directive('focus', vFocus)
   app.directive('select', vSelect)
   app.directive('number', vNumber)
   app.directive('mobile-optimize', vMobileOptimize)
+  app.directive('identifier-input', vIdentifierInput)
 }
 
 // 指令已在定义时通过 export const 导出，无需重复导出

@@ -67,6 +67,7 @@ test('考勤管理员员工ID必须完整，普通员工不能通过伪造ID修�
   const response = () => ({ status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } })
   let admin = true
   t.mock.method(controller, 'getAttendanceScope', async () => ({ canView: true, isAdmin: admin }))
+  t.mock.method(controller, 'permissionCheck', async () => admin)
   t.mock.method(service, 'createAttendanceRecord', async input => input)
   for (const employee_id of invalidNumbers) {
     const res = response()
@@ -80,8 +81,11 @@ test('考勤管理员员工ID必须完整，普通员工不能通过伪造ID修�
   admin = false
   const own = response()
   await controller.createAttendanceRecord({ user: { id: 2 }, body: { employee_id: '3abc' } }, own)
-  assert.equal(own.statusCode, 201)
-  assert.equal(own.body.data.employee_id, 2)
+  assert.equal(own.statusCode, 403)
+  const self = response()
+  await controller.createAttendanceRecord({ user: { id: 2 }, body: { employee_id: 2 } }, self)
+  assert.equal(self.statusCode, 201)
+  assert.equal(self.body.data.employee_id, 2)
 })
 
 test('用户写入在查询和哈希之前拒绝非法姓名、角色、联系方式、状态及关联 ID', async () => {

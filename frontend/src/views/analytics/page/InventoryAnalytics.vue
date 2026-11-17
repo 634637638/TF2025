@@ -374,7 +374,6 @@
                 </div>
               </div>
               <el-button
-                size="small"
                 @click="toggleCategoryChartType"
               >
                 切换{{ categoryChartType === 'bar' ? '饼图' : '柱状图' }}
@@ -481,7 +480,6 @@
                 </el-select>
                 <el-button
                   type="success"
-                  size="small"
                   @click="exportLowStock"
                 >
                   导出
@@ -618,7 +616,6 @@
               <template #default="{ row }">
                 <div class="action-buttons">
                   <el-button
-                    size="small"
                     type="primary"
                     @click.stop="handleReplenish(row)"
                   >
@@ -665,7 +662,6 @@
                 </div>
               </div>
               <el-button
-                size="small"
                 @click="toggleSupplierChartType"
               >
                 切换{{ supplierChartType === 'bar' ? '雷达图' : '柱状图' }}

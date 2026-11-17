@@ -1,0 +1,949 @@
+{
+  "settingKey": "dashboard_shortcuts",
+  "icons": [
+    {
+      "value": "fas fa-bolt",
+      "label": "快捷入口"
+    },
+    {
+      "value": "fas fa-mobile-alt",
+      "label": "手机"
+    },
+    {
+      "value": "fas fa-box-open",
+      "label": "入库"
+    },
+    {
+      "value": "fas fa-shopping-cart",
+      "label": "销售"
+    },
+    {
+      "value": "fas fa-search",
+      "label": "查询"
+    },
+    {
+      "value": "fas fa-users",
+      "label": "客户"
+    },
+    {
+      "value": "fas fa-tools",
+      "label": "维修"
+    },
+    {
+      "value": "fas fa-cog",
+      "label": "设置"
+    }
+  ],
+  "actions": [
+    {
+      "id": "phone-stock-in",
+      "label": "手机入库",
+      "path": "/inventory",
+      "query": {
+        "openStockIn": "true"
+      },
+      "allPermissions": [
+        "inventory:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-stock-in",
+      "label": "商品入库",
+      "path": "/accessories",
+      "query": {
+        "openStockIn": "true"
+      },
+      "allPermissions": [
+        "accessories:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-sale",
+      "label": "商品销售",
+      "path": "/query",
+      "query": {
+        "mode": "goods",
+        "openSale": "true"
+      },
+      "allPermissions": [
+        "query:goods-view"
+      ],
+      "anyPermissions": [
+        "query:goods-sell",
+        "query:goods-gift"
+      ]
+    },
+    {
+      "id": "supplier-create",
+      "label": "新增供应商",
+      "path": "/suppliers",
+      "query": {
+        "shortcut": "supplier-create"
+      },
+      "allPermissions": [
+        "suppliers:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "brand-create",
+      "label": "新增品牌",
+      "path": "/brands",
+      "query": {
+        "shortcut": "brand-create"
+      },
+      "allPermissions": [
+        "brands:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "model-create",
+      "label": "新增型号",
+      "path": "/models",
+      "query": {
+        "shortcut": "model-create"
+      },
+      "allPermissions": [
+        "models:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "color-create",
+      "label": "新增颜色",
+      "path": "/colors",
+      "query": {
+        "shortcut": "color-create"
+      },
+      "allPermissions": [
+        "colors:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "memory-create",
+      "label": "新增内存",
+      "path": "/memories",
+      "query": {
+        "shortcut": "memory-create"
+      },
+      "allPermissions": [
+        "memories:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "store-create",
+      "label": "新增门店",
+      "path": "/stores",
+      "query": {
+        "shortcut": "store-create"
+      },
+      "allPermissions": [
+        "stores:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "employee-create",
+      "label": "新增员工",
+      "path": "/employees",
+      "query": {
+        "shortcut": "employee-create"
+      },
+      "allPermissions": [
+        "employee:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "customer-create",
+      "label": "新增客户",
+      "path": "/customers",
+      "query": {
+        "shortcut": "customer-create"
+      },
+      "allPermissions": [
+        "customers:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "customer-points-settings",
+      "label": "积分设置",
+      "path": "/customers",
+      "query": {
+        "shortcut": "customer-points-settings"
+      },
+      "allPermissions": [
+        "customers:manage"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-template-create",
+      "label": "新增商品模板",
+      "path": "/accessories",
+      "query": {
+        "shortcut": "goods-template-create"
+      },
+      "allPermissions": [
+        "accessories:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-stock",
+      "label": "库存查询",
+      "path": "/accessories",
+      "query": {
+        "shortcut": "goods-stock"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-templates",
+      "label": "商品模板管理",
+      "path": "/accessories",
+      "query": {
+        "shortcut": "goods-templates"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-type-create",
+      "label": "新增商品类型",
+      "path": "/accessories/catalog",
+      "query": {
+        "shortcut": "goods-type-create"
+      },
+      "allPermissions": [
+        "accessories-catalog:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-unit-create",
+      "label": "新增计量单位",
+      "path": "/accessories/catalog",
+      "query": {
+        "shortcut": "goods-unit-create"
+      },
+      "allPermissions": [
+        "accessories-catalog:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "goods-warehouse-settings",
+      "label": "仓库设置",
+      "path": "/accessories/catalog",
+      "query": {
+        "shortcut": "goods-warehouse-settings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "preorder-create",
+      "label": "新增预定",
+      "path": "/preorders",
+      "query": {
+        "shortcut": "preorder-create"
+      },
+      "allPermissions": [
+        "preorders:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "preorder-new",
+      "label": "新增预定列表",
+      "path": "/preorders",
+      "query": {
+        "shortcut": "preorder-new"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "preorder-matched",
+      "label": "已预定列表",
+      "path": "/preorders",
+      "query": {
+        "shortcut": "preorder-matched"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "preorder-delivered",
+      "label": "已交付列表",
+      "path": "/preorders",
+      "query": {
+        "shortcut": "preorder-delivered"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "reminder-create",
+      "label": "新增待办",
+      "path": "/reminders",
+      "query": {
+        "shortcut": "reminder-create"
+      },
+      "allPermissions": [
+        "reminders:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "reminder-types",
+      "label": "事项类型管理",
+      "path": "/reminders",
+      "query": {
+        "shortcut": "reminder-types"
+      },
+      "allPermissions": [
+        "reminders:manage"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "shared-create",
+      "label": "发布经验分享",
+      "path": "/shared",
+      "query": {
+        "shortcut": "shared-create"
+      },
+      "allPermissions": [
+        "shared:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "shared-categories",
+      "label": "分享分类管理",
+      "path": "/shared",
+      "query": {
+        "shortcut": "shared-categories"
+      },
+      "allPermissions": [
+        "shared:manage"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "menu-create",
+      "label": "新增菜单",
+      "path": "/menu",
+      "query": {
+        "shortcut": "menu-create"
+      },
+      "allPermissions": [
+        "menus:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "menu-width",
+      "label": "菜单宽度设置",
+      "path": "/menu",
+      "query": {
+        "shortcut": "menu-width"
+      },
+      "allPermissions": [
+        "menus:edit"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "attendance-create",
+      "label": "新增考勤/考勤申请",
+      "path": "/attendance",
+      "query": {
+        "shortcut": "attendance-create"
+      },
+      "allPermissions": [],
+      "anyPermissions": [
+        "attendance:create",
+        "my-attendance:create"
+      ]
+    },
+    {
+      "id": "attendance-all",
+      "label": "所有考勤",
+      "path": "/attendance",
+      "query": {
+        "shortcut": "attendance-all"
+      },
+      "allPermissions": [
+        "attendance:view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "attendance-my",
+      "label": "我的考勤",
+      "path": "/attendance",
+      "query": {
+        "shortcut": "attendance-my"
+      },
+      "allPermissions": [
+        "my-attendance:view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "subsidy-create",
+      "label": "新增国补申请",
+      "path": "/subsidy",
+      "query": {
+        "shortcut": "subsidy-create"
+      },
+      "allPermissions": [
+        "subsidy:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "rental-create",
+      "label": "新增租赁合同",
+      "path": "/rentals",
+      "query": {
+        "shortcut": "rental-create"
+      },
+      "allPermissions": [
+        "rentals:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "repair-create",
+      "label": "新增维修",
+      "path": "/repairs",
+      "query": {
+        "shortcut": "repair-create"
+      },
+      "allPermissions": [
+        "repairs:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "price-create",
+      "label": "新增报价",
+      "path": "/price-list",
+      "query": {
+        "shortcut": "price-create"
+      },
+      "allPermissions": [
+        "price-list:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "price-source-settings",
+      "label": "新增采集配置",
+      "path": "/price-list",
+      "query": {
+        "shortcut": "price-source-settings"
+      },
+      "allPermissions": [
+        "price-list:edit"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "price-markup-settings",
+      "label": "报价加价设置",
+      "path": "/price-list",
+      "query": {
+        "shortcut": "price-markup-settings"
+      },
+      "allPermissions": [
+        "price-list:edit"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "backup-create",
+      "label": "创建备份",
+      "path": "/backup",
+      "query": {
+        "shortcut": "backup-create"
+      },
+      "allPermissions": [
+        "backup:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "backup-cloud",
+      "label": "云盘管理",
+      "path": "/backup",
+      "query": {
+        "shortcut": "backup-cloud"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "backup-cloud-settings",
+      "label": "云盘设置",
+      "path": "/backup",
+      "query": {
+        "shortcut": "backup-cloud-settings"
+      },
+      "allPermissions": [
+        "backup:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "guide-announcement-create",
+      "label": "新增导航公告",
+      "path": "/guide",
+      "query": {
+        "shortcut": "guide-announcement-create"
+      },
+      "allPermissions": [
+        "guide:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "guide-category-create",
+      "label": "新增导航分类",
+      "path": "/guide",
+      "query": {
+        "shortcut": "guide-category-create"
+      },
+      "allPermissions": [
+        "guide:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "guide-settings",
+      "label": "导航站设置",
+      "path": "/guide",
+      "query": {
+        "shortcut": "guide-settings"
+      },
+      "allPermissions": [
+        "guide:edit"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "shop-template-create",
+      "label": "新增商城模板",
+      "path": "/H5-admin/page/templates",
+      "query": {
+        "shortcut": "shop-template-create"
+      },
+      "allPermissions": [
+        "h5-templates:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "shop-section-create",
+      "label": "新增首页推荐",
+      "path": "/H5-admin/page/home-sections",
+      "query": {
+        "shortcut": "shop-section-create"
+      },
+      "allPermissions": [
+        "home-sections:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "shop-banner-create",
+      "label": "新增轮播图",
+      "path": "/H5-admin/page/banners",
+      "query": {
+        "shortcut": "shop-banner-create"
+      },
+      "allPermissions": [
+        "h5-banners:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "shop-map-settings",
+      "label": "地图接口设置",
+      "path": "/H5-admin/page/config",
+      "query": {
+        "shortcut": "shop-map-settings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "shop-payment-settings",
+      "label": "支付接口设置",
+      "path": "/H5-admin/page/config",
+      "query": {
+        "shortcut": "shop-payment-settings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "system-site-settings",
+      "label": "站点信息",
+      "path": "/system",
+      "query": {
+        "shortcut": "system-site-settings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "system-price-settings",
+      "label": "报价信息",
+      "path": "/system",
+      "query": {
+        "shortcut": "system-price-settings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "system-lock-settings",
+      "label": "锁屏设置",
+      "path": "/system",
+      "query": {
+        "shortcut": "system-lock-settings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "system-warning-settings",
+      "label": "预警配置",
+      "path": "/system",
+      "query": {
+        "shortcut": "system-warning-settings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "system-return-goods",
+      "label": "退库管理",
+      "path": "/system",
+      "query": {
+        "shortcut": "system-return-goods"
+      },
+      "allPermissions": [
+        "return-goods:view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "system-warning-create",
+      "label": "新增预警模板",
+      "path": "/system",
+      "query": {
+        "shortcut": "system-warning-create"
+      },
+      "allPermissions": [
+        "system:edit"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "role-create",
+      "label": "新增角色",
+      "path": "/permissions",
+      "query": {
+        "shortcut": "role-create"
+      },
+      "allPermissions": [
+        "permissions:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "permissions-roles",
+      "label": "角色管理",
+      "path": "/permissions",
+      "query": {
+        "shortcut": "permissions-roles"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "permissions-userRoles",
+      "label": "角色分配",
+      "path": "/permissions",
+      "query": {
+        "shortcut": "permissions-userRoles"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "permissions-storeBindings",
+      "label": "门店绑定",
+      "path": "/permissions",
+      "query": {
+        "shortcut": "permissions-storeBindings"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "permissions-logs",
+      "label": "权限日志",
+      "path": "/permissions",
+      "query": {
+        "shortcut": "permissions-logs"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "permissions-modules",
+      "label": "模块管理",
+      "path": "/permissions",
+      "query": {
+        "shortcut": "permissions-modules"
+      },
+      "allPermissions": [
+        "module-management:view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "salary-template-create",
+      "label": "新增工资模板",
+      "path": "/salary",
+      "query": {
+        "shortcut": "salary-template-create"
+      },
+      "allPermissions": [
+        "salary-templates:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "salary-templates",
+      "label": "工资模板",
+      "path": "/salary",
+      "query": {
+        "shortcut": "salary-templates"
+      },
+      "allPermissions": [
+        "salary-templates:view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "salary-employees",
+      "label": "员工薪资",
+      "path": "/salary",
+      "query": {
+        "shortcut": "salary-employees"
+      },
+      "allPermissions": [
+        "salary-records:view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "salary-payout",
+      "label": "工资发放",
+      "path": "/salary",
+      "query": {
+        "shortcut": "salary-payout"
+      },
+      "allPermissions": [
+        "salary-records:view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "salary-my",
+      "label": "我的工资",
+      "path": "/salary",
+      "query": {
+        "shortcut": "salary-my"
+      },
+      "allPermissions": [],
+      "anyPermissions": [
+        "salary-records:view",
+        "my-salary:view"
+      ]
+    },
+    {
+      "id": "data-check",
+      "label": "数据检查",
+      "path": "/data-optimization",
+      "query": {
+        "shortcut": "data-check"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "data-import",
+      "label": "数据导入",
+      "path": "/data-optimization",
+      "query": {
+        "shortcut": "data-import"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "analytics-sales",
+      "label": "销售分析",
+      "path": "/analytics",
+      "query": {
+        "shortcut": "analytics-sales"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "analytics-inventory",
+      "label": "库存分析",
+      "path": "/analytics",
+      "query": {
+        "shortcut": "analytics-inventory"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "analytics-customers",
+      "label": "客户分析",
+      "path": "/analytics",
+      "query": {
+        "shortcut": "analytics-customers"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "analytics-employee",
+      "label": "员工分析",
+      "path": "/analytics",
+      "query": {
+        "shortcut": "analytics-employee"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "analytics-transfer",
+      "label": "划拨分析",
+      "path": "/analytics",
+      "query": {
+        "shortcut": "analytics-transfer"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "analytics-profit",
+      "label": "利润分析",
+      "path": "/analytics",
+      "query": {
+        "shortcut": "analytics-profit"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "query-quick-sale",
+      "label": "快速出库",
+      "path": "/query",
+      "query": {
+        "shortcut": "query-quick-sale"
+      },
+      "allPermissions": [
+        "query:create"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "query-phones",
+      "label": "手机查询",
+      "path": "/query",
+      "query": {
+        "shortcut": "query-phones"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "query-goods",
+      "label": "商品查询",
+      "path": "/query",
+      "query": {
+        "shortcut": "query-goods"
+      },
+      "allPermissions": [
+        "query:goods-view"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "payments-phones",
+      "label": "手机货款",
+      "path": "/payments",
+      "query": {
+        "shortcut": "payments-phones"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "payments-goods",
+      "label": "商品采购",
+      "path": "/payments",
+      "query": {
+        "shortcut": "payments-goods"
+      },
+      "allPermissions": [],
+      "anyPermissions": []
+    },
+    {
+      "id": "phone-sale-single",
+      "label": "单台手机销售",
+      "path": "/sales",
+      "query": {
+        "shortcut": "phone-sale-single"
+      },
+      "allPermissions": [
+        "sales:sell"
+      ],
+      "anyPermissions": []
+    },
+    {
+      "id": "phone-sale-batch",
+      "label": "批量手机销售",
+      "path": "/sales",
+      "query": {
+        "shortcut": "phone-sale-batch"
+      },
+      "allPermissions": [
+        "sales:sell"
+      ],
+      "anyPermissions": []
+    }
+  ]
+}

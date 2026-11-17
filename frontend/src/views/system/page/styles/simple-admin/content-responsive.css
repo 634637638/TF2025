@@ -79,27 +79,6 @@
     padding: 4px 2px;
   }
 
-  .topbar {
-    padding: 8px 12px;
-    padding-left: 70px;
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    min-height: 56px; /* 确保最小高度适合触摸 */
-  }
-
-  .topbar-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 6px;
-    flex: 1;
-    min-width: 0;
-  }
-
   .user-info {
     gap: 6px;
     height: var(--tf-topbar-control-height, 36px);
@@ -158,35 +137,11 @@
     font-size: var(--tf-type-scale-10);
   }
 
-  .topbar-buttons {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  /* 锁定按钮图标优先，文字可能隐藏 */
-  .btn-lock span {
-    display: none; /* 隐藏按钮文字，只显示图标 */
-  }
-
 }
 
 @media (max-width: 479px) {
-  .topbar {
-    padding: 6px 8px;
-    padding-left: 56px;
-    min-height: 52px;
-  }
-
   .header-left {
     display: none; /* 隐藏网站标题以节省空间 */
-  }
-
-  .topbar-actions {
-    width: 100%;
-    justify-content: flex-end;
-    gap: 4px;
   }
 
   .user-info {
@@ -245,29 +200,6 @@
     border-radius: 8px;
     white-space: nowrap;
     flex-shrink: 0;
-  }
-
-  .topbar-buttons {
-    gap: 4px;
-    flex: 0 0 auto;
-  }
-
-  .btn-lock i {
-    font-size: var(--tf-type-scale-14); /* 锁定按钮图标大小 */
-  }
-
-  .btn-lock span {
-    display: none; /* 隐藏文字，只显示图标 */
-  }
-
-  /* 退出登录按钮在小屏幕上只显示图标 */
-
-  .logout-btn i {
-    font-size: var(--tf-type-scale-14); /* 退出按钮图标大小 */
-  }
-
-  .logout-btn .btn-text {
-    display: none; /* 隐藏文字，只显示图标 */
   }
 
 }

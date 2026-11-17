@@ -1,5 +1,7 @@
 'use strict'
 
+const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+
 const PreorderMutationRepository = require('../repositories/preorder-mutation.repository')
 const PreorderReadRepository = require('../repositories/preorder-read.repository')
 const log = require('../utils/log')
@@ -22,17 +24,32 @@ class PreorderMutationService {
     this.readRepository = readRepository
   }
 
-  async remove(id) {
-    const status = await this.repository.getStatus(id)
-    if (!status) return { error: 'not_found' }
-    if (status !== PREORDER_STATUS.CANCELLED && status !== PREORDER_STATUS.DELIVERED) {
-      return { error: 'invalid_status' }
-    }
+  async releaseAuthorizedPhone(connection, phoneId, preorderId, actor) {
+    const phone = await this.repository.getPreviousPhoneForMatching(connection, phoneId)
+    if (!phone) return false
+    assertStoreInScope(resolveStoreScope(actor), phone.store_id)
+    return this.repository.releaseMatchedPhone(connection, phoneId, preorderId)
+  }
 
-    const deleted = await this.repository.deleteById(id)
-    return deleted
-      ? { data: { id: parseInt(id), deleted: true } }
-      : { error: 'not_found' }
+  async remove(id, actor) {
+    return this.repository.withConnection(async connection => {
+      await connection.beginTransaction()
+      try {
+        const record = await this.repository.getForUpdate(connection, id)
+        if (!record) { await connection.rollback(); return { error: 'not_found' } }
+        assertStoreInScope(resolveStoreScope(actor), record.store_id)
+        if (![PREORDER_STATUS.CANCELLED, PREORDER_STATUS.DELIVERED].includes(record.status)) {
+          await connection.rollback()
+          return { error: 'invalid_status' }
+        }
+        const deleted = await this.repository.deleteById(id, connection)
+        await connection.commit()
+        return deleted ? { data: { id: Number(id), deleted: true } } : { error: 'not_found' }
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
   }
 
   async create(input = {}, user = {}) {
@@ -53,7 +70,6 @@ class PreorderMutationService {
       expected_arrival,
       remarks
     } = input
-    const finalStoreId = store_id ?? user.store_id ?? null
     const normalizedCondition = Number(is_new)
     const normalizedDepositAmount = Number(deposit_amount)
     const normalizedTotalPrice = total_price === undefined || total_price === null || total_price === ''
@@ -64,6 +80,8 @@ class PreorderMutationService {
     if (![0, 1].includes(normalizedCondition)) return { error: 'invalid_condition' }
     if (!isMoneyInput(deposit_amount) || normalizedDepositAmount <= 0) return { error: 'invalid_deposit' }
     if (normalizedTotalPrice !== null && (!isMoneyInput(total_price) || normalizedTotalPrice < 0)) return { error: 'invalid_total_price' }
+    const scope = resolveStoreScope(user)
+    const finalStoreId = assertStoreInScope(scope, store_id ?? user.store_id)
 
     return this.repository.withConnection(async connection => {
       if (!customer_id) return { error: 'customer_required' }
@@ -110,7 +128,7 @@ class PreorderMutationService {
           color_id,
           memory_id,
           is_new: normalizedCondition
-        })
+        }, scope)
         const status = matchedPhone ? PREORDER_STATUS.MATCHED : PREORDER_STATUS.PENDING
         if (matchedPhone && !await this.repository.reserveAutoMatchPhone(connection, matchedPhone.id)) {
           throw new Error('匹配设备已被占用')
@@ -154,7 +172,7 @@ class PreorderMutationService {
     })
   }
 
-  async update(id, input = {}) {
+  async update(id, input = {}, actor) {
     const updateData = { ...input }
     return this.repository.withConnection(async connection => {
       let transactionStarted = false
@@ -178,6 +196,9 @@ class PreorderMutationService {
         transactionStarted = true
         const preorder = await this.repository.getForUpdate(connection, id)
         if (!preorder) return reject('not_found')
+        const scope = resolveStoreScope(actor)
+        assertStoreInScope(scope, preorder.store_id)
+        if (input.store_id !== undefined) assertStoreInScope(scope, input.store_id)
         if (![PREORDER_STATUS.PENDING, PREORDER_STATUS.MATCHED].includes(preorder.status)) {
           return reject('invalid_status')
         }
@@ -237,7 +258,7 @@ class PreorderMutationService {
         if (Object.keys(updates).length === 0) return reject('no_fields')
 
         if (staleMatchNeedsClearing && preorder.matched_phone_id) {
-          const released = await this.repository.releaseMatchedPhone(connection, preorder.matched_phone_id, id)
+          const released = await this.releaseAuthorizedPhone(connection, preorder.matched_phone_id, id, actor)
           if (!released && preorder.status === PREORDER_STATUS.MATCHED) return reject('release_failed')
         }
 
@@ -255,7 +276,7 @@ class PreorderMutationService {
     })
   }
 
-  async cancel(id, reason) {
+  async cancel(id, reason, actor) {
     return this.repository.withConnection(async connection => {
       let transactionStarted = false
       const rollback = async () => {
@@ -277,6 +298,7 @@ class PreorderMutationService {
           await rollback()
           return { error: 'not_found' }
         }
+        assertStoreInScope(resolveStoreScope(actor), preorder.store_id)
         if (preorder.status === PREORDER_STATUS.CANCELLED) {
           await rollback()
           return { error: 'already_cancelled' }
@@ -286,7 +308,7 @@ class PreorderMutationService {
           return { error: 'delivered' }
         }
         if (preorder.matched_phone_id) {
-          const released = await this.repository.releaseMatchedPhone(connection, preorder.matched_phone_id, id)
+          const released = await this.releaseAuthorizedPhone(connection, preorder.matched_phone_id, id, actor)
           if (!released) {
             await rollback()
             return { error: 'phone_in_use' }
@@ -306,7 +328,7 @@ class PreorderMutationService {
     })
   }
 
-  async restore(id) {
+  async restore(id, actor) {
     return this.repository.withConnection(async connection => {
       let transactionStarted = false
       const rollback = async () => {
@@ -328,16 +350,17 @@ class PreorderMutationService {
           await rollback()
           return { error: 'not_found' }
         }
+        assertStoreInScope(resolveStoreScope(actor), preorder.store_id)
         if (preorder.status !== PREORDER_STATUS.CANCELLED) {
           await rollback()
           return { error: 'invalid_status' }
         }
 
         if (preorder.matched_phone_id) {
-          await this.repository.releaseMatchedPhone(connection, preorder.matched_phone_id, id)
+          await this.releaseAuthorizedPhone(connection, preorder.matched_phone_id, id, actor)
         }
 
-        const matchedPhone = await this.repository.findRestoreCandidate(connection, preorder)
+        const matchedPhone = await this.repository.findRestoreCandidate(connection, preorder, resolveStoreScope(actor))
         if (matchedPhone && !await this.repository.reserveRestoreCandidate(connection, matchedPhone.id)) {
           await rollback()
           return { error: 'phone_in_use' }
@@ -357,7 +380,7 @@ class PreorderMutationService {
     })
   }
 
-  async match(id, input = {}) {
+  async match(id, input = {}, actor) {
     const { phone_id, imei, actual_model, arrival_date, actual_price } = input
     if (!phone_id && !imei) return { error: 'phone_required' }
     if (actual_price !== undefined && actual_price !== null && actual_price !== '' && (!isMoneyInput(actual_price) || Number(actual_price) < 0)) return { error: 'invalid_price' }
@@ -384,6 +407,7 @@ class PreorderMutationService {
           await rollback()
           return { error: 'preorder_not_found' }
         }
+        assertStoreInScope(resolveStoreScope(actor), preorder.store_id)
         if (![PREORDER_STATUS.PENDING, PREORDER_STATUS.MATCHED].includes(preorder.status)) {
           await rollback()
           return { error: 'invalid_preorder_status' }
@@ -396,6 +420,7 @@ class PreorderMutationService {
           return { error: 'phone_not_found' }
         }
 
+        assertStoreInScope(resolveStoreScope(actor), phone.store_id)
         const isSamePhone = previousPhoneId !== null && previousPhoneId === Number(phone.id)
         if (!['in_stock', 'reserved'].includes(phone.status) || (Number(phone.is_preordered) === 1 && !isSamePhone)) {
           await rollback()
@@ -412,6 +437,7 @@ class PreorderMutationService {
             await rollback()
             return { error: 'previous_phone_unavailable' }
           }
+          assertStoreInScope(resolveStoreScope(actor), previousPhone.store_id)
           if (Number(previousPhone.is_preordered) !== 1) {
             await rollback()
             return { error: 'previous_phone_state_invalid' }

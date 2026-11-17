@@ -46,8 +46,8 @@ test('查看历史不要求退货动作权限，但双模块查看权限和登�
   const calls = [], f = fixture()
   f.service.permissionCheck = async (_actor, permission) => { calls.push(permission); return permission !== 'query:return-to-stock' }
   await f.service.aftersales(actor, 51)
-  assert.deepEqual(calls, ['query:view', 'accessories:view'])
-  for (const denied of ['query:view', 'accessories:view']) {
+  assert.deepEqual(calls, ['query:view', 'query:goods-view'])
+  for (const denied of ['query:view', 'query:goods-view']) {
     const service = new Service({ repository: { aftersales() { assert.fail('不得读库') } }, permissionCheck: async (_user, permission) => permission !== denied })
     await assert.rejects(service.aftersales(actor, 51), { statusCode: 403 })
   }

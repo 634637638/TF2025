@@ -4,7 +4,8 @@ const {
   unifiedAuth,
   requireBusinessUser,
   requirePermission,
-  requireAnyPermission
+  requireAnyPermission,
+  hasUnifiedPermission
 } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
 const AnalyticsSalesTrendController = require('../controllers/analytics-sales-trend.controller')
@@ -84,7 +85,7 @@ const enforceAnalyticsStoreScope = (req, res, next) => {
 router.use(unifiedAuth, requirePermission('analytics:view'), enforceAnalyticsStoreScope)
 router.use('/inventory', requirePermission('inventory:view'))
 router.use('/customers', requirePermission('customers:view'))
-router.use(['/employee-performance', '/employees'], requirePermission('salary:view'))
+router.use(['/employee-performance', '/employees'], requirePermission('salary-records:view'))
 router.use('/attendance', requireAnyPermission([
   'attendance:view',
   'attendance:view:own',
@@ -95,6 +96,14 @@ router.use('/employees/attendance', requireAnyPermission([
   'attendance:view:own',
   'attendance:view:all'
 ]))
+
+// 考勤的本人/团队范围独立于工资及分析页面权限。
+router.use(['/attendance', '/employees/attendance'], async (req, res, next) => {
+  try {
+    req.analyticsEmployeeId = await hasUnifiedPermission(req.user, 'attendance:view:all') ? null : req.user.id
+    next()
+  } catch (error) { next(error) }
+})
 
 // ==================== 销售分析相关API ====================
 

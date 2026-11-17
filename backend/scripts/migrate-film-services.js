@@ -36,7 +36,7 @@ async function inspect(db) {
   const exists = tables.some(row => row.TABLE_NAME === table)
   if (exists) {
     if (!tables.some(row => row.TABLE_NAME === table && row.ENGINE === 'InnoDB')) throw new Error('贴膜表必须使用InnoDB')
-    const actual = columns.filter(row => row.TABLE_NAME === table), expected = definitions(types)
+    const actual = columns.filter(row => row.TABLE_NAME === table && !['phone_id', 'model_id', 'phone_snapshot'].includes(row.COLUMN_NAME)), expected = definitions(types)
     if (actual.length !== Object.keys(expected).length) throw new Error('贴膜表字段数量不一致')
     for (const [name, [type, nullable, defaultValue, extra]] of Object.entries(expected)) {
       const row = actual.find(item => item.COLUMN_NAME === name)
@@ -79,6 +79,10 @@ function createTable(types) {
 /** 默认仅预览；DDL中断保留备份，有服务历史或启用标记时禁止删结构。 */
 async function migrate(db, { apply = false, rollback = false, backupFile } = {}) {
   const state = await inspect(db)
+  if (rollback && state.exists) {
+    const [extensions] = await db.query("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'customer_film_services' AND COLUMN_NAME IN ('phone_id','model_id','phone_snapshot')")
+    if (extensions.length) throw new Error('请先按受控流程回退贴膜模板匹配扩展')
+  }
   if (rollback ? !state.exists && !state.flag : state.exists && state.flag) return { status: 'already_ready', writes: false }
   const [categories] = await db.query('SELECT * FROM accessory_categories ORDER BY id')
   const [services] = state.exists ? await db.query('SELECT * FROM customer_film_services ORDER BY id') : [[]]

@@ -1,5 +1,7 @@
 'use strict'
 
+const scopedActor = { id: 8, store_ids: [4] }
+
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
@@ -107,7 +109,7 @@ test('sales inventory report service builds bound filters and resolves exact det
     store_id: '4', supplier_id: '8', is_new: '1',
     start_date: '2026-11-01', end_date: '2026-11-07',
     brand: ' Apple ', model: 'iPhone', color: '黑色', memory: '256G'
-  })
+  }, scopedActor)
   const summary = calls.find(([name]) => name === 'summary')[1]
   assert.ok(summary.whereConditions.includes('DATE(p.inventory_time) BETWEEN ? AND ?'))
   assert.ok(summary.whereConditions.includes('p.model_id IN (?,?)'))
@@ -117,7 +119,7 @@ test('sales inventory report service builds bound filters and resolves exact det
   ])
 
   calls.length = 0
-  await service.getDetail({ brand: 'Apple', model: 'Model A', color: 'Black', memory: '128G' }, 25)
+  await service.getDetail({ brand: 'Apple', model: 'Model A', color: 'Black', memory: '128G' }, 25, scopedActor)
   const exactCalls = calls.filter(([name]) => name === 'exact')
   assert.deepEqual(exactCalls, [
     ['exact', 'brand', 'Apple', undefined],

@@ -14,6 +14,7 @@ const {
   validatePointsConfig
 } = require('./customer-points.service')
 const { PAGINATION } = require('../config/constants')
+const CustomerAccountLedgerRepository = require('../repositories/customer-account-ledger.repository')
 
 const APPLE_ACCOUNT_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
 const APPLE_ACCOUNT_PHONE_REGEX = /^1[3-9]\d{9}$/
@@ -32,6 +33,7 @@ class CustomerManagementService extends BaseService {
     loadPointsConfig = getCustomerPointsConfig,
     persistPointsConfig = saveCustomerPointsConfig,
     pointsLedger = new CustomerPointsLedgerService(),
+    accountLedger = new CustomerAccountLedgerRepository(),
     passwordHasher = bcrypt.hash.bind(bcrypt),
     createMemberNumber = generateMemberNumber,
     addresses
@@ -43,6 +45,7 @@ class CustomerManagementService extends BaseService {
     this.loadPointsConfig = loadPointsConfig
     this.persistPointsConfig = persistPointsConfig
     this.pointsLedger = pointsLedger
+    this.accountLedger = accountLedger
     this.passwordHasher = passwordHasher
     this.createMemberNumber = createMemberNumber
     this.addresses = addresses || new CustomerAddressService({ repository })
@@ -138,9 +141,28 @@ class CustomerManagementService extends BaseService {
     const config = await this.loadPointsConfig()
     if (query.include_options !== undefined) {
       const categories = await this.accessoryRepository.getProductCategories()
-      return { data: { config, categories: categories.map(row => ({ id: Number(row.id), name: row.name, status: Number(row.status) })) }, message: '获取积分设置成功' }
+      const products = config.redemption.accessory_ids?.length
+        ? (await this.accessoryRepository.getPointsProducts({ ids: config.redemption.accessory_ids, pageSize: 1000 })).data : []
+      return { data: { config, products, categories: categories.map(row => ({ id: Number(row.id), name: row.name, status: Number(row.status) })) }, message: '获取积分设置成功' }
     }
     return { data: config, message: '获取积分设置成功' }
+  }
+
+  async getPointsProducts(query = {}) {
+    const parseIds = (raw, label) => {
+      if (typeof raw !== 'string' || !/^\d+(,\d+)*$/.test(raw)) throw this.createError(`${label}参数无效`, 400)
+      const ids = raw.split(',').map(Number)
+      if (ids.length > 1000 || ids.some(id => !Number.isSafeInteger(id) || id < 1 || id > 2147483647) || new Set(ids).size !== ids.length) throw this.createError(`${label}参数无效`, 400)
+      return ids
+    }
+    const categoryIds = parseIds(query.category_ids, '商品类型')
+    const page = query.page === undefined ? 1 : Number(query.page)
+    const pageSize = query.page_size === undefined ? 50 : Number(query.page_size)
+    if ((query.page !== undefined && !isIntegerInput(query.page)) || (query.page_size !== undefined && !isIntegerInput(query.page_size)) ||
+      !Number.isSafeInteger(page) || page < 1 || page > 1000000 || !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100 ||
+      (query.search !== undefined && (typeof query.search !== 'string' || query.search.length > 100))) throw this.createError('商品检索参数无效', 400)
+    const result = await this.accessoryRepository.getPointsProducts({ categoryIds, page, pageSize, search: (query.search || '').trim() })
+    return { data: result.data, extra: { pagination: result.pagination }, message: '获取积分商品成功' }
   }
 
   async savePointsConfig(body) {
@@ -150,6 +172,14 @@ class CustomerManagementService extends BaseService {
       const categories = await this.accessoryRepository.getProductCategories()
       const previousIds = previous.redemption?.category_ids || []
       if (config.redemption.category_ids.some(id => !categories.some(row => Number(row.id) === id && (Number(row.status) === 1 || previousIds.includes(id))))) throw this.createError('商品类型不存在或已停用，请重新选择', 400)
+    }
+    if (!config.redemption.all_accessory_categories && config.redemption.accessory_ids?.length) {
+      const products = (await this.accessoryRepository.getPointsProducts({ ids: config.redemption.accessory_ids, pageSize: 1000 })).data
+      const previousIds = previous.redemption?.accessory_ids || []
+      if (config.redemption.accessory_ids.some(id => !products.some(row => Number(row.id) === id &&
+        config.redemption.category_ids.includes(Number(row.category_id)) && (Number(row.status) === 1 || previousIds.includes(id))))) {
+        throw this.createError('商品不存在、已停用或不属于所选类型，请重新选择', 400)
+      }
     }
     const saved = await this.persistPointsConfig(config)
     return { data: saved, message: '积分设置保存成功' }
@@ -293,18 +323,17 @@ class CustomerManagementService extends BaseService {
     if (member_number !== undefined) updateData.member_number = member_number
     if (balance !== undefined) {
       if (!isMoneyInput(balance)) throw this.createError('余额必须是最多两位小数的有效金额', 400)
-      updateData.balance = Number(balance)
+      if (Object.hasOwn(existingCustomer, 'balance')) {
+        if (Number(balance) !== Number(existingCustomer.balance || 0)) throw this.createError('余额变动必须通过账户调整入口，以保留操作明细', 409, 'ACCOUNT_ADJUSTMENT_REQUIRED')
+      } else updateData.balance = Number(balance)
     }
     if (points !== undefined) {
       if (!['number', 'string'].includes(typeof points) || !/^\d+$/.test(String(points)) ||
         !Number.isSafeInteger(Number(points)) || Number(points) > 2147483647) throw this.createError('积分必须是有效的非负整数', 400)
       // 原值只用于回显，不随资料保存再次写回，避免覆盖同期销售发放的积分。
-      if (Number(points) !== Number(existingCustomer.points)) {
-        if (await this.repository.withConnection(executor => this.pointsLedger.ready(executor))) {
-          throw this.createError('积分已启用来源追踪，请通过积分核对调整流程处理', 409, 'POINTS_ADJUSTMENT_REQUIRED')
-        }
-        updateData.points = Number(points)
-      }
+      if (Object.hasOwn(existingCustomer, 'points')) {
+        if (Number(points) !== Number(existingCustomer.points)) throw this.createError('积分变动必须通过账户调整入口，以保留操作明细；请通过积分核对调整', 409, 'POINTS_ADJUSTMENT_REQUIRED')
+      } else updateData.points = Number(points)
     }
 
     if (password !== undefined && password !== null && password !== '') {
@@ -374,6 +403,65 @@ class CustomerManagementService extends BaseService {
         has_prev: parsedPage > 1
       }
     } }
+  }
+
+  async getAccountLedger(params, query = {}) {
+    if (!isIntegerInput(params.id) || Number(params.id) <= 0) throw this.createError('客户ID必须是正整数', 400)
+    const customerId = Number(params.id)
+    const kind = query.kind === undefined || query.kind === '' ? null : String(query.kind)
+    if (kind !== null && !['balance', 'points'].includes(kind)) throw this.createError('账户明细类型无效', 400)
+    const records = await this.accountLedger.withConnection(async executor => {
+      const [tables] = await executor.execute("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('customer_account_entries','customer_points_entries','customer_points_aftersales','sales_aftersales','sales_aftersale_items')")
+      if (!['customer_account_entries', 'customer_points_entries'].every(name => tables.some(row => row.TABLE_NAME === name))) {
+        throw this.createError('账户流水结构尚未迁移，请先完成账户流水迁移', 409, 'ACCOUNT_LEDGER_NOT_READY')
+      }
+      const includeAftersales = tables.some(row => row.TABLE_NAME === 'customer_points_aftersales')
+      const includePhoneReturnOperator = ['sales_aftersales', 'sales_aftersale_items'].every(name => tables.some(row => row.TABLE_NAME === name))
+      return this.accountLedger.list(executor, customerId, kind, 100, includeAftersales, includePhoneReturnOperator)
+    })
+    return { data: { records }, message: '账户明细获取成功' }
+  }
+
+  async adjustAccount(params, body, actor = {}) {
+    if (!isIntegerInput(params.id) || Number(params.id) <= 0) throw this.createError('客户ID必须是正整数', 400)
+    const customerId = Number(params.id)
+    const kind = body?.kind
+    const delta = body?.delta
+    if (!['balance', 'points'].includes(kind) || typeof delta !== 'number' || !Number.isFinite(delta) || delta === 0 ||
+      (kind === 'points' && (!Number.isSafeInteger(delta) || Math.abs(delta) > 2147483647)) ||
+      (kind === 'balance' && Math.abs(Math.round(delta * 100) - delta * 100) > 1e-6)) throw this.createError('账户变动参数无效', 400)
+    const note = typeof body.note === 'string' ? body.note.trim() : ''
+    if (!note || note.length > 500) throw this.createError('请填写账户变动说明（1至500字）', 400)
+    return this.repository.withConnection(async executor => {
+      await executor.beginTransaction()
+      try {
+        const [rows] = await executor.execute('SELECT id, balance, points FROM customers WHERE id = ? FOR UPDATE', [customerId])
+        const customer = rows[0]
+        if (!customer) throw this.createError('客户不存在', 404)
+        const beforeBalance = Number(customer.balance || 0), beforePoints = Number(customer.points || 0)
+        let afterBalance = beforeBalance, afterPoints = beforePoints, accountEntryId = null
+        if (kind === 'points') {
+          if (!await this.pointsLedger.ready(executor)) throw this.createError('积分来源账尚未迁移，暂不能人工调整积分', 409)
+          afterPoints = beforePoints + delta
+          if (afterPoints < 0 || afterPoints > 2147483647) throw this.createError('账户积分不能小于0', 400)
+          accountEntryId = await this.accountLedger.append(executor, { customer_id: customerId, kind, delta, balance_after: afterBalance,
+            points_after: afterPoints, source_type: 'manual', source_id: null, note, actor_user_id: Number(actor.id) || null })
+          const adjusted = await this.pointsLedger.adjustManual(executor, { customerId, delta, entryId: accountEntryId,
+            details: { reason: note, operator_id: Number(actor.id) || null } })
+          afterPoints = adjusted.balance_after
+          await this.accountLedger.linkPointEntry(executor, accountEntryId, adjusted.entry_id)
+        } else {
+          afterBalance = Math.round((beforeBalance + delta) * 100) / 100
+          if (afterBalance < 0) throw this.createError('账户余额不能小于0', 400)
+          const [result] = await executor.execute('UPDATE customers SET balance = ?, updated_at = NOW() WHERE id = ? AND balance = ?', [afterBalance, customerId, beforeBalance])
+          if (result.affectedRows !== 1) throw Object.assign(new Error('账户已变化，请刷新后重试'), { statusCode: 409 })
+        }
+        if (!accountEntryId) await this.accountLedger.append(executor, { customer_id: customerId, kind, delta, balance_after: afterBalance,
+          points_after: afterPoints, source_type: 'manual', source_id: null, note, actor_user_id: Number(actor.id) || null })
+        await executor.commit()
+        return { data: { balance: afterBalance, points: afterPoints }, message: '账户变动已记录' }
+      } catch (error) { await executor.rollback(); throw error }
+    })
   }
 
   async remove(params) {

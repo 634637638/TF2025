@@ -36,7 +36,6 @@
           class="permission-toolbar"
         >
           <el-button
-            size="small"
             type="success"
             :disabled="ctx.savingDialogPermissions"
             @click="ctx.selectAllDialogPermissions(true)"
@@ -45,7 +44,6 @@
             全开页面权限
           </el-button>
           <el-button
-            size="small"
             type="warning"
             :disabled="ctx.savingDialogPermissions"
             @click="ctx.selectAllDialogPermissions(false)"
@@ -54,7 +52,6 @@
             清空页面权限
           </el-button>
           <el-button
-            size="small"
             type="info"
             :disabled="ctx.savingDialogPermissions"
             @click="ctx.toggleAllDialogMenuPermissions(true)"
@@ -63,7 +60,6 @@
             显示所有菜单
           </el-button>
           <el-button
-            size="small"
             type="info"
             :disabled="ctx.savingDialogPermissions"
             @click="ctx.toggleAllDialogMenuPermissions(false)"
@@ -88,7 +84,6 @@
               />
             </el-select>
             <el-button
-              size="small"
               type="success"
               :disabled="ctx.savingDialogPermissions || !ctx.dialogBulkPermissionType"
               @click="ctx.toggleDialogActionAcrossModules(ctx.dialogBulkPermissionType, true)"
@@ -97,7 +92,6 @@
               开启
             </el-button>
             <el-button
-              size="small"
               type="warning"
               :disabled="ctx.savingDialogPermissions || !ctx.dialogBulkPermissionType"
               @click="ctx.toggleDialogActionAcrossModules(ctx.dialogBulkPermissionType, false)"
@@ -160,24 +154,19 @@
                   <el-button
                     :aria-pressed="ctx.isDialogMenuPermissionSelected(group.parent.module_key)"
                     native-type="button"
-                    class="permission-switch tf-button--content"
-                    :class="{ checked: ctx.isDialogMenuPermissionSelected(group.parent.module_key), disabled: ctx.savingDialogPermissions }"
+                    class="permission-switch"
+                    :class="ctx.isDialogMenuPermissionSelected(group.parent.module_key) ? 'tf-button--permission' : 'tf-button--neutral'"
+                    :title="ctx.isDialogMenuPermissionSelected(group.parent.module_key) ? '已开启，点击关闭' : '已关闭，点击开启'"
                     :disabled="ctx.savingDialogPermissions"
                     @click="toggleMenuPermission(group.parent.module_key)"
                   >
-                    <span class="permission-switch__main">
-                      <span class="permission-switch__icon">
-                        <i :class="ctx.isDialogMenuPermissionSelected(group.parent.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'" />
-                      </span>
-                      <span class="permission-switch__text">
-                        <span class="permission-switch__label">菜单查看</span>
-                      </span>
+                    <span
+                      class="permission-switch__icon"
+                      aria-hidden="true"
+                    >
+                      <i :class="ctx.isDialogMenuPermissionSelected(group.parent.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'" />
                     </span>
-                    <span class="permission-switch__control">
-                      <span class="permission-switch__track">
-                        <span class="permission-switch__thumb" />
-                      </span>
-                    </span>
+                    <span class="permission-switch__label">菜单查看</span>
                   </el-button>
 
                   <el-button
@@ -185,25 +174,20 @@
                     :key="`${group.parent.module_key}-${getPermissionType(permission)}`"
                     :aria-pressed="ctx.isDialogPermissionSelected(group.parent.module_key, getPermissionType(permission))"
                     native-type="button"
-                    class="permission-switch tf-button--content"
-                    :class="{ checked: ctx.isDialogPermissionSelected(group.parent.module_key, getPermissionType(permission)), disabled: ctx.savingDialogPermissions }"
+                    class="permission-switch"
+                    :class="ctx.isDialogPermissionSelected(group.parent.module_key, getPermissionType(permission)) ? 'tf-button--permission' : 'tf-button--neutral'"
+                    :title="ctx.isDialogPermissionSelected(group.parent.module_key, getPermissionType(permission)) ? '已开启，点击关闭' : '已关闭，点击开启'"
                     :disabled="ctx.savingDialogPermissions"
                     @click="toggleActionPermission(group.parent.module_key, getPermissionType(permission))"
                   >
-                    <span class="permission-switch__main">
-                      <span class="permission-switch__icon">
-                        <i :class="ctx.getPermissionIcon(getPermissionType(permission))" />
-                      </span>
-                      <span class="permission-switch__text">
-                        <span class="permission-switch__label">
-                          {{ ctx.getPermissionNameEnhanced(getPermissionType(permission)) }}
-                        </span>
-                      </span>
+                    <span
+                      class="permission-switch__icon"
+                      aria-hidden="true"
+                    >
+                      <i :class="ctx.getPermissionIcon(getPermissionType(permission))" />
                     </span>
-                    <span class="permission-switch__control">
-                      <span class="permission-switch__track">
-                        <span class="permission-switch__thumb" />
-                      </span>
+                    <span class="permission-switch__label">
+                      {{ ctx.getPermissionNameEnhanced(getPermissionType(permission)) }}
                     </span>
                   </el-button>
                 </div>
@@ -244,24 +228,19 @@
                     <el-button
                       :aria-pressed="ctx.isDialogMenuPermissionSelected(child.module_key)"
                       native-type="button"
-                      class="permission-switch tf-button--content"
-                      :class="{ checked: ctx.isDialogMenuPermissionSelected(child.module_key), disabled: ctx.savingDialogPermissions }"
+                      class="permission-switch"
+                      :class="ctx.isDialogMenuPermissionSelected(child.module_key) ? 'tf-button--permission' : 'tf-button--neutral'"
+                      :title="ctx.isDialogMenuPermissionSelected(child.module_key) ? '已开启，点击关闭' : '已关闭，点击开启'"
                       :disabled="ctx.savingDialogPermissions"
                       @click="toggleMenuPermission(child.module_key)"
                     >
-                      <span class="permission-switch__main">
-                        <span class="permission-switch__icon">
-                          <i :class="ctx.isDialogMenuPermissionSelected(child.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'" />
-                        </span>
-                        <span class="permission-switch__text">
-                          <span class="permission-switch__label">菜单查看</span>
-                        </span>
+                      <span
+                        class="permission-switch__icon"
+                        aria-hidden="true"
+                      >
+                        <i :class="ctx.isDialogMenuPermissionSelected(child.module_key) ? 'fas fa-eye' : 'fas fa-eye-slash'" />
                       </span>
-                      <span class="permission-switch__control">
-                        <span class="permission-switch__track">
-                          <span class="permission-switch__thumb" />
-                        </span>
-                      </span>
+                      <span class="permission-switch__label">菜单查看</span>
                     </el-button>
 
                     <el-button
@@ -269,25 +248,20 @@
                       :key="`${child.module_key}-${getPermissionType(permission)}`"
                       :aria-pressed="ctx.isDialogPermissionSelected(child.module_key, getPermissionType(permission))"
                       native-type="button"
-                      class="permission-switch tf-button--content"
-                      :class="{ checked: ctx.isDialogPermissionSelected(child.module_key, getPermissionType(permission)), disabled: ctx.savingDialogPermissions }"
+                      class="permission-switch"
+                      :class="ctx.isDialogPermissionSelected(child.module_key, getPermissionType(permission)) ? 'tf-button--permission' : 'tf-button--neutral'"
+                      :title="ctx.isDialogPermissionSelected(child.module_key, getPermissionType(permission)) ? '已开启，点击关闭' : '已关闭，点击开启'"
                       :disabled="ctx.savingDialogPermissions"
                       @click="toggleActionPermission(child.module_key, getPermissionType(permission))"
                     >
-                      <span class="permission-switch__main">
-                        <span class="permission-switch__icon">
-                          <i :class="ctx.getPermissionIcon(getPermissionType(permission))" />
-                        </span>
-                        <span class="permission-switch__text">
-                          <span class="permission-switch__label">
-                            {{ ctx.getPermissionNameEnhanced(getPermissionType(permission)) }}
-                          </span>
-                        </span>
+                      <span
+                        class="permission-switch__icon"
+                        aria-hidden="true"
+                      >
+                        <i :class="ctx.getPermissionIcon(getPermissionType(permission))" />
                       </span>
-                      <span class="permission-switch__control">
-                        <span class="permission-switch__track">
-                          <span class="permission-switch__thumb" />
-                        </span>
+                      <span class="permission-switch__label">
+                        {{ ctx.getPermissionNameEnhanced(getPermissionType(permission)) }}
                       </span>
                     </el-button>
                   </div>
@@ -369,11 +343,25 @@ type ModuleStatus = {
 
 const GROUP_CONFIG = [
   {
+    parentKey: 'accessories_accessoriesview',
+    title: '配件管理',
+    description: '配件主页面下面统一管理商品类型、计量单位及总仓等配件设置子页面权限。',
+    childKeys: ['accessories_accessorycatalogview'],
+    prefix: 'accessories_'
+  },
+  {
     parentKey: 'system_systemview',
     title: '系统设置',
     description: '系统主页面下面统一管理 Git 管理、数据优化等子页面权限。',
     childKeys: ['system_gitmanagement', 'data_optimization_dataoptimizationview'],
     prefix: 'system_'
+  },
+  {
+    parentKey: 'data_optimization_dataoptimizationview',
+    title: '数据优化',
+    description: '页面查看不授予数据导入的上传、执行或删除权限。',
+    childKeys: ['data_optimization_dataimporttab'],
+    prefix: 'data_optimization_'
   },
   {
     parentKey: 'permissions_permissionsview',
@@ -385,7 +373,7 @@ const GROUP_CONFIG = [
   {
     parentKey: 'salary_salaryview',
     title: '工资管理',
-    description: '工资主页面下面统一管理“我的工资”“工资模板”“工资记录”等子页面权限。',
+    description: '工资主页面下面统一管理“我的工资”“工资模板”“工资计算”等子页面权限。',
     childKeys: ['salary_mysalaryview', 'salary_salarytemplatesview', 'salary_salaryrecordsview'],
     prefix: 'salary_'
   },
@@ -467,6 +455,10 @@ const getModuleStatus = (module: DialogModule): ModuleStatus => {
 const groupedPermissionModules = computed<ModuleGroup[]>(() => {
   const modules = (ctx.permissionDialogMatrix || []) as DialogModule[]
   const moduleMap = new Map(modules.map(module => [module.module_key, module]))
+  // 接口已按完整菜单树排序；业务分组不再改变母页面的导航位置。
+  const modulePositions = new Map(modules.map((module, index) => [module.module_key, index]))
+  const compareModules = (left: DialogModule, right: DialogModule) =>
+    (modulePositions.get(left.module_key) ?? modules.length) - (modulePositions.get(right.module_key) ?? modules.length)
   const consumed = new Set<string>()
   const groups: ModuleGroup[] = []
 
@@ -503,7 +495,7 @@ const groupedPermissionModules = computed<ModuleGroup[]>(() => {
       title: config.title,
       description: config.description,
       parent,
-      children,
+      children: children.sort(compareModules),
       standalone: false
     })
   })
@@ -520,7 +512,7 @@ const groupedPermissionModules = computed<ModuleGroup[]>(() => {
     })
   })
 
-  return groups
+  return groups.sort((left, right) => compareModules(left.parent, right.parent))
 })
 
 const totalModuleCount = computed(() =>

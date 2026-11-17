@@ -1,5 +1,6 @@
 import type { PaginatedResponse } from '@/types'
-import type { CheckoutOrderDetail } from '@/types/sales-checkout'
+import type { CheckoutOrderDetail, GiftReturnAgreement } from '@/types/sales-checkout'
+import { formatAmount } from '@/utils/format'
 import type { CustomerGoodsRecord, GoodsAftersaleRecord } from '@/types/accessory'
 
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value))
@@ -87,6 +88,23 @@ const customerGoodsRow = (value: unknown): value is CustomerGoodsRecord => {
 export const isCustomerGoodsPage = (value: unknown, page: number, pageSize: number): value is Pick<PaginatedResponse<CustomerGoodsRecord>, 'data' | 'pagination'> =>
   validPage(value, page, pageSize) && value.data.every(customerGoodsRow) && new Set(value.data.map(row => row.id)).size === value.data.length
 
+/** 原单赠品约定可整体脱敏，已记录时仍须按原数量及整数分守恒。 */
+export const isGiftReturnAgreement = (value: unknown): value is GiftReturnAgreement => {
+  if (!record(value)) return false
+  const { gift_agreement_state: state, gift_return_unit_price: unit, gift_return_total: total } = value
+  if (state === null) return unit === null && total === null
+  if (value.sale_type !== 'gift') return false
+  if (state === 'not_recorded') return unit === null && total === null
+  return state === 'recorded' && money(unit) && money(total) && integer(value.quantity, 1) &&
+    Math.round(unit * 100) * value.quantity === Math.round(total * 100)
+}
+
+export const giftReturnAgreementText = (value: GiftReturnAgreement): string => value.gift_agreement_state === 'not_recorded'
+  ? '原单未记录约定金额'
+  : value.gift_agreement_state === 'recorded' && value.gift_return_unit_price !== null && value.gift_return_total !== null
+    ? `原单约定 ¥${formatAmount(value.gift_return_unit_price)}/件，合计 ¥${formatAmount(value.gift_return_total)}；实际扣款以售后核对为准`
+    : '-'
+
 /** 原单完整性校验兼容脱敏null，不把残缺金额拼成看似完整的订单。 */
 export const isCheckoutOrderDetail = (value: unknown): value is CheckoutOrderDetail => {
   if (!record(value) || !integer(value.id, 1) || !Array.isArray(value.items) || !value.items.length ||
@@ -100,7 +118,7 @@ export const isCheckoutOrderDetail = (value: unknown): value is CheckoutOrderDet
     if (!record(row) || !integer(row.id, 1) || ids.has(row.id) || !['phone', 'accessory'].includes(String(row.item_type)) ||
       ['sale_no', 'linked_phone_sale_no', 'name', 'brand_name', 'product_model', 'color_name', 'memory', 'imei', 'unit'].some(key =>
         row[key] !== null && typeof row[key] !== 'string') || (row.sale_type !== null && row.sale_type !== 'sale' && row.sale_type !== 'gift') ||
-      row.quantity !== null && !integer(row.quantity, 1) || !serialList(row.serial_numbers) ||
+      !isGiftReturnAgreement(row) || row.quantity !== null && !integer(row.quantity, 1) || !serialList(row.serial_numbers) ||
       row.serial_numbers && row.serial_numbers.length > 0 && row.quantity !== null && row.serial_numbers.length !== row.quantity) return false
     ids.add(row.id)
     const keys = ['unit_price', 'gross_amount', 'total_amount', 'deduction_amount', 'points_used', 'points_awarded']

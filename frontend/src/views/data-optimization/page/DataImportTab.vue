@@ -59,7 +59,6 @@
             </div>
             <el-button
               type="danger"
-              size="small"
               @click="clearFile"
             >
               <i class="fas fa-times" />
@@ -355,6 +354,8 @@
             <span>上一步</span>
           </el-button>
           <el-button
+            v-if="canImport && canUpload"
+            v-permission="'data-import:import'"
             type="primary"
             :disabled="!selectedStrategy || importing"
             :loading="importing"
@@ -564,7 +565,6 @@
                 <el-button
                   v-if="canDelete"
                   type="danger"
-                  size="small"
                   :icon="Delete"
                   link
                   @click.stop="handleDeleteHistory(row)"
@@ -663,7 +663,7 @@ interface AnalysisResult {
   }>
 }
 
-const { canView, canCreate, canDelete, handleNoPermission } = usePagePermissions('data-optimization')
+const { canView, canUpload, canImport, canDelete, handleNoPermission } = usePagePermissions('data-import')
 const showActionColumn = computed(() => shouldShowActionColumn(
   fieldPermissions.isFieldVisible('data_optimization_dataimporttab', 'system_info.operations'),
   [canDelete.value]
@@ -677,11 +677,11 @@ const ensureViewPermission = () => {
   return false
 }
 
-const ensureCreatePermission = () => {
-  if (canCreate.value) {
+const ensureUploadPermission = () => {
+  if (canUpload.value) {
     return true
   }
-  handleNoPermission('create')
+  handleNoPermission('upload')
   return false
 }
 
@@ -780,14 +780,14 @@ const selectedStrategy = ref<ImportStrategy>('smart')
 
 // 方法
 const handleUploadClick = () => {
-  if (!ensureCreatePermission()) {
+  if (!ensureUploadPermission()) {
     return
   }
   fileInput.value?.click()
 }
 
 const handleFileSelect = (event: Event) => {
-  if (!ensureCreatePermission()) {
+  if (!ensureUploadPermission()) {
     return
   }
 
@@ -798,7 +798,7 @@ const handleFileSelect = (event: Event) => {
 }
 
 const handleFileDrop = (event: DragEvent) => {
-  if (!ensureCreatePermission()) {
+  if (!ensureUploadPermission()) {
     return
   }
 
@@ -814,7 +814,7 @@ const handleFileDrop = (event: DragEvent) => {
 }
 
 const clearFile = () => {
-  if (!ensureCreatePermission()) {
+  if (!ensureUploadPermission()) {
     return
   }
 
@@ -831,7 +831,7 @@ const formatFileSize = (bytes: number) => {
 }
 
 const analyzeFile = async () => {
-  if (!ensureCreatePermission()) {
+  if (!ensureUploadPermission()) {
     return
   }
 
@@ -888,7 +888,8 @@ const analyzeFile = async () => {
 }
 
 const startImport = async () => {
-  if (!ensureCreatePermission()) {
+  if (!canImport.value) { handleNoPermission('import'); return }
+  if (!ensureUploadPermission()) {
     return
   }
 
@@ -1038,7 +1039,7 @@ onUnmounted(() => {
 })
 
 const resetWizard = () => {
-  if (!ensureCreatePermission()) {
+  if (!ensureUploadPermission()) {
     return
   }
 

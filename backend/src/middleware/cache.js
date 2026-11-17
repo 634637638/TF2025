@@ -37,7 +37,8 @@ function cacheMiddleware(options = {}) {
   const opts = { ...defaultOptions, ...options }
 
   return (req, res, next) => {
-    if (opts.ttl <= 0) {
+    // 认证响应必须每次执行门店及字段授权，禁止用整包缓存绕过控制器。
+    if (opts.ttl <= 0 || req.user || req.headers?.authorization || req.headers?.cookie) {
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
       res.set('Pragma', 'no-cache')
       res.set('Expires', '0')
@@ -64,7 +65,7 @@ function cacheMiddleware(options = {}) {
     // 重写 res.json 方法来缓存响应
     res.json = function(data) {
       // 只缓存成功响应
-      if (data && data.success) {
+      if (data && data.success && !req.user && !req.headers?.authorization && !req.headers?.cookie) {
         const cacheEntry = {
           data,
           createdAt: Date.now(),

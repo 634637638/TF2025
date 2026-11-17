@@ -2,9 +2,19 @@
 
 更新时间：2026-08-28
 
-### 2026-11-14 贴膜服务字段代码契约
+### 2026-11-16 商品模板适配品牌摘要
 
-类型标记唯一字段为 `accessory_categories.film_enabled`，目录以 `film_ready` 标识列是否就绪，未迁移环境只读兼容，显式写标记须409拒绝。服务事实独立保存在 `customer_film_services`，复用原共同订单/客户/有效手机销售ID；数量为耗膜量，一单唯一一条服务，业务/录入时间独立保存。公开历史为 `eligible_for_free/service_count/film_quantity` 和最小明细，后端不透传资格来源、成本或创建人；共同结算额外输入 `film_service.customer_id`、成功返回 `film_service_id`，旧请求摘要不变。共享类型为 `frontend/src/types/sales-checkout.ts`，机器契约已登记；[迁移及权限正文](../backend/accessory-entry.md#贴膜服务后端与类型标记)含受控执行/回退。2026-11-14已授权执行云端DDL并回读，未写真实服务；检查证据统一登记T22，不覆盖下述历史日期结论。
+只读响应字段 `compatible_brand_names` 已登记到 `accessories.responseFields`，共享类型使用 `AccessoryRecord`；列表、详情和条码查询从现有适配型号关系聚合品牌，沿用 `basic_info.model_name` 脱敏。原 `compatible_model_names` 保留完整型号供悬停/触摸提示，展示行为与回归入口见[配件接口契约](../backend/accessory-entry.md#权限边界)。本次无数据库物理字段变化，不迁移或回填业务数据；隔离测试不能替代真实云端业务验收。
+
+### 2026-11-15 贴膜开关简化
+
+现行唯一配置为模板 `accessories.free_film`（免费专用），类型不再配置，旧模板/类型 `film_enabled` 已退役；目录就绪仅检查有效列，免费自动匹配、收费及赠送规则见[贴膜模板配置](../backend/accessory-entry.md#模板配置与多型号匹配)。旧物理列及历史迁移资产保留，本次不迁移或回填真实数据。
+
+### 2026-11-14 贴膜服务字段代码契约（历史快照）
+
+以下为当日结构记录，当前规则以上述2026-11-15正文为准。
+
+类型标记唯一字段为 `accessory_categories.film_enabled`，目录以 `film_ready` 标识列是否就绪，未迁移环境只读兼容，显式写标记须409拒绝。服务事实独立保存在 `customer_film_services`，复用原共同订单/客户/有效手机销售ID；数量为耗膜量，一单唯一一条服务，业务/录入时间独立保存。公开历史为 `eligible_for_free/service_count/film_quantity` 和最小明细，后端不透传资格来源、成本或创建人；共同结算额外输入 `film_service.customer_id`、成功返回 `film_service_id`，旧请求摘要不变。共享类型为 `frontend/src/types/sales-checkout.ts`，机器契约已登记；[迁移及权限正文](../backend/accessory-entry.md#贴膜服务后端与模板匹配)含受控执行/回退。2026-11-14已授权执行云端DDL并回读，未写真实服务；检查证据统一登记T22，不覆盖下述历史日期结论。
 
 ### 2026-08-28 供应商打款备注与时间展示
 

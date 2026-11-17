@@ -1,16 +1,35 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditButtonSizeDeclarations, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 import { readFileSync } from 'node:fs'
 
 const classes = collectButtonClasses([
   '<template><div class="button-group"><el-button class="selected-action-btn"><i class="button-icon"/></el-button><el-button class="custom-command shared"/><div class="shared"/></div></template>'
 ])
 
+test('业务按钮的静态和动态尺寸、旧尺寸类及操作组尺寸都必须回到公共默认', () => {
+  const source = '<template><el-button size="small"/><el-button :size="mobile ? \'large\' : \'default\'"/><el-button v-bind:size="size"/><el-button-group size="small"/><el-button class="btn-sm"/><ElButton :class="[\'btn-lg\']"/><PublicPriceHeader action-size="small"/><ImportExportActions size="small"/><div class="batch-actions-buttons" :data-size="size"/></template>'
+  expectFindings(source, 9)
+})
+
+function expectFindings(source, count, options) {
+  assert.equal(auditButtonSizeDeclarations(source, options).length, count)
+}
+
+test('表单、标签、表格和分页尺寸不属于按钮声明，默认业务按钮保持有效', () => {
+  expectFindings('<template><el-input size="small"/><el-select size="small"/><el-tag size="small"/><el-table size="small"/><Pagination size="small"/><el-button type="primary" :loading="loading"/><PublicPriceHeader :action-width="112"/></template>', 0)
+})
+
+test('只有标杆页显式标记的尺寸演示可保留声明，其他页面不能用标记绕过', () => {
+  const source = '<template><el-button size="small" data-button-size-preview/><el-button size="large"/></template>'
+  expectFindings(source, 2)
+  expectFindings(source, 1, { allowPreview: true })
+})
+
 test('普通按钮默认、小号和大号均复用全局尺寸，缺失入口或硬编码会被拒绝', () => {
   const source = readFileSync(new URL('../src/styles/components/_buttons.scss', import.meta.url), 'utf8')
   assert.deepEqual(auditCommandButtonSizes(source), [])
-  assert.equal(auditCommandButtonSizes('').length, 3)
+  assert.equal(auditCommandButtonSizes('').length, 9)
   for (const declaration of [
     'height: var(--tf-button-height) !important',
     'height: var(--tf-button-height-small) !important',
@@ -19,6 +38,20 @@ test('普通按钮默认、小号和大号均复用全局尺寸，缺失入口�
     'font-size: var(--tf-button-font-size-small) !important'
   ]) {
     assert.equal(auditCommandButtonSizes(source.replace(declaration, `${declaration.split(':')[0]}: 99px !important`)).length, 1)
+  }
+})
+
+test('电脑端普通及页头按钮不声明 size 也复用公共小号，禁止恢复独立的大尺寸默认值', () => {
+  const source = readFileSync(new URL('../src/styles/components/_buttons.scss', import.meta.url), 'utf8')
+  for (const [property, token] of [
+    ['--tf-button-height', '--tf-button-small-base-height'],
+    ['--tf-button-padding-x', '--tf-button-small-base-padding-x'],
+    ['--tf-button-font-size', '--tf-button-small-base-font-size'],
+    ['--tf-toolbar-button-height', '--tf-button-small-base-height'],
+    ['--tf-toolbar-button-padding-x', '--tf-button-small-base-padding-x'],
+    ['--tf-toolbar-button-font-size', '--tf-button-small-base-font-size']
+  ]) {
+    assert.equal(auditCommandButtonSizes(source.replace(`${property}: var(${token});`, `${property}: 36px;`)).length, 1)
   }
 })
 

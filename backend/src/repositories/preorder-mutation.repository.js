@@ -1,5 +1,7 @@
 'use strict'
 
+const { appendStoreScopeCondition } = require('../utils/store-scope')
+
 const { getDatabase } = require('../config/database')
 const { PREORDER_CORE_FIELDS, PREORDER_STATUS } = require('../config/preorder-response.constants')
 const { withConnection } = require('../core/db/connection')
@@ -32,8 +34,8 @@ class PreorderMutationRepository {
     return records[0]?.status || null
   }
 
-  async deleteById(id) {
-    const [result] = await this.database().execute('DELETE FROM preorders WHERE id = ?', [id])
+  async deleteById(id, executor = this.database()) {
+    const [result] = await executor.execute('DELETE FROM preorders WHERE id = ?', [id])
     return result.affectedRows === 1
   }
 
@@ -110,20 +112,23 @@ class PreorderMutationRepository {
 
   async getForRestore(connection, id) {
     const [records] = await connection.execute(
-      `SELECT id, status, matched_phone_id, brand_id, model_id, color_id, memory_id, is_new
+      `SELECT id, store_id, status, matched_phone_id, brand_id, model_id, color_id, memory_id, is_new
        FROM preorders WHERE id = ? FOR UPDATE`,
       [id]
     )
     return records[0] || null
   }
 
-  async findRestoreCandidate(connection, preorder) {
+  async findRestoreCandidate(connection, preorder, scope) {
+    const conditions = ['1=1']
+    const scopeParams = []
+    appendStoreScopeCondition(scope, 'p.store_id', conditions, scopeParams)
     const [records] = await connection.execute(`
-      SELECT p.id, p.imei, b.name AS brand_name, m.name AS model_name
+      SELECT p.id, p.store_id, p.imei, b.name AS brand_name, m.name AS model_name
       FROM phones p
       LEFT JOIN brands b ON b.id = p.brand_id
       LEFT JOIN models m ON m.id = p.model_id
-      WHERE p.status IN ('in_stock', 'reserved')
+      WHERE ${conditions.join(' AND ')} AND p.status IN ('in_stock', 'reserved')
         AND COALESCE(p.is_preordered, 0) = 0
         AND NOT EXISTS (
           SELECT 1 FROM preorders active_preorder
@@ -139,6 +144,7 @@ class PreorderMutationRepository {
       LIMIT 1
       FOR UPDATE
     `, [
+      ...scopeParams,
       preorder.brand_id,
       preorder.model_id,
       preorder.color_id,
@@ -196,7 +202,7 @@ class PreorderMutationRepository {
   async getPhoneForMatching(connection, phoneId, imei) {
     const predicate = phoneId ? 'p.id = ?' : 'p.imei = ?'
     const [records] = await connection.execute(`
-      SELECT p.id, p.imei, p.brand_id, p.model_id, p.color_id, p.memory_id,
+      SELECT p.id, p.store_id, p.imei, p.brand_id, p.model_id, p.color_id, p.memory_id,
              p.is_new, p.status, p.is_preordered, p.sale_price, p.purchase_cost,
              b.name AS brand_name, m.name AS model_name
       FROM phones p
@@ -222,7 +228,7 @@ class PreorderMutationRepository {
 
   async getPreviousPhoneForMatching(connection, phoneId) {
     const [records] = await connection.execute(
-      'SELECT id, status, is_preordered FROM phones WHERE id = ? FOR UPDATE',
+      'SELECT id, store_id, status, is_preordered FROM phones WHERE id = ? FOR UPDATE',
       [phoneId]
     )
     return records[0] || null
@@ -291,11 +297,14 @@ class PreorderMutationRepository {
     return records.length > 0
   }
 
-  async findAutoMatchCandidate(connection, { brand_id, model_id, color_id, memory_id, is_new }) {
+  async findAutoMatchCandidate(connection, { brand_id, model_id, color_id, memory_id, is_new }, scope) {
+    const conditions = ['1=1']
+    const scopeParams = []
+    appendStoreScopeCondition(scope, 'phones.store_id', conditions, scopeParams)
     const [records] = await connection.execute(`
       SELECT id, imei, purchase_cost, store_id
       FROM phones
-      WHERE brand_id = ?
+      WHERE ${conditions.join(' AND ')} AND brand_id = ?
         AND model_id = ?
         AND color_id = ?
         AND memory_id = ?
@@ -310,7 +319,7 @@ class PreorderMutationRepository {
       ORDER BY id ASC
       LIMIT 1
       FOR UPDATE
-    `, [brand_id, model_id, color_id, memory_id, is_new])
+    `, [...scopeParams, brand_id, model_id, color_id, memory_id, is_new])
     return records[0] || null
   }
 

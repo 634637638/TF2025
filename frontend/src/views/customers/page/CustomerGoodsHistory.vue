@@ -52,7 +52,7 @@
           class="tf-dialog-toolbar"
         >
           <el-button
-            v-permission="{ permission: ['customers:view', 'query:view', 'accessories:view'], mode: 'all' }"
+            v-permission="{ permission: ['customers:view', 'query:view', 'query:goods-view'], mode: 'all' }"
             @click.stop="openOrder(row)"
           >
             整单明细
@@ -90,7 +90,7 @@
       </p>
       <template #actions>
         <el-button
-          v-permission="{ permission: ['customers:view', 'query:view', 'accessories:view'], mode: 'all' }"
+          v-permission="{ permission: ['customers:view', 'query:view', 'query:goods-view'], mode: 'all' }"
           type="primary"
           @click.stop="runDetailAction(openOrder)"
         >
@@ -109,7 +109,7 @@ import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
-import { canViewAccessoryField as visible } from '@/components/accessory-field-permissions'
+import { canViewQueryGoodsField as visible } from '@/components/accessory-field-permissions'
 import { formatAmount, formatDateTime } from '@/utils/format'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { isCustomerGoodsPage } from '@/utils/query-goods'
@@ -118,8 +118,8 @@ import type { RecordDetailField } from '@/types/component'
 
 const CheckoutOrderDialog = defineAsyncComponent(() => import('@/components/query/CheckoutOrderDialog.vue'))
 const props = defineProps<{ customerId: number; active: boolean }>()
-const customer = usePagePermissions('customers'), query = usePagePermissions('query'), goods = usePagePermissions('accessories')
-const allowed = computed(() => props.active && customer.canView.value && query.canView.value && goods.canView.value &&
+const customer = usePagePermissions('customers'), query = usePagePermissions('query')
+const allowed = computed(() => props.active && customer.canView.value && query.canView.value && query.hasPermission('goods-view') &&
   visible('customer_name') && visible('customer_phone'))
 const rows = ref<CustomerGoodsRecord[]>([]), page = ref(1), pageSize = ref(10), total = ref(0)
 const loading = ref(false), failed = ref(false), failureMessage = ref('')
@@ -177,7 +177,7 @@ async function load() {
   } finally { if (request.isLatest()) loading.value = false }
 }
 function changePage(current: number, size: number) { page.value = size === pageSize.value ? current : 1; pageSize.value = size; load() }
-watch(() => [props.customerId, allowed.value, JSON.stringify(fieldPermissions.getHiddenFields('accessories_accessoriesview'))], () => {
+watch(() => [props.customerId, allowed.value, JSON.stringify(fieldPermissions.getHiddenFields('query_goods'))], () => {
   requests.cancelLatest(); rows.value = []; total.value = 0; page.value = 1; loading.value = false; failed.value = false
   closeDetail(); detailRow.value = null
   orderOpen.value = false; orderSaleId.value = null

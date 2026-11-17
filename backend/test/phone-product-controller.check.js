@@ -104,10 +104,10 @@ test('验机信息查询保留空值响应和路由认证权限', async () => {
 
   const routePath = path.join(__dirname, '../src/routes/phones.js')
   const route = fs.readFileSync(routePath, 'utf8')
-  assert.ok(route.includes("router.get('/:id/h5-product',\n  unifiedAuth,\n  requirePermission('inventory:view'),\n  phoneProductController.getH5Product.bind(phoneProductController)\n)"))
-  assert.ok(route.includes("router.put('/:id/h5-product',\n  unifiedAuth,\n  requirePermission('inventory:edit'),\n  phoneProductController.updateH5Product.bind(phoneProductController)\n)"))
-  assert.ok(route.includes("router.post('/:id/inspection',\n  unifiedAuth,\n  requirePermission('inventory:edit'),\n  phoneProductController.saveInspection.bind(phoneProductController)\n)"))
-  assert.ok(route.includes("router.get('/:id/inspection',\n  unifiedAuth,\n  requirePermission('inventory:view'),\n  phoneProductController.getInspection.bind(phoneProductController)\n)"))
+  assert.ok(route.includes("router.get('/:id/h5-product',\n  unifiedAuth,\n  requirePermission('inventory:view'),\n  requirePhoneResourceAccess,\n  phoneProductController.getH5Product.bind(phoneProductController)\n)"))
+  assert.ok(route.includes("router.put('/:id/h5-product',\n  unifiedAuth,\n  requirePermission('inventory:edit'),\n  requirePhoneResourceAccess,\n  phoneProductController.updateH5Product.bind(phoneProductController)\n)"))
+  assert.ok(route.includes("router.post('/:id/inspection',\n  unifiedAuth,\n  requirePermission('inventory:edit'),\n  requirePhoneResourceAccess,\n  phoneProductController.saveInspection.bind(phoneProductController)\n)"))
+  assert.ok(route.includes("router.get('/:id/inspection',\n  unifiedAuth,\n  requirePermission('inventory:view'),\n  requirePhoneResourceAccess,\n  phoneProductController.getInspection.bind(phoneProductController)\n)"))
 })
 
 

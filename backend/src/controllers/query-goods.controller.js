@@ -6,7 +6,7 @@ const log = require('../utils/log')
 
 const financialKeys = ['total_price', 'profit', 'points_awarded', 'points_used', 'deduction_amount',
   'base_refund_amount', 'points_recovery_amount', 'points_compensation_amount', 'gift_charge_amount', 'refund_amount', 'collection_amount', 'settlement_offset_amount',
-  'replacement_amount', 'exchange_credit_amount',
+  'replacement_amount', 'exchange_credit_amount', 'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state',
   'points_delta', 'points_award_returned', 'points_redemption_returned', 'settlement_method', 'settlement_channel']
 const responseKeys = {
   'basic_info.sequence': ['sale_no', 'order_no', 'linked_phone_invoice'],
@@ -31,7 +31,8 @@ const searchKeys = ['sale_no', 'order_no', 'linked_phone_invoice', 'name', 'barc
   'color_name', 'unit', 'serial_number', 'customer_name', 'customer_phone', 'operator_name', 'remarks']
 const queryFields = { store_id: 'stock_info.distribution', sale_type: 'basic_info.usage_type', start_date: 'time_info.created_at', end_date: 'time_info.created_at' }
 
-const orderMoney = ['unit_price', 'total_amount', 'gross_amount', 'points_used', 'deduction_amount', 'points_awarded']
+const orderMoney = ['unit_price', 'total_amount', 'gross_amount', 'points_used', 'deduction_amount', 'points_awarded',
+  'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state']
 const orderTotals = ['total_amount', 'final_amount', 'paid_amount', 'deduction_amount', 'points_used', 'points_awarded']
 const orderGoodsKeys = {
   ...responseKeys,
@@ -56,9 +57,9 @@ const hiddenKeys = (permissions, map) => new Set((permissions.hiddenFields || []
 
 class QueryGoodsController {
   constructor({ service = new QueryGoodsService(), access, phoneAccess, masking, logger = log } = {}) {
-    this.orderGoodsAccess = new FieldAccessService({ moduleKey: 'accessories_accessoriesview', responseKeys: orderGoodsKeys, masking, strict: true })
+    this.orderGoodsAccess = new FieldAccessService({ moduleKey: 'query_queryview', fieldScope: 'goods', responseKeys: orderGoodsKeys, masking, strict: true })
     this.phoneAccess = phoneAccess || new FieldAccessService({ moduleKey: 'query_queryview', responseKeys: orderPhoneKeys, masking, strict: true })
-    Object.assign(this, { service, logger, access: access || new FieldAccessService({ moduleKey: 'accessories_accessoriesview', responseKeys, masking, strict: true }) })
+    Object.assign(this, { service, logger, access: access || new FieldAccessService({ moduleKey: 'query_queryview', fieldScope: 'goods', responseKeys, masking, strict: true }) })
   }
   async read(req, res, mode) {
     try {

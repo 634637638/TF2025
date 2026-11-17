@@ -87,7 +87,6 @@
               v-permission="'backup:delete'"
               native-type="button"
               type="warning"
-              size="small"
               plain
               :disabled="isLoading || isCleaningUp || backupList.length === 0"
               :title="backupList.length === 0 ? '暂无本地备份可清理' : '按保留数量清理服务器本地旧备份'"
@@ -240,7 +239,6 @@
                   </el-button>
                   <el-button
                     type="primary"
-                    size="small"
                     link
                     :loading="downloadingFilename === row.filename"
                     :disabled="downloadingFilename !== null && downloadingFilename !== row.filename"
@@ -255,7 +253,6 @@
                   <el-button
                     v-if="canDelete"
                     type="danger"
-                    size="small"
                     link
                     :disabled="cloudActive(row.filename)"
                     @click.stop="confirmDelete(row.filename)"
@@ -338,7 +335,7 @@
     >
       <el-radio-group
         v-model="backupType"
-        class="backup-type-options"
+        class="backup-type-options tf-state-selector"
       >
         <el-radio
           value="database"
@@ -427,6 +424,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -781,6 +779,12 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
   ]
 })
 
+
+usePageShortcuts('/backup', {
+  'backup-create': { open: () => { createDialogVisible.value = true } },
+  'backup-cloud': { open: () => { cloudManagementVisible.value = true } },
+  'backup-cloud-settings': { open: () => { cloudSettingsVisible.value = true } }
+})
 </script>
 
 <style scoped>

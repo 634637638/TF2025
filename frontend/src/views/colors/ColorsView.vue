@@ -182,7 +182,6 @@
                   description="暂无颜色数据"
                 >
                   <el-button
-                    size="small"
                     type="info"
                     @click="loadColors()"
                   >
@@ -315,7 +314,6 @@
                       v-if="canEdit"
                       v-permission="'colors:edit'"
                       type="primary"
-                      size="small"
                       @click.stop="editColor(row)"
                     >
                       <i class="fas fa-edit" /><span>编辑</span>
@@ -324,7 +322,6 @@
                       v-if="canDelete"
                       v-permission="'colors:delete'"
                       type="danger"
-                      size="small"
                       @click.stop="deleteColor(row)"
                     >
                       <i class="fas fa-trash" /><span>删除</span>
@@ -443,6 +440,7 @@
             >
               <el-radio-group
                 v-model="formData.status"
+                class="tf-state-selector"
                 :disabled="!canEditField('status')"
               >
                 <el-radio :value="1">
@@ -485,6 +483,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import unifiedApi from '@/utils/unified-api'
@@ -549,11 +548,7 @@ const canEditField = (fieldName: string) => {
     return false
   }
 
-  if (canCreate.value || canEdit.value) {
-    return true
-  }
-
-  return fieldPermissions.isFieldEditable('colors_colorsview', getFieldKey(fieldName))
+  return (canCreate.value || canEdit.value) && fieldPermissions.isFieldEditable('colors_colorsview', getFieldKey(fieldName), { allowUnconfigured: true })
 }
 
 const showSortField = computed(() => canViewField('sort_order') && !isMobile.value)
@@ -1098,6 +1093,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleKeyboardShortcuts)
 })
 
+
+usePageShortcuts('/colors', {
+  'color-create': { open: handleCreateColor }
+})
 </script>
 
 <style scoped src="./styles/colors-view/desktop.css"></style>

@@ -359,7 +359,7 @@ test('客户更新 controller 保留格式校验、动态字段过滤、密码�
 
 test('客户创建与更新 route 保留原服务端认证和权限链', () => {
   const route = fs.readFileSync(path.join(__dirname, '../src/routes/customers.js'), 'utf8')
-  assert.ok(route.includes("router.post('/', unifiedAuth, requireCustomerCreatePermissionForBusinessFlow, protectCustomerAddress, customerController.create.bind(customerController))"))
+  assert.ok(route.includes("router.post('/', unifiedAuth, requirePermission('customers:create'), protectCustomerAddress, customerController.create.bind(customerController))"))
   assert.ok(route.includes("router.put('/:id', unifiedAuth, requirePermission('customers:edit'), protectCustomerAddress, customerController.update.bind(customerController))"))
   assert.ok(route.includes("router.post('/:id/purchases', unifiedAuth, requirePermission('customers:edit'), customerController.rejectPurchaseCreation.bind(customerController))"))
   const res = makeResponse()
@@ -657,4 +657,61 @@ test('积分设置按需返回商品类型最小字段，校验停用和不存�
   await service.savePointsConfig({ redemption: { ...previous.redemption, category_ids: [5] } })
   for (const id of [6, 99]) await assert.rejects(service.savePointsConfig({ redemption: { ...previous.redemption, category_ids: [id] } }), /不存在或已停用/)
   assert.equal(writes.length, 2, '非法商品类型不得写入配置')
+})
+
+test('积分商品分页检索沿用客户权限及最小字段，严格校验参数与商品类型归属', async () => {
+  const CustomerManagementService = require('../src/services/customer-management.service')
+  const { DEFAULT_POINTS_CONFIG, validatePointsConfig } = require('../src/utils/customer-points-rules')
+  const previous = validatePointsConfig({ ...DEFAULT_POINTS_CONFIG, redemption: {
+    enabled: true, points_per_yuan: 10, max_percent: 20, sources: ['accessory'], all_accessory_categories: false, category_ids: [4], accessory_ids: [8]
+  } })
+  const calls = [], writes = []
+  const service = new CustomerManagementService({
+    loadPointsConfig: async () => previous,
+    persistPointsConfig: async value => { writes.push(value); return value },
+    accessoryRepository: {
+      getProductCategories: async () => [{ id: 4, name: '充电头', status: 1 }, { id: 5, name: '数据线', status: 1 }],
+      getPointsProducts: async options => { calls.push(options); return { data: [
+        { id: 8, category_id: 4, status: 0, name: '保留的停用商品' }, { id: 9, category_id: 5, status: 1, name: '数据线' }, { id: 10, category_id: 4, status: 0, name: '新增停用商品' }
+      ].filter(row => !options.ids || options.ids.includes(row.id)), pagination: { page: 2, page_size: 20, total: 3 } } }
+    }
+  })
+  const result = await service.getPointsProducts({ category_ids: '4,5', page: '2', page_size: '20', search: '  充电  ' })
+  assert.deepEqual(calls[0], { categoryIds: [4, 5], page: 2, pageSize: 20, search: '充电' })
+  assert.equal(result.extra.pagination.total, 3)
+  for (const query of [{ category_ids: '' }, { category_ids: '4,4' }, { category_ids: '4x' }, { category_ids: '4', page: 0 }, { category_ids: '4', page: '1e3' }, { category_ids: '4', page_size: '0x10' }, { category_ids: '4', page: true }, { category_ids: '4', page_size: 101 }, { category_ids: '4', search: {} }]) {
+    await assert.rejects(service.getPointsProducts(query), { statusCode: 400 })
+  }
+  assert.deepEqual((await service.getPointsConfig({ include_options: '1' })).data.products.map(row => row.id), [8])
+  await service.savePointsConfig({ redemption: { ...previous.redemption, category_ids: [4, 5], accessory_ids: [8, 9] } })
+  for (const ids of [[9], [10], [99]]) await assert.rejects(service.savePointsConfig({ redemption: { ...previous.redemption, accessory_ids: ids } }), /商品不存在、已停用或不属于/)
+  for (const ids of [[], [8, 8], ['wrong'], null]) await assert.rejects(service.savePointsConfig({ redemption: { ...previous.redemption, accessory_ids: ids } }), { statusCode: 400 })
+  assert.equal(writes.length, 1)
+  const route = fs.readFileSync(path.resolve(__dirname, '../src/routes/customers.js'), 'utf8')
+  assert.ok(route.includes("router.get('/points-products', unifiedAuth, requirePermission('customers:view'), customerController.getPointsProducts.bind(customerController))"))
+  const controller = new CustomerController({ service, response })
+  const bad = makeResponse()
+  await controller.getPointsProducts({ query: { category_ids: 'bad' } }, bad)
+  assert.equal(bad.statusCode, 400)
+})
+
+test('积分商品仓储只返回最小档案且使用绑定查询，已选商品读取不按当前启用状态截断', async () => {
+  const AccessoryRepository = require('../src/repositories/accessory.repository')
+  const repository = new AccessoryRepository(), queries = []
+  repository.queryRows = async (sql, params) => {
+    queries.push({ sql, params })
+    return sql.includes('COUNT(*)') ? [{ total: 1 }] : [{ id: '8', category_id: '4', name: '商品', status: '1', brand_name: '品牌', color_name: '白色', product_model: '型号' }]
+  }
+  const search = "测试' OR 1=1 --"
+  const result = await repository.getPointsProducts({ categoryIds: [4, 5], search, page: 2, pageSize: 20 })
+  assert.deepEqual(result.pagination, { page: 2, page_size: 20, total: 1 })
+  assert.deepEqual(result.data[0], { id: 8, category_id: 4, name: '商品', status: 1, brand_name: '品牌', color_name: '白色', product_model: '型号' })
+  assert.ok(queries.every(query => !query.sql.includes(search) && query.params.includes('%' + search + '%')))
+  assert.ok(queries.every(query => query.params[0] === 4 && query.params[1] === 5))
+  assert.doesNotMatch(queries[1].sql, /purchase_cost|supplier_id|total_quantity/)
+  assert.match(queries[1].sql, /LIMIT 20 OFFSET 20/)
+  queries.length = 0
+  await repository.getPointsProducts({ ids: [8], pageSize: 1000 })
+  assert.ok(queries.every(query => query.sql.includes('a.id IN (?)') && query.params[0] === 8))
+  assert.doesNotMatch(queries[1].sql, /WHERE[^]*status[^]*= 1/)
 })

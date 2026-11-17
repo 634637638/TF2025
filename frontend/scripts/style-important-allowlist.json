@@ -20,7 +20,7 @@
     },
     {
       "file": "src/styles/components/_buttons.scss",
-      "max": 266,
+      "max": 256,
       "category": "shared-contract",
       "reason": "Unified button contract overrides Element Plus component variables, legacy button classes, and the zero-native-button mobile semantic surfaces."
     },

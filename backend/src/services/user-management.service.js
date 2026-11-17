@@ -1,6 +1,6 @@
 'use strict'
 
-const { isSuperAdmin: defaultIsSuperAdmin } = require('../middleware/unified-auth')
+const { isSuperAdmin: defaultIsSuperAdmin, hasUnifiedPermission, invalidateAuthProfiles } = require('../middleware/unified-auth')
 const UserManagementRepository = require('../repositories/user-management.repository')
 const UserRepository = require('../repositories/user.repository')
 const { searchOperators: defaultSearchOperators } = require('./operator-search.service')
@@ -24,7 +24,8 @@ class UserManagementService extends BaseService {
     getAttendanceAccessScope = defaultGetAttendanceAccessScope,
     hasUserPermission = defaultHasUserPermission,
     passwordHasher = (password, rounds) => require('bcryptjs').hash(password, rounds),
-    mutationService
+    mutationService,
+    permissionCheck = hasUnifiedPermission
   } = {}) {
     super()
     this.employeeRepository = new UserManagementRepository({ database: getDatabase })
@@ -35,7 +36,7 @@ class UserManagementService extends BaseService {
     this.isConnected = isConnected
     this.getAttendanceAccessScope = getAttendanceAccessScope
     this.hasUserPermission = hasUserPermission
-    this.mutationService = mutationService || new UserMutationService({ database: getDatabase, passwordHasher })
+    this.mutationService = mutationService || new UserMutationService({ database: getDatabase, passwordHasher, permissionCheck })
   }
 
   async operators(actor, query) {
@@ -196,48 +197,54 @@ class UserManagementService extends BaseService {
     }, message: '获取用户列表成功' }
   }
 
-  async create(body) {
+  async create(body, actor, context) {
     
     if (!this.isConnected()) throw this.createError('数据库未连接', 500)
-    const result = await this.mutationService.create(body)
+    const result = await this.mutationService.create(body, actor, context)
     if (result.notFound) throw this.createError('用户不存在', 404)
     return { data: result.user, message: '用户创建成功' }
   }
 
-  async update(params, body) {
+  async update(params, body, actor, context) {
     
     if (!this.isConnected()) throw this.createError('数据库未连接', 500)
-    const result = await this.mutationService.update(params.id, body)
+    const result = await this.mutationService.update(params.id, body, actor, context)
     if (result.notFound) throw this.createError('用户不存在', 404)
     return { data: result.user, message: '用户更新成功' }
   }
 
-  async remove(params) {
+  async remove(params, actor) {
     
     if (!this.isConnected()) throw this.createError('数据库未连接', 500)
 
     const { id } = params
     const pool = this.getDatabase()
     const userId = Number.parseInt(id, 10)
+    await this.mutationService.roleAssignment.assertAccountAccess(userId, actor)
+    if (userId === Number(actor?.id)) throw this.createError('不能删除或停用自己的账户', 400)
     const existingUser = await this.selectPublicUser(pool, { id: userId })
     if (!existingUser) throw this.createError('用户不存在', 404)
 
     await this.employeeRepository.remove(userId)
+    invalidateAuthProfiles([userId])
     return { data: existingUser, message: '用户删除成功' }
   }
 
-  async toggle(params) {
+  async toggle(params, actor) {
     
     if (!this.isConnected()) throw this.createError('数据库未连接', 500)
 
     const { id } = params
     const pool = this.getDatabase()
     const userId = Number.parseInt(id, 10)
+    await this.mutationService.roleAssignment.assertAccountAccess(userId, actor)
+    if (userId === Number(actor?.id)) throw this.createError('不能删除或停用自己的账户', 400)
     const existingUser = await this.selectPublicUser(pool, { id: userId })
     if (!existingUser) throw this.createError('用户不存在', 404)
 
     const newStatus = Number(existingUser.status) === 1 ? 0 : 1
     await this.employeeRepository.setStatus(userId, newStatus)
+    invalidateAuthProfiles([userId])
     const updatedUser = await this.selectPublicUser(pool, { id: userId })
     const statusText = newStatus === 1 ? '启用' : '禁用'
     return { data: updatedUser, message: `用户${statusText}成功` }

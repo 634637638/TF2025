@@ -447,21 +447,18 @@
           <template #default="{ row }">
             <div class="action-buttons table-actions">
               <el-button
-                size="small"
                 @click.stop="showErrorDetail(row)"
               >
                 详情
               </el-button>
               <el-button
                 v-if="!row.resolved"
-                size="small"
                 type="success"
                 @click.stop="resolveError(row.id)"
               >
                 标记解决
               </el-button>
               <el-button
-                size="small"
                 type="danger"
                 @click.stop="deleteError(row.id)"
               >

@@ -727,6 +727,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
@@ -1110,6 +1111,12 @@ const removeLink = async (item: GuideLink) => {
 }
 
 onMounted(() => { loadData() })
+
+usePageShortcuts('/guide', {
+  'guide-announcement-create': { open: () => openAnnouncementForm() },
+  'guide-category-create': { open: () => openCategoryForm() },
+  'guide-settings': { open: openSettingsForm }
+})
 </script>
 
 <style scoped>

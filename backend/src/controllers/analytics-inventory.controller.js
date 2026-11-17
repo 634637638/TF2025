@@ -15,6 +15,7 @@ class AnalyticsInventoryController {
   async getOverview(req, res) {
     try {
       const result = await this.service.getOverview({
+        actor: req.user,
         storeId: parseOptionalInt(req.query.store_id),
         supplierId: parseOptionalInt(req.query.supplier_id)
       })
@@ -33,6 +34,7 @@ class AnalyticsInventoryController {
     const limit = Math.min(500, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 100))
     try {
       const result = await this.service.getLowStock({
+        actor: req.user,
         limit,
         storeId: parseOptionalInt(req.query.store_id),
         supplierId: parseOptionalInt(req.query.supplier_id)

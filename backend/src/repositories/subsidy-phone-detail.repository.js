@@ -1,5 +1,6 @@
 'use strict'
 
+const { getLatestActiveSaleIdSql } = require('../utils/sale-status')
 const { getDatabase } = require('../config/database')
 
 class SubsidyPhoneDetailRepository {
@@ -31,10 +32,7 @@ class SubsidyPhoneDetailRepository {
       LEFT JOIN colors co ON p.color_id = co.id
       LEFT JOIN memories mem ON p.memory_id = mem.id
       LEFT JOIN users u ON p.sale_operator_id = u.id
-      LEFT JOIN (
-        SELECT s.*, ROW_NUMBER() OVER (PARTITION BY s.phone_id ORDER BY s.created_at DESC) as rn
-        FROM sales s
-      ) latest_sale ON p.id = latest_sale.phone_id AND latest_sale.rn = 1
+      LEFT JOIN sales latest_sale ON latest_sale.id = (${getLatestActiveSaleIdSql('p')})
       LEFT JOIN stores sale_st ON latest_sale.store_id = sale_st.id
       WHERE p.id = ? AND p.status = 'sold'
       LIMIT 1
@@ -51,8 +49,9 @@ class SubsidyPhoneDetailRepository {
         c.phone as customer_phone,
         c.id_card as customer_idcard
       FROM sales s
+      JOIN phones p ON p.id = s.phone_id
       LEFT JOIN customers c ON s.customer_id = c.id
-      WHERE s.phone_id = ?
+      WHERE s.phone_id = ? AND s.id = (${getLatestActiveSaleIdSql('p')})
       LIMIT 1
     `, [phoneId])
     return rows[0] || null
