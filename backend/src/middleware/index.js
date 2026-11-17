@@ -20,6 +20,25 @@ function setupSecurityMiddleware(app) {
     const sendJson = res.json.bind(res)
     res.json = body => {
       if (body && body.success === false && res.statusCode >= 500) {
+        if (res.locals.safeErrorResponse) {
+          const safeBody = {
+            success: false,
+            message: body.message || body.error || 'Git 操作失败',
+            code: body.code || 'GIT_OPERATION_FAILED'
+          }
+          if (body.error) safeBody.error = body.error
+          if (body.hint) safeBody.hint = body.hint
+          const syncStatus = body.details?.syncStatus
+          if (syncStatus && typeof syncStatus === 'object') {
+            safeBody.syncStatus = {
+              verified: Boolean(syncStatus.verified),
+              hasUpstream: Boolean(syncStatus.hasUpstream),
+              ahead: Number.isFinite(syncStatus.ahead) ? syncStatus.ahead : 0,
+              behind: Number.isFinite(syncStatus.behind) ? syncStatus.behind : 0
+            }
+          }
+          return sendJson(safeBody)
+        }
         const safeBody = { ...body }
         delete safeBody.error
         delete safeBody.stack

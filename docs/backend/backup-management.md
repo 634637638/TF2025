@@ -106,6 +106,10 @@ mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p "$DB_NAME" < sql-YYYYMMDD_HHM
 
 行为回归：`node --test backend/test/git-archive-backup-controller.check.js`，包含真实临时目录打包，检查必要工具和部署模板入包、备份与生成数据不入包；不会读取真实环境文件或改动现有备份。
 
+Git 管理页推送沿用 `git-management:edit`。远端认证、网络、超时和远端分支拒绝返回稳定错误码与安全提示；不会把 Git stderr、远端地址或凭据返回浏览器。结果核验失败或暂不可用时，提示先刷新状态确认远端提交位置，再决定是否重试。CSRF Token 过期由统一请求层刷新后至多重放一次原请求，不会重复执行 Git 推送。
+
+推送回归：`node --test backend/test/git-push-controller.check.js backend/test/response-safety.check.js`，覆盖错误分类、结果未知提示及5xx脱敏边界；测试用命令替身，不会真实推送。
+
 后端生产启动文件的唯一清单位于 `backend/src/config/runtime-files.js`，同时供完整备份与 Git 管理页压缩包复用。若新增或移除部署必需目录/文件，应同步更新 `backend/src/services/git-archive-backup.service.js`、`backend/test/git-archive-backup-controller.check.js` 与本节，并检查环境文件、日志、上传和生成数据的排除规则。
 
 ## 权限与验证

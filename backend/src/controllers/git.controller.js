@@ -16,6 +16,10 @@ class GitController {
   async pushChanges(_req, res) {
     try {
       const result = await this.pushService.pushChanges()
+      if (result.statusCode >= 500) {
+        res.locals = res.locals || {}
+        res.locals.safeErrorResponse = true
+      }
       return res.status(result.statusCode).json(result.body)
     } catch (error) {
       this.logger.error('Git 推送失败:', error)

@@ -52,16 +52,40 @@ class GitPushService {
       this.logger.error('Git 推送执行失败:', pushError)
     }
 
-    const syncStatus = await this.verifyPushOutcome(targetBranch)
-    if (!syncStatus.verified) {
-      const errorMessage = pushError?.error || '推送后校验失败，本地提交尚未同步到远端'
+    let syncStatus
+    try {
+      syncStatus = await this.verifyPushOutcome(targetBranch)
+    } catch (error) {
+      this.logger.error('Git 推送结果核验失败:', error)
       return {
-        statusCode: 500,
+        statusCode: 503,
         body: {
           success: false,
-          error: errorMessage,
-          hint: getPushErrorHint(errorMessage, pushError?.killed),
-          details: { stderr: pushError?.stderr || '', code: pushError?.code, syncStatus }
+          message: 'Git 推送结果暂时无法核验',
+          error: 'Git 推送结果暂时无法核验',
+          hint: '请先刷新 Git 状态确认远端是否已更新，再决定是否重试推送。',
+          code: 'GIT_SYNC_CHECK_UNAVAILABLE'
+        }
+      }
+    }
+    if (!syncStatus.verified) {
+      const failure = pushError
+        ? classifyPushFailure(pushError)
+        : {
+            statusCode: 503,
+            code: 'GIT_SYNC_UNVERIFIED',
+            message: '推送后暂时无法确认远端同步状态',
+            hint: '请先刷新 Git 状态确认远端是否已更新，再决定是否重试推送。'
+          }
+      return {
+        statusCode: failure.statusCode,
+        body: {
+          success: false,
+          message: failure.message,
+          error: failure.message,
+          hint: failure.hint,
+          code: failure.code,
+          details: { syncStatus }
         }
       }
     }
@@ -71,7 +95,7 @@ class GitPushService {
       data: {
         message: pushError ? '远端已同步，推送输出异常已忽略' : (pushOutput?.stdout?.includes('Everything up-to-date') ? '已是最新，无需推送' : '推送成功'),
         output: pushOutput?.stdout || '',
-        warning: pushError?.stderr || pushError?.error || '',
+        warning: pushError ? '推送命令返回异常，但远端同步已确认' : '',
         syncStatus
       }
     } }
@@ -92,17 +116,67 @@ const detachedHeadError = shortCommit => ({
   code: 'DETACHED_HEAD'
 })
 
-const getPushErrorHint = (message, killed = false) => {
-  if (message.includes('Failed to connect') || message.includes('Could not connect')) {
-    return '网络连接失败，可能原因：\n1. 需要配置代理\n2. 网络不稳定\n3. 防火墙阻止连接\n\n建议：\n- 配置 Git 代理：git config --global http.proxy http://代理地址:端口\n- 或在终端手动执行：git push'
+const classifyPushFailure = (error) => {
+  const raw = `${error?.error || ''} ${error?.message || ''} ${error?.stderr || ''}`.toLowerCase()
+
+  if (
+    raw.includes('non-fast-forward') ||
+    raw.includes('fetch first') ||
+    raw.includes('updates were rejected')
+  ) {
+    return {
+      statusCode: 409,
+      code: 'GIT_REMOTE_REJECTED',
+      message: '远端分支有新提交，推送被拒绝',
+      hint: '先拉取并核对远端更新，解决冲突后再提交推送。'
+    }
   }
-  if (message.includes('Permission denied') || message.includes('fatal: unable to access')) {
-    return 'Git 凭证可能已过期或无效。\n\n建议：\n- 更新 Git 凭证：git config --global credential.helper store\n- 或使用 SSH 方式：git remote set-url origin git@github.com:用户名/仓库.git'
+
+  if (error?.killed || raw.includes('timed out') || raw.includes('timeout')) {
+    return {
+      statusCode: 504,
+      code: 'GIT_REMOTE_TIMEOUT',
+      message: 'Git 远端推送超时',
+      hint: '请检查网络后刷新 Git 状态；确认没有正在进行的推送后再重试。'
+    }
   }
-  if (message.includes('timed out') || killed) {
-    return '推送超时，可能是网络慢或数据量大。\n\n建议：\n- 稍后重试\n- 检查网络连接\n- 在终端手动执行：git push'
+
+  if (
+    raw.includes('permission denied') ||
+    raw.includes('authentication failed') ||
+    raw.includes('could not read username') ||
+    raw.includes('http 401') ||
+    raw.includes('http 403')
+  ) {
+    return {
+      statusCode: 502,
+      code: 'GIT_REMOTE_AUTH_FAILED',
+      message: 'Git 远端认证失败',
+      hint: '请检查远端凭据是否有效、是否仍有仓库写入权限，然后刷新状态再重试。'
+    }
   }
-  return '请检查远端仓库连接、Git 凭证和网络状态后重试。'
+
+  if (
+    raw.includes('failed to connect') ||
+    raw.includes('could not connect') ||
+    raw.includes('could not resolve host') ||
+    raw.includes('unable to access') ||
+    raw.includes('network is unreachable')
+  ) {
+    return {
+      statusCode: 502,
+      code: 'GIT_REMOTE_UNAVAILABLE',
+      message: '无法连接 Git 远端仓库',
+      hint: '请检查网络、代理和远端仓库地址，然后刷新状态再重试。'
+    }
+  }
+
+  return {
+    statusCode: 502,
+    code: 'GIT_PUSH_FAILED',
+    message: 'Git 远端推送失败',
+    hint: '请刷新 Git 状态确认远端是否已更新；若未更新，再检查远端仓库限制后重试。'
+  }
 }
 
 module.exports = GitPushService

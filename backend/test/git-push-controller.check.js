@@ -9,6 +9,7 @@ const GitPushService = require('../src/services/git-push.service')
 
 const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/git.js'), 'utf8')
 const response = () => ({
+  locals: {},
   status(code) { this.statusCode = code; return this },
   json(body) { this.body = body; return this }
 })
@@ -45,6 +46,20 @@ const setup = ({
 
 test('git push route keeps edit permission and delegates to controller', () => {
   assert.match(routeSource, /router\.post\('\/push', requireGitEdit, gitPushController\.pushChanges\.bind\(gitPushController\)\)/)
+})
+
+test('Git controller marks only structured push outcomes for safe response handling', async () => {
+  const controller = new Controller({
+    service: {},
+    pushService: { async pushChanges() { return {
+      statusCode: 502,
+      body: { success: false, code: 'GIT_PUSH_FAILED', error: 'Git 远端推送失败' }
+    } } }
+  })
+  const res = response()
+  await controller.pushChanges({}, res)
+  assert.equal(res.statusCode, 502)
+  assert.equal(res.locals.safeErrorResponse, true)
 })
 
 test('git push service rejects detached and non-main branches with conflict responses', async () => {
@@ -94,8 +109,40 @@ test('git push tolerates a command error only when sync verification succeeds', 
   const result = await service.pushChanges()
   assert.equal(result.statusCode, 200)
   assert.equal(result.body.data.message, '远端已同步，推送输出异常已忽略')
-  assert.equal(result.body.data.warning, 'warning')
+  assert.equal(result.body.data.warning, '推送命令返回异常，但远端同步已确认')
   assert.equal(errors.length, 1)
+})
+
+test('git push verification failure distinguishes remote rejection from unknown sync results', async () => {
+  const rejected = await setup({
+    verified: false,
+    pushError: Object.assign(new Error('non-fast-forward'), { error: 'rejected: non-fast-forward', stderr: 'remote rejected', code: 1 })
+  }).service.pushChanges()
+  assert.equal(rejected.statusCode, 409)
+  assert.equal(rejected.body.code, 'GIT_REMOTE_REJECTED')
+  assert.equal(rejected.body.error, '远端分支有新提交，推送被拒绝')
+  assert.doesNotMatch(JSON.stringify(rejected.body), /remote rejected|non-fast-forward/)
+
+  const unavailable = await setup({ verified: false }).service.pushChanges()
+  assert.equal(unavailable.statusCode, 503)
+  assert.equal(unavailable.body.code, 'GIT_SYNC_UNVERIFIED')
+  assert.match(unavailable.body.hint, /先刷新 Git 状态/)
+})
+
+test('git push verification exceptions advise checking remote status before retrying', async () => {
+  const service = new GitPushService({
+    getHeadState: async () => ({ branch: 'main', detached: false, shortCommit: 'abc1234' }),
+    executeCommand: async () => ({ stdout: 'pushed', stderr: '' }),
+    getUpstreamRef: async () => 'origin/main',
+    getPendingPushFileSizeCheck: async () => ({ blockedFiles: [], warningFiles: [] }),
+    buildPushSizeHint: () => '',
+    verifyPushOutcome: async () => { throw new Error('remote query failed') },
+    logger: { error() {} }
+  })
+  const result = await service.pushChanges()
+  assert.equal(result.statusCode, 503)
+  assert.equal(result.body.code, 'GIT_SYNC_CHECK_UNAVAILABLE')
+  assert.match(result.body.hint, /再决定是否重试/)
 })
 
 test('git push maps unverified sync and outer network failures to established errors', async () => {
@@ -103,9 +150,10 @@ test('git push maps unverified sync and outer network failures to established er
     verified: false,
     pushError: Object.assign(new Error('rejected'), { error: 'Permission denied', stderr: 'denied', code: 1 })
   }).service.pushChanges()
-  assert.equal(unverified.statusCode, 500)
-  assert.equal(unverified.body.error, 'Permission denied')
-  assert.match(unverified.body.hint, /Git 凭证/)
+  assert.equal(unverified.statusCode, 502)
+  assert.equal(unverified.body.code, 'GIT_REMOTE_AUTH_FAILED')
+  assert.equal(unverified.body.error, 'Git 远端认证失败')
+  assert.match(unverified.body.hint, /远端凭据/)
   assert.deepEqual(unverified.body.details.syncStatus, { verified: false, hasUpstream: true, ahead: 2 })
 
   const controller = new Controller({

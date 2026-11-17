@@ -734,7 +734,7 @@ const formatSyncStatusText = (syncStatus) => {
 const getApiErrorMessage = (error, fallback) => {
   const responseData = error?.response?.data
   const syncStatusText = formatSyncStatusText(
-    responseData?.details?.syncStatus || responseData?.data?.syncStatus
+    responseData?.details?.syncStatus || responseData?.syncStatus || responseData?.data?.syncStatus
   )
 
   if (responseData?.hint) {
