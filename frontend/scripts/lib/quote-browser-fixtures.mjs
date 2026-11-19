@@ -28,6 +28,7 @@ export function createQuoteFixtureModules(root) {
       toggleUsedPhonesFilter(){ fixture.showUsedPhonesOnly = !fixture.showUsedPhonesOnly; }
     });
     window.updatePriceHeader = values => Object.assign(fixture, values);
+    window.priceHeaderState = () => ({ showInStockOnly:fixture.showInStockOnly, showUsedPhonesOnly:fixture.showUsedPhonesOnly });
     return { ...Object.fromEntries(Object.keys(fixture).map(key => [key, computed({get:()=>fixture[key],set:value=>fixture[key]=value})])), isMobile };
   } };`)
     const dialog = descriptor.template.ast.children.find(node => node.type === 1)?.children.find(node =>

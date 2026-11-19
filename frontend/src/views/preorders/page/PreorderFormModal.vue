@@ -415,7 +415,7 @@ import {
 } from '../preorder-field-permissions'
 import { unifiedApi } from '@/utils/unified-api'
 import { searchOperators } from '@/services/reference-options'
-import { searchCustomerOptions } from '@/services/customer-options'
+import { createCustomerProfile, searchCustomerOptions } from '@/services/customer-options'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { useAuthStore } from '@/stores/auth'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
@@ -980,7 +980,7 @@ const handleCreateSubmit = async () => {
     }
 
     if (!customerPermissions.requirePermission('create')) throw new Error('缺少新增客户权限')
-    const customerResponse = await unifiedApi.post('/customers', {
+    const customerResponse = await createCustomerProfile({
       name: normalizedCustomerName,
       phone: normalizedCustomerPhone
     })
@@ -1053,7 +1053,7 @@ const handleEditSubmit = async () => {
         }
       } else if (normalizedCustomerName) {
         if (!customerPermissions.requirePermission('create')) throw new Error('缺少新增客户权限')
-        const newCustomerRes = await unifiedApi.post('/customers', {
+        const newCustomerRes = await createCustomerProfile({
           name: normalizedCustomerName,
           phone: normalizedCustomerPhone
         })

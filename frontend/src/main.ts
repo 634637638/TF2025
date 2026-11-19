@@ -11,7 +11,7 @@ import './styles/components/_dialog.scss'
 import './styles/components/_dialog-actions.scss'
 
 // 导入安全工具
-import { vSanitize, vEscapeHtml, initCSPReporting } from '@/utils/security'
+import { initCSPReporting } from '@/utils/csp-reporting'
 
 // 导入全局指令系统
 import { installDirectives } from '@/directives'
@@ -19,7 +19,8 @@ import { installDirectives } from '@/directives'
 import { setupPermissionTipDirective } from '@/directives/permissionTip'
 
 // 注册安全指令
-const installSecurityDirectives = (app: VueApp) => {
+const installSecurityDirectives = async (app: VueApp) => {
+  const { vSanitize, vEscapeHtml } = await import('@/utils/security')
   app.directive('sanitize', vSanitize)
   app.directive('escape-html', vEscapeHtml)
 }
@@ -95,8 +96,10 @@ installDirectives(app)
 // 安装友好版权限提示指令
 setupPermissionTipDirective(app)
 
-// 安装安全指令
-installSecurityDirectives(app)
+// 安装安全指令。净化器仅在指令模块加载时进入异步 chunk，不阻塞首屏挂载。
+void installSecurityDirectives(app).catch((error) => {
+  logger.warn('安全指令初始化失败', error)
+})
 
 // 安装全局时间工具
 app.use(TimePlugin)

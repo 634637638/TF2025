@@ -866,7 +866,9 @@
 
 ### 商品采购货款页签（2026-11-13）
 
-`/payments` 保留手机货款并增加商品采购 TAB，新增内部单元 `views/payments/page/AccessoryPurchasePayments.vue`（无新增路由/公共组件）；含采购列表、登记/撤销表单和分页付款历史，两处 `MobileDialog`。列表只展示原采购整单数量/成本，独立于销售状态；复用公共 TAB、检索、日期范围、Loading、表格、操作列宽、徽章、通知和北京时间。字段模块仍为 `payments_supplierphonepaymentsview`，新增 `purchase.*`，动作沿用 `supplier-payments:view/create/edit`，后端门店范围和字段权限独立校验。商品导出、退供退款与部分付款尚未提供，手机导出只出手机资料。功能契约及云端迁移见[供应商打款批次规范](../payments/SUPPLIER_PAYMENT_BATCH_STANDARD.md#商品采购整单货款2026-11-13)，本轮测试证据统一记录 T22。
+`/payments` 保留手机货款并增加商品采购 TAB，新增内部单元 `views/payments/page/AccessoryPurchasePayments.vue`（无新增路由/公共组件）；含采购列表、单笔/批量登记、撤销表单和分页付款历史，两处 `MobileDialog`。列表只展示原采购整单数量/成本，独立于销售状态；复用公共 TAB、检索、日期范围、Loading、表格、操作列宽、徽章、通知和北京时间。货款检索支持供应商、品牌、商品名称、店铺四项可输入下拉筛选，打开下拉时从采购货款选项接口加载完整候选；供应商和品牌合并配件业务范围启用主档及历史采购快照，筛选请求仍经过统一接口和字段权限。批量登记仅允许选择同一供应商的未打款采购单，按真实整单金额在一个事务内登记。字段模块仍为 `payments_supplierphonepaymentsview`，新增 `purchase.*`，动作沿用 `supplier-payments:view/create/edit`，后端门店范围和字段权限独立校验。商品导出、退供退款与部分付款尚未提供，手机导出只出手机资料。功能契约及云端迁移见[供应商打款批次规范](../payments/SUPPLIER_PAYMENT_BATCH_STANDARD.md#商品采购整单货款2026-11-13)，本轮测试证据统一记录 T22。
+`/payments` 的手机批量打款 `MobileDialog` 保留原手机明细和打款字段，新增“添加商品”操作；按所选手机的同一供应商加载授权范围内未核销商品采购单，商品由操作员勾选后与手机在同一事务登记。未添加商品继续走原手机批量打款；商品货款页仍支持没有手机款项时单独登记。已打款记录通过内部 `payment_batch_id` 打开关联手机和商品明细，不再提供独立合并入口或记录 TAB。沿用 `supplier-payments:view/create`、字段权限、统一 Loading/通知/北京时间和响应式布局；迁移脚本及接口契约见[供应商打款批次规范](../payments/SUPPLIER_PAYMENT_BATCH_STANDARD.md#手机打款附带商品)。
+合并准备与付款后查看保留手机货款原有明细字段，商品来源存在时在下方追加商品明细卡片；手机页和商品页的合并批次记录均跳转到双来源详情，单独打款仍沿用原历史弹窗。
 
 本轮 `audit:dialogs -- --json` 实测 211 个 Vue 文件（132 个页面/内部单元、78 个公共组件及 App 入口），96 个文件含弹窗/查看器引用，`MobileDialog=144`、公共媒体查看器9处，业务直接 Dialog/图片查看器及原生调用均为0；样式候选仍为3文件57项。表格审计实测58个页面模板、9个公共组件，95个 Element 表格、57个操作列。上述为2026-11-13源码接入统计，不改写前文2026-11-11历史快照，也不代表全部业务页面或真机验收完成。
 

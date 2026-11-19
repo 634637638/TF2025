@@ -4,6 +4,7 @@
 
 ## 开发基础
 
+- [跨端功能交付闭环](../CLAUDE.md#跨端功能交付闭环) - 将需求状态、API/字段契约、权限、事务副作用、前端反馈、测试和发布验收串成一个执行门槛
 - [API 调用标准](api-standards.md)
 - [TypeScript 标准](typescript-standards.md)
 - [错误处理标准](error-handling-standards.md)

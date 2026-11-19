@@ -224,7 +224,7 @@ try {
         const element = document.querySelector('.dashboard-shortcuts__list')
         const rect = element.getBoundingClientRect()
         return { clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, left: rect.left, right: rect.right,
-          rows: [...new Set([...element.children].map(child => Math.round(child.getBoundingClientRect().top)))],
+          rows: [...new Set([...elements].slice(0, 9).map(button => Math.round(button.getBoundingClientRect().top)))],
           headerDisplay: getComputedStyle(document.querySelector('.dashboard-shortcuts .el-card__header')).display }
       })() }
     })
@@ -233,6 +233,32 @@ try {
       assert.equal(shortcutLayout.list.rows.length, 3, '手机端固定三行，最多同时显示三列')
       assert.ok(shortcutLayout.list.scrollWidth > shortcutLayout.list.clientWidth, '快捷方式超出三列后可横向滑动')
       assert.ok(shortcutLayout.buttons.slice(0, 9).every(button => button.left >= shortcutLayout.list.left - 1 && button.right <= shortcutLayout.list.right + 1), '手机端首屏最多显示三列')
+      for (const row of [0, 1, 2]) {
+        const buttons = shortcutLayout.buttons.slice(row * 3, row * 3 + 3)
+        assert.ok(buttons.every(button => Math.abs(button.top - buttons[0].top) <= 1), '手机端快捷方式按行排列')
+        assert.ok(buttons[1].left > buttons[0].left && buttons[2].left > buttons[1].left, '手机端每行从左到右排列')
+      }
+      assert.ok(shortcutLayout.buttons[9].left >= shortcutLayout.list.right - 1, '第十个快捷方式从第二页开始')
+      await page.evaluate(() => {
+        window.fixture.densityItems = [...window.fixture.items]
+        window.fixture.items = window.fixture.items.slice(0, 10)
+        return window.navigate('/system')
+      })
+      await page.waitForFunction(() => document.body.textContent.includes('新增快捷方式'))
+      await page.evaluate(() => window.navigate('/dashboard'))
+      await page.waitForFunction(() => document.querySelectorAll('.dashboard-shortcuts .el-button').length === 10)
+      const partialPages = await page.$$eval('.dashboard-shortcuts__page', pages => pages.map(page => ({
+        buttons: page.querySelectorAll('.el-button').length,
+        rows: new Set([...page.querySelectorAll('.el-button')].map(button => Math.round(button.getBoundingClientRect().top))).size
+      })))
+      assert.deepEqual(partialPages, [{ buttons: 9, rows: 3 }, { buttons: 1, rows: 1 }], '快捷方式分页按实际数量收敛行数')
+      await page.evaluate(() => {
+        window.fixture.items = window.fixture.densityItems
+        return window.navigate('/system')
+      })
+      await page.waitForFunction(() => document.body.textContent.includes('新增快捷方式'))
+      await page.evaluate(() => window.navigate('/dashboard'))
+      await page.waitForFunction(() => document.querySelectorAll('.dashboard-shortcuts .el-button').length === 12)
     } else {
       for (let index = 0; index < shortcutLayout.buttons.length; index++) {
         const button = shortcutLayout.buttons[index]

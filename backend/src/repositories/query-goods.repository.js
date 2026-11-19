@@ -34,7 +34,7 @@ const returnedQuantity = `(SELECT COALESCE(SUM(re.quantity_delta), 0) FROM acces
   WHERE re.sale_id = s.id AND re.event_type IN ('sale_return', 'gift_return'))`
 const fields = `s.id, s.sale_no, s.accessory_id, s.sale_type, s.store_id, st.name AS store_name,
   s.customer_name, s.customer_phone, s.quantity, s.unit_price, s.total_price, s.purchase_cost,
-  s.profit, s.operator_name, s.created_at AS sale_time, s.remarks, o.order_no, ps.invoice_number AS linked_phone_invoice,
+  s.profit, s.operator_name, COALESCE(s.sale_time, s.created_at) AS sale_time, s.remarks, o.order_no, ps.invoice_number AS linked_phone_invoice,
   i.points_awarded, o.id AS order_id, i.id AS order_item_id,
   ${returnedQuantity} AS returned_quantity, s.quantity - ${returnedQuantity} AS remaining_quantity,
   CASE WHEN i.id IS NULL THEN NULL ELSE COALESCE(JSON_EXTRACT(i.snapshot, '$.points_used'), 0) END AS points_used,
@@ -59,7 +59,7 @@ class QueryGoodsRepository {
     appendStoreScopeCondition(scope, 'o.store_id', conditions, params)
     const [headers] = await connection.query(`SELECT o.id, o.order_no, o.customer_name, o.customer_phone, o.store_id,
       st.name AS store_name, seller.name AS operator_name, o.customer_id, o.operator_id,
-      o.created_at AS sale_time, o.remarks, o.total_amount, o.final_amount, o.paid_amount, o.points_awarded
+      COALESCE(sale.sale_time, sale.created_at) AS sale_time, o.remarks, o.total_amount, o.final_amount, o.paid_amount, o.points_awarded
       FROM sales_orders o ${sourceJoin} LEFT JOIN stores st ON st.id = o.store_id
       LEFT JOIN users seller ON seller.id = o.operator_id
       WHERE ${conditions.join(' AND ')}`, params)
@@ -85,8 +85,16 @@ class QueryGoodsRepository {
     // 仅由客户定向历史服务设置；公开商品列表不接受customer_id筛选。
     if (query.customer_id !== undefined) { conditions.push('s.customer_id = ?'); params.push(query.customer_id) }
     if (query.sale_type) { conditions.push('s.sale_type = ?'); params.push(query.sale_type) }
-    if (query.start_date) { conditions.push('s.created_at >= ?'); params.push(`${query.start_date} 00:00:00`) }
-    if (query.end_date) { conditions.push('s.created_at <= ?'); params.push(`${query.end_date} 23:59:59`) }
+    if (query.sale_operator_id !== undefined) { conditions.push('s.operator_id = ?'); params.push(query.sale_operator_id) }
+    if (query.brand_id !== undefined) { conditions.push(`${product.brand_name} = (SELECT name FROM brands WHERE id = ?)`); params.push(query.brand_id) }
+    if (query.category_id !== undefined) { conditions.push(`${product.category} = (SELECT name FROM accessory_categories WHERE id = ?)`); params.push(query.category_id) }
+    if (query.product_name) {
+      conditions.push(`${normalizedModelSql(product.name)} LIKE ${normalizedModelSql('?')}`)
+      params.push(`%${query.product_name}%`)
+    }
+    // 商品销售日期是业务时间；created_at 只是实际写入时间，不能覆盖用户选择的历史销售日期。
+    if (query.start_date) { conditions.push('COALESCE(s.sale_time, s.created_at) >= ?'); params.push(`${query.start_date} 00:00:00`) }
+    if (query.end_date) { conditions.push('COALESCE(s.sale_time, s.created_at) <= ?'); params.push(`${query.end_date} 23:59:59`) }
     if (query.keyword) {
       const matches = []
       for (const field of searchFields) {
@@ -109,8 +117,32 @@ class QueryGoodsRepository {
     const { where, params } = this.filters(scope, query, searchFields)
     const [counts] = await connection.query(`SELECT COUNT(*) AS total ${joins} ${where}`, params)
     const [rows] = await connection.query(`SELECT ${fields}${query.customer_id !== undefined ? ', ps.store_id AS linked_phone_store_id' : ''} ${joins} ${where}
-      ORDER BY s.created_at DESC, s.id DESC LIMIT ? OFFSET ?`, [...params, query.page_size, (query.page - 1) * query.page_size])
+      ORDER BY COALESCE(s.sale_time, s.created_at) DESC, s.id DESC LIMIT ? OFFSET ?`, [...params, query.page_size, (query.page - 1) * query.page_size])
     return { data: rows, pagination: buildPagination(query.page, query.page_size, Number(counts[0].total)) }
+  }
+
+  async filterOptions(connection) {
+    if (!connection) return this.withConnection(executor => this.filterOptions(executor))
+    const [brands] = await connection.query(`SELECT id, name, sort_order
+      FROM brands WHERE status = 1 AND business_scope IN ('accessory', 'both') ORDER BY sort_order, name, id`)
+    const [categories] = await connection.query(`SELECT id, name, sort_order
+      FROM accessory_categories WHERE status = 1 ORDER BY sort_order, name, id`)
+    return { brands, categories }
+  }
+
+  async productNameOptions(scope, keyword, connection) {
+    if (!connection) return this.withConnection(executor => this.productNameOptions(scope, keyword, executor))
+    const conditions = [`${product.name} IS NOT NULL`, `TRIM(${product.name}) <> ''`]
+    const params = []
+    appendStoreScopeCondition(scope, 's.store_id', conditions, params)
+    if (keyword) {
+      conditions.push(`${normalizedModelSql(product.name)} LIKE ${normalizedModelSql('?')}`)
+      params.push(`%${keyword}%`)
+    }
+    // 空关键词用于初次展开，优先显示最近成交商品；键入后按名称匹配，限制建议数避免大列表。
+    const [rows] = await connection.query(`SELECT ${product.name} AS name, MAX(COALESCE(s.sale_time, s.created_at)) AS last_sold_at ${joins}
+      WHERE ${conditions.join(' AND ')} GROUP BY ${product.name} ORDER BY last_sold_at DESC, name LIMIT 100`, params)
+    return rows.map(row => row.name)
   }
 
   async detail(scope, id, connection) {

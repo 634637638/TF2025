@@ -89,13 +89,6 @@
     max-width: var(--tf-topbar-user-info-max-width, 360px);
   }
 
-  .user-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: var(--tf-type-scale-12);
-    flex-shrink: 0; /* 头像不缩小 */
-  }
-
   .user-main-info {
     flex: 0 1 auto;
     width: fit-content;
@@ -155,13 +148,6 @@
     margin-left: auto;
     gap: 4px;
     overflow: hidden;
-  }
-
-  .user-avatar {
-    width: 22px;
-    height: 22px;
-    font-size: var(--tf-type-scale-10);
-    flex-shrink: 0; /* 头像不缩小 */
   }
 
   .user-main-info {

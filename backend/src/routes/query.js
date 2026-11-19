@@ -29,6 +29,8 @@ router.post('/film-services/checkout/quote', requirePermission('query:view'), re
 router.post('/film-services/checkout', requirePermission('query:view'), requirePermission('query:film'), salesCheckoutController.filmCheckout.bind(salesCheckoutController))
 
 router.get('/goods/sale-options', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift', 'accessories:sell', 'accessories:gift']), accessoryController.querySaleOptions.bind(accessoryController))
+router.get('/goods/filter-options', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.filterOptions.bind(queryGoodsController))
+router.get('/goods/product-name-options', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.productNameOptions.bind(queryGoodsController))
 
 // 复用原结算事务与动作权限；字段明确归综合查询商品模式。
 router.get('/goods/checkout/customer-summary', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift']), salesCheckoutController.queryGoodsSummary.bind(salesCheckoutController))

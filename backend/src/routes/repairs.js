@@ -20,9 +20,6 @@ const RepairLookupRepository = require('../repositories/repair-lookup.repository
 const RepairReadController = require('../controllers/repair-read.controller')
 const RepairReadService = require('../services/repair-read.service')
 const RepairReadRepository = require('../repositories/repair-read.repository')
-const RepairCustomerController = require('../controllers/repair-customer.controller')
-const RepairCustomerService = require('../services/repair-customer.service')
-const RepairCustomerRepository = require('../repositories/repair-customer.repository')
 const RepairMediaCleanupController = require('../controllers/repair-media-cleanup.controller')
 const RepairMediaCleanupService = require('../services/repair-media-cleanup.service')
 const RepairStatusController = require('../controllers/repair-status.controller')
@@ -370,13 +367,6 @@ const repairUpdateController = new RepairUpdateController({
   maskRepairItem
 })
 
-const repairCustomerController = new RepairCustomerController({
-  service: new RepairCustomerService({
-    repository: new RepairCustomerRepository({ getDatabase: getDb }),
-    getHiddenFields: getRepairHiddenFields
-  })
-})
-
 const repairMediaCleanupController = new RepairMediaCleanupController({
   service: new RepairMediaCleanupService()
 })
@@ -400,8 +390,6 @@ router.get('/stats', unifiedAuth, requirePermission('repairs:view'), repairReadC
 router.get('/options', unifiedAuth, requirePermission('repairs:view'), repairLookupController.options.bind(repairLookupController))
 
 router.get('/customers/search', unifiedAuth, requireAnyPermission(['repairs:view', 'repairs:create', 'repairs:edit']), repairLookupController.searchCustomers.bind(repairLookupController))
-
-router.post('/customers', unifiedAuth, requirePermission('repairs:create'), requirePermission('customers:create'), repairCustomerController.create.bind(repairCustomerController))
 
 router.get('/devices/search', unifiedAuth, requirePermission('repairs:view'), repairLookupController.searchDevices.bind(repairLookupController))
 

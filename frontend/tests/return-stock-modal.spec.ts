@@ -17,7 +17,10 @@ vi.mock('@/utils/unified-api', () => ({ unifiedApi: { get: mocks.get, post: mock
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({
   canView: computed(() => module === 'query' ? permissionState.queryAllowed : permissionState.goodsAllowed), hasPermission: (action: string) => action === 'goods-view' ? permissionState.goodsAllowed : permissionState.queryAllowed
 }) }))
-vi.mock('@/components/accessory-field-permissions', () => ({ canViewAccessoryField: (field: string) => !mocks.hidden.has(field) }))
+vi.mock('@/components/accessory-field-permissions', () => ({
+  canViewAccessoryField: (field: string) => !mocks.hidden.has(field),
+  canViewQueryGoodsField: (field: string) => !mocks.hidden.has(field)
+}))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.success, error: mocks.error }) }))
 vi.mock('@/utils/logger', () => ({ logger: { error: vi.fn() } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: computed(() => true) }) }))

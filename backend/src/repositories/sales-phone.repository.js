@@ -38,7 +38,7 @@ class SalesPhoneRepository {
   async findPhonesForSale(connection, phoneIds) {
     const placeholders = phoneIds.map(() => '?').join(',')
     const [rows] = await connection.execute(
-      `SELECT p.id, p.store_id, p.status, p.purchase_cost, p.is_new, p.is_preordered,
+      `SELECT p.id, p.store_id, p.status, p.purchase_cost, p.is_new, p.model_id, p.is_preordered,
               p.supplier_id, p.remarks, pr.customer_id AS preorder_customer_id,
               c.name AS preorder_customer_name
        FROM phones p

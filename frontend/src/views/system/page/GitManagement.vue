@@ -19,7 +19,7 @@
                 @click="handleCreateArchiveBackup"
               >
                 <i class="fas fa-file-archive" />
-                {{ backingUpArchive ? '备份中...' : '压缩包备份' }}
+                {{ backingUpArchive ? '备份中...' : '压缩备份' }}
               </el-button>
               <el-button
                 v-if="shouldShowRestoreMain && canEdit"
@@ -1044,7 +1044,7 @@ const handleCreateArchiveBackup = async () => {
   try {
     await confirmAction(
       '系统会把当前项目的核心文件打成一个本地压缩包，保存在项目根目录下的“本地备份”文件夹内。默认包含前端、后端和必要的工程配置，不包含上传文件和运行数据。是否继续？',
-      '创建本地压缩包备份',
+      '创建本地压缩备份',
       {
         confirmButtonText: '继续',
         cancelButtonText: '取消',
@@ -1060,7 +1060,7 @@ const handleCreateArchiveBackup = async () => {
       const backup = response.data?.backup
       alertAction(
         [
-          response.data?.message || '本地压缩包备份创建成功',
+          response.data?.message || '本地压缩备份创建成功',
           backup?.fileName ? `文件名：${backup.fileName}` : '',
           backup?.filePath ? `保存位置：${backup.filePath}` : '',
           backup?.fileSize ? `文件大小：${backup.fileSize}` : '',
@@ -1075,12 +1075,12 @@ const handleCreateArchiveBackup = async () => {
       await fetchGitStatus()
       await fetchCommitHistory()
     } else {
-      globalNotifications.error(response.error || '创建本地压缩包备份失败')
+      globalNotifications.error(response.error || '创建本地压缩备份失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
-      logger.error('创建本地压缩包备份失败:', error)
-      globalNotifications.error(getApiErrorMessage(error, '创建本地压缩包备份失败'))
+      logger.error('创建本地压缩备份失败:', error)
+      globalNotifications.error(getApiErrorMessage(error, '创建本地压缩备份失败'))
     }
   } finally {
     backingUpArchive.value = false

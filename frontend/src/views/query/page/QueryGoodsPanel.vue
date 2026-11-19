@@ -58,6 +58,97 @@
         </el-select>
       </div>
       <div
+        v-if="visible('operator_name')"
+        class="form-group filter-item"
+      >
+        <el-select
+          v-model="operatorId"
+          filterable
+          remote
+          clearable
+          reserve-keyword
+          :remote-method="searchOperatorOptions"
+          :loading="operatorLoading"
+          placeholder="销售员"
+          aria-label="销售员"
+          @change="search"
+        >
+          <el-option
+            v-for="operator in operators"
+            :key="Number(operator.id)"
+            :label="String(operator.name || operator.username || '')"
+            :value="Number(operator.id)"
+          />
+        </el-select>
+      </div>
+      <div
+        v-if="visible('brand_name')"
+        class="form-group filter-item"
+      >
+        <el-select
+          v-model="brandId"
+          filterable
+          clearable
+          placeholder="品牌"
+          aria-label="品牌"
+          @change="search"
+        >
+          <el-option
+            v-for="brand in brands"
+            :key="Number(brand.id)"
+            :label="brand.name || ''"
+            :value="Number(brand.id)"
+          />
+        </el-select>
+      </div>
+      <div
+        v-if="visible('name')"
+        class="form-group filter-item"
+      >
+        <el-select
+          v-model="productName"
+          filterable
+          remote
+          allow-create
+          placeholder="商品名称"
+          clearable
+          reserve-keyword
+          default-first-option
+          :remote-method="searchProductNameOptions"
+          :loading="productNameLoading"
+          aria-label="商品名称"
+          @focus="searchProductNameOptions(productName || '')"
+          @change="search"
+        >
+          <el-option
+            v-for="name in productNames"
+            :key="name"
+            :label="name"
+            :value="name"
+          />
+        </el-select>
+      </div>
+      <div
+        v-if="visible('category')"
+        class="form-group filter-item"
+      >
+        <el-select
+          v-model="categoryId"
+          filterable
+          clearable
+          placeholder="商品类型"
+          aria-label="商品类型"
+          @change="search"
+        >
+          <el-option
+            v-for="category in categories"
+            :key="Number(category.id)"
+            :label="category.name || ''"
+            :value="Number(category.id)"
+          />
+        </el-select>
+      </div>
+      <div
         v-if="visible('created_at')"
         class="form-group filter-item filter-item--date-range"
       >
@@ -505,9 +596,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue'
 import { unifiedApi } from '@/utils/unified-api'
-import { getStores, type ReferenceRecord } from '@/services/reference-options'
+import { getGoodsFilterOptions, getGoodsProductNameOptions, getStores, searchOperators, type ReferenceRecord } from '@/services/reference-options'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useMobile } from '@/composables/mobile'
@@ -534,11 +625,16 @@ const saleOpen = ref(false)
 const openSale = () => { if (canSellGoods.value) saleOpen.value = true }
 const afterSale = async () => { page.value = 1; await load().catch(() => {}) }
 watch(canSellGoods, value => { if (!value) saleOpen.value = false })
-const requests = useLatestRequest(), details = useLatestRequest(), optionRequests = useLatestRequest()
+const requests = useLatestRequest(), details = useLatestRequest(), optionRequests = useLatestRequest(), filterOptionRequests = useLatestRequest(), operatorRequests = useLatestRequest(), productNameRequests = useLatestRequest()
 const rows = ref<AccessorySaleRecord[]>([])
 const stores = ref<ReferenceRecord[]>([])
+const operators = ref<ReferenceRecord[]>([]), brands = ref<ReferenceRecord[]>([]), categories = ref<ReferenceRecord[]>([])
+const productNames = ref<string[]>([])
 const page = ref(1), pageSize = 20, total = ref(0)
 const expanded = ref(false), keyword = ref(''), storeId = ref<number>(), saleType = ref('')
+const operatorId = ref<number>(), brandId = ref<number>(), categoryId = ref<number>(), productName = ref<string | null>('')
+const operatorLoading = ref(false)
+const productNameLoading = ref(false)
 const dateRange = ref<DateRangeValue>([])
 const loading = ref(false), failed = ref(false)
 const detailOpen = ref(false), detailLoading = ref(false), detailFailed = ref(false)
@@ -616,6 +712,10 @@ const load = async () => {
       params: { page: page.value, page_size: pageSize, keyword: keyword.value.trim() || undefined,
         store_id: visible('distribution') ? storeId.value : undefined,
         sale_type: visible('usage_type') ? saleType.value || undefined : undefined,
+        sale_operator_id: visible('operator_name') ? operatorId.value : undefined,
+        brand_id: visible('brand_name') ? brandId.value : undefined,
+        product_name: visible('name') ? productName.value?.trim() || undefined : undefined,
+        category_id: visible('category') ? categoryId.value : undefined,
         start_date: visible('created_at') ? dateRange.value?.[0] || undefined : undefined,
         end_date: visible('created_at') ? dateRange.value?.[1] || undefined : undefined },
       signal: request.signal, useCache: false, showLoading: false, showError: false
@@ -631,7 +731,37 @@ const load = async () => {
   } finally { if (request.isLatest()) loading.value = false }
 }
 const search = () => { page.value = 1; void load().catch(() => {}) }
-const reset = () => { keyword.value = ''; storeId.value = undefined; saleType.value = ''; dateRange.value = []; search() }
+const reset = () => { keyword.value = ''; storeId.value = undefined; saleType.value = ''; operatorId.value = undefined; brandId.value = undefined; categoryId.value = undefined; productName.value = ''; dateRange.value = []; search() }
+let operatorSearchTimer: ReturnType<typeof setTimeout> | undefined
+let productNameSearchTimer: ReturnType<typeof setTimeout> | undefined
+const searchOperatorOptions = (value: string) => {
+  if (!visible('operator_name')) return
+  if (operatorSearchTimer) clearTimeout(operatorSearchTimer)
+  const request = operatorRequests.nextRequest()
+  operatorLoading.value = true
+  operatorSearchTimer = setTimeout(async () => {
+    try {
+      const response = await searchOperators({ keyword: value.trim() || undefined, page: 1, page_size: 100 }, { signal: request.signal })
+      if (request.isLatest()) operators.value = response.data || []
+    } catch (error) {
+      if (request.isLatest() && !operatorRequests.isCanceledError(error)) operators.value = []
+    } finally { if (request.isLatest()) operatorLoading.value = false }
+  }, 200)
+}
+const searchProductNameOptions = (value: string) => {
+  if (!visible('name')) return
+  if (productNameSearchTimer) clearTimeout(productNameSearchTimer)
+  const request = productNameRequests.nextRequest()
+  productNameLoading.value = true
+  productNameSearchTimer = setTimeout(async () => {
+    try {
+      const response = await getGoodsProductNameOptions({ keyword: value.trim(), store_id: visible('distribution') ? storeId.value : undefined }, request.signal)
+      if (request.isLatest()) productNames.value = Array.isArray(response.data) ? response.data : []
+    } catch (error) {
+      if (request.isLatest() && !productNameRequests.isCanceledError(error)) productNames.value = []
+    } finally { if (request.isLatest()) productNameLoading.value = false }
+  }, 200)
+}
 const changePage = (value: number) => { page.value = value; void load().catch(() => {}) }
 const openDetail = async (row: Pick<AccessorySaleRecord, 'id'>) => {
   if (!allowed.value) return
@@ -658,8 +788,10 @@ watch(detailOpen, value => { if (!value) { details.cancelLatest(); detail.value 
 watch(returnOpen, value => { if (!value) returnSale.value = null })
 watch(() => [allowed.value, ...Object.keys(ACCESSORY_FIELD_IDS).map(key => visible(key as AccessoryFieldName))], ([value]) => {
   const activeDetailId = detailOpen.value ? detailSaleId.value : null
-  requests.cancelLatest(); details.cancelLatest(); optionRequests.cancelLatest()
-  rows.value = []; stores.value = []; total.value = 0; detail.value = null; returnOpen.value = false; saleOpen.value = false; loading.value = false
+  if (operatorSearchTimer) clearTimeout(operatorSearchTimer)
+  if (productNameSearchTimer) clearTimeout(productNameSearchTimer)
+  requests.cancelLatest(); details.cancelLatest(); optionRequests.cancelLatest(); filterOptionRequests.cancelLatest(); operatorRequests.cancelLatest(); productNameRequests.cancelLatest()
+  rows.value = []; stores.value = []; operators.value = []; brands.value = []; categories.value = []; productNames.value = []; total.value = 0; detail.value = null; returnOpen.value = false; saleOpen.value = false; loading.value = false; operatorLoading.value = false; productNameLoading.value = false
   if (!value) { detailOpen.value = false; return }
   void load().catch(() => {})
   if (activeDetailId !== null) void openDetail({ id: activeDetailId })
@@ -667,7 +799,21 @@ watch(() => [allowed.value, ...Object.keys(ACCESSORY_FIELD_IDS).map(key => visib
     const request = optionRequests.nextRequest()
     void getStores({ strictScope: true }).then(response => { if (request.isLatest()) stores.value = response.data || [] }).catch(() => {})
   }
+  if (visible('operator_name')) searchOperatorOptions('')
+  if (visible('brand_name') || visible('category')) {
+    const request = filterOptionRequests.nextRequest()
+    void getGoodsFilterOptions().then(response => {
+      if (!request.isLatest()) return
+      brands.value = response.data?.brands || []
+      categories.value = response.data?.categories || []
+    }).catch(() => {})
+  }
 }, { immediate: true })
+onBeforeUnmount(() => {
+  if (operatorSearchTimer) clearTimeout(operatorSearchTimer)
+  if (productNameSearchTimer) clearTimeout(productNameSearchTimer)
+  productNameRequests.cancelLatest()
+})
 defineExpose({ load, openSale })
 </script>
 

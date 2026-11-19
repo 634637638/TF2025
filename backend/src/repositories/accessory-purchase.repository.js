@@ -2,6 +2,7 @@
 
 const BaseRepository = require('./base.repository')
 const { appendPurchaseStoreScope } = require('../utils/accessory-purchase-scope')
+const { appendStoreScopeCondition } = require('../utils/store-scope')
 const { purchaseSnapshotText } = require('../utils/accessory-purchase-snapshot')
 
 const joins = `FROM accessory_stock_in si
@@ -29,8 +30,12 @@ class AccessoryPurchaseRepository extends BaseRepository {
       if (query[field]) { conditions.push(`${column} = ?`); params.push(query[field]) }
     }
     if (query.payment_status === 'paid') conditions.push(paid)
-    for (const [field, column] of [['supplier_name', 's.name'], ['store_name', 'st.name']]) {
+    for (const [field, column] of [['supplier_name', 's.name'], ['store_name', 'st.name'], ['brand_name', 'b.name']]) {
       if (query[field]) { conditions.push(`CONVERT(${purchaseSnapshotText(field, column)} USING utf8mb4) COLLATE utf8mb4_unicode_ci LIKE ?`); params.push(`%${query[field]}%`) }
+    }
+    if (query.product_name) {
+      conditions.push(`CONVERT(${purchaseSnapshotText('name', 'COALESCE(t.name, a.name)')} USING utf8mb4) COLLATE utf8mb4_unicode_ci LIKE ?`)
+      params.push(`%${query.product_name}%`)
     }
     if (query.payment_status === 'unpaid') conditions.push("(p.id IS NULL OR p.action = 'cancel')")
     if (query.keyword) {
@@ -63,12 +68,37 @@ class AccessoryPurchaseRepository extends BaseRepository {
           CASE WHEN ${paid} THEN p.payment_method END AS payment_method,
           CASE WHEN ${paid} THEN p.payment_time END AS payment_time,
           CASE WHEN ${paid} THEN p.operator_name END AS payment_operator_name,
-          CASE WHEN ${paid} THEN p.remarks END AS payment_remarks
+          CASE WHEN ${paid} THEN p.remarks END AS payment_remarks,
+          CASE WHEN ${paid} THEN p.payment_batch_id END AS payment_batch_id
           ${joins} ${where} ORDER BY si.inventory_time DESC, si.id DESC LIMIT ? OFFSET ?`,
     [...params, query.page_size, (query.page - 1) * query.page_size])
     const total = Number(summary.total)
     return { rows, summary, pagination: { page: query.page, page_size: query.page_size,
       total, total_pages: Math.ceil(total / query.page_size) } }
+  }
+
+  async options(scope, connection) {
+    const { where, params } = this.conditions(scope)
+    const storeConditions = ['status = 1']
+    const storeParams = []
+    appendStoreScopeCondition(scope, 'id', storeConditions, storeParams)
+    const [[rows], [supplierRows], [brandRows], [storeRows]] = await Promise.all([
+      connection.query(`SELECT DISTINCT
+      ${purchaseSnapshotText('supplier_name', 's.name')} AS supplier_name,
+      ${purchaseSnapshotText('brand_name', 'b.name')} AS brand_name,
+      ${purchaseSnapshotText('name', 'COALESCE(t.name, a.name)')} AS product_name,
+      ${purchaseSnapshotText('store_name', 'st.name')} AS store_name
+      ${joins} ${where}`, params),
+      connection.query("SELECT name FROM suppliers WHERE status = 1 AND business_scope IN ('accessory', 'both') ORDER BY sort_order, name, id"),
+      connection.query("SELECT name FROM brands WHERE status = 1 AND business_scope IN ('accessory', 'both') ORDER BY sort_order, name, id"),
+      connection.query(`SELECT name FROM stores WHERE ${storeConditions.join(' AND ')} ORDER BY sort_order, name, id`, storeParams)
+    ])
+    return {
+      suppliers: [...new Set([...supplierRows.map(row => row.name), ...rows.map(row => row.supplier_name)].map(value => String(value || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN')),
+      brands: [...new Set([...brandRows.map(row => row.name), ...rows.map(row => row.brand_name)].map(value => String(value || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN')),
+      products: [...new Set(rows.map(row => String(row.product_name || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN')),
+      stores: [...new Set([...storeRows.map(row => row.name), ...rows.map(row => row.store_name)].map(value => String(value || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN'))
+    }
   }
 
   /** 供应商累计采购只读统计，沿用货款页的原整单授权，不按现存商品倒推。 */
@@ -105,7 +135,7 @@ class AccessoryPurchaseRepository extends BaseRepository {
   /** 沿用服务层连接按游标核对完整追加账，不把分页首屏当成全部付款事实。 */
   async paymentEventsAfter(id, afterId, pageSize, connection) {
     const [rows] = await connection.query(`SELECT id, stock_in_id, supplier_id, action, amount, reference_event_id,
-      payment_method, DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') AS payment_time
+      payment_method, DATE_FORMAT(payment_time, '%Y-%m-%d %H:%i:%s') AS payment_time, payment_batch_id
       FROM accessory_purchase_payments WHERE stock_in_id = ? AND id > ? ORDER BY id LIMIT ?`, [id, afterId, pageSize])
     return rows
   }
@@ -118,11 +148,11 @@ class AccessoryPurchaseRepository extends BaseRepository {
   async append(data, connection) {
     const [result] = await connection.query(`INSERT INTO accessory_purchase_payments
       (stock_in_id, supplier_id, action, amount, reference_event_id, request_key, request_hash,
-       payment_method, payment_time, remarks, operator_id, operator_name, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       payment_method, payment_time, remarks, operator_id, operator_name, created_at, payment_batch_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [data.stock_in_id, data.supplier_id, data.action, data.amount, data.reference_event_id,
       data.request_key, data.request_hash, data.payment_method, data.payment_time, data.remarks,
-      data.operator_id, data.operator_name, data.created_at])
+      data.operator_id, data.operator_name, data.created_at, data.payment_batch_id || null])
     return result.insertId
   }
 

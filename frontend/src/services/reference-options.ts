@@ -100,12 +100,36 @@ export interface AccessoryEntryOptions {
   stores: ReferenceRecord[]
 }
 
+export interface GoodsFilterOptionsPayload {
+  brands: ReferenceRecord[]
+  categories: ReferenceRecord[]
+}
+
+export interface ProductNameOptionsParams {
+  keyword?: string
+  store_id?: number
+}
+
 /** 配件入库只读取公共主档；适配型号按手机品牌加载，不创建手机资料。 */
 export const getAccessoryEntryOptions = (params: { brand_id?: number; accessory_id?: number; model_ids?: number[] } = {}) =>
   unifiedApi.get<AccessoryEntryOptions>('/accessories/options', {
     params: { ...params, model_ids: params.model_ids?.join(',') },
     useCache: false
   })
+
+/** 综合查询商品模式的只读筛选选项，权限绑定 query:view + query:goods-view。 */
+export const getGoodsFilterOptions = () => unifiedApi.get<GoodsFilterOptionsPayload>('/query/goods/filter-options', { useCache: false }).then(response => ({
+  ...response,
+  data: response.data ? {
+    ...response.data,
+    brands: sortOptionsByOrder(response.data.brands || []),
+    categories: sortOptionsByOrder(response.data.categories || [])
+  } : response.data
+}))
+
+/** 综合查询商品模式只返回当前授权销售范围内匹配的成交商品名称。 */
+export const getGoodsProductNameOptions = (params: ProductNameOptionsParams, signal?: AbortSignal) =>
+  unifiedApi.get<string[]>('/query/goods/product-name-options', { params, signal, useCache: false, showLoading: false, showError: false })
 
 const cachedGet = <T>(
   key: string,
@@ -151,8 +175,8 @@ export const searchEmployees = (params: ReferenceSearchParams = {}) =>
       : response.data
   }))
 
-export const searchOperators = (params: ReferenceSearchParams = {}) =>
-  sortResponseRecords(unifiedApi.get<ReferenceRecord[]>('/users/operators', { params }))
+export const searchOperators = (params: ReferenceSearchParams = {}, options: { signal?: AbortSignal } = {}) =>
+  sortResponseRecords(unifiedApi.get<ReferenceRecord[]>('/users/operators', { params, signal: options.signal }))
 
 export const searchBrands = (params: ReferenceSearchParams = {}) =>
   sortResponseRecords(unifiedApi.get<ReferenceRecord[]>('/brands', { params: { business_scope: 'phone', ...params } }))

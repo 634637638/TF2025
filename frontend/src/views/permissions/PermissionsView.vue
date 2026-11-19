@@ -78,15 +78,6 @@
 
             <template v-else-if="activeTab === 'pagePermissions'">
               <el-button
-                type="info"
-                plain
-                :disabled="loadingPermissionDialog || savingDialogPermissions || !selectedRoleForPermission"
-                @click="loadPermissionDialog"
-              >
-                <i class="fas fa-sync-alt" />
-                刷新权限
-              </el-button>
-              <el-button
                 type="primary"
                 :disabled="!selectedRoleForPermission"
                 @click="closePermissionDialog('roles')"

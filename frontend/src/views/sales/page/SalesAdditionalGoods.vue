@@ -58,6 +58,7 @@
         <div
           v-tf-loading="{ active: loading, text: '正在检索本店商品...' }"
           class="cashier-products tf-scrollbar-hidden"
+          @scroll.passive="handleCatalogScroll"
         >
           <SectionLoading
             v-if="loading && !options.length"
@@ -703,6 +704,11 @@ const load = async (append = false) => {
 const search = async (value: string) => { reset(); keyword = value.trim(); catalogKeyword.value = keyword; await load() }
 const openOptions = (open: boolean) => { if (open && !loading.value && (!page || failed.value)) void load() }
 const loadMore = () => { if (!loading.value && !failed.value && options.value.length < total.value) void load(true) }
+const handleCatalogScroll = (event: Event) => {
+  const target = event.currentTarget
+  if (!(target instanceof HTMLElement) || loading.value || failed.value || options.value.length >= total.value) return
+  if (target.scrollHeight - target.clientHeight - target.scrollTop <= 24) void loadMore()
+}
 const { selectRef: goodsSelectRef, onPopupScroll: handleGoodsScroll } = useSelectLoadMore(
   loadMore, () => loading.value || failed.value || options.value.length >= total.value
 )

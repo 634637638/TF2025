@@ -528,7 +528,7 @@
                   v-else
                   v-model="customerDraft.name"
                   placeholder="请输入客户姓名"
-                  maxlength="100"
+                  maxlength="50"
                 >
                   <template #append>
                     <el-button
@@ -1006,13 +1006,14 @@ import { logger } from '@/utils/logger'
 import { getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { repairsApi } from '@/api/repairs'
 import { unifiedApi } from '@/utils/unified-api'
-import { searchCustomerOptions } from '@/services/customer-options'
+import { createCustomerProfile, searchCustomerOptions } from '@/services/customer-options'
 import type { RepairDeviceSearchResult, RepairMedia, RepairOrder, RepairOrderForm, RepairStatus } from '@/types/repair'
 import { formatDate as formatGlobalDate, formatAmount } from '@/utils/format'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatImageUrl } from '@/utils/format'
 import { isVideoMedia, type MediaPreviewItem } from '@/utils/media'
 import { getRequestErrorMessage } from '@/utils/api-response'
+import { isValidCustomerName } from '@/utils/security'
 const globalNotifications = useNotification()
 
 
@@ -1237,13 +1238,18 @@ const saveRepairCustomer = async () => {
   if (!customerPermissions.requirePermission('create')) return
   const name = customerDraft.name.trim()
   const phone = customerDraft.phone.trim()
-  if (!name || !/^1[3-9]\d{9}$/.test(phone)) {
-    notifyError('请填写客户姓名和有效的11位手机号码')
+  if (!isValidCustomerName(name, 50)) {
+    notifyError('客户姓名至少需要2个字符')
+    return
+  }
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    notifyError('请输入有效的11位手机号码')
     return
   }
   customerSaving.value = true
   try {
-    const response = await repairsApi.createCustomer({ name, phone })
+    if (!canCreate.value) return handleNoPermission('create')
+    const response = await createCustomerProfile({ name, phone })
     const customer = response.data
     if (!customer) throw new Error('客户创建响应缺少客户信息')
     customers.value = [customer, ...customers.value.filter(item => item.id !== customer.id)]

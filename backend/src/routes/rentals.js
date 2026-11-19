@@ -151,8 +151,6 @@ router.get('/customers', requireAnyPermission(['rentals:view', 'rentals:create']
 
 router.get('/sales-options', requireAnyPermission(['rentals:view', 'rentals:create']), auditUnpaginatedPersonnelSearch('rentals-sales-options'), rentalCustomerController.getSalesOptions.bind(rentalCustomerController))
 
-router.post('/customers', requirePermission('rentals:create'), requirePermission('customers:create'), rejectHiddenCustomerWriteFields, rentalCustomerController.create.bind(rentalCustomerController))
-
 router.put('/customers/:id', requirePermission('rentals:create'), requirePermission('customers:edit'), rejectHiddenCustomerWriteFields, rentalCustomerController.update.bind(rentalCustomerController))
 
 router.get('/devices', requireAnyPermission(['rentals:view', 'rentals:create']), rentalDeviceController.listAvailable.bind(rentalDeviceController))

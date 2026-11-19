@@ -7,6 +7,8 @@ const router = express.Router()
 const supplierPaymentController = require('../controllers/supplier-payment.controller')
 const AccessoryPurchaseController = require('../controllers/accessory-purchase.controller')
 const accessoryPurchaseController = new AccessoryPurchaseController()
+const SupplierUnifiedPaymentController = require('../controllers/supplier-unified-payment.controller')
+const supplierUnifiedPaymentController = new SupplierUnifiedPaymentController()
 const { body, param, query, validationResult } = require('express-validator')
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
 const ApiResponse = require('../utils/response')
@@ -47,11 +49,30 @@ const validateRequest = (req, res, next) => {
 
 // 商品采购按真实入库整单结算，与手机销售状态独立；共用货款结算动作权限。
 router.get('/accessory-purchases', unifiedAuth, requirePermission('supplier-payments:view'), accessoryPurchaseController.list.bind(accessoryPurchaseController))
+router.get('/accessory-purchases/options', unifiedAuth, requirePermission('supplier-payments:view'), accessoryPurchaseController.options.bind(accessoryPurchaseController))
 router.get('/accessory-purchases/:id/payments', unifiedAuth, requirePermission('supplier-payments:view'), accessoryPurchaseController.history.bind(accessoryPurchaseController))
 router.get('/accessory-purchases/:id/return-context', unifiedAuth, requirePermission('supplier-payments:view'), requireAnyPermission(['accessories:view', 'supplier-payments:return-check']), accessoryPurchaseController.returnContext.bind(accessoryPurchaseController))
 router.post('/accessory-purchases/:id/return/quote', unifiedAuth, requirePermission('supplier-payments:view'), requireAnyPermission(['accessories:view', 'supplier-payments:return-check']), accessoryPurchaseController.quoteReturn.bind(accessoryPurchaseController))
 router.post('/accessory-purchases/:id/payment', unifiedAuth, requirePermission('supplier-payments:create'), accessoryPurchaseController.pay.bind(accessoryPurchaseController))
 router.post('/accessory-purchases/:id/cancel-payment', unifiedAuth, requirePermission('supplier-payments:edit'), accessoryPurchaseController.cancel.bind(accessoryPurchaseController))
+
+router.get('/unified-batches/options', unifiedAuth, requirePermission('supplier-payments:view'), [query('supplier_id').optional().isInt({ min: 1 })], validateRequest, supplierUnifiedPaymentController.options.bind(supplierUnifiedPaymentController))
+router.post('/unified-batches', unifiedAuth, requirePermission('supplier-payments:create'), [
+  body('supplier_id').isInt({ min: 1 }),
+  body('phone_ids').optional().isArray({ max: 500 }),
+  body('phone_ids.*').optional().isInt({ min: 1 }),
+  body('accessory_purchase_ids').optional().isArray({ max: 500 }),
+  body('accessory_purchase_ids.*').optional().isInt({ min: 1 }),
+  body('payment_method').isString().isLength({ min: 1, max: 32 }),
+  body('payment_time').isString().custom(validatePaymentTime),
+  body('actual_amount').isFloat({ min: 0 }),
+  body('request_key').matches(/^[a-f0-9]{32}$/),
+  body('external_reference').optional().isString().isLength({ max: 100 }),
+  body('remarks').optional().isString().isLength({ max: 1000 })
+], validateRequest, supplierUnifiedPaymentController.create.bind(supplierUnifiedPaymentController))
+router.get('/unified-batches', unifiedAuth, requirePermission('supplier-payments:view'), [query('page').optional().isInt({ min: 1 }), query('page_size').optional().isInt({ min: 1, max: 100 })], validateRequest, supplierUnifiedPaymentController.history.bind(supplierUnifiedPaymentController))
+router.get('/unified-batches/:id', unifiedAuth, requirePermission('supplier-payments:view'), [param('id').isUUID()], validateRequest, supplierUnifiedPaymentController.details.bind(supplierUnifiedPaymentController))
+router.post('/unified-batches/:id/cancel', unifiedAuth, requirePermission('supplier-payments:edit'), [param('id').isUUID(), body('request_key').matches(/^[a-f0-9]{32}$/), body('remarks').isString().isLength({ min: 1, max: 1000 })], validateRequest, supplierUnifiedPaymentController.cancel.bind(supplierUnifiedPaymentController))
 
 /**
  * @route   GET /api/supplier-payments/statistics

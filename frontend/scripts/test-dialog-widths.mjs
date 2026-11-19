@@ -474,11 +474,18 @@ try {
         await evaluate(`document.documentElement.dataset.theme = '${theme}'`)
         for (const kind of ['wholesale','sales']) {
           await evaluate(`window.renderPriceHeader('${kind}')`)
-          for (const values of [{ passwordVerified:false },{ passwordVerified:true },{ showInStockOnly:true },{ usedModelsLoading:true },{ usedModelsLoading:false,isGenerating:true }]) {
+          for (const values of [{ passwordVerified:false },{ passwordVerified:true },{ passwordVerified:true,showInStockOnly:true },{ passwordVerified:true,showUsedPhonesOnly:true },{ passwordVerified:true,showUsedPhonesOnly:true,showInStockOnly:true },{ usedModelsLoading:true },{ usedModelsLoading:false,isGenerating:true }]) {
             await evaluate(`window.updatePriceHeader(${JSON.stringify(values)})`); await delay(50)
             const metrics = await evaluate('window.priceHeaderMetrics()')
             const label = `${viewport}/${theme}/${kind}/${JSON.stringify(values)}`
             assert.equal(metrics.buttons.length, kind === 'sales' ? 1 : values.passwordVerified === false ? 2 : 4, `${label}/按钮数`)
+            if (kind === 'wholesale' && values.passwordVerified === true && values.showUsedPhonesOnly === true) {
+              assert.equal(metrics.buttons.find(button => button.label === '全新机')?.label, '全新机', `${label}/二手机模式应提供切换全新机入口`)
+            }
+            if (kind === 'wholesale' && values.passwordVerified === true && values.showUsedPhonesOnly === true && values.showInStockOnly === true) {
+              assert.equal(metrics.buttons.find(button => button.label === '全部')?.label, '全部', `${label}/二手机模式保留全部范围状态`)
+              assert.equal(await evaluate('window.priceHeaderState().showUsedPhonesOnly'), true, `${label}/在库范围切换不改变二手机模式`)
+            }
             assert.ok(metrics.pageWidth <= viewport, `${label}/页面不能溢出`)
             const rows = new Map()
             for (const button of metrics.buttons) {
@@ -492,6 +499,15 @@ try {
             }
             for (const row of rows.values()) assert.ok(Math.abs((row[0].left + row.at(-1).right) / 2 - (metrics.background.left + metrics.background.right) / 2) < 2, `${label}/按钮组居中`)
             headerChecks++
+          }
+          if (kind === 'wholesale') {
+            await evaluate("window.updatePriceHeader({ passwordVerified:true, showInStockOnly:true, showUsedPhonesOnly:true, isGenerating:false, usedModelsLoading:false })")
+            await evaluate("document.querySelectorAll('.price-header-action--inventory')[0].click()")
+            await delay(30)
+            assert.deepEqual(await evaluate('window.priceHeaderState()'),{ showInStockOnly:false,showUsedPhonesOnly:true },`${viewport}/${theme}/切换范围保持二手机模式`)
+            await evaluate("document.querySelectorAll('.price-header-action--inventory')[1].click()")
+            await delay(30)
+            assert.deepEqual(await evaluate('window.priceHeaderState()'),{ showInStockOnly:false,showUsedPhonesOnly:false },`${viewport}/${theme}/切换模式保留范围状态`)
           }
         }
       }

@@ -169,10 +169,12 @@ test('采购列表汇总、付款状态和分页共用快照，并发付款及�
 
 test('采购列表分页、筛选和整单门店范围绑定同一连接，不暴露原JSON', async () => {
   const f = listFixture()
-  const result = await f.service.list(actor, { page: '2', page_size: '1', supplier_id: '4', store_id: '1', keyword: ' 充电器 ' })
+  const result = await f.service.list(actor, { page: '2', page_size: '1', supplier_id: '4', store_id: '1', product_name: ' 原充电器 ', brand_name: ' 原品牌 ', keyword: ' 充电器 ' })
   assert.deepEqual(result.rows, [])
   assert.deepEqual(f.reads[1].params, [...f.reads[0].params, 1, 1])
   assert.ok(f.reads[0].params.includes('%充电器%'))
+  assert.ok(f.reads[0].params.includes('%原充电器%'))
+  assert.ok(f.reads[0].params.includes('%原品牌%'))
   assert.match(f.reads[0].sql, /JSON_CONTAINS/)
   const first = await f.service.list(actor)
   assert.equal(first.rows[0].accessory_id, 3)

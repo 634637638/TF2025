@@ -413,7 +413,7 @@
                   <el-input
                     v-model="customerDraft.name"
                     :readonly="customerMode === 'selected' && !customerPermissions.canEdit.value"
-                    maxlength="100"
+                    maxlength="50"
                   />
                 </el-form-item>
                 <el-form-item
@@ -1172,7 +1172,8 @@ import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import { PaymentChannelSelect, PaymentMethodSelect, PaymentMethodText } from '@/components/payment'
 import { getPaymentMethodLabel } from '@/constants/paymentMethods'
-import { escapeHtml } from '@/utils/security'
+import { escapeHtml, isValidCustomerName } from '@/utils/security'
+import { createCustomerProfile } from '@/services/customer-options'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
 import { useNotification } from '@/composables/useNotification'
@@ -1372,7 +1373,7 @@ async function searchCustomers(keyword:string){customerKeyword.value=keyword.tri
 function selectCustomer(id:number|null){const item=customerOptions.value.find(c=>c.id===id);if(!item)return resetCustomerSelection();customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft)}
 function resetCustomerSelection(){form.customer_id=null;customerMode.value='search';Object.assign(customerDraft,{ name:'',phone:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
 function startManualCustomer(){if(!customerPermissions.requirePermission('create')||!canCreateCustomerProfile.value)return;const keyword=customerKeyword.value;form.customer_id=null;customerMode.value='manual';Object.assign(customerDraft,{ name:/^1[3-9]\d{9}$/.test(keyword)?'':keyword,phone:/^1[3-9]\d{9}$/.test(keyword)?keyword:'',id_card:'' });Object.assign(customerOriginal,{ name:'',phone:'',id_card:'' })}
-async function persistCustomer(){if(customerMode.value==='search')throw new Error('请先检索并选择客户，或手动新增客户');if(form.customer_id&&!customerDirty.value)return form.customer_id;if(!customerPermissions.requirePermission(form.customer_id?'edit':'create'))throw new Error('缺少客户资料操作权限');if(!canCreateCustomerProfile.value)throw new Error('客户资料字段权限不足');const payload=pickVisibleRentalFields(customerDraft,{ name:'customer_name',phone:'customer_phone',id_card:'customer_id_card' });customerSaving.value=true;try{const res=form.customer_id?await unifiedApi.put(`/rentals/customers/${form.customer_id}`,payload):await unifiedApi.post('/rentals/customers',payload);const item=res.data as CustomerOption;form.customer_id=item.id;customerOptions.value=[item];customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft);return item.id}finally{customerSaving.value=false}}
+async function persistCustomer(){if(customerMode.value==='search')throw new Error('请先检索并选择客户，或手动新增客户');if(form.customer_id&&!customerDirty.value)return form.customer_id;if(!customerPermissions.requirePermission(form.customer_id?'edit':'create'))throw new Error('缺少客户资料操作权限');if(!canCreateCustomerProfile.value)throw new Error('客户资料字段权限不足');if(!isValidCustomerName(customerDraft.name,50))throw new Error('客户姓名至少需要2个字符');const payload=pickVisibleRentalFields(customerDraft,{ name:'customer_name',phone:'customer_phone',id_card:'customer_id_card' });if(!form.customer_id&&!canCreate.value)throw new Error('缺少租赁创建权限');customerSaving.value=true;try{const res=form.customer_id?await unifiedApi.put(`/rentals/customers/${form.customer_id}`,payload):await createCustomerProfile({ name:customerDraft.name,phone:customerDraft.phone,id_card:customerDraft.id_card });const item=res.data as CustomerOption;form.customer_id=item.id;customerOptions.value=[item];customerMode.value='selected';Object.assign(customerDraft,{ name:item.name,phone:item.phone,id_card:item.id_card||'' });Object.assign(customerOriginal,customerDraft);return item.id}finally{customerSaving.value=false}}
 async function saveCustomerProfile(){try{await persistCustomer();globalNotifications.success('客户资料已保存并选择')}catch(error){globalNotifications.error(error instanceof Error?error.message:'客户资料保存失败')}}
 async function searchDevices(keyword:string){if(!showDeviceSelector.value){deviceOptions.value=[];return}deviceLoading.value=true;try{const res=await unifiedApi.get('/rentals/devices',{ params:{ keyword:keyword.trim()||undefined } });const rows=Array.isArray(res.data)?res.data:[];const selectedIds=new Set([...(form.phone_ids||[]),form.phone_id].filter((id):id is number=>Boolean(id)));const selectedOptions=deviceOptions.value.filter(item=>selectedIds.has(item.id));deviceOptions.value=[...rows,...selectedOptions.filter(item=>!rows.some(row=>row.id===item.id))]}finally{deviceLoading.value=false}}
 function selectBuyoutDevice(id:number|null){const device=deviceOptions.value.find(item=>item.id===id);if(device&&canViewRentalField('purchase_cost'))form.purchase_cost=Number(device.purchase_cost||0)}

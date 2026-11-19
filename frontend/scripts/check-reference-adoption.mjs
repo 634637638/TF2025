@@ -60,7 +60,8 @@ const requiredSortedExports = [
   ['组合查询选项', /export const getCachedQueryOptions[\s\S]*?sortOptionGroups\(response\.data\)/],
   ['手机选项', /export const getCachedPhoneOptions[\s\S]*?sortOptionGroups\(response\.data\)/],
   ['员工检索', /export const searchEmployees[\s\S]*?sortOptionsByOrder\(response\.data\.employees\)/],
-  ['操作员检索', /export const searchOperators\s*=\s*\(params: ReferenceSearchParams = \{\}\)\s*=>\s*sortResponseRecords/]
+  // 操作员检索允许附带 AbortSignal 等请求配置，但必须继续经过统一排序入口。
+  ['操作员检索', /export const searchOperators\s*=\s*\(params: ReferenceSearchParams = \{\}\s*,[\s\S]*?\)\s*=>\s*sortResponseRecords/]
 ]
 for (const [label, pattern] of requiredSortedExports) {
   if (!pattern.test(referenceService)) throw new Error(`${label}基础检索选项未在公共服务层执行 sort_order 排序`)

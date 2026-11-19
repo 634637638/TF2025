@@ -8,7 +8,6 @@ class RentalCustomerController {
   constructor({ service = new RentalCustomerService(), logger = log } = {}) {
     if (!service || typeof service.search !== 'function'
       || typeof service.getSalesOptions !== 'function'
-      || typeof service.create !== 'function'
       || typeof service.update !== 'function') {
       throw new TypeError('RentalCustomerController requires a rental customer service')
     }
@@ -39,23 +38,6 @@ class RentalCustomerController {
       if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
       this.logger.error('获取租赁销售选项失败:', error)
       return ApiResponse.serverError(res, '获取销售选项失败', error)
-    }
-  }
-
-  async create(req, res) {
-    try {
-      const result = await this.service.create(req.body, req.user)
-      if (result.existing) {
-        return ApiResponse.success(res, result.customer, '客户已存在，实名信息已更新')
-      }
-      return ApiResponse.created(res, '客户创建成功', result.customer)
-    } catch (error) {
-      if ([400, 403].includes(error.statusCode)) return res.status(error.statusCode).json({ success: false, message: error.message })
-      if (error?.statusCode === 403) return res.status(403).json({ success: false, message: error.message, code: error.code })
-      if (error?.statusCode === 400) return ApiResponse.badRequest(res, error.message)
-      if (error?.code === 'ER_DUP_ENTRY') return ApiResponse.badRequest(res, '手机号已存在')
-      this.logger.error('租赁客户创建失败:', error)
-      return ApiResponse.serverError(res, '客户创建失败', error)
     }
   }
 

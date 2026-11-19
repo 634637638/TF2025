@@ -58,7 +58,7 @@
           >
             <Box />
           </el-icon>
-          <span class="btn-text">二手机</span>
+          <span class="btn-text">{{ showUsedPhonesOnly ? '全新机' : '二手机' }}</span>
         </el-button>
         <el-button
           native-type="button"
@@ -634,9 +634,9 @@ const normalizePriceRows = (rows: unknown): PublicPriceRow[] => {
 const toggleInStockFilter = () => {
   if (!passwordVerified.value) return
 
-  showUsedPhonesOnly.value = false
   showInStockOnly.value = !showInStockOnly.value
-  applyInventoryFilter()
+  // 二手机接口本身只返回在库商品；范围状态保留，但不改变机型模式。
+  if (!showUsedPhonesOnly.value) applyInventoryFilter()
 }
 
 const loadUsedPhoneModels = async (keyword = '') => {
@@ -671,12 +671,10 @@ const toggleUsedPhonesFilter = async () => {
   if (!passwordVerified.value) return
   if (showUsedPhonesOnly.value) {
     showUsedPhonesOnly.value = false
-    showInStockOnly.value = false
     applyInventoryFilter()
     return
   }
 
-  showInStockOnly.value = false
   showUsedPhonesOnly.value = true
   hasSearched.value = true
   await loadUsedPhoneModels(searchKeyword.value.trim())

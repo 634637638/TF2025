@@ -4,7 +4,7 @@
 
 ## 配置入口的页面排序
 
-角色字段权限弹窗的“页面模块”按完整有效菜单树的顺序展示，复用页面权限的公共菜单排序实现 `sortModulesByMenu`，接口 `GET /permissions/module-mappings` 直接返回已排序模块。按模块键关联、重复绑定取首个位置，不按当前用户或目标角色的菜单可见性裁剪；未绑定有效菜单的模块保留原顺序并放在末尾。具体规则见[页面权限的展示顺序](permission-capability-standards.md#页面权限的展示顺序)。
+角色字段权限弹窗的“页面模块”按完整有效菜单树的顺序展示，复用页面权限的公共菜单排序实现 `sortModulesByMenu`，接口 `GET /permissions/module-mappings` 直接返回已排序模块。页面模块同时复用页面权限的母子归属：母模块与子模块在同一组中显示，选中子模块后只配置该子模块字段；母子分组只用于查找和展示，不合并字段配置，也不会让母模块权限自动授予子模块。按模块键关联、重复绑定取首个位置，不按当前用户或目标角色的菜单可见性裁剪；未绑定有效菜单的模块保留原顺序并放在末尾。具体规则见[页面权限的展示顺序](permission-capability-standards.md#页面权限的展示顺序)。
 
 每次打开弹窗重新获取模块列表，禁用该请求缓存，菜单调序后再次打开即可更新。仅调整页面模块的展示顺序，不调整业务字段分组、字段顺序或已保存的字段权限。回归覆盖在 `backend/test/permission-module-mapping-controller.check.js` 和 `frontend/tests/permission-lists-loading.spec.ts`。
 

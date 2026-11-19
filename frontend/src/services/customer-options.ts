@@ -1,4 +1,5 @@
 import { unifiedApi } from '@/utils/unified-api'
+import { isValidCustomerName } from '@/utils/security'
 
 export type CustomerSearchContext = 'generic' | 'sales' | 'rentals' | 'repairs'
 
@@ -14,6 +15,11 @@ export interface CustomerOption {
   vip_level?: string | null
   id_card?: string | null
   [key: string]: unknown
+}
+
+export interface CustomerCreateInput {
+  name: string
+  phone: string
 }
 
 const CUSTOMER_SEARCH_ENDPOINTS: Record<CustomerSearchContext, { path: string; parameter: 'keyword' | 'search' }> = {
@@ -46,6 +52,12 @@ export const normalizeCustomerOption = (value: unknown): CustomerOption | null =
     name: String(item.name || ''),
     phone: String(item.phone || '')
   } as CustomerOption
+}
+
+/** 所有业务页面共用客户主档创建接口；业务权限仍由调用页和服务端分别校验。 */
+export const createCustomerProfile = <TPayload extends CustomerCreateInput>(payload: TPayload) => {
+  if (!isValidCustomerName(payload.name, 50)) throw new Error('客户姓名至少需要2个字符')
+  return unifiedApi.post<CustomerOption>('/customers', payload)
 }
 
 /**

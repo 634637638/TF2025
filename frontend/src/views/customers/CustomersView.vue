@@ -1711,10 +1711,11 @@ import { PermissionGate, PageHeader } from '@/components/base'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import { formatDate, formatAmount, formatDateTime } from '@/utils/format'
 import { getActionColumnMinWidth, getIdentifierColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-layout'
-import { isValidPersonName, isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { isValidCustomerName, isValidAppleAccount, isValidIdCard, isValidMobilePhone, normalizeAppleId, normalizeIdCard, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { logger } from '@/utils/logger'
 import { getRequestErrorMessage } from '@/utils/api-response'
 import { getProvinceName, formatCustomerAddress, type RegionSelection } from '@/services/region-options'
+import { createCustomerProfile } from '@/services/customer-options'
 
 interface CustomerListItem extends Partial<RegionSelection> {
   id: number
@@ -2675,8 +2676,8 @@ const saveCustomer = async () => {
     customerForm.value.apple_id = normalizeAppleId(customerForm.value.apple_id)
 
     // 表单验证
-    if (!isValidPersonName(customerForm.value.name, 50)) {
-      error('请输入1至50字的单行客户姓名')
+    if (!isValidCustomerName(customerForm.value.name, 50)) {
+      error('客户姓名至少需要2个字符')
       return
     }
     if (!customerForm.value.phone?.trim()) {
@@ -2757,7 +2758,7 @@ const saveCustomer = async () => {
     if (modalMode.value === 'edit') {
       response = await unifiedApi.put(`/customers/${customerForm.value.id}`, submitData)
     } else {
-      response = await unifiedApi.post('/customers', submitData)
+      response = await createCustomerProfile(submitData as { name: string; phone: string; [key: string]: unknown })
     }
 
     if (response.success) {

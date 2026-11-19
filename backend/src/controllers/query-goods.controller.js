@@ -29,7 +29,11 @@ const responseKeys = {
 }
 const searchKeys = ['sale_no', 'order_no', 'linked_phone_invoice', 'name', 'barcode', 'category', 'brand_name', 'product_model',
   'color_name', 'unit', 'serial_number', 'customer_name', 'customer_phone', 'operator_name', 'remarks']
-const queryFields = { store_id: 'stock_info.distribution', sale_type: 'basic_info.usage_type', start_date: 'time_info.created_at', end_date: 'time_info.created_at' }
+const queryFields = {
+  store_id: 'stock_info.distribution', sale_type: 'basic_info.usage_type', sale_operator_id: 'operator_info.operator_name',
+  brand_id: 'basic_info.brand_name', product_name: 'basic_info.name', category_id: 'basic_info.category',
+  start_date: 'time_info.created_at', end_date: 'time_info.created_at'
+}
 
 const orderMoney = ['unit_price', 'total_amount', 'gross_amount', 'points_used', 'deduction_amount', 'points_awarded',
   'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state']
@@ -100,6 +104,37 @@ class QueryGoodsController {
     }
   }
   list(req, res) { return this.read(req, res, 'list') }
+  async filterOptions(req, res) {
+    try {
+      const permissions = await this.access.getPermissions(req.user.id)
+      const options = await this.service.filterOptions(req.user)
+      return res.json({ success: true, data: {
+        brands: permissions.hiddenFields?.includes('basic_info.brand_name') ? [] : options.brands,
+        categories: permissions.hiddenFields?.includes('basic_info.category') ? [] : options.categories
+      } })
+    } catch (error) {
+      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code })
+      this.logger.error('商品筛选选项读取失败:', { requestId: req.requestId, error })
+      return res.status(500).json({ success: false, message: '读取商品筛选选项失败，请稍后重试', code: 'INTERNAL_ERROR', request_id: req.requestId || null })
+    }
+  }
+  async productNameOptions(req, res) {
+    try {
+      const permissions = await this.access.getPermissions(req.user.id)
+      if (permissions.hiddenFields?.includes('basic_info.name')) {
+        return res.status(403).json({ success: false, message: '商品名称字段已隐藏，不能检索名称选项', code: 'FIELD_PERMISSION_DENIED' })
+      }
+      if (req.query.store_id !== undefined && permissions.hiddenFields?.includes('stock_info.distribution')) {
+        return res.status(403).json({ success: false, message: '销售门店字段已隐藏，不能按门店检索名称选项', code: 'FIELD_PERMISSION_DENIED' })
+      }
+      const names = await this.service.productNameOptions(req.user, req.query)
+      return res.json({ success: true, data: names })
+    } catch (error) {
+      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code })
+      this.logger.error('商品名称选项读取失败:', { requestId: req.requestId, error })
+      return res.status(500).json({ success: false, message: '读取商品名称选项失败，请稍后重试', code: 'INTERNAL_ERROR', request_id: req.requestId || null })
+    }
+  }
   detail(req, res) { return this.read(req, res, 'detail') }
   phoneReceipt(req, res) { return this.read(req, res, 'phoneReceipt') }
   goodsOrder(req, res) { return this.read(req, res, 'orderGoods') }

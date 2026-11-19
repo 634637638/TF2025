@@ -952,6 +952,8 @@
       v-model:visible="serialScannerVisible"
       scan-type="serial"
       serial-profile="accessory"
+      :serial-brand="selectedAccessoryBrandName"
+      :scan-validator="validateSerialScan"
       @success="acceptSerialScan"
       @manual="serialScannerVisible = false"
       @cancel="serialScannerVisible = false"
@@ -1471,6 +1473,7 @@ const serialBatchInput = ref('')
 const serialScannerVisible = ref(false)
 const serialScanTarget = ref<number | null>(null)
 const colorSerialScanTarget = ref<number | null>(null)
+const selectedAccessoryBrandName = computed(() => brands.value.find(brand => Number(brand.id) === Number(formData.value.brand_id))?.name || '')
 const serialEntries = computed(() => serialRows.value.map(row => normalizeAccessorySerial(row.value)).filter(Boolean)
   .map(serial_number => ({ serial_number, store_id: Number(formData.value.store_id) })))
 const serialValidationError = computed(() => {
@@ -1501,8 +1504,16 @@ const clearSerialRows = () => { serialRows.value = isEntryMode.value && formData
 const appendSerialBatch = () => {
   const values = serialBatchInput.value.split(/\r?\n/).map(normalizeAccessorySerial).filter(Boolean)
   const all = [...serialEntries.value.map(item => item.serial_number), ...values]
-  if (all.length > 1000 || all.some(value => !isValidAccessorySerial(value)) || new Set(all).size !== all.length) {
-    globalNotifications.warning('SN格式不正确、重复或超过1000条，请核对后再添加')
+  if (all.some(value => !isValidAccessorySerial(value))) {
+    globalNotifications.warning('SN格式不正确，请核对后再添加')
+    return
+  }
+  if (new Set(all).size !== all.length) {
+    globalNotifications.warning('本次入库存在重复SN，请核对后再添加')
+    return
+  }
+  if (all.length > 1000) {
+    globalNotifications.warning('本次最多录入1000条SN')
     return
   }
   for (const value of values) {
@@ -1523,29 +1534,39 @@ const openColorSerialScanner = (id: number) => {
   colorSerialScanTarget.value = id
   serialScannerVisible.value = true
 }
-const acceptSerialScan = (raw: string) => {
+const validateSerialScan = (raw: string): string | null => {
   const value = normalizeAccessorySerial(raw)
   if (isColorStockIn.value) {
     const row = colorStockRows.value.find(row => row.accessory_id === colorSerialScanTarget.value)
-    if (!row || !isValidAccessorySerial(value) || colorStockRows.value.flatMap(colorSerials).includes(value) || colorStockQuantity.value >= 1000) {
-      globalNotifications.warning('SN格式不正确、已录入或总数超过1000条，请核对')
-      return
-    }
-    row.serialInput = [...colorSerials(row), value].join('\n')
+    if (!row || !isValidAccessorySerial(value)) return 'SN格式不正确，请重新扫描'
+    if (colorStockRows.value.flatMap(colorSerials).includes(value)) return '该SN已录入，请勿重复扫描'
+    if (colorStockQuantity.value >= 1000) return '本次最多录入1000条SN'
+    return null
+  }
+  const target = serialRows.value.find(row => row.id === serialScanTarget.value)
+  if (!isValidAccessorySerial(value)) return 'SN格式不正确，请重新扫描'
+  if (serialRows.value.some(row => row.id !== target?.id && normalizeAccessorySerial(row.value) === value)) return '该SN已录入，请勿重复扫描'
+  if (!target?.value.trim() && serialEntries.value.length >= 1000) return '本次最多录入1000条SN'
+  return null
+}
+const acceptSerialScan = (raw: string) => {
+  const value = normalizeAccessorySerial(raw)
+  const validationMessage = validateSerialScan(raw)
+  if (validationMessage) {
+    globalNotifications.warning(validationMessage)
+    return
+  }
+  if (isColorStockIn.value) {
+    const row = colorStockRows.value.find(row => row.accessory_id === colorSerialScanTarget.value)
+    if (!row) return
+    row.serialInput = [value, ...colorSerials(row)].join('\n')
     return
   }
   const target = serialRows.value.find(row => row.id === serialScanTarget.value)
-  if (!isValidAccessorySerial(value) || serialRows.value.some(row => row.id !== target?.id && normalizeAccessorySerial(row.value) === value)) {
-    globalNotifications.warning('SN格式不正确或已录入，请重新扫描')
-    return
-  }
-  if (target) target.value = value
-  else {
-    const empty = serialRows.value.find(row => !row.value.trim())
-    if (empty) empty.value = value
-    else if (serialRows.value.length < 1000) serialRows.value.push({ id: ++nextSerialRowId, value })
-    else globalNotifications.warning('本次最多录入1000条SN')
-  }
+    ?? serialRows.value.find(row => !row.value.trim())
+  const scannedRow = target || { id: ++nextSerialRowId, value }
+  scannedRow.value = value
+  serialRows.value = [scannedRow, ...serialRows.value.filter(row => row.id !== scannedRow.id)]
 }
 const normalizeAccessoryOption = (item: ReferenceRecord): AccessoryOption => ({
   id: Number(item.id || 0),

@@ -199,6 +199,15 @@ test('快速设备价格精度、身份和不支持字段不能绕过共同结�
   await assert.rejects(f.service.checkout(body, actor), { statusCode: 400 })
 })
 
+test('共同结算允许按出库确认调整手机入库成本，并保存到手机销售和订单快照', async () => {
+  const f = fixture(), body = request()
+  body.phones[0].purchase_cost = 77.77
+  body.phones[1].purchase_cost = 88.88
+  await f.service.checkout(body, actor)
+  assert.deepEqual(f.state.sales.map(row => row.purchaseCost), [77.77, 88.88])
+  assert.deepEqual(f.state.items.filter(row => row.type === 'phone').map(row => row.purchase_cost), [77.77, 88.88])
+})
+
 test('混合批量结算复用真实手机/商品服务：独立销售、共用备注、逐条关联、SN、积分、收款均同事务', async () => {
   const f = fixture(), result = await f.service.checkout(request(), actor)
   assert.equal(result.total_amount, 600)
@@ -407,11 +416,12 @@ test('只重试受控锁冲突，达到次数后返回错误而不写半单', as
 })
 
 test('字段权限逐域覆盖嵌套价格/客户/店铺/SN；拒绝时不进入结算且内部错误不泄漏', async () => {
-  for (const field of ['sale_price', 'phone', 'store_id', 'unit_price', 'serial_numbers', 'gift_return_unit_price', 'redeem_points', 'operator_id', 'sale_time', 'sale_type']) {
+  for (const field of ['sale_price', 'purchase_cost', 'phone', 'store_id', 'unit_price', 'serial_numbers', 'gift_return_unit_price', 'redeem_points', 'operator_id', 'sale_time', 'sale_type']) {
     const access = { async getDeniedWrite(id, body, map) { assert.equal(id, 7); return body?.[field] !== undefined && map[field] ? map[field] : null } }
     const controller = new Controller({ permissionCheck: async () => true, service: { async checkout() { assert.fail('隐藏字段不应进入结算') } }, phoneAccess: access, goodsAccess: access })
     const res = { status(code) { this.code = code; return this }, json(value) { this.body = value; return this } }
     const body = request()
+    if (field === 'purchase_cost') body.phones[0].purchase_cost = 80
     body.accessories[1].gift_return_unit_price = 20
     body.accessories[0].redeem_points = 1
     await controller.checkout({ body, user: actor }, res)

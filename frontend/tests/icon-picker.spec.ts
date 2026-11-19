@@ -15,7 +15,8 @@ const stubs = {
   ElAlert: { props: ['title'], template: '<div role="alert">{{ title }}</div>' },
   ElSelect: true, ElOption: true,
   ElButton: { props: ['disabled'], template: '<button :disabled="disabled"><slot /></button>' },
-  ElSegmented: { emits: ['update:modelValue', 'change'], template: '<button data-online @click="$emit(\'update:modelValue\', \'online\'); $emit(\'change\', \'online\')">在线</button>' },
+  ElRadioGroup: { emits: ['update:modelValue', 'change'], template: '<button data-online @click="$emit(\'update:modelValue\', \'online\'); $emit(\'change\', \'online\')">在线</button>' },
+  ElRadioButton: true,
   ElInput: { props: { modelValue: String }, emits: ['update:modelValue', 'input'], template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value); $emit(\'input\', $event.target.value)" />' }
 }
 

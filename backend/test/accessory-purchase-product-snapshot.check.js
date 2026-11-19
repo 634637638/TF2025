@@ -78,13 +78,37 @@ test('原资料读取绑定最终商品、本次供应商及原门店；采购�
   assert.match(queries[0].sql, /LOCK IN SHARE MODE\s*$/)
   assert.match(queries[0].sql, /b.id = a.brand_id/)
   assert.doesNotMatch(queries[0].sql, /s.id = a.supplier_id/)
-  const filter = new PurchaseRepository().conditions({ allStores: true, storeIds: [] }, { keyword: '旧名', supplier_name: '旧供应商', store_name: '旧门店' })
+  const filter = new PurchaseRepository().conditions({ allStores: true, storeIds: [] }, { keyword: '旧名', product_name: '原充电器', brand_name: '原实际品牌', supplier_name: '旧供应商', store_name: '旧门店' })
   assert.match(filter.where, /product_snapshot/)
-  assert.deepEqual(filter.params, ['%旧供应商%', '%旧门店%', '%旧名%', '%旧名%'])
+  assert.deepEqual(filter.params, ['%旧供应商%', '%旧门店%', '%原实际品牌%', '%原充电器%', '%旧名%', '%旧名%'])
   assert.doesNotMatch(filter.where, /旧供应商|旧门店|旧名/)
   assert.match(purchaseSnapshotText('supplier_name', 'supplier.name'), /WHEN si.product_snapshot IS NULL THEN supplier.name/)
   assert.throws(() => purchaseSnapshotText('request_hash', 'p.hash'))
   assert.throws(() => purchaseSnapshotText('name', 'a.name', 'untrusted'))
+})
+
+test('采购货款选项合并配件范围有效主档和历史快照，按账户授权门店取值', async () => {
+  const statements = []
+  const connection = { async query(sql, params) {
+    statements.push({ sql, params })
+    if (sql.includes('SELECT DISTINCT')) return [[{ supplier_name: '历史供应商', brand_name: '历史品牌', product_name: '历史商品', store_name: '一店' }]]
+    if (sql.includes('FROM suppliers')) return [[{ name: '配件供应商' }, { name: '手机供应商' }]]
+    if (sql.includes('FROM brands')) return [[{ name: '配件品牌' }, { name: '双范围品牌' }]]
+    if (sql.includes('FROM stores')) return [[{ name: '一店' }, { name: '二店' }]]
+    return [[]]
+  } }
+  const result = await new PurchaseRepository().options({ allStores: false, storeIds: [1] }, connection)
+  assert.deepEqual(result, {
+    suppliers: ['历史供应商', '配件供应商', '手机供应商'],
+    brands: ['历史品牌', '配件品牌', '双范围品牌'],
+    products: ['历史商品'], stores: ['二店', '一店']
+  })
+  assert.match(statements[0].sql, /product_snapshot/)
+  assert.match(statements[1].sql, /business_scope IN \('accessory', 'both'\)/)
+  assert.match(statements[2].sql, /business_scope IN \('accessory', 'both'\)/)
+  assert.match(statements[3].sql, /id IN \(\?\)/)
+  assert.deepEqual(statements[0].params, [1, 1])
+  assert.deepEqual(statements[3].params, [1])
 })
 
 test('新采购须防重与JSON快照结构同时就绪，缺字段或错误类型不能降级入库', async () => {

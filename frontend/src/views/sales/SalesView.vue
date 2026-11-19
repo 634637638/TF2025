@@ -791,16 +791,16 @@ const prepareGoodsCheckout = (mode: 'single' | 'batch') => {
   const phones = batch ? selectedPhones.value : selectedPhone.value ? [selectedPhone.value] : []
   if (!canSell.value || !phones.length || isPreorderDelivery.value) return
   if (batch ? batchCustomerNameEditing.value : customerNameEditing.value) { showError('请先保存客户姓名，再添加搭售或赠送商品'); return }
-  const entries = phones.map(phone => ({ phone_id: Number(phone.id),
-    sale_price: Number(batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.sale_price : source.sale_price),
-    label: [canViewSaleField('brand') ? phone.brand : '', canViewSaleField('model') ? phone.model : '',
-      canViewSaleField('imei') ? phone.imei : ''].filter(Boolean).join(' · ') || `设备 #${phone.id}` }))
+  const entries = phones.map(phone => {
+    const cost = batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.purchase_cost : saleForm.purchase_cost
+    return { phone_id: Number(phone.id),
+      sale_price: Number(batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.sale_price : source.sale_price),
+      ...(canViewSaleField('purchase_cost') && cost !== '' && cost !== null && cost !== undefined ? { purchase_cost: Number(cost) } : {}),
+      label: [canViewSaleField('brand') ? phone.brand : '', canViewSaleField('model') ? phone.model : '',
+        canViewSaleField('imei') ? phone.imei : ''].filter(Boolean).join(' · ') || `设备 #${phone.id}` }
+  })
   if (entries.some(phone => !Number.isFinite(phone.sale_price) || phone.sale_price <= 0)) { showError('请先填写每台手机的销售价格'); return }
   if (!source.store_id) { showError('请先选择销售门店'); return }
-  if (phones.some(phone => {
-    const edited = batch ? batchSaleItems.value.find(item => item.phone_id === phone.id)?.purchase_cost : saleForm.purchase_cost
-    return edited !== '' && Number(edited) !== Number(phone.purchase_cost)
-  })) { showError('合单使用原入库成本，请先恢复手机入库价格'); return }
   goodsCheckoutPhones.value = entries
   goodsCheckoutDefaults.value = { customer_name: source.customer_name, customer_phone: source.customer_phone,
     store_id: source.store_id, operator_id: source.operator_id, sale_time: source.sale_time,

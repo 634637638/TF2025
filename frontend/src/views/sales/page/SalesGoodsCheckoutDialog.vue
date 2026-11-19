@@ -1,9 +1,9 @@
 <template>
-  <!-- 商品收银选购工作台显式宽度为 1000px，窄屏收缩由公共弹窗统一处理。 -->
+  <!-- 商品收银选购工作台显式宽度为 900px，窄屏收缩由公共弹窗统一处理。 -->
   <MobileDialog
     :model-value="modelValue"
-    :title="filmCustomerId ? '贴膜收银' : phones.length ? '附加商品' : completed ? '收款成功' : checkoutStep === 'payment' ? '订单结算' : '商品收银'"
-    :width="phones.length ? undefined : filmCustomerId ? '560px' : checkoutStep === 'shopping' ? '1000px' : undefined"
+    :title="completed ? '收款成功' : filmCustomerId ? '贴膜收银' : phones.length ? '附加商品' : checkoutStep === 'payment' ? '订单结算' : '商品收银'"
+    :width="completed ? '480px' : phones.length ? undefined : filmCustomerId ? '560px' : checkoutStep === 'shopping' ? '900px' : undefined"
     :show-default-footer="false"
     :close-on-click-modal="false"
     :before-close="beforeClose"
@@ -37,22 +37,34 @@
       class="checkout-success"
       role="status"
     >
-      <el-result
-        icon="success"
-        title="收款成功"
-        sub-title="商品已出库，本单已完成结算"
-      />
+      <div class="checkout-success__hero">
+        <span
+          class="checkout-success__icon"
+          aria-hidden="true"
+        >
+          <el-icon><Check /></el-icon>
+        </span>
+        <h2>收款成功</h2>
+        <p>商品已出库，本单已完成结算</p>
+      </div>
       <div class="checkout-success__receipt">
-        <span class="text-secondary">销售单号</span>
-        <strong v-if="canViewAccessoryField('sequence')">{{ completed.order_no }}</strong>
-        <template v-if="canViewAccessoryField('total_price')">
-          <span class="text-secondary">实际收款</span>
-          <strong class="checkout-payable">{{ completedPaid === null ? '请查看原单核对' : `¥${formatAmount(completedPaid)}` }}</strong>
-          <div class="tf-dialog-toolbar">
-            <span>消耗积分 {{ completed.points_used }}</span>
-            <span>获得积分 {{ completed.points_earned }}</span>
-          </div>
-        </template>
+        <div class="checkout-success__line">
+          <span class="text-secondary">销售单号</span>
+          <strong v-if="canViewAccessoryField('sequence')">{{ completed.order_no }}</strong>
+        </div>
+        <div
+          v-if="canViewAccessoryField('total_price')"
+          class="checkout-success__line checkout-success__points"
+        >
+          <span>消耗积分 {{ completed.points_used }} · 获得积分 {{ completed.points_earned }}</span>
+        </div>
+        <div
+          v-if="canViewAccessoryField('total_price')"
+          class="checkout-success__line checkout-success__paid"
+        >
+          <strong>实际收款</strong>
+          <strong>{{ completedPaid === null ? '请查看原单核对' : `¥${formatAmount(completedPaid)}` }}</strong>
+        </div>
       </div>
     </section>
     <el-form
@@ -405,12 +417,13 @@
             >
               <PaymentMethodSelect
                 v-model="form.payment_method"
+                :disabled="formDisabled || giftOnlyOrder"
                 @update:model-value="resetPayment"
               />
             </el-form-item>
           </el-col>
           <el-col
-            v-if="hasPaymentChannelOptions(form.payment_method)"
+            v-if="!giftOnlyOrder && hasPaymentChannelOptions(form.payment_method)"
             :xs="12"
             :sm="6"
           >
@@ -421,18 +434,6 @@
               <PaymentChannelSelect
                 v-model="form.payment_channel"
                 :payment-method="form.payment_method"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col
-            v-if="!filmCustomerId && requiresTransactionNumber(form.payment_method)"
-            :xs="12"
-            :sm="6"
-          >
-            <el-form-item label="交易流水号">
-              <el-input
-                v-model="form.transaction_no"
-                :maxlength="100"
               />
             </el-form-item>
           </el-col>
@@ -535,7 +536,7 @@
           />
         </el-form-item>
         <div
-          v-if="standalone && canViewAccessoryField('total_price') && form.payment_method === 'cash'"
+          v-if="standalone && !giftOnlyOrder && canViewAccessoryField('total_price') && form.payment_method === 'cash'"
           class="checkout-cash-row"
         >
           <el-form-item
@@ -548,6 +549,7 @@
               :max="99999999.99"
               placeholder="不填写则按应收金额收取"
               aria-label="现金收取"
+              :disabled="formDisabled || giftOnlyOrder"
             />
           </el-form-item>
           <el-form-item
@@ -611,9 +613,10 @@
 </template>
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, reactive, ref, watch } from 'vue'
+import { Check } from '@element-plus/icons-vue'
 import { checkoutSale, getCheckoutCustomerSummary, getFilmCustomerSummary, quoteCheckoutSale } from '@/api/sales-checkout'
 import { getStores, searchOperators, type ReferenceRecord } from '@/services/reference-options'
-import { searchCustomerOptions, type CustomerOption } from '@/services/customer-options'
+import { createCustomerProfile, searchCustomerOptions, type CustomerOption } from '@/services/customer-options'
 import { unifiedApi } from '@/utils/unified-api'
 import { useAuthStore } from '@/stores/auth'
 import { useLatestRequest } from '@/composables/useLatestRequest'
@@ -621,10 +624,10 @@ import { useNotification } from '@/composables/useNotification'
 import { useGoodsPermissions } from '@/composables/useGoodsPermissions'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
-import { isValidMobilePhone, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { isValidCustomerName, isValidMobilePhone, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { formatAmount } from '@/utils/format'
-import { SALE_PAYMENT_METHODS, getPaymentChannelOptions, hasPaymentChannelOptions, requiresTransactionNumber } from '@/constants/paymentMethods'
+import { SALE_PAYMENT_METHODS, getPaymentChannelOptions, hasPaymentChannelOptions } from '@/constants/paymentMethods'
 import { buildCheckoutInput, checkoutPointsContext, createCheckoutKey, isCheckoutSubmissionRejected } from '@/utils/sales-checkout'
 import { canViewAccessoryField as canViewStockField, canViewQueryGoodsField, ACCESSORY_FIELD_IDS, type AccessoryFieldName } from '@/components/accessory-field-permissions'
 import CustomerSearchDropdown, { type CustomerSearchDropdownItem } from '@/components/common/CustomerSearchDropdown.vue'
@@ -733,7 +736,8 @@ const phoneContextError = computed(() => {
 const totalAmount = computed(() => props.phones.reduce((sum, phone) => sum + Math.round(phone.sale_price * 100), 0) / 100 + goods.value.reduce((sum, row) => sum + (row.sale_type === 'gift' ? 0 : Math.round(Number(row.unit_price || 0) * 100) * (row.serial_mode ? row.serial_numbers.length : row.quantity)), 0) / 100)
 const goodsCount = computed(() => goods.value.reduce((sum, row) => sum + (row.serial_mode ? row.serial_numbers.length : row.quantity || 0), 0))
 const payableAmount = computed(() => pointsQuote.value ? pointsQuote.value.payable_cents / 100 : totalAmount.value)
-const cashChange = computed(() => (Math.round(Number(cashTendered.value || 0) * 100) - Math.round(payableAmount.value * 100)) / 100)
+const giftOnlyOrder = computed(() => standalone.value && goods.value.length > 0 && goods.value.every(row => row.sale_type === 'gift' || Number(row.unit_price) === 0))
+const cashChange = computed(() => giftOnlyOrder.value ? 0 : (Math.round(Number(cashTendered.value || 0) * 100) - Math.round(payableAmount.value * 100)) / 100)
 const filmOriginalAmount = computed(() => props.filmCustomerId ? goods.value.reduce((sum, row) => {
   if (row.sale_type === 'gift') return sum
   const quantity = row.serial_mode ? row.serial_numbers.length : row.quantity
@@ -784,11 +788,11 @@ const createCustomer = async () => {
   const phone = normalizePhoneDigits(form.customer_phone)
   const name = normalizePersonName(form.customer_name, 50)
   if (!isValidMobilePhone(phone)) { notices.warning('请输入有效的手机号码后再创建客户'); return }
-  if (name.length < 2) { notices.warning('请输入客户姓名后再创建客户'); return }
+  if (!isValidCustomerName(name, 50)) { notices.warning('客户姓名至少需要2个字符'); return }
   customerCreating.value = true
   customerLoading.value = true
   try {
-    const response = await unifiedApi.post('/customers', {
+    const response = await createCustomerProfile({
       name,
       phone,
       apple_id: form.apple_id || null
@@ -815,7 +819,7 @@ const saveName = async () => {
   if (!nameEditing.value || !selectedCustomer.value || nameSaving.value || saving.value || uncertain.value) return
   if (!customerPermissions.requirePermission('edit')) return
   const name = normalizePersonName(form.customer_name, 50)
-  if (name.length < 2) { notices.error('客户姓名至少两个字'); return }
+  if (!isValidCustomerName(name, 50)) { notices.error('客户姓名至少需要2个字符'); return }
   const customer = selectedCustomer.value
   if (name === customer.name) { nameEditing.value = false; return }
   nameSaving.value = true
@@ -853,12 +857,14 @@ const searchSellers = async (keyword = '') => {
   finally { if (request.isLatest()) sellerLoading.value = false }
 }
 const resetPayment = () => { form.payment_channel = form.transaction_no = '' }
-const load = async () => {
+const load = async ({ preserveSaleDate = false } = {}) => {
   const request = requests.nextRequest(); loading.value = true; failed.value = uncertain.value = false
   checkoutStep.value = 'shopping'; completed.value = null; receiptOpen.value = false; cashTendered.value = null; filmActualAmount.value = null
   clearCustomer(); nameSaving.value = false; customerCreating.value = false; invalidatePointsQuote(); goods.value = []; stores.value = []; operators.value = []
   memberRequests.cancelLatest(); memberSummary.value = null; memberLoading.value = memberFailed.value = false
-  Object.assign(form, { customer_name: '', customer_phone: '', apple_id: undefined, store_id: '', operator_id: props.phones.length ? '' : Number(auth.user?.id) || '', sale_time: props.phones.length ? '' : TimeUtil.format(new Date(), TIME_FORMATS.DATE), payment_method: '', payment_channel: '', transaction_no: '', remarks: '' }, props.defaults)
+  const preservedSaleDate = preserveSaleDate && TimeUtil.isValid(form.sale_time, TIME_FORMATS.DATE) ? form.sale_time : ''
+  Object.assign(form, { customer_name: '', customer_phone: '', apple_id: undefined, store_id: '', operator_id: props.phones.length ? '' : Number(auth.user?.id) || '', sale_time: props.phones.length ? '' : TimeUtil.nowFormatted(TIME_FORMATS.DATE), payment_method: '', payment_channel: '', transaction_no: '', remarks: '' }, props.defaults)
+  if (!props.phones.length && preservedSaleDate) form.sale_time = preservedSaleDate
   const initialCustomerPhone = props.initialCustomer?.phone || ''
   if (!props.phones.length && props.initialCustomer && normalizePhoneDigits(initialCustomerPhone) === normalizePhoneDigits(form.customer_phone)) {
     selectCustomer({ id: props.initialCustomer.id, name: props.initialCustomer.name, phone: initialCustomerPhone }, true)
@@ -897,7 +903,10 @@ const load = async () => {
 }
 const prepareInput = ({ filmSettlement = false }: { filmSettlement?: boolean } = {}) => {
   if (phoneContextError.value) throw new Error(phoneContextError.value)
-  const input = buildCheckoutInput(form, props.phones, goods.value, requestKey, props.quickPhone, Boolean(props.filmCustomerId))
+  const checkoutForm = giftOnlyOrder.value
+    ? { ...form, payment_method: 'cash', payment_channel: '', transaction_no: '' }
+    : form
+  const input = buildCheckoutInput(checkoutForm, props.phones, goods.value, requestKey, props.quickPhone, Boolean(props.filmCustomerId))
   if (props.phones.length || standalone.value || props.filmCustomerId) input.accessories.forEach(row => { delete row.redeem_points; if (automaticPoints.value[row.key] > 0) row.redeem_points = automaticPoints.value[row.key] })
   if (props.filmCustomerId) {
     if (!fieldsAllowed.value || form.customer_name !== props.initialCustomer?.name) throw new Error('贴膜客户资料已变化，请重新打开办理')
@@ -920,10 +929,10 @@ const prepareInput = ({ filmSettlement = false }: { filmSettlement?: boolean } =
       }
     }
   }
-  if (hasPaymentChannelOptions(form.payment_method) && !form.payment_channel) throw new Error('请选择支付渠道')
+  if (hasPaymentChannelOptions(checkoutForm.payment_method) && !checkoutForm.payment_channel) throw new Error('请选择支付渠道')
   if (!canViewAccessoryField('serial_number') && goods.value.some(row => row.serial_mode)) throw new Error('无权使用SN字段')
   if (!showRemarks.value) delete input.remarks
-  if (props.phones.length && !props.phoneFieldVisible('transaction_no')) delete input.payment_info.transaction_no
+  if (standalone.value || props.filmCustomerId || props.phones.length && !props.phoneFieldVisible('transaction_no')) delete input.payment_info.transaction_no
   if (props.phones.length && !props.phoneFieldVisible('customer_apple_id')) delete input.customer_info.apple_id
   return input
 }
@@ -1010,7 +1019,7 @@ const submit = async () => {
     emit('update:modelValue', false)
     return
   }
-  if ((standalone.value || props.filmCustomerId) && form.payment_method === 'cash' && cashTendered.value !== null && cashTendered.value !== undefined &&
+  if ((standalone.value || props.filmCustomerId) && (giftOnlyOrder.value || form.payment_method === 'cash') && cashTendered.value !== null && cashTendered.value !== undefined &&
     (!Number.isFinite(cashTendered.value) || cashChange.value < 0)) { notices.error('现金收取不足，请核对应收金额'); return }
   saving.value = true
   try {
@@ -1035,6 +1044,14 @@ const beforeClose = (done: (cancel?: boolean) => void) => {
 const requestClose = () => beforeClose(() => emit('update:modelValue', false))
 const updateVisible = (value: boolean) => { if (!value && !saving.value && !nameSaving.value) emit('update:modelValue', false) }
 watch([form, goods, () => props.phones, () => props.quickPhone, () => props.filmCustomerId, () => props.filmPhoneId, () => props.filmModelId, () => props.filmEligibleForFree], invalidatePointsQuote, { deep: true })
+watch(giftOnlyOrder, locked => {
+  if (!locked) return
+  cashTendered.value = null
+  if (form.payment_method !== 'cash') {
+    form.payment_method = 'cash'
+    resetPayment()
+  }
+})
 watch([memberContextReady, () => normalizePhoneDigits(form.customer_phone), () => form.store_id,
   () => memberFieldVisible('points'), () => memberFieldVisible('member_number'), () => memberFieldVisible('balance')], () => {
   memberRequests.cancelLatest(); memberSummary.value = null; memberLoading.value = memberFailed.value = false
@@ -1044,7 +1061,7 @@ watch([memberContextReady, () => normalizePhoneDigits(form.customer_phone), () =
 watch(() => Object.keys(ACCESSORY_FIELD_IDS).map(key => canViewAccessoryField(key as AccessoryFieldName)), () => {
   requests.cancelLatest(); customerRequests.cancelLatest(); sellerRequests.cancelLatest(); memberRequests.cancelLatest()
   invalidatePointsQuote(); goods.value = []; completed.value = null; receiptOpen.value = false
-  if (props.modelValue) void load()
+  if (props.modelValue) void load({ preserveSaleDate: true })
 })
 watch(() => props.modelValue, visible => {
   if (visible) void load()
@@ -1067,7 +1084,18 @@ watch(() => props.modelValue, visible => {
 .checkout-payment__line { display: flex; justify-content: space-between; gap: var(--tf-space-3); overflow-wrap: anywhere; }
 .checkout-payment__line > span:first-child { min-width: 0; }
 .checkout-payment__line > span:last-child { flex-shrink: 0; }
-.checkout-success__receipt { display: grid; justify-items: center; gap: var(--tf-space-3); padding: var(--tf-space-5); border: 1px dashed var(--tf-color-border-cool); border-radius: var(--tf-radius-card); overflow-wrap: anywhere; }
+.checkout-success { min-width: 0; }
+.checkout-success__hero { display: grid; justify-items: center; gap: var(--tf-space-2); padding: var(--tf-space-2) 0 var(--tf-space-5); text-align: center; }
+.checkout-success__icon { display: inline-grid; place-items: center; width: calc(var(--tf-space-8) * 2); height: calc(var(--tf-space-8) * 2); border-radius: var(--tf-radius-full); color: var(--tf-color-white); background: var(--el-color-success); font-size: var(--tf-font-title); }
+.checkout-success__hero h2 { margin: 0; color: var(--tf-dialog-body-text); font-size: var(--tf-font-title); line-height: 1.3; }
+.checkout-success__hero p { margin: 0; color: var(--tf-color-text-secondary); font-size: var(--tf-font-body); }
+.checkout-success__receipt { display: grid; gap: var(--tf-space-3); padding: var(--tf-space-4); border-radius: var(--tf-radius-card); background: var(--tf-color-surface-cool-alt); overflow-wrap: anywhere; }
+.checkout-success__line { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--tf-space-3); min-width: 0; }
+.checkout-success__line > :last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.checkout-success__points { color: var(--tf-color-text-secondary); }
+.checkout-success__points > span { width: 100%; text-align: center; }
+.checkout-success__paid { margin-top: var(--tf-space-1); padding-top: var(--tf-space-3); border-top: 1px solid var(--tf-color-border-cool); font-weight: 700; }
+.checkout-success__paid > :last-child { color: var(--el-color-primary); font-size: var(--tf-font-title); }
 .film-cashier-summary { display: grid; justify-items: center; gap: var(--tf-space-2); margin-bottom: var(--tf-space-5); padding: var(--tf-space-5) var(--tf-space-4); border: 1px solid var(--tf-color-border-cool); border-radius: var(--tf-radius-card); background: var(--tf-color-surface-cool-alt); text-align: center; }
 .film-cashier-summary__label { color: var(--tf-color-text-secondary); font-size: var(--tf-font-body); }
 .film-cashier-summary__amount { color: var(--el-color-primary); font-size: var(--tf-font-display); line-height: 1.1; }

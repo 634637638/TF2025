@@ -9,7 +9,7 @@
     >
       <!-- 权限验证通过后的内容 -->
       <div class="admin-page-content">
-        <PageHeader title="货款结算">
+        <PageHeader title="供应商打款">
           <template #actions>
             <ImportExportActions
               v-if="businessMode === 'phones'"
@@ -727,8 +727,22 @@
                     v-if="canViewPaymentField('purchase_cost')"
                     class="info-row"
                   >
-                    <label>价格:</label>
+                    <label>手机货款:</label>
                     <span class="amount">¥{{ formatAmount(selectedTotalAmount) }}</span>
+                  </div>
+                  <div
+                    v-if="batchAccessories.length && canViewPaymentField('purchase_cost')"
+                    class="info-row"
+                  >
+                    <label>商品货款:</label>
+                    <span class="amount">¥{{ formatAmount(batchAccessoryAmount) }}</span>
+                  </div>
+                  <div
+                    v-if="batchAccessories.length && canViewPaymentField('purchase_cost')"
+                    class="info-row"
+                  >
+                    <label>应付合计:</label>
+                    <span class="amount">¥{{ formatAmount(batchExpectedAmount) }}</span>
                   </div>
                   <div
                     v-if="canViewPaymentField('profit')"
@@ -906,6 +920,111 @@
                     </el-table>
                   </div>
                 </div>
+
+                <div class="batch-accessory-toolbar hide-in-capture">
+                  <div>
+                    <strong>附带商品货款</strong>
+                    <span
+                      v-if="batchAccessories.length"
+                      class="batch-accessory-selection-summary"
+                    >
+                      已选择 {{ batchSelectedAccessoryIds.length }} 单，¥{{ formatAmount(batchAccessoryAmount) }}
+                    </span>
+                  </div>
+                  <div class="tf-dialog-actions">
+                    <el-button
+                      v-if="batchAccessories.length"
+                      type="info"
+                      link
+                      @click="clearBatchAccessories"
+                    >
+                      移除商品
+                    </el-button>
+                    <el-button
+                      type="primary"
+                      plain
+                      :loading="batchAccessoriesLoading"
+                      @click="loadBatchAccessories"
+                    >
+                      <i class="fas fa-boxes-stacked" />
+                      <span>{{ batchAccessories.length ? '重新选择商品' : '添加商品' }}</span>
+                    </el-button>
+                  </div>
+                </div>
+
+                <section
+                  v-if="batchAccessories.length"
+                  class="batch-accessory-selection hide-in-capture"
+                  aria-label="附带商品货款"
+                >
+                  <div class="batch-accessory-selection-heading">
+                    <strong>商品货款明细</strong>
+                    <span>仅显示该供应商未打款采购单</span>
+                  </div>
+                  <div class="table-responsive payment-dialog-table-container">
+                    <el-table
+                      :data="batchAccessories"
+                      border
+                      stripe
+                      class="data-table"
+                      row-key="id"
+                      @selection-change="updateBatchAccessorySelection"
+                    >
+                      <el-table-column
+                        type="selection"
+                        width="48"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase.batch_no')"
+                        prop="batch_no"
+                        label="采购批次"
+                        min-width="130"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase.name')"
+                        prop="name"
+                        label="商品名称"
+                        min-width="140"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('brand_name')"
+                        prop="brand_name"
+                        label="品牌"
+                        min-width="90"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('model_name')"
+                        prop="product_model"
+                        label="型号"
+                        min-width="110"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase.quantity')"
+                        label="数量"
+                        min-width="80"
+                      >
+                        <template #default="{ row }">
+                          {{ row.quantity ?? '-' }} {{ row.unit || '' }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase_cost')"
+                        label="整单金额"
+                        min-width="110"
+                      >
+                        <template #default="{ row }">
+                          ¥{{ formatAmount(row.total_amount) }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="canViewPaymentField('store_name')"
+                        prop="store_name"
+                        label="入库店铺"
+                        min-width="110"
+                      />
+                    </el-table>
+                  </div>
+                </section>
 
                 <!-- 打款信息卡片 -->
                 <div class="details-info payment-form-cards mt-5 hide-in-capture">
@@ -1318,7 +1437,7 @@
             <!-- 打款详情对话框 -->
             <MobileDialog
               v-model="showPaymentDetailsDialog"
-              title="打款批次详情"
+              :title="paymentDetails.is_unified ? '供应商付款明细' : '打款批次详情'"
               width="95%"
               dialog-class="supplier-phone-payments-dialog supplier-phone-payments-detail-dialog"
               :show-default-footer="false"
@@ -1375,16 +1494,33 @@
                     <label><i class="fas fa-user-check" />打款人</label>
                     <span class="highlight">{{ paymentDetails.payment_operator || '-' }}</span>
                   </div>
-                  <div class="info-row batch-summary-count">
+                  <div
+                    v-if="paymentDetails.phones.length"
+                    class="info-row batch-summary-count"
+                  >
                     <label><i class="fas fa-mobile-alt" />手机数量</label>
                     <span class="highlight">{{ paymentDetails.phones?.length || 0 }} 台</span>
                   </div>
                   <div
-                    v-if="canViewPaymentField('purchase_cost')"
+                    v-if="paymentDetails.phones.length && canViewPaymentField('purchase_cost')"
                     class="info-row batch-summary-cost"
                   >
                     <label><i class="fas fa-coins" />总成本</label>
                     <span class="amount">¥{{ formatAmount(paymentDetails.total_cost) }}</span>
+                  </div>
+                  <div
+                    v-if="paymentDetails.accessories.length"
+                    class="info-row batch-summary-accessory-count"
+                  >
+                    <label><i class="fas fa-boxes-stacked" />商品采购单</label>
+                    <span class="highlight">{{ paymentDetails.accessories.length }} 单</span>
+                  </div>
+                  <div
+                    v-if="paymentDetails.accessories.length && canViewPaymentField('purchase_cost')"
+                    class="info-row batch-summary-accessory-cost"
+                  >
+                    <label><i class="fas fa-coins" />商品货款</label>
+                    <span class="amount">¥{{ formatAmount(paymentDetails.total_accessory_cost) }}</span>
                   </div>
                   <div
                     v-if="canViewPaymentField('sale_price')"
@@ -1408,7 +1544,10 @@
                 </div>
 
                 <!-- 手机明细表格 -->
-                <div class="batch-details-table">
+                <div
+                  v-if="paymentDetails.phones.length"
+                  class="batch-details-table"
+                >
                   <div class="table-responsive payment-dialog-table-container">
                     <el-table
                       :data="paymentDetails.phones || []"
@@ -1572,12 +1711,102 @@
                     </el-table>
                   </div>
                 </div>
+
+                <section
+                  v-if="paymentDetails.accessories.length"
+                  class="unified-accessory-detail-card"
+                  aria-label="商品货款明细"
+                >
+                  <div class="unified-accessory-detail-heading">
+                    <strong>商品货款明细</strong>
+                    <span v-if="canViewPaymentField('purchase_cost')">¥{{ formatAmount(paymentDetails.total_accessory_cost) }}</span>
+                  </div>
+                  <div class="table-responsive payment-dialog-table-container">
+                    <el-table
+                      :data="paymentDetails.accessories"
+                      border
+                      stripe
+                      class="data-table"
+                      row-key="id"
+                    >
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase.batch_no')"
+                        prop="batch_no"
+                        label="采购批次"
+                        min-width="130"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase.name')"
+                        prop="accessory_name"
+                        label="商品名称"
+                        min-width="140"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('brand_name')"
+                        prop="accessory_brand_name"
+                        label="品牌"
+                        min-width="90"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('model_name')"
+                        prop="accessory_model_name"
+                        label="型号"
+                        min-width="110"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('color_name')"
+                        prop="accessory_color_name"
+                        label="颜色"
+                        min-width="80"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase.quantity')"
+                        label="采购数量"
+                        min-width="100"
+                      >
+                        <template #default="{ row }">
+                          {{ row.accessory_quantity ?? '-' }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase.unit')"
+                        prop="accessory_unit"
+                        label="单位"
+                        min-width="70"
+                      />
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase_cost')"
+                        label="采购单价"
+                        min-width="110"
+                      >
+                        <template #default="{ row }">
+                          ¥{{ formatAmount(row.accessory_purchase_cost) }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="canViewPaymentField('purchase_cost')"
+                        label="整单金额"
+                        min-width="110"
+                      >
+                        <template #default="{ row }">
+                          ¥{{ formatAmount(row.accessory_total_amount) }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column
+                        v-if="canViewPaymentField('store_name')"
+                        prop="accessory_store_name"
+                        label="入库店铺"
+                        min-width="110"
+                      />
+                    </el-table>
+                  </div>
+                </section>
               </div>
 
               <template #footer>
                 <div class="tf-dialog-actions payment-dialog-footer">
                   <el-button
-                    v-if="canDeletePayment && paymentDetails.phones?.length > 0"
+                    v-if="canDeletePayment && (paymentDetails.phones.length > 0 || paymentDetails.accessories.length > 0)"
                     type="danger"
                     :loading="removingPayment"
                     @click="handleBatchCancelPayment"
@@ -1714,7 +1943,7 @@
             </MobileDialog>
           </el-tab-pane>
           <el-tab-pane
-            label="商品采购"
+            label="商品货款"
             name="accessories"
             class="tf-tab-panel"
             lazy
@@ -1722,6 +1951,7 @@
             <AccessoryPurchasePayments
               v-if="paymentFieldsReady"
               ref="accessoryPurchases"
+              @open-payment-batch="openPaymentBatchDetails"
             />
           </el-tab-pane>
         </el-tabs>
@@ -1733,6 +1963,7 @@
 <script setup lang="ts">
 import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
+import { useLatestRequest } from '@/composables/useLatestRequest'
 import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
@@ -1867,6 +2098,26 @@ interface SupplierPaymentPhone {
   status?: string | null
 }
 
+interface UnifiedAccessoryOption {
+  id: number; batch_no?: string; name?: string; brand_name?: string; product_model?: string; color_name?: string
+  quantity?: number | string; unit?: string; purchase_cost?: number | string; total_amount?: number | string; store_name?: string
+}
+interface UnifiedBatchLine {
+  id: number; source_type: 'phone' | 'accessory'; source_id: number; amount: number | string
+  brand_name?: string; model_name?: string; color_name?: string; memory_name?: string; serial_number?: string; imei?: string
+  phone_status?: string | null
+  phone_store_name?: string; phone_sale_time?: string | null; phone_sale_price?: number | string; phone_purchase_cost?: number | string
+  phone_payment_time?: string | null; phone_payment_method?: string; phone_payment_remarks?: string; phone_payment_operator_name?: string
+  accessory_store_name?: string; accessory_name?: string; accessory_brand_name?: string; accessory_model_name?: string
+  accessory_color_name?: string; accessory_quantity?: number | string; accessory_unit?: string; accessory_purchase_cost?: number | string
+  accessory_total_amount?: number | string; accessory_payment_time?: string | null; accessory_payment_method?: string
+  accessory_payment_remarks?: string; accessory_payment_operator_name?: string; batch_no?: string
+}
+interface UnifiedBatchDetails {
+  id: string; supplier_name?: string; payment_time: string; expected_amount: number | string; actual_amount: number | string
+  payment_method?: string; operator_name?: string; remarks?: string; legacy_phone_batch?: boolean; lines: UnifiedBatchLine[]
+}
+
 interface PaymentDetailsState {
   supplier_name: string
   payment_time: string | null
@@ -1874,7 +2125,12 @@ interface PaymentDetailsState {
   payment_operator: string
   payment_remarks: string
   phones: SupplierPaymentPhone[]
+  accessories: UnifiedBatchLine[]
+  is_unified: boolean
+  legacy_phone_batch: boolean
+  batch_id: string | null
   total_cost: number
+  total_accessory_cost: number
   total_sale: number
   total_profit: number
 }
@@ -2235,7 +2491,12 @@ const paymentDetails = ref<PaymentDetailsState>({
   payment_operator: '',
   payment_remarks: '',
   phones: [],
+  accessories: [],
+  is_unified: false,
+  legacy_phone_batch: false,
+  batch_id: null,
   total_cost: 0,
+  total_accessory_cost: 0,
   total_sale: 0,
   total_profit: 0
 })
@@ -2361,6 +2622,15 @@ const showBatchPaymentDialog = ref(false)
 const showSinglePaymentDialog = ref(false)
 const showPaymentDetailsDialog = ref(false)
 const showEditPaymentDialog = ref(false)
+const batchAccessories = ref<UnifiedAccessoryOption[]>([])
+const batchSelectedAccessoryIds = ref<number[]>([])
+const batchAccessoriesLoading = ref(false)
+const batchAccessorySupplierId = ref<number | null>(null)
+let batchAccessoryRequestSignature = ''
+let batchAccessoryRequestKey = ''
+const newRequestKey = () => [...crypto.getRandomValues(new Uint8Array(16))]
+  .map(value => value.toString(16).padStart(2, '0'))
+  .join('')
 
 // 获取当前用户显示名称（工号对应的姓名）
 const getCurrentUserDisplayName = () => {
@@ -2377,6 +2647,39 @@ const paymentForm = reactive({
   payment_remarks: ''
 })
 
+const unifiedDetailsRequests = useLatestRequest()
+let batchCancelRequestKey = ''
+const openPaymentBatchDetails = async (id: string) => {
+  const request = unifiedDetailsRequests.nextRequest()
+  try {
+    const response = await unifiedApi.get<UnifiedBatchDetails>(`/supplier-payments/unified-batches/${encodeURIComponent(id)}`, { signal: request.signal, showLoading: false, useCache: false })
+    if (!request.isLatest()) return
+    if (response.data) showPaymentBatchDetails(response.data)
+  } catch (requestError) { if (request.isLatest() && !unifiedDetailsRequests.isCanceledError(requestError)) error('读取供应商付款明细失败，请重试') }
+}
+const showPaymentBatchDetails = (batch: UnifiedBatchDetails) => {
+  const phoneLines = batch.lines.filter(line => line.source_type === 'phone')
+  const accessoryLines = batch.lines.filter(line => line.source_type === 'accessory')
+  const detailPhones: SupplierPaymentPhone[] = phoneLines.map(line => ({
+    id: line.source_id, supplier_name: batch.supplier_name, store_name: line.phone_store_name,
+    brand_name: line.brand_name, model_name: line.model_name, color_name: line.color_name, memory_name: line.memory_name,
+    serial_number: line.serial_number, imei: line.imei, phone_status: line.phone_status, purchase_cost: line.phone_purchase_cost ?? line.amount,
+    sale_price: line.phone_sale_price, sale_time: line.phone_sale_time, payment_time: line.phone_payment_time ?? batch.payment_time,
+    payment_method: line.phone_payment_method ?? batch.payment_method, payment_remarks: line.phone_payment_remarks ?? batch.remarks,
+    payment_operator_name: line.phone_payment_operator_name ?? batch.operator_name, payment_status: 'paid'
+  }))
+  const totalCost = detailPhones.reduce((sum, phone) => sum + toNumber(phone.purchase_cost), 0)
+  const totalSale = detailPhones.reduce((sum, phone) => sum + toNumber(phone.sale_price), 0)
+  paymentDetails.value = {
+    supplier_name: batch.supplier_name || '', payment_time: batch.payment_time,
+    payment_method: batch.payment_method || '', payment_operator: batch.operator_name || '',
+    payment_remarks: batch.remarks || '', phones: detailPhones, accessories: accessoryLines,
+    is_unified: true, legacy_phone_batch: batch.legacy_phone_batch === true, batch_id: batch.id, total_cost: totalCost,
+    total_accessory_cost: accessoryLines.reduce((sum, line) => sum + toNumber(line.accessory_total_amount ?? line.amount), 0),
+    total_sale: totalSale, total_profit: totalSale - totalCost
+  }
+  showPaymentDetailsDialog.value = true
+}
 const editPaymentForm = reactive({
   payment_method: 'bank_transfer',
   payment_time: '',
@@ -2487,6 +2790,27 @@ const selectedTotalProfit = computed(() => {
   return selectedPhoneObjects.value.reduce((sum: number, phone) => {
     return sum + (toNumber(phone?.sale_price) - toNumber(phone?.purchase_cost))
   }, 0)
+})
+
+const selectedPhoneSupplierIds = computed(() => [...new Set(selectedPhoneObjects.value
+  .map(phone => Number(phone.supplier_id))
+  .filter(Number.isInteger))])
+const batchAccessoryAmount = computed(() => batchAccessories.value
+  .filter(item => batchSelectedAccessoryIds.value.includes(item.id))
+  .reduce((sum, item) => sum + toNumber(item.total_amount), 0))
+const batchExpectedAmount = computed(() => selectedTotalAmount.value + batchAccessoryAmount.value)
+const updateBatchAccessorySelection = (rows: UnifiedAccessoryOption[]) => {
+  batchSelectedAccessoryIds.value = rows.map(row => row.id)
+}
+const clearBatchAccessories = () => {
+  batchAccessories.value = []
+  batchSelectedAccessoryIds.value = []
+  batchAccessorySupplierId.value = null
+  batchAccessoryRequestSignature = ''
+  batchAccessoryRequestKey = ''
+}
+watch(selectedPhoneSupplierIds, supplierIds => {
+  if (batchAccessories.value.length && batchAccessorySupplierId.value !== supplierIds[0]) clearBatchAccessories()
 })
 
 const loadStatistics = async (showLoadingState = true) => {
@@ -2730,10 +3054,48 @@ const handleOpenBatchPaymentDialog = () => {
     return
   }
 
+  clearBatchAccessories()
   paymentForm.payment_method = 'bank_transfer'
   paymentForm.payment_time = getCurrentBeijingDate()
   paymentForm.payment_remarks = ''
   showBatchPaymentDialog.value = true
+}
+
+watch(showBatchPaymentDialog, visible => {
+  if (!visible) {
+    batchAccessoriesLoading.value = false
+    clearBatchAccessories()
+  }
+})
+
+const loadBatchAccessories = async () => {
+  if (batchAccessoriesLoading.value) return
+  if (selectedPhoneSupplierIds.value.length !== 1) {
+    warning(selectedPhoneSupplierIds.value.length > 1
+      ? '附带商品时，手机必须来自同一个供应商'
+      : '所选手机缺少供应商，无法添加商品')
+    return
+  }
+  batchAccessoriesLoading.value = true
+  try {
+    const response = await unifiedApi.get<{ accessory_purchases?: UnifiedAccessoryOption[] }>('/supplier-payments/unified-batches/options', {
+      params: { supplier_id: selectedPhoneSupplierIds.value[0] },
+      showLoading: false,
+      useCache: false
+    })
+    batchAccessorySupplierId.value = selectedPhoneSupplierIds.value[0]
+    batchAccessories.value = Array.isArray(response.data?.accessory_purchases) ? response.data.accessory_purchases : []
+    batchSelectedAccessoryIds.value = []
+    batchAccessoryRequestSignature = ''
+    batchAccessoryRequestKey = ''
+    if (!batchAccessories.value.length) warning('该供应商暂无未打款商品采购单')
+  } catch (requestError) {
+    logger.error('加载供应商商品货款失败:', requestError)
+    batchAccessories.value = []
+    batchSelectedAccessoryIds.value = []
+  } finally {
+    batchAccessoriesLoading.value = false
+  }
 }
 
 const handleSinglePayment = (phone: SupplierPaymentPhone) => {
@@ -2894,13 +3256,14 @@ const handleBatchCancelPayment = async () => {
 
   try {
     const phoneIds = paymentDetails.value.phones.map((phone) => phone.id)
-    if (phoneIds.length === 0) {
-      warning('没有可取消打款的手机')
+    const accessoryCount = paymentDetails.value.accessories.length
+    if (phoneIds.length === 0 && accessoryCount === 0) {
+      warning('该批次没有可取消的打款明细')
       return
     }
 
     await confirmAction(
-      `确定要取消该批次所有手机的打款记录吗？\n\n共 ${phoneIds.length} 台手机\n此操作将清除所有手机的打款时间和打款方式，恢复到未打款状态。`,
+      `确定要取消该批次全部打款记录吗？\n\n手机：${phoneIds.length} 台\n商品采购单：${accessoryCount} 张\n撤销后手机和商品采购单均恢复为未打款。`,
       '批量取消打款确认',
       {
         confirmButtonText: '确定',
@@ -2911,13 +3274,47 @@ const handleBatchCancelPayment = async () => {
 
     removingPayment.value = true
 
-    const response = await unifiedApi.post('/supplier-payments/batch-cancel', {
-      phone_ids: phoneIds
-    }) as SupplierPaymentApiResponse<{ success?: boolean; count?: number; data?: { count?: number } }>
+    let response: SupplierPaymentApiResponse<{
+      phone_count?: number
+      accessory_count?: number
+      success?: boolean
+      count?: number
+      data?: { count?: number; success?: boolean }
+    }>
+    if (paymentDetails.value.is_unified && !paymentDetails.value.legacy_phone_batch) {
+      if (!paymentDetails.value.batch_id) throw new Error('批次编号缺失，请刷新后重试')
+      if (!batchCancelRequestKey) batchCancelRequestKey = newRequestKey()
+      response = await unifiedApi.post<{
+        phone_count?: number
+        accessory_count?: number
+        success?: boolean
+        count?: number
+        data?: { count?: number; success?: boolean }
+      }>(
+        `/supplier-payments/unified-batches/${encodeURIComponent(paymentDetails.value.batch_id)}/cancel`,
+        { request_key: batchCancelRequestKey, remarks: '整批取消打款' },
+        { showLoading: false }
+      ) as SupplierPaymentApiResponse<{
+        phone_count?: number
+        accessory_count?: number
+        success?: boolean
+        count?: number
+        data?: { count?: number; success?: boolean }
+      }>
+    } else {
+      response = await unifiedApi.post('/supplier-payments/batch-cancel', {
+        phone_ids: phoneIds
+      }) as SupplierPaymentApiResponse<{ success?: boolean; count?: number; data?: { count?: number; success?: boolean } }>
+    }
 
     if (response.success || response.data?.success) {
-      const count = response.data?.data?.count || response.data?.count || 0
-      success(`已取消 ${count} 台手机的打款`)
+      if (paymentDetails.value.is_unified && !paymentDetails.value.legacy_phone_batch) {
+        success(`已撤销整批打款：${Number(response.data?.phone_count || 0)} 台手机、${Number(response.data?.accessory_count || 0)} 张商品采购单`)
+      } else {
+        const count = response.data?.data?.count || response.data?.count || 0
+        success(`已取消 ${count} 台手机的打款`)
+      }
+      batchCancelRequestKey = ''
       showPaymentDetailsDialog.value = false
       refreshData({ showSuccess: false })
     } else {
@@ -3047,18 +3444,49 @@ const handleBatchPayment = async () => {
   try {
     submitting.value = true
 
-    const response = await unifiedApi.post('/supplier-payments/batch-payment', {
-      phone_ids: selectedPhones.value,
-      ...paymentForm,
-      payment_time: normalizePaymentDateTime(paymentForm.payment_time),
-      payment_remarks: paymentForm.payment_remarks
-    })
+    const paymentTime = normalizePaymentDateTime(paymentForm.payment_time)
+    let response
+    if (batchSelectedAccessoryIds.value.length) {
+      if (selectedPhoneSupplierIds.value.length !== 1) {
+        warning('附带商品时，手机必须来自同一个供应商')
+        return
+      }
+      const payload = {
+        supplier_id: selectedPhoneSupplierIds.value[0],
+        phone_ids: selectedPhones.value,
+        accessory_purchase_ids: batchSelectedAccessoryIds.value,
+        payment_method: paymentForm.payment_method,
+        payment_time: paymentTime,
+        actual_amount: batchExpectedAmount.value,
+        external_reference: '',
+        remarks: paymentForm.payment_remarks
+      }
+      const signature = JSON.stringify(payload)
+      if (signature !== batchAccessoryRequestSignature) {
+        batchAccessoryRequestSignature = signature
+        batchAccessoryRequestKey = newRequestKey()
+      }
+      response = await unifiedApi.post('/supplier-payments/unified-batches', {
+        ...payload,
+        request_key: batchAccessoryRequestKey
+      })
+    } else {
+      response = await unifiedApi.post('/supplier-payments/batch-payment', {
+        phone_ids: selectedPhones.value,
+        ...paymentForm,
+        payment_time: paymentTime,
+        payment_remarks: paymentForm.payment_remarks
+      })
+    }
 
     if (response.success) {
-      success(`成功打款 ${response.data.count} 台手机，共计 ¥${formatAmount(response.data.total_amount)}`)
+      const phoneCount = Number(response.data?.count ?? response.data?.phone_count ?? selectedPhones.value.length)
+      const accessoryCount = Number(response.data?.accessory_count ?? batchSelectedAccessoryIds.value.length)
+      success(accessoryCount ? `成功打款 ${phoneCount} 台手机及 ${accessoryCount} 张商品采购单，共计 ¥${formatAmount(batchExpectedAmount.value)}` : `成功打款 ${phoneCount} 台手机，共计 ¥${formatAmount(response.data.total_amount)}`)
       showBatchPaymentDialog.value = false
       // 清空选择状态
       clearSelection()
+      clearBatchAccessories()
       refreshData({ showSuccess: false })
     }
   } catch (err) {
@@ -3071,6 +3499,10 @@ const handleBatchPayment = async () => {
 
 const handleShowPaymentDetails = async (phone: SupplierPaymentPhone) => {
   try {
+    if (phone.payment_batch_id) {
+      await openPaymentBatchDetails(phone.payment_batch_id)
+      return
+    }
     // 直接传递原始的打款时间，不进行时区转换
     // 数据库中存储的是UTC时间，后端会使用YEAR/MONTH/DAY/HOUR/MINUTE函数提取时间部分
     const paymentTime = phone.payment_time
@@ -3097,7 +3529,12 @@ const handleShowPaymentDetails = async (phone: SupplierPaymentPhone) => {
         payment_operator: phone.payment_operator_name || '',
         payment_remarks: detailPhones[0]?.payment_remarks || phone.payment_remarks || '',
         phones: detailPhones,
+        accessories: [],
+        is_unified: false,
+        legacy_phone_batch: false,
+        batch_id: null,
         total_cost: totalCost,
+        total_accessory_cost: 0,
         total_sale: totalSale,
         total_profit: totalProfit
       }
@@ -3322,7 +3759,64 @@ usePageShortcuts('/payments', {
   order: 9;
 }
 
+.batch-accessory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-element);
+  border-radius: var(--tf-radius-compact);
+  background: var(--tf-color-slate-50);
+}
+
+.batch-accessory-selection-summary {
+  margin-left: var(--tf-space-2);
+  color: var(--tf-color-slate-500);
+}
+
+.batch-accessory-selection {
+  min-width: 0;
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-element);
+  border-radius: var(--tf-radius-compact);
+}
+
+.batch-accessory-selection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tf-space-2);
+  margin-bottom: var(--tf-space-3);
+}
+
+.batch-accessory-selection-heading span {
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-font-caption);
+}
+
+.supplier-phone-payments-detail-dialog .unified-accessory-detail-card {
+  margin-top: var(--tf-space-4);
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-element);
+  border-radius: var(--tf-radius-compact);
+}
+
+.supplier-phone-payments-detail-dialog .unified-accessory-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--tf-space-2);
+  margin-bottom: var(--tf-space-3);
+  color: var(--tf-color-slate-900);
+}
+
 @media (max-width: 767px) {
+  .batch-accessory-toolbar,
+  .batch-accessory-selection-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .supplier-phone-payments-detail-dialog .payment-details .details-info.payment-summary-cards.payment-batch-summary-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -77,11 +77,8 @@ export default defineConfig({
 
             // H5 交互与动效库交给 Rollup 自动拆分；强制合并容易和 vue-vendor 形成循环 chunk。
 
-            // 通用请求与安全相关工具
-            if (
-              id.includes('/axios/') ||
-              id.includes('/dompurify/')
-            ) {
+            // 统一请求工具首屏需要；DOMPurify 由富文本和安全指令按需加载。
+            if (id.includes('/axios/')) {
               return 'core-utils'
             }
 
@@ -110,6 +107,9 @@ export default defineConfig({
     // terser 压缩配置 - 生产环境移除所有 console 和 debugger
     terserOptions: {
       compress: {
+        passes: 3,
+        toplevel: true,
+        module: true,
         drop_console: true,
         drop_debugger: true,
         pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn', 'console.error']

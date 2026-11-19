@@ -37,27 +37,59 @@ it('采购显示整批原始数量与金额、独立状态，不出现销售状�
   const wrapper = await render()
   expect(wrapper.text()).toContain('通用充电宝')
   expect(wrapper.text()).toContain('625')
-  expect(wrapper.findAllComponents(ElSelect)).toHaveLength(1)
+  expect(wrapper.find('.accessory-purchase-stats-cards').exists()).toBe(true)
+  expect(wrapper.findAll('.accessory-purchase-stats-cards .stat-card')).toHaveLength(4)
+  expect(wrapper.text()).toContain('待打款商品货款')
+  expect(wrapper.text()).toContain('已登记商品货款')
+  expect(wrapper.text()).toContain('采购总额')
+  expect(wrapper.text()).toContain('采购数量')
+  expect(wrapper.text()).not.toContain('共 1 张采购单')
+  expect(wrapper.findAllComponents(ElSelect)).toHaveLength(5)
   expect(mocks.get).toHaveBeenCalledWith('/supplier-payments/accessory-purchases', expect.objectContaining({ params: { page: 1, page_size: 20, payment_status: 'all' }, useCache: false }))
 })
 
-it('采购列表区分原入库资料与旧单当前档案，登记弹窗沿用同一原资料标记', async () => {
+it('采购表格不显示资料来源提示，登记弹窗仍区分原采购商品名称', async () => {
   mocks.get.mockResolvedValue(response([row({ has_snapshot: true })]))
   const wrapper = await render()
-  expect(wrapper.text()).toContain('入库时资料')
+  expect(wrapper.text()).not.toContain('入库时资料')
   expect(wrapper.text()).not.toContain('当前档案（旧单无快照）')
   await button(wrapper, '登记打款').trigger('click')
   expect(wrapper.text()).toContain('商品名称（入库时）')
 })
 
-it('旧单明确当前档案；缺少资料来源标记的响应失败关闭，不误认为原采购资料', async () => {
+it('供应商、品牌、商品名称和店铺支持输入筛选并统一传参', async () => {
   const wrapper = await render()
-  expect(wrapper.text()).toContain('当前档案（旧单无快照）')
+  const selects = wrapper.findAllComponents(ElSelect)
+  selects[0].vm.$emit('update:modelValue', '供应商甲')
+  selects[1].vm.$emit('update:modelValue', '品牌甲')
+  selects[2].vm.$emit('update:modelValue', '商品甲')
+  selects[3].vm.$emit('update:modelValue', '一店')
+  await button(wrapper, '搜索').trigger('click')
+  await flushPromises()
+  expect(mocks.get).toHaveBeenLastCalledWith('/supplier-payments/accessory-purchases', expect.objectContaining({
+    params: expect.objectContaining({ supplier_name: '供应商甲', brand_name: '品牌甲', product_name: '商品甲', store_name: '一店' }),
+    useCache: false
+  }))
+})
+it('打开筛选下拉时读取全量采购选项，包含配件业务范围主档', async () => {
+  mocks.get.mockImplementation(async (url: string) => url.endsWith('/options')
+    ? { success: true, data: { suppliers: ['供应商甲', '供应商乙'], brands: ['品牌甲', '品牌乙'], products: ['商品甲'], stores: ['一店'] } }
+    : response())
+  const wrapper = await render()
+  wrapper.findAllComponents(ElSelect)[0].vm.$emit('focus')
+  await flushPromises()
+  expect(mocks.get).toHaveBeenCalledWith('/supplier-payments/accessory-purchases/options', { showLoading: false, useCache: false })
+})
+
+it('旧采购表格不显示来源文字，缺少资料来源字段的响应仍拒绝展示', async () => {
+  const wrapper = await render()
+  expect(wrapper.text()).not.toContain('入库时资料')
+  expect(wrapper.text()).not.toContain('当前档案（旧单无快照）')
   wrapper.unmount()
   const malformed = { ...row(), has_snapshot: undefined }
   mocks.get.mockResolvedValue({ ...response(), data: [malformed] })
   const invalid = await render()
-  expect(invalid.text()).toContain('商品采购读取失败')
+  expect(invalid.text()).toContain('商品货款读取失败')
   expect(invalid.text()).not.toContain('通用充电宝')
 })
 it('登记只发送原单版本、支付方式和北京时间，不发送金额/客户/操作员，成功刷新', async () => {
@@ -116,7 +148,7 @@ it('筛选旧响应不能覆盖新响应，失败时展示重试并清空旧汇�
   const wrapper = await render()
   let old: ((value: ReturnType<typeof response>) => void) | undefined
   mocks.get.mockImplementationOnce(() => new Promise(done => { old = done }))
-  const filter = wrapper.findComponent(ElSelect)
+  const filter = wrapper.findAllComponents(ElSelect)[4]
   filter.vm.$emit('update:modelValue', 'paid'); filter.vm.$emit('change', 'paid'); await flushPromises()
   mocks.get.mockResolvedValueOnce(response([row({ name: '新筛选结果', payment_status: 'unpaid' })]))
   filter.vm.$emit('update:modelValue', 'unpaid'); filter.vm.$emit('change', 'unpaid'); await flushPromises()
@@ -124,7 +156,7 @@ it('筛选旧响应不能覆盖新响应，失败时展示重试并清空旧汇�
   expect(wrapper.text()).toContain('新筛选结果'); expect(wrapper.text()).not.toContain('过期结果')
   mocks.get.mockRejectedValueOnce(new Error('network'))
   wrapper.findComponent(Pagination).vm.$emit('change', 2); await flushPromises()
-  expect(wrapper.text()).toContain('商品采购读取失败')
+  expect(wrapper.text()).toContain('商品货款读取失败')
   expect(wrapper.text()).not.toContain('625')
 })
 it('历史按原采购ID分页，关闭后丢弃旧响应，隐藏状态不能打开历史', async () => {

@@ -31,7 +31,7 @@
               :svg="resolvedIconSvg"
             />
           </span>
-          <span>{{ title }}</span>
+          <span>{{ resolvedTitle }}</span>
         </h1>
         <p
           v-if="description"
@@ -169,28 +169,29 @@ const normalizePath = (path?: string | null) => {
   return path.startsWith('/') ? path : `/${path}`
 }
 
-const findMenuIconByPath = (menus: MenuItem[], targetPath: string): { icon: string, svg: string } => {
+const findMenuItemByPath = (menus: MenuItem[], targetPath: string): MenuItem | null => {
   for (const menu of menus) {
     const menuPath = normalizePath(menu.url)
-    if (menuPath && menuPath === targetPath && menu.icon) {
-      return {
-        icon: menu.icon,
-        svg: menu.icon_svg || ''
-      }
-    }
+    const legacyPath = normalizePath(menu.path)
+    if ((menuPath && menuPath === targetPath) || (legacyPath && legacyPath === targetPath)) return menu
 
     if (menu.children?.length) {
-      const childIcon = findMenuIconByPath(menu.children, targetPath)
-      if (childIcon.icon) {
-        return childIcon
-      }
+      const child = findMenuItemByPath(menu.children, targetPath)
+      if (child) return child
     }
   }
 
-  return { icon: '', svg: '' }
+  return null
 }
 
-const menuIcon = computed(() => findMenuIconByPath(menuStore.menuItems, normalizePath(route.path)))
+const menuItem = computed(() => findMenuItemByPath(menuStore.menuItems, normalizePath(route.path)))
+const menuIcon = computed(() => ({
+  icon: menuItem.value?.icon || '',
+  svg: menuItem.value?.icon_svg || ''
+}))
+const resolvedTitle = computed(() => menuItem.value?.name
+  ? menuItem.value.name
+  : props.title)
 const routeMetaIcon = computed(() => String(route.meta?.icon || ''))
 const resolvedIcon = computed(() => menuIcon.value.icon || routeMetaIcon.value || props.icon || '')
 const resolvedIconSvg = computed(() => menuIcon.value.svg || '')
@@ -198,7 +199,7 @@ const isSmallMobile = computed(() => screenWidth.value <= 480)
 const isTinyMobile = computed(() => screenWidth.value <= 375)
 const isDenseMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
 const isScrollableMobileHeader = computed(() => isMobile.value && actionCount.value >= 4)
-const isShortTitle = computed(() => props.title.trim().length <= 4 && !props.description)
+const isShortTitle = computed(() => resolvedTitle.value.trim().length <= 4 && !props.description)
 
 const rootStyle = computed<CSSProperties>(() => {
   if (isTinyMobile.value) {

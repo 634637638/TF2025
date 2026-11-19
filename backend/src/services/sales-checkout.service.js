@@ -49,8 +49,9 @@ class SalesCheckoutService {
   constructor({ repository = new SalesCheckoutRepository(), phones = new SalesPhoneService(),
     accessories = new AccessoryService(), inventory = new InventoryService(), pointsLedger = new CustomerPointsLedgerService(), permissionCheck = hasUnifiedPermission,
     prepareInvoice = prepareInvoiceNumberTransaction, getPointsConfig = getCustomerPointsConfig, creditPoints = creditCheckoutPoints,
-    normalizeDate = normalizeDateTime, createOrderNo = () => `SO${crypto.randomUUID().replaceAll('-', '')}`, films = new FilmService() } = {}) {
-    Object.assign(this, { repository, phones, accessories, inventory, pointsLedger, permissionCheck, prepareInvoice, getPointsConfig, creditPoints, normalizeDate, createOrderNo, films })
+    normalizeDate = normalizeDateTime, createOrderNo = () => `SO${crypto.randomUUID().replaceAll('-', '')}`, films = null, autoFilm = false } = {}) {
+    Object.assign(this, { repository, phones, accessories, inventory, pointsLedger, permissionCheck, prepareInvoice, getPointsConfig, creditPoints, normalizeDate, createOrderNo,
+      films: films || (autoFilm ? new FilmService() : null), autoFilm })
   }
 
   normalize(body, actor) {
@@ -77,12 +78,17 @@ class SalesCheckoutService {
     const phoneIds = new Set()
     let total = 0
     const normalizedPhones = phones.map(row => {
-      only(row, ['phone_id', 'sale_price', 'redeem_points'])
+      only(row, ['phone_id', 'sale_price', 'purchase_cost', 'redeem_points'])
       noRedemption(row.redeem_points)
       const cents = moneyCents(row.sale_price)
-      if (!validId(row.phone_id) || cents === null || !cents || phoneIds.has(Number(row.phone_id))) reject('手机重复或价格无效')
+      const hasPurchaseCost = row.purchase_cost !== undefined && row.purchase_cost !== null && row.purchase_cost !== ''
+      const purchaseCostCents = hasPurchaseCost ? moneyCents(row.purchase_cost) : null
+      if (!validId(row.phone_id) || cents === null || !cents || hasPurchaseCost && purchaseCostCents === null || phoneIds.has(Number(row.phone_id))) {
+        reject('手机重复或价格无效')
+      }
       phoneIds.add(Number(row.phone_id)); total += cents
-      return { phone_id: Number(row.phone_id), sale_price: cents / 100 }
+      return { phone_id: Number(row.phone_id), sale_price: cents / 100,
+        ...(hasPurchaseCost ? { purchase_cost: purchaseCostCents / 100 } : {}) }
     }).sort((a, b) => a.phone_id - b.phone_id)
     const goods = normalizeCheckoutGoods(accessories, { phoneIds, normalizeSerials: value => this.accessories.normalizeSerials(value) })
     const normalizedAccessories = goods.items, goodsTotal = goods.total_cents
@@ -195,6 +201,7 @@ class SalesCheckoutService {
           return { key: `phone:${row.phone_id}`, source: Number(phone.is_new) === 1 ? 'new' : 'used',
             amount_cents: moneyCents(row.sale_price), is_gift: false }
         })
+        if (this.autoFilm && phones.length) input = { ...input, accessories: [...input.accessories, ...await this.films.prepareAutomaticForSale(connection, phones, input.store_id, { lock: false })] }
         for (const row of input.accessories) {
           const product = await this.accessories.lockSaleProduct(row.accessory_id, connection)
           items.push({ key: `goods:${row.key}`, source: 'accessory', amount_cents: moneyCents(row.unit_price),
@@ -329,6 +336,7 @@ class SalesCheckoutService {
     for (const phone of snapshots) {
       assertStoreInScope(scope, phone.store_id)
     }
+    if (this.autoFilm && snapshots.length) input = { ...input, accessories: [...input.accessories, ...await this.films.prepareAutomaticForSale(connection, snapshots, input.store_id)] }
     if (input.phones.length) quoteCheckoutPoints({ config, availablePoints: 0, balance: hasRedemption ? 0 : Number(customer.points), items: input.phones.map(row => ({
       key: String(row.phone_id), source: Number(snapshots.find(phone => Number(phone.id) === row.phone_id).is_new) === 1 ? 'new' : 'used',
       amount_cents: moneyCents(row.sale_price), is_gift: false, redeem_points: 0

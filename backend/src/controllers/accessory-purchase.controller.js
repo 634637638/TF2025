@@ -13,7 +13,7 @@ const responseKeys = {
   'payment.supplier_name': ['supplier_id', 'supplier_name'], 'payment.store_name': ['store_id', 'store_name', 'distribution'],
   'payment.brand_name': ['brand_name'], 'payment.model_name': ['product_model'], 'payment.color_name': ['color_name'],
   'payment.purchase_cost': ['purchase_cost', 'total_amount', 'paid_amount', 'unpaid_amount', 'amount'],
-  'payment.payment_status': ['payment_status', 'action', 'latest_event_id', 'paid_amount', 'unpaid_amount'],
+  'payment.payment_status': ['payment_status', 'action', 'latest_event_id', 'paid_amount', 'unpaid_amount', 'payment_batch_id'],
   'payment.payment_time': ['payment_time', 'created_at'], 'payment.payment_method': ['payment_method'],
   'payment.payment_operator': ['operator_id', 'operator_name', 'payment_operator_name'],
   'payment.remarks': ['remarks', 'payment_remarks']
@@ -44,6 +44,8 @@ class AccessoryPurchaseController {
     try {
       const required = []
       if (req.query.keyword !== undefined) required.push('purchase.batch_no', 'purchase.name')
+      if (req.query.product_name !== undefined) required.push('purchase.name')
+      if (req.query.brand_name !== undefined) required.push('payment.brand_name')
       if (req.query.supplier_id !== undefined || req.query.supplier_name !== undefined) required.push('payment.supplier_name')
       if (req.query.store_id !== undefined || req.query.store_name !== undefined) required.push('payment.store_name')
       if (req.query.payment_status !== undefined) required.push('payment.payment_status')
@@ -52,6 +54,19 @@ class AccessoryPurchaseController {
       const result = await this.service.list(req.user, req.query)
       return res.json({ success: true, data: this.fields.maskPayload(result.rows, permissions),
         summary: this.fields.maskPayload(result.summary, permissions), pagination: result.pagination })
+    } catch (error) { return this.fail(res, error) }
+  }
+  async options(req, res) {
+    try {
+      const permissions = await this.fields.getPermissions(req.user.id)
+      const result = await this.service.options(req.user)
+      const hidden = permissions.hiddenFields || []
+      return res.json({ success: true, data: {
+        suppliers: hidden.includes('payment.supplier_name') ? [] : result.suppliers,
+        brands: hidden.includes('payment.brand_name') ? [] : result.brands,
+        products: hidden.includes('purchase.name') ? [] : result.products,
+        stores: hidden.includes('payment.store_name') ? [] : result.stores
+      } })
     } catch (error) { return this.fail(res, error) }
   }
   async history(req, res) {

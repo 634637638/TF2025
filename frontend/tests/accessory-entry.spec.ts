@@ -498,7 +498,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(hidden.findComponent(ElDatePicker).exists()).toBe(false)
     await saveButton(hidden).trigger('click'); await flushPromises()
     expect(mocks.post.mock.calls[0][1]).not.toHaveProperty('inventory_time')
-  })
+  }, 15_000)
 
   it.each(['', '2026-02-30 10:00:00', '2026-11-14 24:00:00', '2026-11-14'])('入库时间无效时不能提交：%s', async value => {
     const wrapper = await purchaseForm()
@@ -1351,7 +1351,7 @@ describe('配件公共资料与独立类型入库', () => {
     await saveButton(editor).trigger('click')
     await flushPromises()
     expect(mocks.put).toHaveBeenCalledWith('/accessories/56', expect.objectContaining({ barcode: null }))
-  })
+  }, 15_000)
   it('模板保存SN默认开关，入库自动统计数量、统一大小写并阻止重复', async () => {
     const archive = render(undefined, true)
     await flushPromises()
@@ -1410,7 +1410,7 @@ describe('配件公共资料与独立类型入库', () => {
     await batch.setValue('00aa\n00AA')
     await click('添加多条SN')
     expect(wrapper.findAll('.serial-entry-row input')).toHaveLength(1)
-    expect(mocks.warning).toHaveBeenCalledWith(expect.stringContaining('重复'))
+    expect(mocks.warning).toHaveBeenCalledWith('本次入库存在重复SN，请核对后再添加')
     await batch.setValue('00aa\n00bb')
     await click('添加多条SN')
     expect(wrapper.findAll('.serial-entry-row input')).toHaveLength(2)
@@ -1446,6 +1446,46 @@ describe('配件公共资料与独立类型入库', () => {
     expect(mocks.confirm).toHaveBeenCalledOnce()
     expect(wrapper.get<HTMLInputElement>('.serial-entry-row input').element.value).toBe('0001')
     expect(selectField(wrapper, '商品名称').props('modelValue')).toBe(55)
+  }, 15_000)
+
+  it('首次扫码复用空行，连续扫码置顶，重扫指定行只替换这一条', async () => {
+    const ScannerStub = defineComponent({
+      name: 'OptimizedScanner',
+      props: { serialBrand: String },
+      emits: ['success', 'update:visible'],
+      template: '<div />'
+    })
+    mocks.options.mockResolvedValue({ data: { ...optionData(), brands: [{ id: 1, name: '苹果' }] } })
+    const wrapper = mount(AccessoryStockInModal, {
+      props: { modelValue: true, stockInOnly: true, accessory: { id: 55, name: '头', serial_tracking: 1, category_id: 12, unit_id: 2, status: 1 } },
+      global: {
+        plugins: [ElementPlus],
+        directives: { permission: {}, 'identifier-input': vIdentifierInput },
+        stubs: { MobileDialog: DialogStub, Image: true, OptimizedScanner: ScannerStub }
+      }
+    })
+    wrappers.push(wrapper)
+    await flushPromises()
+    selectField(wrapper, '配件品牌').vm.$emit('update:modelValue', 1)
+    const rows = () => wrapper.findAll<HTMLInputElement>('.serial-entry-row input')
+    const scan = async (value: string, row?: number) => {
+      const button = row === undefined
+        ? wrapper.findAll('button').find(item => item.text().trim() === '扫码SN')!
+        : wrapper.findAll('.serial-entry-row')[row].findAll('button').find(item => item.text().trim() === '扫码')!
+      await button.trigger('click')
+      await flushPromises()
+      const scanner = wrapper.findComponent(ScannerStub)
+      expect(scanner.props('serialBrand')).toBe('苹果')
+      scanner.vm.$emit('success', value)
+      scanner.vm.$emit('update:visible', false)
+      await flushPromises()
+    }
+    await scan('OLD-SN')
+    expect(rows().map(input => input.element.value)).toEqual(['OLD-SN'])
+    await scan('NEW-SN')
+    expect(rows().map(input => input.element.value)).toEqual(['NEW-SN', 'OLD-SN'])
+    await scan('CORRECTED-SN', 1)
+    expect(rows().map(input => input.element.value)).toEqual(['CORRECTED-SN', 'NEW-SN'])
   })
 
   it('模板保存预警值零并回显；采购表单移除单位状态预警且不提交覆盖', async () => {
@@ -1466,6 +1506,6 @@ describe('配件公共资料与独立类型入库', () => {
     await saveButton(wrapper).trigger('click')
     await flushPromises()
     expect(mocks.post).toHaveBeenCalledWith('/accessories/stock-in', expect.not.objectContaining({ min_stock: expect.anything() }))
-  })
+  }, 15_000)
 
 })

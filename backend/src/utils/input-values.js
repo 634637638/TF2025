@@ -9,6 +9,7 @@ const separators = new RegExp(patterns.phoneSeparators, 'g')
 const singleLineControls = new RegExp(patterns.singleLineControls)
 const isSingleLineText = (value, maxLength = 1000) => typeof value === 'string' && value.length <= maxLength && !singleLineControls.test(value)
 const isPersonName = (value, maxLength = 50) => isSingleLineText(value, maxLength) && Boolean(value.trim()) && /\p{L}/u.test(value)
+const isCustomerName = (value, maxLength = 50) => isPersonName(value, maxLength) && value.trim().length >= 2
 const countryPrefix = new RegExp(patterns.mobileCountryPrefix)
 
 const isEmptyInput = value => value === undefined || value === null || value === ''
@@ -25,4 +26,4 @@ const normalizePhone = value => typeof value === 'string'
   : ''
 const isMobilePhone = value => typeof value === 'string' && mobile.test(normalizePhone(value))
 
-module.exports = { isMoneyInput, isSingleLineText, isPersonName, isEmptyInput, isDecimalInput, isIntegerInput, normalizePhone, isMobilePhone }
+module.exports = { isMoneyInput, isSingleLineText, isPersonName, isCustomerName, isEmptyInput, isDecimalInput, isIntegerInput, normalizePhone, isMobilePhone }

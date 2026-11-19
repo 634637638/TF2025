@@ -1217,10 +1217,10 @@
               class="config-form tf-form-layout tf-form-grid"
             >
               <el-form-item label="来源类型">
-              <el-radio-group
-                v-model="syncConfig.source_type"
-                class="tf-state-selector"
-              >
+                <el-radio-group
+                  v-model="syncConfig.source_type"
+                  class="tf-state-selector"
+                >
                   <el-radio value="account">
                     登录账户
                   </el-radio>

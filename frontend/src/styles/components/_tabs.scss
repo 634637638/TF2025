@@ -128,18 +128,21 @@
 }
 
 .tf-state-selector .el-radio-button__inner {
+  height: var(--tf-tabs-height);
+}
+
+.tf-state-selector.el-radio-group .el-radio-button__inner {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--tf-tabs-gap);
   width: 100%;
-  height: var(--tf-tabs-height);
   min-height: var(--tf-tabs-height);
   box-sizing: border-box;
   padding-inline: var(--tf-tab-padding-x);
-  border: 1px solid var(--tf-tab-border) !important;
-  border-left: 1px solid var(--tf-tab-border) !important;
-  border-radius: var(--tf-tab-radius) !important;
+  border: 1px solid var(--tf-tab-border);
+  border-left: 1px solid var(--tf-tab-border);
+  border-radius: var(--tf-tab-radius);
   background: var(--tf-tab-bg);
   box-shadow: var(--tf-tab-shadow);
   color: var(--tf-tab-color);
@@ -149,23 +152,26 @@
   white-space: nowrap;
 }
 
-.tf-state-selector .el-radio-button__inner:hover,
-.tf-state-selector .el-radio-button__original-radio:focus-visible + .el-radio-button__inner {
-  border-color: var(--tf-tab-hover-border) !important;
+.tf-state-selector.el-radio-group .el-radio-button__inner:hover,
+.tf-state-selector.el-radio-group .el-radio-button__original-radio:focus-visible + .el-radio-button__inner {
+  border-color: var(--tf-tab-hover-border);
   background: var(--tf-tab-hover-bg);
   box-shadow: var(--tf-tab-hover-shadow);
   color: var(--tf-tab-hover-color);
 }
 
 .tf-state-selector .el-radio-button__original-radio:checked + .el-radio-button__inner {
-  border-color: var(--tf-tab-active-border) !important;
-  background: var(--tf-tab-active-bg) !important;
-  box-shadow: var(--tf-tab-active-shadow) !important;
-  color: var(--tf-tab-active-color) !important;
+  background: var(--tf-tab-active-bg);
 }
 
-.tf-state-selector .el-radio-button.is-disabled .el-radio-button__inner {
-  border-color: var(--tf-tab-border) !important;
+.tf-state-selector.el-radio-group .el-radio-button__original-radio:checked + .el-radio-button__inner {
+  border-color: var(--tf-tab-active-border);
+  box-shadow: var(--tf-tab-active-shadow);
+  color: var(--tf-tab-active-color);
+}
+
+.tf-state-selector.el-radio-group .el-radio-button.is-disabled .el-radio-button__inner {
+  border-color: var(--tf-tab-border);
   background: var(--tf-tab-bg);
   box-shadow: none;
   color: var(--tf-color-neutral-400);

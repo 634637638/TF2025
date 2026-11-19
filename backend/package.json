@@ -23,6 +23,7 @@
     "migrate:accessory-inventory-events": "node scripts/migrate-accessory-inventory-events.js",
     "migrate:accessory-transfers": "node scripts/migrate-accessory-transfers.js",
     "migrate:accessory-purchase-payments": "node scripts/migrate-accessory-purchase-payments.js",
+    "migrate:supplier-payment-batches": "node scripts/migrate-supplier-payment-batches.js",
     "migrate:accessory-stock-in-requests": "node scripts/migrate-accessory-stock-in-requests.js",
     "migrate:accessory-stock-corrections": "node scripts/migrate-accessory-stock-corrections.js",
     "migrate:accessory-inventory-adjustments": "node scripts/migrate-accessory-inventory-adjustments.js",

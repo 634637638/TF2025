@@ -525,9 +525,9 @@ import { useMobile } from '@/composables/mobile'
 import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 import unifiedApi from '@/utils/unified-api'
 import { toCanonicalPhoneUpdatePayload } from '@/utils/phone-update-payload'
-import { searchCustomerOptions } from '@/services/customer-options'
+import { createCustomerProfile, searchCustomerOptions } from '@/services/customer-options'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
+import { isValidCustomerName, isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits, resolveAppleAccountEmail } from '@/utils/security'
 import { deviceSerialPattern, deviceIMEIPattern, normalizeDeviceSerial, normalizeDeviceIMEI } from '@/utils/device-identifier'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import {
@@ -1773,12 +1773,16 @@ const createNewCustomer = async () => {
     showError('请输入客户姓名')
     return
   }
+  if (!isValidCustomerName(formData.customer_name, 20)) {
+    showError('客户姓名至少需要2个字符')
+    return
+  }
 
   editCustomerLookupLoading.value = true
 
   try {
     const normalizedAppleId = normalizeAppleId(formData.apple_id)
-    const response = await unifiedApi.post('/customers', {
+    const response = await createCustomerProfile({
       name: formData.customer_name,
       phone: normalizeCustomerPhone(formData.customer_phone),
       apple_id: normalizedAppleId || null,

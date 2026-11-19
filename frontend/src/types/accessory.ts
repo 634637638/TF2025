@@ -410,6 +410,7 @@ export interface AccessoryPurchaseRecord {
   payment_time?: string | null
   payment_operator_name?: string | null
   payment_remarks?: string | null
+  payment_batch_id?: string | null
 }
 export interface AccessoryPurchaseSummary {
   total: number

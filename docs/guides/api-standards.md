@@ -66,6 +66,7 @@ export function invalidateStoreReads(): void {
 - 一个失败只由一层负责弹出提示；业务设置 `showError: false` 后必须承担相应提示责任。
 - 401、403、503 分别核对认证、权限、服务可用性，不能把所有失败一律显示为密码错误。
 - 搜索、筛选和分页采用 [最新请求规范](../frontend/latest-request-standard.md)，防止旧响应覆盖新数据。
+- 所有实际发出的站内请求复用统一请求编号：由 `unifiedApi` 生成并发送 `X-Request-ID`，后端校验后在响应头返回最终编号；失败响应同时提供 `request_id`。页面日志、服务端日志和告警必须使用最终编号关联，禁止页面维护第二个请求追踪协议。完整状态、重试、降级和验收要求见[错误处理规范：端到端接口故障闭环](error-handling-standards.md#端到端接口故障闭环)。
 
 ## 安全边界
 

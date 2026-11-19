@@ -169,12 +169,13 @@ const extractLabeledSerial = (rawText: string): string | null => {
   return null
 }
 
-const removeAppleSerialBarcodePrefix = (value: string, enabled: boolean): string => {
-  if (!enabled) return value
+const removeAppleSerialBarcodePrefix = (value: string, options: DeviceScanParseOptions): string => {
+  if (!options.appleSerialBarcode) return value
 
   // Apple 包装的 Code128 序列号条码会使用 S 作为字段标识，
   // 例如印刷值 D2GVGWV67V 的原始条码内容是 SD2GVGWV67V。
-  return /^S[A-Z0-9]{10,12}$/.test(value) ? value.slice(1) : value
+  const pattern = options.serialProfile === 'accessory' ? /^S[A-Z0-9]{10,100}$/ : /^S[A-Z0-9]{10,12}$/
+  return pattern.test(value) ? value.slice(1) : value
 }
 
 export const parseSerialScanResult = (
@@ -187,7 +188,7 @@ export const parseSerialScanResult = (
   }
   const normalized = normalizeRawScanText(rawText)
   if (options.serialProfile === 'accessory') {
-    const value = normalizeAccessorySerial(normalized)
+    const value = removeAppleSerialBarcodePrefix(normalizeAccessorySerial(normalized), options)
     return isValidAccessorySerial(value) ? { value, error: null } : { value: null, error: '请对准单独的配件SN条码，最多100位' }
   }
   if (!normalized) return { value: null, error: '未识别到序列号内容' }
@@ -201,7 +202,7 @@ export const parseSerialScanResult = (
 
   const candidate = removeAppleSerialBarcodePrefix(
     normalizeSerialCandidate(normalized),
-    options.appleSerialBarcode === true
+    options
   )
   if (!isValidSerialCandidate(candidate)) {
     return { value: null, error: '序列号格式不正确' }

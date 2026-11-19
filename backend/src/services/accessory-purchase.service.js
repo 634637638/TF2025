@@ -173,13 +173,15 @@ class AccessoryPurchaseService extends BaseService {
       supplier_id: input.supplier_id === undefined ? undefined : this.integer(input.supplier_id, '供应商'),
       store_id: input.store_id === undefined ? undefined : this.integer(input.store_id, '店铺'),
       payment_status: input.payment_status || 'all', keyword: input.keyword === undefined ? '' : input.keyword,
+      product_name: input.product_name === undefined ? '' : input.product_name,
+      brand_name: input.brand_name === undefined ? '' : input.brand_name,
       supplier_name: input.supplier_name === undefined ? '' : input.supplier_name,
       store_name: input.store_name === undefined ? '' : input.store_name,
       start_date: this.date(input.start_date), end_date: this.date(input.end_date) }
     if (!['all', 'paid', 'unpaid'].includes(query.payment_status) || typeof query.keyword !== 'string' || query.keyword.length > 100 || (query.start_date && query.end_date && query.start_date > query.end_date)) throw this.createError('检索条件无效', 400, 'VALIDATION_ERROR')
     query.keyword = query.keyword.trim()
-    for (const field of ['supplier_name', 'store_name']) {
-      if (typeof query[field] !== 'string' || query[field].length > 100) throw this.createError('供应商/店铺检索条件无效', 400, 'VALIDATION_ERROR')
+    for (const field of ['product_name', 'brand_name', 'supplier_name', 'store_name']) {
+      if (typeof query[field] !== 'string' || query[field].length > 100) throw this.createError('商品名称、品牌、供应商或店铺检索条件无效', 400, 'VALIDATION_ERROR')
       query[field] = query[field].trim()
     }
     resolveStoreScope(actor, query.store_id)
@@ -192,6 +194,13 @@ class AccessoryPurchaseService extends BaseService {
       summary: { ...result.summary, total: Number(result.summary.total) } }
     })
   }
+
+  async options(actor) {
+    this.getActorId(actor)
+    const scope = resolveStoreScope(actor, null)
+    return this.withReadSnapshot(async connection => this.repository.options(scope, connection))
+  }
+
   async history(actor, id, query = {}) {
     this.getActorId(actor)
     const purchaseId = this.integer(id, '采购单')

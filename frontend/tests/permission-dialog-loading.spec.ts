@@ -51,6 +51,30 @@ describe('权限弹窗按钮公共 Loading', () => {
   })
 })
 
+it('字段权限按页面权限的母子关系归组，选择 H5 子模块仍提交独立模块', async () => {
+  const parent = { key: 'h5_admin_h5_adminview', name: 'H5商城', icon: 'fas fa-mobile' }
+  const children = [
+    { key: 'h5_admin_bannersview', name: '轮播图管理', icon: 'fas fa-images' },
+    { key: 'h5_admin_ordersview', name: '商城订单', icon: 'fas fa-bag-shopping' },
+    { key: 'h5_admin_templatesview', name: '商城模板', icon: 'fas fa-box' },
+    { key: 'h5_admin_soldproductsview', name: '已售商品', icon: 'fas fa-check' }
+  ]
+  const wrapper = mount(RoleFieldPermissionDialog, { props: {
+    modelValue: true, configReady: true, saving: false, loadingGroups: false, loadingModules: false,
+    modules: [parent, ...children], selectedModule: null, fieldGroups: [], selectedFieldGroupName: '', selectedFields: [],
+    getFieldTypeLabel: () => '', getSensitivityLabel: () => '', isFieldSensitive: () => false
+  }, global: { ...global, stubs: { MobileDialog: DialogHost, IconRenderer: true, SectionLoading: true } } })
+  try {
+    const group = wrapper.find('.field-module-group')
+    expect(group.find('.field-module-group__heading').text()).toContain('H5商城')
+    expect(group.findAll('.module-item-grid').map(button => button.text())).toEqual([
+      'H5商城', '轮播图管理子模块', '商城订单子模块', '商城模板子模块', '已售商品子模块'
+    ])
+    await group.findAll('.module-item-grid').at(-1)!.trigger('click')
+    expect(wrapper.emitted('selectModule')?.[0]).toEqual([children[3]])
+  } finally { wrapper.unmount() }
+})
+
 it('综合查询字段入口展示手机与商品子范围，使用菜单模块新名称并按范围选择', async () => {
   const module = { key: 'query_queryview', name: '自定义查询名称', icon: 'fas fa-search' }
   const wrapper = mount(RoleFieldPermissionDialog, { props: {

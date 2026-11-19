@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ checkout: vi.fn(), success: vi.fn(), error: vi
 vi.mock('@/api/sales-checkout', () => ({ checkoutSale: mocks.checkout }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
 const form = (): CheckoutCustomerForm => ({ customer_name: '样本客户', customer_phone: '13900000001', store_id: 1, operator_id: 7, sale_time: '2026-11-13', payment_method: 'cash', payment_channel: '', transaction_no: '', remarks: '' })
-const phones: CheckoutPhone[] = [{ phone_id: 12, sale_price: 100, label: '手机' }]
+const phones: CheckoutPhone[] = [{ phone_id: 12, sale_price: 100, purchase_cost: 88.88, label: '手机' }]
 const draft = (): CheckoutAdditionalGoodsDraft => ({ store_id: 1, points_quote: null, points_context: '', goods: [{ key: 'one', option: { id: 2, name: '样本商品', brand_name: null, product_model: null, barcode: null, sale_price: 30, quantity: 3, serial_quantity: 0 }, quantity: 1, unit_price: 30, sale_type: 'sale', linked_phone_id: 12, serial_mode: false, serial_numbers: [], gift_return_unit_price: null }] })
 beforeEach(() => { vi.clearAllMocks(); mocks.checkout.mockReset().mockResolvedValue({ success: true, data: { order_id: 1, order_no: 'SO-SAMPLE', points_used: 0, points_earned: 1 } }) })
 
@@ -21,7 +21,7 @@ it('保存及修改附加商品仅更新草稿，最终提交才一次发送手�
   expect(state.summary.value).toContain('点击最终确认后统一结算')
   await state.submit({ ...form(), sale_time: '2026-11-14', remarks: '最终备注', operator_id: 8 }, phones)
   expect(mocks.checkout).toHaveBeenCalledOnce()
-  expect(mocks.checkout).toHaveBeenCalledWith(expect.objectContaining({ sale_time: '2026-11-14', remarks: '最终备注', operator_id: 8, phones: [{ phone_id: 12, sale_price: 100 }], accessories: [expect.objectContaining({ accessory_id: 2 })], payment_info: expect.objectContaining({ payment_amount: 130 }) }))
+  expect(mocks.checkout).toHaveBeenCalledWith(expect.objectContaining({ sale_time: '2026-11-14', remarks: '最终备注', operator_id: 8, phones: [{ phone_id: 12, sale_price: 100, purchase_cost: 88.88 }], accessories: [expect.objectContaining({ accessory_id: 2 })], payment_info: expect.objectContaining({ payment_amount: 130 }) }))
   state.reset()
   expect(state.hasGoods.value).toBe(false)
 })

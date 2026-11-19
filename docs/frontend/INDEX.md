@@ -68,6 +68,7 @@
 
 ## 其他入口
 
+- [端到端接口故障闭环](../guides/error-handling-standards.md#端到端接口故障闭环) — 前端请求追踪、错误状态、重试/降级、指标边界及前后端验收的唯一跨端正文。
 - [权限页面扫描与模块注册](../permissions/page-module-scan-guide.md)
 - [移动端开发标准](../guides/mobile-development-standards.md)
 - [开发指南索引](../guides/INDEX.md)

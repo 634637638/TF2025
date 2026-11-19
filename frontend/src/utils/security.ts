@@ -33,6 +33,11 @@ export const isValidPersonName = (value: unknown, maxLength = 50): value is stri
   isValidSingleLineText(value, maxLength) && Boolean(value.trim()) && /\p{L}/u.test(value)
 )
 
+/** 客户姓名在公共姓名规则基础上至少为两个字符。 */
+export const isValidCustomerName = (value: unknown, maxLength = 50): value is string => (
+  isValidPersonName(value, maxLength) && value.trim().length >= 2
+)
+
 export const isEmptyInput = (value: unknown): value is null | undefined | '' => value === null || value === undefined || value === ''
 export const isDecimalInput = (value: unknown): value is string | number => (
   (typeof value === 'number' || (typeof value === 'string' && decimalPattern.test(value))) && Number.isFinite(Number(value))

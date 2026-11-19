@@ -120,7 +120,8 @@ import { useNotification } from '@/composables/useNotification'
 import { useMobile } from '@/composables/mobile'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { unifiedApi } from '@/utils/unified-api'
-import { isValidMobilePhone, normalizePersonName } from '@/utils/security'
+import { isValidCustomerName, isValidMobilePhone, normalizePersonName } from '@/utils/security'
+import { createCustomerProfile } from '@/services/customer-options'
 import { logger } from '@/utils/logger'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/types'
@@ -542,10 +543,14 @@ const autoCreateCustomer = async () => {
     showError('请输入客户姓名')
     return
   }
+  if (!isValidCustomerName(normalizedCustomerName, 20)) {
+    showError('客户姓名至少需要2个字符')
+    return
+  }
 
   try {
     const newCustomerData = buildAutoCreateCustomerPayload(formData.value, props.mode)
-    const response = await unifiedApi.post('/customers', newCustomerData)
+    const response = await createCustomerProfile(newCustomerData)
 
     if (response.success) {
       const nextCustomerState = buildWholesaleCreatedCustomerState(

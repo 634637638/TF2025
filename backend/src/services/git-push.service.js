@@ -72,11 +72,11 @@ class GitPushService {
       const failure = pushError
         ? classifyPushFailure(pushError)
         : {
-            statusCode: 503,
-            code: 'GIT_SYNC_UNVERIFIED',
-            message: '推送后暂时无法确认远端同步状态',
-            hint: '请先刷新 Git 状态确认远端是否已更新，再决定是否重试推送。'
-          }
+          statusCode: 503,
+          code: 'GIT_SYNC_UNVERIFIED',
+          message: '推送后暂时无法确认远端同步状态',
+          hint: '请先刷新 Git 状态确认远端是否已更新，再决定是否重试推送。'
+        }
       return {
         statusCode: failure.statusCode,
         body: {
@@ -153,6 +153,20 @@ const classifyPushFailure = (error) => {
       code: 'GIT_REMOTE_AUTH_FAILED',
       message: 'Git 远端认证失败',
       hint: '请检查远端凭据是否有效、是否仍有仓库写入权限，然后刷新状态再重试。'
+    }
+  }
+
+  // GitHub 对包含 Actions 工作流的提交要求 PAT 具备 workflow scope。
+  // 该拒绝不是普通仓库写权限问题，单独返回可执行的修复提示。
+  if (
+    raw.includes('refusing to allow a personal access token') &&
+    raw.includes('workflow')
+  ) {
+    return {
+      statusCode: 502,
+      code: 'GIT_REMOTE_WORKFLOW_SCOPE_REQUIRED',
+      message: 'GitHub Token 缺少 workflow 权限',
+      hint: '当前提交包含 GitHub Actions 工作流文件，请为 Personal Access Token 增加 workflow scope，或改用具备该权限的 SSH 凭据后再推送。'
     }
   }
 

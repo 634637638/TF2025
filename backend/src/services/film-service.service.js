@@ -65,6 +65,37 @@ class FilmService {
     }
   }
 
+  /** 手机成交随单自动消耗一张免费专用膜；只返回零价赠送明细，实际出库仍由商品服务完成。 */
+  async prepareAutomaticForSale(connection, phones, storeId, { lock = true } = {}) {
+    try {
+      await this.ready(connection)
+    } catch (error) {
+      // 自动赠膜是手机销售的可选附加动作；迁移尚未部署时不能阻断手机成交。
+      if (error?.code === 'FILM_SERVICE_NOT_READY') return []
+      throw error
+    }
+    if (!Array.isArray(phones) || !phones.length || !validId(storeId)) reject('自动贴膜销售资料无效')
+    const accessories = []
+    const reserved = new Map()
+    for (const phone of phones) {
+      if (!validId(phone?.id) || !validId(phone?.model_id)) reject('销售手机缺少有效型号，无法自动匹配贴膜', 409, 'FILM_DEVICE_REQUIRED')
+      const matches = await this.repository.matchingTemplates(connection, Number(phone.model_id), { lock })
+      if (matches.length !== 1) continue
+      const stock = await this.repository.availableProducts(connection, Number(matches[0].id), Number(storeId), { lock })
+      const plain = stock.filter(row => Number(row.quantity) > Number(row.serial_quantity))
+      if (plain.length !== 1) continue
+      const product = plain[0]
+      const available = Number(product.quantity) - Number(product.serial_quantity)
+      const alreadyReserved = reserved.get(Number(product.id)) || 0
+      if (available - alreadyReserved < 1) continue
+      reserved.set(Number(product.id), alreadyReserved + 1)
+      accessories.push({ key: `auto-film:${Number(phone.id)}`, accessory_id: Number(product.id), quantity: 1, unit_price: 0,
+        sale_type: 'gift', linked_phone_id: Number(phone.id), serial_numbers: [], redeem_points: 0, gift_return_unit_price: null,
+        auto_film: true })
+    }
+    return accessories
+  }
+
   /** 由共同结算在同一事务中调用；重新核验所选膜、适配型号及服务店库存。 */
   async prepare(connection, input, customerId, { lock = true } = {}) {
     await this.ready(connection)

@@ -17,7 +17,9 @@ export const isCheckoutSubmissionRejected = (error: unknown): boolean => {
 export const createCheckoutKey = () => [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, '0')).join('')
 /** 日期、备注及收款渠道可在外层完善；积分依据只绑定客户、门店和实际交易明细。 */
 export const checkoutPointsContext = (input: SalesCheckoutInput) => JSON.stringify({
-  store_id: input.store_id, customer_phone: input.customer_info.phone, phones: input.phones,
+  store_id: input.store_id, customer_phone: input.customer_info.phone,
+  // 成本调整不改变积分依据，只绑定手机、销售价和商品明细。
+  phones: input.phones.map(({ phone_id, sale_price }) => ({ phone_id, sale_price })),
   quick_phone: input.quick_phone, accessories: input.accessories.map(row => ({
     key: row.key, accessory_id: row.accessory_id, quantity: row.quantity, unit_price: row.unit_price,
     sale_type: row.sale_type, linked_phone_id: row.linked_phone_id, serial_numbers: row.serial_numbers,
@@ -203,6 +205,9 @@ export const buildCheckoutInput = (form: CheckoutCustomerForm, phones: CheckoutP
   let total = 0
   for (const item of phones) {
     if (!Number.isSafeInteger(item.phone_id) || item.phone_id < 1 || cents(item.sale_price) <= 0) throw new Error('每台手机须有有效销售价格')
+    if (item.purchase_cost !== undefined && item.purchase_cost !== null && cents(item.purchase_cost) >= 10000000000) {
+      throw new Error('入库价格超出范围')
+    }
     total += cents(item.sale_price)
   }
   const accessories = buildCheckoutGoods(drafts, phones)
@@ -210,7 +215,11 @@ export const buildCheckoutInput = (form: CheckoutCustomerForm, phones: CheckoutP
   if (!Number.isSafeInteger(total) || total >= 10000000000) throw new Error('整单金额超出范围')
   return { request_key: key, store_id: Number(form.store_id), operator_id: Number(form.operator_id),
     customer_info: { name, phone, ...(form.apple_id ? { apple_id: form.apple_id } : {}) },
-    phones: quickPhone ? [] : phones.map(({ phone_id, sale_price }) => ({ phone_id, sale_price })), accessories,
+    phones: quickPhone ? [] : phones.map(({ phone_id, sale_price, purchase_cost }) => ({
+      phone_id,
+      sale_price,
+      ...(purchase_cost !== undefined && purchase_cost !== null ? { purchase_cost: cents(purchase_cost) / 100 } : {})
+    })), accessories,
     ...(quickPhone ? { quick_phone: quickPhone } : {}),
     sale_time: form.sale_time, remarks: form.remarks.trim(), payment_info: { payment_method: form.payment_method,
       payment_channel: form.payment_channel || null, transaction_no: form.transaction_no || null,

@@ -94,7 +94,8 @@ try {
       const metrics=await page.evaluate(()=>{
         const box=element=>{const r=element.getBoundingClientRect();return { left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height }}
         const topbar=document.querySelector('.topbar'),buttons=[...document.querySelectorAll('.tf-button--topbar')],card=document.querySelector('.topbar-actions .user-info')
-        return { topbar:box(topbar),card:box(card),buttons:buttons.map(button=>({ ...box(button),margin:parseFloat(getComputedStyle(button).marginLeft),icon:box(button.querySelector('.el-icon')),labelVisible:button.querySelector('.topbar-button-label').getClientRects().length>0 })),
+        const time=document.querySelector('.topbar-actions .last-login')
+        return { topbar:box(topbar),card:box(card),avatarVisible:Boolean(document.querySelector('.topbar-actions .user-avatar')),timeFontSize:time?getComputedStyle(time).fontSize:null,timeFontWeight:time?getComputedStyle(time).fontWeight:null,buttons:buttons.map(button=>({ ...box(button),margin:parseFloat(getComputedStyle(button).marginLeft),icon:box(button.querySelector('.el-icon')),iconFontSize:getComputedStyle(button.querySelector('.el-icon')).fontSize,label:box(button.querySelector('.topbar-button-label')),labelVisible:button.querySelector('.topbar-button-label').getClientRects().length>0 })),
           menu:document.querySelector('.mobile-menu-button')?box(document.querySelector('.mobile-menu-button')):null,scroll:document.documentElement.scrollWidth }
       })
       const [lock,logout]=metrics.buttons,expectedHeight=width<768?Math.min(36,Math.max(34,width*0.096)):28
@@ -107,11 +108,18 @@ try {
         assert.equal(button.margin,0,`${label} 不叠加Element相邻按钮外边距`)
         assert.equal(button.labelVisible,!compact,`${label} 只隐藏标签，不隐藏Element按钮内容容器`)
         assert.ok(button.icon.width>0&&button.icon.height>0,`${label} 图标可见`)
+        assert.equal(button.iconFontSize,'16px',`${label} 顶部栏图标使用公共16px字号`)
+        if(!compact)assert.ok(Math.abs(button.label.left-button.icon.right-4)<0.1,`${label} 图标与文字间距应为公共4px，实际 ${button.label.left-button.icon.right}`)
         assert.ok(Math.abs((button.icon.left+button.icon.right)/2-(button.left+button.right)/2)<1||!compact,`${label} 纯图标居中`)
         if(compact)assert.ok(Math.abs(button.width-button.height)<0.1,`${label} 纯图标按钮必须方形`)
         assert.ok(button.left>=0&&button.right<=width,`${label} 按钮完整可见`)
       }
       assert.ok(metrics.card.right<=lock.left&&metrics.card.width>0,`${label} 用户信息不遮挡按钮`)
+      assert.equal(metrics.avatarVisible, false, `${label} 顶部栏不显示头像标志`)
+      if(!compact){
+        assert.equal(metrics.timeFontSize,'15px',`${label} 时间字号应为15px`)
+        assert.equal(metrics.timeFontWeight,'700',`${label} 时间应使用粗体`)
+      }
       assert.ok(metrics.scroll<=width,`${label} 页面不横向溢出`)
       if(compact)assert.ok(metrics.menu.right<=metrics.card.left,`${label} 菜单不遮挡用户卡片`)
       if(width===390&&theme==='light'&&name==='Boss'&&process.env.TOPBAR_SCREENSHOT)await page.screenshot({ path:process.env.TOPBAR_SCREENSHOT,clip:{ x:0,y:0,width,height:Math.ceil(metrics.topbar.height) } })
@@ -120,6 +128,7 @@ try {
       await page.click('.btn-lock')
       assert.equal(await page.$eval('.btn-lock',element=>element.title),'锁定屏幕',`${label} 解锁动作正常`)
       const before=await page.evaluate(()=>window.fixture.logout)
+      assert.equal(await page.$eval('.logout-btn .topbar-button-label',element=>element.textContent.trim()),'退出',`${label} 退出按钮显示文案简洁`)
       await page.click('.logout-btn')
       assert.equal(await page.evaluate(()=>window.fixture.logout),before+1,`${label} 退出按钮点击可达`)
       cases++

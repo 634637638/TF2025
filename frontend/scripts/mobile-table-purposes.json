@@ -80,9 +80,24 @@
       "data": "paymentDetails.phones || []",
       "purpose": "related-details",
       "reason": "付款批次详情及凭证图片内关联设备清单，无行操作。"
+    },
+    {
+      "data": "paymentDetails.accessories",
+      "purpose": "related-details",
+      "reason": "合并付款详情内关联商品采购明细，沿用手机付款详情弹窗承载，只读无行操作。"
+    },
+    {
+      "data": "batchAccessories",
+      "purpose": "selection",
+      "reason": "合并付款表单内附带商品采购单选择，勾选属于当前付款草稿输入，不是持久记录行操作。"
     }
   ],
   "src/views/payments/page/AccessoryPurchasePayments.vue": [
+    {
+      "data": "selectedPurchaseRows",
+      "purpose": "related-details",
+      "reason": "批量商品货款弹窗内已选采购单只读核对明细，无逐行写操作。"
+    },
     {
       "data": "history",
       "purpose": "related-details",

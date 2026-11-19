@@ -17,6 +17,8 @@ const fixture = (hidden = []) => {
   const repository = {
     withConnection: withReadConnection,
     async list(scope, query, fields) { reads.push({ scope, query, fields }); return { data: [structuredClone(record)], pagination: { total: 125 } } },
+    async filterOptions() { return { brands: [{ id: 2, name: '苹果' }], categories: [{ id: 3, name: '充电头' }] } },
+    async productNameOptions(scope, keyword) { reads.push({ scope, keyword }); return ['原单充电器'] },
     async detail(scope, id) { reads.push({ scope, id }); return id === 51 ? { ...structuredClone(record), serial_numbers: ['SN1', 'SN2'],
       batches: [{ id: 1, quantity: 2, purchase_cost: 10, supplier_name: '供应商', batch_no: 'IN1' }] } : null }
   }
@@ -27,11 +29,11 @@ const fixture = (hidden = []) => {
 
 test('商品模式沿用严格授权门店，允许销售/赠送分页，翻页不把首屏当总数', async () => {
   const f = fixture()
-  const result = await f.service.list(actor, { page: '7', page_size: '20', store_id: '2', sale_type: 'gift', keyword: ' SN1 ', start_date: '2026-11-01', end_date: '2026-11-13' }, ['serial_number'])
+  const result = await f.service.list(actor, { page: '7', page_size: '20', store_id: '2', sale_type: 'gift', sale_operator_id: '8', brand_id: '2', product_name: ' 充电 ', category_id: '3', keyword: ' SN1 ', start_date: '2026-11-01', end_date: '2026-11-13' }, ['serial_number'])
   assert.equal(result.pagination.total, 125)
   assert.deepEqual(f.calls, ['query:view', 'query:goods-view'])
   assert.deepEqual(f.reads[0].scope, { allStores: false, requestedStoreId: 2, storeIds: [2] })
-  assert.deepEqual(f.reads[0].query, { page: 7, page_size: 20, keyword: 'SN1', sale_type: 'gift', start_date: '2026-11-01', end_date: '2026-11-13' })
+  assert.deepEqual(f.reads[0].query, { page: 7, page_size: 20, keyword: 'SN1', sale_type: 'gift', sale_operator_id: 8, brand_id: 2, product_name: '充电', category_id: 3, start_date: '2026-11-01', end_date: '2026-11-13' })
 })
 
 test('门店越权拒绝，无绑定账户保持空范围；不因商品模式扩大综合查询范围', async () => {
@@ -54,7 +56,8 @@ test('商品查看和综合查询查看权限均须满足，匿名或缺任何�
 test('拒绝非法分页、日期、额外字段和类型，不让无效筛选被静默忽略', async () => {
   for (const input of [{ page: '1x' }, { page: 0 }, { page_size: 101 }, { page_size: true }, { store_id: ['1', '3'] },
     { sale_type: 'other' }, { keyword: [] }, { keyword: 'x'.repeat(101) }, { start_date: '2026-02-30' },
-    { end_date: '2026-13-01' }, { start_date: '2026-12-01', end_date: '2026-11-01' }, { supplier_id: 1 }]) {
+    { end_date: '2026-13-01' }, { start_date: '2026-12-01', end_date: '2026-11-01' }, { supplier_id: 1 },
+    { sale_operator_id: '1x' }, { brand_id: 0 }, { category_id: [] }, { product_name: [] }, { product_name: 'x'.repeat(101) }]) {
     const f = fixture()
     await assert.rejects(f.service.list(actor, input, []), { statusCode: 400 })
     assert.equal(f.reads.length, 0)
@@ -109,13 +112,49 @@ test('隐藏数量或成交金额时同时遮蔽相关成本/利润/积分，不
   }
 })
 
-test('隐藏门店、销售时间或出库类型时不允许用这些筛选字段探测数据', async () => {
-  for (const [field, query] of [['stock_info.distribution', { store_id: 1 }], ['time_info.created_at', { start_date: '2026-11-01' }], ['basic_info.usage_type', { sale_type: 'gift' }]]) {
+test('隐藏筛选字段时不允许用门店、时间、类型、销售员、品牌、名称或商品类型探测数据', async () => {
+  for (const [field, query] of [['stock_info.distribution', { store_id: 1 }], ['time_info.created_at', { start_date: '2026-11-01' }], ['basic_info.usage_type', { sale_type: 'gift' }],
+    ['operator_info.operator_name', { sale_operator_id: 8 }], ['basic_info.brand_name', { brand_id: 2 }], ['basic_info.name', { product_name: '充电' }], ['basic_info.category', { category_id: 3 }]]) {
     const f = fixture([field]), res = response()
     await f.controller.list({ user: actor, query }, res)
     assert.equal(res.code, 403)
     assert.equal(res.body.code, 'FIELD_PERMISSION_DENIED')
     assert.equal(f.reads.length, 0)
+  }
+})
+
+test('商品筛选选项只返回可见品牌和商品类型', async () => {
+  const visible = fixture()
+  const res = response()
+  await visible.controller.filterOptions({ user: actor }, res)
+  assert.deepEqual(res.body.data, { brands: [{ id: 2, name: '苹果' }], categories: [{ id: 3, name: '充电头' }] })
+  const hidden = fixture(['basic_info.brand_name', 'basic_info.category'])
+  const hiddenRes = response()
+  await hidden.controller.filterOptions({ user: actor }, hiddenRes)
+  assert.deepEqual(hiddenRes.body.data, { brands: [], categories: [] })
+})
+
+test('商品名称建议沿用严格门店范围并校验字段权限和搜索词', async () => {
+  const f = fixture(), res = response()
+  await f.controller.productNameOptions({ user: actor, query: { keyword: '充电', store_id: '2' } }, res)
+  assert.deepEqual(res.body.data, ['原单充电器'])
+  assert.deepEqual(f.reads[0], { scope: { allStores: false, requestedStoreId: 2, storeIds: [2] }, keyword: '充电' })
+
+  const hidden = fixture(['basic_info.name']), hiddenRes = response()
+  await hidden.controller.productNameOptions({ user: actor, query: { keyword: '充电' } }, hiddenRes)
+  assert.equal(hiddenRes.code, 403)
+  assert.equal(hidden.reads.length, 0)
+
+  const hiddenStore = fixture(['stock_info.distribution']), hiddenStoreRes = response()
+  await hiddenStore.controller.productNameOptions({ user: actor, query: { keyword: '充电', store_id: '2' } }, hiddenStoreRes)
+  assert.equal(hiddenStoreRes.code, 403)
+  assert.equal(hiddenStore.reads.length, 0)
+
+  for (const query of [{ keyword: 'x'.repeat(101) }, { keyword: '充电', store_id: '0' }]) {
+    const invalid = fixture(), invalidRes = response()
+    await invalid.controller.productNameOptions({ user: actor, query }, invalidRes)
+    assert.equal(invalidRes.code, 400)
+    assert.equal(invalid.reads.length, 0)
   }
 })
 
@@ -141,11 +180,58 @@ test('仓储列表和COUNT共享过滤，使用原单资料、参数绑定及稳
   assert.deepEqual(statements[1].params, [...statements[0].params, 20, 120])
   assert.match(statements[1].sql, /CASE WHEN i.id IS NOT NULL THEN/)
   assert.match(statements[0].sql, /EXISTS \(SELECT 1 FROM accessory_serial_events/)
-  assert.match(statements[1].sql, /s\.created_at AS sale_time/)
-  assert.match(statements[1].sql, /ORDER BY s\.created_at DESC, s\.id DESC LIMIT \? OFFSET \?/)
-  assert.match(statements[1].sql, /s\.created_at >= \? AND s\.created_at <= \?/)
+  assert.match(statements[1].sql, /COALESCE\(s\.sale_time, s\.created_at\) AS sale_time/)
+  assert.match(statements[1].sql, /ORDER BY COALESCE\(s\.sale_time, s\.created_at\) DESC, s\.id DESC LIMIT \? OFFSET \?/)
+  assert.match(statements[1].sql, /COALESCE\(s\.sale_time, s\.created_at\) >= \? AND COALESCE\(s\.sale_time, s\.created_at\) <= \?/)
   assert.equal(result.pagination.has_next, false)
   assert.equal(result.pagination.total_pages, 7)
+})
+
+test('仓储将新增商品筛选安全绑定到COUNT和分页SQL', async () => {
+  const statements = [], repo = new Repository()
+  repo.withConnection = async fn => fn({ async query(sql, params) {
+    statements.push({ sql, params }); return [sql.startsWith('SELECT COUNT') ? [{ total: 2 }] : [record]]
+  } })
+  await repo.list({ storeIds: [1] }, { page: 1, page_size: 20, sale_operator_id: 8, brand_id: 2, product_name: '充电', category_id: 3 }, [])
+  assert.deepEqual(statements[0].params, [1, 8, 2, 3, '%充电%'])
+  assert.deepEqual(statements[1].params, [...statements[0].params, 20, 0])
+  assert.match(statements[0].sql, /s\.operator_id = \?/)
+  assert.match(statements[0].sql, /SELECT name FROM brands WHERE id = \?/)
+  assert.match(statements[0].sql, /SELECT name FROM accessory_categories WHERE id = \?/)
+  assert.match(statements[0].sql, /LIKE/)
+})
+
+test('商品名称建议从授权门店成交资料读取并使用绑定关键词', async () => {
+  let statement
+  const repo = new Repository()
+  repo.withConnection = async fn => fn({ async query(sql, params) {
+    statement = { sql, params }
+    return [[{ name: '原单充电器' }]]
+  } })
+  const names = await repo.productNameOptions({ storeIds: [1, 2] }, '充电')
+  assert.deepEqual(names, ['原单充电器'])
+  assert.deepEqual(statement.params, [1, 2, '%充电%'])
+  assert.match(statement.sql, /FROM accessory_sales s/)
+  assert.match(statement.sql, /GROUP BY/)
+  assert.match(statement.sql, /s\.store_id IN \(\?, \?\)/)
+  assert.match(statement.sql, /LIKE/)
+
+  await repo.productNameOptions({ storeIds: [1, 2] }, '')
+  assert.deepEqual(statement.params, [1, 2])
+  assert.match(statement.sql, /ORDER BY last_sold_at DESC, name LIMIT 100/)
+})
+
+test('共同原单标题按业务销售时间显示，兼容历史空时间回退', async () => {
+  const statements = [], repo = new Repository()
+  repo.withConnection = async fn => fn({ async query(sql) {
+    statements.push(sql)
+    return [statements.length === 1 ? [{ id: 9 }] : []]
+  } })
+  await repo.originalOrder({ storeIds: [1] }, 51, 'goods', { async query(sql) {
+    statements.push(sql)
+    return [statements.length === 1 ? [{ id: 9 }] : []]
+  } })
+  assert.match(statements[0], /COALESCE\(sale\.sale_time, sale\.created_at\) AS sale_time/)
 })
 
 test('手机凭证只返回未退配件，按剩余数量和逐件分摊重算金额并过滤已退SN', async () => {

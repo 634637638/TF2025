@@ -1481,11 +1481,66 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 10px 0;
+}
+
+.field-module-group {
+  min-width: 0;
+}
+
+.field-module-group__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--tf-space-2);
+  min-height: 32px;
+  padding: 0 var(--tf-space-2) var(--tf-space-1);
+  color: var(--tf-color-neutral-700);
+  font-size: var(--tf-type-scale-13);
+  font-weight: 700;
+}
+
+.field-module-group__heading > :first-child {
+  flex: 0 0 auto;
+  color: var(--tf-color-neutral-500);
+}
+
+.field-module-group__heading > span:first-of-type {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.field-module-group__badge {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: var(--tf-color-blue-700);
+  background: var(--tf-color-blue-50);
+  font-size: var(--tf-type-scale-11);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.field-module-group__badge--child {
+  margin-left: auto;
+  color: var(--tf-color-teal-700);
+  background: var(--tf-color-teal-50);
+}
+
+.field-module-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-module-group__items.has-children {
+  margin-left: 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--tf-color-neutral-200);
 }
 
 /* 多行选择项的视觉统一由 tf-button--content 提供。 */
@@ -1499,6 +1554,7 @@
 .module-item-grid.el-button > span {
   justify-content: flex-start;
   gap: var(--tf-space-3);
+  min-width: 0;
 }
 
 .module-icon {

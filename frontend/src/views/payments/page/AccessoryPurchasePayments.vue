@@ -1,10 +1,96 @@
 <template>
   <div class="admin-page-content">
-    <el-alert
-      title="按采购入库单整批核算货款，与已销售、赠送或划拨数量无关。登记仅记录实际已完成的打款。"
-      type="info"
-      :closable="false"
-    />
+    <div
+      v-if="summary"
+      class="stats-cards accessory-purchase-stats-cards"
+      aria-label="商品货款汇总"
+    >
+      <div
+        v-if="visible('payment.payment_status') && visible('payment.purchase_cost')"
+        class="stat-card stat-card--warning"
+      >
+        <div class="stat-icon">
+          <i class="fas fa-clock" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-main-line">
+            <div class="stat-label">
+              待打款
+            </div>
+            <div class="stat-value-primary">
+              ¥{{ formatAmount(summary.unpaid_amount) }}
+            </div>
+          </div>
+          <div class="stat-sub">
+            待打款商品货款
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="visible('payment.payment_status') && visible('payment.purchase_cost')"
+        class="stat-card stat-card--income"
+      >
+        <div class="stat-icon">
+          <i class="fas fa-check-double" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-main-line">
+            <div class="stat-label">
+              已打款
+            </div>
+            <div class="stat-value-primary">
+              ¥{{ formatAmount(summary.paid_amount) }}
+            </div>
+          </div>
+          <div class="stat-sub">
+            已登记商品货款
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="visible('payment.purchase_cost')"
+        class="stat-card stat-card--primary"
+      >
+        <div class="stat-icon">
+          <i class="fas fa-coins" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-main-line">
+            <div class="stat-label">
+              采购总额
+            </div>
+            <div class="stat-value-primary">
+              ¥{{ formatAmount(summary.total_amount) }}
+            </div>
+          </div>
+          <div class="stat-sub">
+            {{ total }} 张采购单
+          </div>
+        </div>
+      </div>
+      <div
+        v-if="visible('purchase.quantity')"
+        class="stat-card stat-card--info"
+      >
+        <div class="stat-icon">
+          <i class="fas fa-boxes-stacked" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-main-line">
+            <div class="stat-label">
+              采购数量
+            </div>
+            <div class="stat-value-primary">
+              {{ summary.total_quantity ?? 0 }}<span class="stat-value-unit">件</span>
+            </div>
+          </div>
+          <div class="stat-sub">
+            原始入库采购数量
+          </div>
+        </div>
+      </div>
+    </div>
+
     <UnifiedSearchPanel
       v-model:expanded="searchExpanded"
       :loading="loading"
@@ -25,25 +111,97 @@
         v-if="visible('payment.supplier_name')"
         class="form-group filter-item"
       >
-        <el-input
+        <el-select
           v-model="supplierName"
           placeholder="供应商名称"
           clearable
+          filterable
+          allow-create
+          default-first-option
+          :reserve-keyword="false"
+          @focus="loadOptions"
           @keyup.enter="search"
           @clear="search"
-        />
+        >
+          <el-option
+            v-for="option in supplierOptions"
+            :key="option"
+            :label="option"
+            :value="option"
+          />
+        </el-select>
+      </div>
+      <div
+        v-if="visible('payment.brand_name')"
+        class="form-group filter-item"
+      >
+        <el-select
+          v-model="brandName"
+          placeholder="品牌"
+          clearable
+          filterable
+          allow-create
+          default-first-option
+          :reserve-keyword="false"
+          @focus="loadOptions"
+          @keyup.enter="search"
+          @clear="search"
+        >
+          <el-option
+            v-for="option in brandOptions"
+            :key="option"
+            :label="option"
+            :value="option"
+          />
+        </el-select>
+      </div>
+      <div
+        v-if="visible('purchase.name')"
+        class="form-group filter-item"
+      >
+        <el-select
+          v-model="productName"
+          placeholder="商品名称"
+          clearable
+          filterable
+          allow-create
+          default-first-option
+          :reserve-keyword="false"
+          @focus="loadOptions"
+          @keyup.enter="search"
+          @clear="search"
+        >
+          <el-option
+            v-for="option in productOptions"
+            :key="option"
+            :label="option"
+            :value="option"
+          />
+        </el-select>
       </div>
       <div
         v-if="visible('payment.store_name')"
         class="form-group filter-item"
       >
-        <el-input
+        <el-select
           v-model="storeName"
           placeholder="入库店铺名称"
           clearable
+          filterable
+          allow-create
+          default-first-option
+          :reserve-keyword="false"
+          @focus="loadOptions"
           @keyup.enter="search"
           @clear="search"
-        />
+        >
+          <el-option
+            v-for="option in storeOptions"
+            :key="option"
+            :label="option"
+            :value="option"
+          />
+        </el-select>
       </div>
       <div
         v-if="visible('payment.payment_status')"
@@ -80,28 +238,69 @@
     </UnifiedSearchPanel>
 
     <section
-      v-tf-loading="{ active: loading, text: '正在读取商品采购货款...' }"
+      v-tf-loading="{ active: loading, text: '正在读取商品货款...' }"
       class="table-section admin-panel admin-table-panel"
     >
       <el-alert
         v-if="failed"
-        title="商品采购读取失败，请刷新重试"
+        title="商品货款读取失败，请刷新重试"
         type="error"
         :closable="false"
       />
-      <p v-if="!failed">
-        共 {{ total }} 张采购单
-        <span v-if="visible('purchase.quantity')">，采购 {{ summary?.total_quantity ?? 0 }} 件</span>
-        <span v-if="visible('payment.purchase_cost')">，合计 ¥{{ formatAmount(summary?.total_amount) }}<span v-if="visible('payment.payment_status')">，已打款 ¥{{ formatAmount(summary?.paid_amount) }}，待打款 ¥{{ formatAmount(summary?.unpaid_amount) }}</span></span>
-      </p>
+      <div
+        v-if="selectedPurchaseRows.length"
+        class="selected-info purchase-batch-toolbar"
+      >
+        <div class="selected-summary">
+          <span class="selected-count">已选择{{ selectedPurchaseRows.length }}张单据</span>
+          <span
+            v-if="visible('payment.purchase_cost')"
+            class="selected-amount"
+          >
+            ，共{{ formatAmount(batchPurchaseAmount) }}元
+          </span>
+        </div>
+        <span
+          v-if="batchSupplierConflict"
+          class="purchase-batch-warning"
+        >
+          批量打款需选择同一供应商
+        </span>
+        <div class="batch-actions-buttons">
+          <el-button
+            class="tf-button--neutral"
+            @click="clearPurchaseSelection"
+          >
+            <i class="fas fa-times" />
+            清空选择
+          </el-button>
+          <el-button
+            v-if="canBatchPay"
+            v-permission="'supplier-payments:create'"
+            type="primary"
+            :disabled="batchSupplierConflict"
+            @click="openBatchPayment"
+          >
+            <i class="fas fa-money-bill-wave" />
+            批量打款
+          </el-button>
+        </div>
+      </div>
       <el-table
         v-table-double-tap="mobileDetailTapOptions"
         :data="rows"
         class="data-table"
         row-key="id"
         border
+        @selection-change="handlePurchaseSelectionChange"
         @row-dblclick="mobileDetailDoubleClick"
       >
+        <el-table-column
+          v-if="canBatchPay"
+          type="selection"
+          width="48"
+          :selectable="isBatchSelectable"
+        />
         <el-table-column
           label="ID"
           :width="$getNumberColumnWidth(rows.map(row => row.id), 60)"
@@ -135,10 +334,7 @@
           :min-width="textWidth('name', '商品名称')"
         >
           <template #default="{ row }">
-            <div>{{ row.name ?? '-' }}</div>
-            <div class="text-muted">
-              {{ row.has_snapshot ? '入库时资料' : '当前档案（旧单无快照）' }}
-            </div>
+            {{ row.name ?? '-' }}
           </template>
         </el-table-column>
         <el-table-column
@@ -297,7 +493,7 @@
         <template #empty>
           <DataEmptyState
             v-if="!loading"
-            :description="failed ? '读取失败，请刷新重试' : '暂无商品采购记录'"
+            :description="failed ? '读取失败，请刷新重试' : '暂无商品货款记录'"
             size="compact"
           />
         </template>
@@ -347,10 +543,14 @@
 
       <Pagination
         :current="page"
-        :page-size="20"
+        :page-size="pageSize"
         :total="total"
+        :page-sizes="[20, 50, 100, 200]"
+        :show-total="true"
+        :show-range="true"
+        :show-page-sizes="true"
+        :show-quick-jumper="true"
         :disabled="loading"
-        :show-page-sizes="false"
         @change="changePage"
       />
     </section>
@@ -362,7 +562,7 @@
 
     <MobileDialog
       :model-value="!!editing"
-      :title="action === 'pay' ? '登记商品采购打款' : '撤销商品采购打款登记'"
+      :title="action === 'pay' ? '登记商品货款' : '撤销商品货款登记'"
       width="620px"
       :close-on-click-modal="false"
       :show-default-footer="false"
@@ -477,8 +677,203 @@
     </MobileDialog>
 
     <MobileDialog
+      v-model="batchPaymentVisible"
+      title="批量登记商品货款"
+      width="95%"
+      dialog-class="accessory-purchase-batch-dialog"
+      :style="{ maxWidth: '1280px' }"
+      :close-on-click-modal="false"
+      :show-default-footer="false"
+      destroy-on-close
+    >
+      <div class="payment-details accessory-batch-payment-details">
+        <div class="details-info payment-summary-cards payment-summary-cards-four">
+          <div
+            v-if="visible('payment.supplier_name')"
+            class="info-row"
+          >
+            <label>供应商:</label>
+            <span>{{ batchSupplierName || '-' }}</span>
+          </div>
+          <div class="info-row">
+            <label>采购单:</label>
+            <span class="highlight">{{ selectedPurchaseRows.length }} 张</span>
+          </div>
+          <div
+            v-if="visible('payment.purchase_cost')"
+            class="info-row"
+          >
+            <label>商品货款:</label>
+            <span class="amount">¥{{ formatAmount(batchPurchaseAmount) }}</span>
+          </div>
+          <div
+            v-if="visible('purchase.quantity')"
+            class="info-row"
+          >
+            <label>采购数量:</label>
+            <span class="highlight">{{ batchPurchaseQuantity }} 件</span>
+          </div>
+        </div>
+
+        <div class="batch-details-table">
+          <div class="table-responsive payment-dialog-table-container">
+            <el-table
+              :data="selectedPurchaseRows"
+              border
+              stripe
+              row-key="id"
+              class="data-table devices-table payment-detail-table"
+            >
+              <el-table-column
+                label="序号"
+                :width="$getNumberColumnWidth(selectedPurchaseRows.map((_row, index) => index + 1), 60)"
+                align="center"
+              >
+                <template #default="{ $index }">
+                  <span class="table-number-badge">{{ $index + 1 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="visible('purchase.batch_no')"
+                prop="batch_no"
+                label="采购批次"
+                min-width="130"
+              />
+              <el-table-column
+                v-if="visible('purchase.name')"
+                prop="name"
+                label="商品名称"
+                min-width="140"
+              />
+              <el-table-column
+                v-if="visible('payment.brand_name')"
+                prop="brand_name"
+                label="品牌"
+                min-width="90"
+              />
+              <el-table-column
+                v-if="visible('payment.model_name')"
+                prop="product_model"
+                label="配件型号"
+                min-width="120"
+              />
+              <el-table-column
+                v-if="visible('payment.color_name')"
+                prop="color_name"
+                label="颜色"
+                min-width="90"
+              />
+              <el-table-column
+                v-if="visible('purchase.quantity')"
+                label="采购数量"
+                min-width="100"
+              >
+                <template #default="{ row }">
+                  {{ row.quantity ?? '-' }} {{ row.unit || '' }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="visible('payment.purchase_cost')"
+                label="采购单价"
+                min-width="110"
+              >
+                <template #default="{ row }">
+                  ¥{{ formatAmount(row.purchase_cost) }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="visible('payment.purchase_cost')"
+                label="整批金额"
+                min-width="110"
+              >
+                <template #default="{ row }">
+                  ¥{{ formatAmount(row.total_amount) }}
+                </template>
+              </el-table-column>
+              <el-table-column
+                v-if="visible('payment.store_name')"
+                prop="store_name"
+                label="入库店铺"
+                min-width="110"
+              />
+            </el-table>
+          </div>
+        </div>
+
+        <div class="details-info payment-form-cards accessory-batch-payment-form">
+          <div class="payment-form-heading">
+            <span class="payment-form-heading-icon"><i class="fas fa-pen-to-square" /></span>
+            <span>
+              <strong>打款信息</strong>
+              <small>确认本次商品货款付款记录</small>
+            </span>
+          </div>
+          <div
+            v-if="visible('payment.payment_method')"
+            class="info-row payment-method-row"
+          >
+            <label><i class="fas fa-credit-card" />打款方式</label>
+            <PaymentMethodSelect
+              v-model="batchPaymentForm.payment_method"
+              variant="settlement"
+              placeholder="请选择打款方式"
+              :disabled="batchPaymentSaving"
+            />
+          </div>
+          <div
+            v-if="visible('payment.payment_time')"
+            class="info-row payment-time-row"
+          >
+            <label><i class="fas fa-calendar-day" />打款时间</label>
+            <el-date-picker
+              v-model="batchPaymentForm.payment_time"
+              type="datetime"
+              :format="TIME_FORMATS.DATETIME"
+              :value-format="TIME_FORMATS.DATETIME"
+              :disabled="batchPaymentSaving"
+            />
+          </div>
+          <div
+            v-if="visible('payment.remarks')"
+            class="info-row payment-remarks-row"
+          >
+            <label><i class="fas fa-note-sticky" />备注</label>
+            <el-input
+              v-model="batchPaymentForm.remarks"
+              type="textarea"
+              class="tf-textarea"
+              :rows="2"
+              :maxlength="1000"
+              placeholder="填写本次打款备注（可选）"
+              :disabled="batchPaymentSaving"
+            />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="tf-dialog-actions">
+          <el-button
+            :disabled="batchPaymentSaving"
+            @click="batchPaymentVisible = false"
+          >
+            取消
+          </el-button>
+          <el-button
+            v-permission="'supplier-payments:create'"
+            type="primary"
+            :loading="batchPaymentSaving"
+            :disabled="!canSubmitBatchPayment"
+            @click="submitBatchPayment"
+          >
+            确认批量打款
+          </el-button>
+        </div>
+      </template>
+    </MobileDialog>
+
+    <MobileDialog
       :model-value="!!historyPurchase"
-      title="商品采购打款记录"
+      title="商品货款记录"
       width="1000px"
       :show-default-footer="false"
       destroy-on-close
@@ -622,6 +1017,7 @@ import { PaymentMethodSelect } from '@/components/payment'
 import type { DateRangeValue } from '@/types/date-range'
 import type { AccessoryPurchaseRecord, AccessoryPurchaseSummary, AccessoryPurchasePaymentEvent, AccessoryPurchasePaymentInput, AccessoryPurchasePaymentResult } from '@/types/accessory'
 
+const emit = defineEmits<{ 'open-payment-batch': [batchId: string] }>()
 const { canView, canCreate, canEdit } = usePagePermissions('supplier-payments')
 const { canViewReturnContext } = useAccessoryPurchaseReturnPermissions()
 const returnPurchaseId = ref(0), returnContextVisible = ref(false)
@@ -636,11 +1032,14 @@ const historyRequests = useLatestRequest()
 const rows = ref<AccessoryPurchaseRecord[]>([])
 const summary = ref<AccessoryPurchaseSummary>()
 const page = ref(1)
+const pageSize = ref(20)
 const total = ref(0)
 const loading = ref(false)
 const failed = ref(false)
 const keyword = ref('')
 const supplierName = ref('')
+const brandName = ref('')
+const productName = ref('')
 const storeName = ref('')
 const paymentStatus = ref('all')
 const dateRange = ref<DateRangeValue>([])
@@ -649,17 +1048,34 @@ const editing = ref<AccessoryPurchaseRecord | null>(null)
 const action = ref<'pay' | 'cancel'>('pay')
 const saving = ref(false)
 const form = reactive({ payment_method: 'bank_transfer', payment_time: '', remarks: '' })
+const selectedPurchaseRows = ref<AccessoryPurchaseRecord[]>([])
+const batchPaymentVisible = ref(false)
+const batchPaymentSaving = ref(false)
+const batchPaymentForm = reactive({ payment_method: 'bank_transfer', payment_time: '', remarks: '' })
 const historyPurchase = ref<AccessoryPurchaseRecord | null>(null)
 const history = ref<AccessoryPurchasePaymentEvent[]>([])
 const historyPage = ref(1)
 const historyTotal = ref(0)
 const historyLoading = ref(false)
 const historyFailed = ref(false)
+const optionsLoaded = ref(false)
+const optionsLoading = ref(false)
+const optionLists = reactive({ suppliers: [] as string[], brands: [] as string[], products: [] as string[], stores: [] as string[] })
 let requestKey = ''
 let requestSignature = ''
+let batchPaymentRequestKey = ''
+let batchPaymentRequestSignature = ''
 
 const canOperate = computed(() => ['payment.supplier_name', 'payment.purchase_cost', 'payment.payment_status', 'system_info.operations'].every(visible))
 const canRegister = (row: AccessoryPurchaseRecord) => canCreate.value && canOperate.value && row.payment_status === 'unpaid' && Number(row.total_amount) > 0 && ['payment.payment_method', 'payment.payment_time'].every(visible)
+const canBatchPay = computed(() => canCreate.value && canOperate.value && visible('payment.payment_method') && visible('payment.payment_time'))
+const batchSupplierIds = computed(() => [...new Set(selectedPurchaseRows.value.map(row => Number(row.supplier_id)).filter(id => Number.isInteger(id) && id > 0))])
+const batchSupplierConflict = computed(() => batchSupplierIds.value.length !== 1 || selectedPurchaseRows.value.some(row => !canRegister(row)))
+const batchSupplierId = computed(() => batchSupplierIds.value.length === 1 ? batchSupplierIds.value[0] : null)
+const batchSupplierName = computed(() => selectedPurchaseRows.value[0]?.supplier_name || '')
+const batchPurchaseAmount = computed(() => selectedPurchaseRows.value.reduce((sum, row) => sum + Number(row.total_amount || 0), 0))
+const batchPurchaseQuantity = computed(() => selectedPurchaseRows.value.reduce((sum, row) => sum + Number(row.quantity || 0), 0))
+const canSubmitBatchPayment = computed(() => !batchPaymentSaving.value && batchPaymentVisible.value && !!selectedPurchaseRows.value.length && !batchSupplierConflict.value && !!batchSupplierId.value && !!batchPaymentForm.payment_method && !!batchPaymentForm.payment_time && SETTLEMENT_PAYMENT_METHODS.some(item => item.value === batchPaymentForm.payment_method))
 const canCancel = (row: AccessoryPurchaseRecord) => canEdit.value && canOperate.value && row.payment_status === 'paid' && visible('payment.remarks')
 const showActions = computed(() => canView.value && shouldShowActionColumn(visible('system_info.operations'), [
   visible('payment.payment_status'), canViewReturnContext.value, rows.value.some(row => canRegister(row) || canCancel(row))
@@ -670,6 +1086,24 @@ const purchaseActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(ro
   { label: '登记打款', visible: canRegister }, { label: '撤销登记', visible: canCancel }
 ]))
 const textWidth = (field: keyof AccessoryPurchaseRecord, label: string) => getTextColumnMinWidth([label, ...rows.value.map(row => String(row[field] ?? ''))], { minWidth: 100 })
+const optionValues = (field: keyof AccessoryPurchaseRecord, selected: string, source: string[]) => [...new Set([...source, ...rows.value.map(row => String(row[field] ?? '').trim()), selected.trim()])].filter(Boolean)
+const supplierOptions = computed(() => optionValues('supplier_name', supplierName.value, optionLists.suppliers))
+const brandOptions = computed(() => optionValues('brand_name', brandName.value, optionLists.brands))
+const productOptions = computed(() => optionValues('name', productName.value, optionLists.products))
+const storeOptions = computed(() => optionValues('store_name', storeName.value, optionLists.stores))
+const loadOptions = async () => {
+  if (optionsLoaded.value || optionsLoading.value || !canView.value) return
+  optionsLoading.value = true
+  try {
+    const response = await unifiedApi.get<{ suppliers?: string[]; brands?: string[]; products?: string[]; stores?: string[] }>('/supplier-payments/accessory-purchases/options', { showLoading: false, useCache: false })
+    if (response.success === false || !response.data) return
+    for (const key of ['suppliers', 'brands', 'products', 'stores'] as const) {
+      optionLists[key] = Array.isArray(response.data[key]) ? response.data[key].map(value => String(value).trim()).filter(Boolean) : []
+    }
+    optionsLoaded.value = true
+  } catch { /* 公共API已展示错误，保留当前页候选并允许下次重新加载。 */ }
+  finally { optionsLoading.value = false }
+}
 const canSubmit = computed(() => !saving.value && !!editing.value && (action.value === 'pay'
   ? canRegister(editing.value) && !!form.payment_time && SETTLEMENT_PAYMENT_METHODS.some(item => item.value === form.payment_method)
   : canCancel(editing.value) && !!form.remarks.trim()))
@@ -680,8 +1114,10 @@ const load = async () => {
   failed.value = false
   try {
     const response = await unifiedApi.get<AccessoryPurchaseRecord[], AccessoryPurchaseSummary>('/supplier-payments/accessory-purchases', {
-      params: { page: page.value, page_size: 20,
+      params: { page: page.value, page_size: pageSize.value,
         ...(visible('purchase.name') && visible('purchase.batch_no') && keyword.value.trim() ? { keyword: keyword.value.trim() } : {}),
+        ...(visible('purchase.name') && productName.value.trim() ? { product_name: productName.value.trim() } : {}),
+        ...(visible('payment.brand_name') && brandName.value.trim() ? { brand_name: brandName.value.trim() } : {}),
         ...(visible('payment.supplier_name') && supplierName.value.trim() ? { supplier_name: supplierName.value.trim() } : {}),
         ...(visible('payment.store_name') && storeName.value.trim() ? { store_name: storeName.value.trim() } : {}),
         ...(visible('payment.payment_status') ? { payment_status: paymentStatus.value } : {}),
@@ -699,9 +1135,62 @@ const load = async () => {
     if (request.isLatest() && !requests.isCanceledError(error)) { failed.value = true; rows.value = []; total.value = 0; summary.value = undefined }
   } finally { if (request.isLatest()) loading.value = false }
 }
-const search = () => { page.value = 1; void load() }
-const reset = () => { keyword.value = ''; supplierName.value = ''; storeName.value = ''; paymentStatus.value = 'all'; dateRange.value = []; search() }
-const changePage = (value: number) => { page.value = value; void load() }
+const search = () => { clearPurchaseSelection(); page.value = 1; void load() }
+const reset = () => { keyword.value = ''; productName.value = ''; brandName.value = ''; supplierName.value = ''; storeName.value = ''; paymentStatus.value = 'all'; dateRange.value = []; search() }
+const changePage = (value: number, size: number) => {
+  clearPurchaseSelection()
+  page.value = value
+  pageSize.value = size
+  void load()
+}
+const isBatchSelectable = (row: AccessoryPurchaseRecord) => canRegister(row)
+const handlePurchaseSelectionChange = (rows: AccessoryPurchaseRecord[]) => {
+  selectedPurchaseRows.value = rows.filter(row => canRegister(row))
+}
+const clearPurchaseSelection = () => {
+  selectedPurchaseRows.value = []
+}
+const openBatchPayment = () => {
+  if (!canBatchPay.value) return
+  if (batchSupplierConflict.value) {
+    notifications.warning('批量打款需选择同一供应商的未打款采购单')
+    return
+  }
+  batchPaymentForm.payment_method = 'bank_transfer'
+  batchPaymentForm.payment_time = TimeUtil.nowFormatted(TIME_FORMATS.DATETIME)
+  batchPaymentForm.remarks = ''
+  batchPaymentRequestKey = batchPaymentRequestSignature = ''
+  batchPaymentVisible.value = true
+}
+const submitBatchPayment = async () => {
+  if (!canSubmitBatchPayment.value || !batchSupplierId.value) return
+  batchPaymentSaving.value = true
+  const payload = {
+    supplier_id: batchSupplierId.value,
+    phone_ids: [],
+    accessory_purchase_ids: selectedPurchaseRows.value.map(row => row.id),
+    payment_method: batchPaymentForm.payment_method,
+    payment_time: batchPaymentForm.payment_time,
+    actual_amount: batchPurchaseAmount.value,
+    external_reference: '',
+    remarks: batchPaymentForm.remarks.trim()
+  }
+  const signature = JSON.stringify(payload)
+  if (signature !== batchPaymentRequestSignature) {
+    batchPaymentRequestSignature = signature
+    batchPaymentRequestKey = [...crypto.getRandomValues(new Uint8Array(16))].map(value => value.toString(16).padStart(2, '0')).join('')
+  }
+  try {
+    const response = await unifiedApi.post('/supplier-payments/unified-batches', { ...payload, request_key: batchPaymentRequestKey }, { showLoading: false })
+    if (response.success === false) return
+    notifications.success(response.data?.replayed ? '该批量打款请求已处理，正在刷新当前状态' : `批量登记 ${selectedPurchaseRows.value.length} 张商品采购单成功`)
+    batchPaymentVisible.value = false
+    clearPurchaseSelection()
+    batchPaymentRequestKey = batchPaymentRequestSignature = ''
+    await load()
+  } catch { /* 公共API已展示失败原因，保留表单和请求标识供重试。 */ }
+  finally { batchPaymentSaving.value = false }
+}
 const openPayment = (row: AccessoryPurchaseRecord, kind: 'pay' | 'cancel') => {
   if (saving.value || (kind === 'pay' ? !canRegister(row) : !canCancel(row))) return
   editing.value = row
@@ -752,6 +1241,10 @@ const loadHistory = async () => {
 }
 const openHistory = (row: AccessoryPurchaseRecord) => {
   if (!canView.value || !visible('payment.payment_status')) return
+  if (row.payment_batch_id) {
+    emit('open-payment-batch', row.payment_batch_id)
+    return
+  }
   historyPurchase.value = row; historyPage.value = 1; history.value = []; historyTotal.value = 0; void loadHistory()
 }
 const closeHistory = (value: boolean) => { if (!value) { historyPurchase.value = null; historyRequests.cancelLatest(); historyLoading.value = false } }
@@ -799,3 +1292,5 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
 })
 
 </script>
+
+<style scoped lang="scss" src="./styles/accessory-purchase-payments.scss"></style>

@@ -54,11 +54,6 @@
               v-if="isAuthenticated"
               class="user-info"
             >
-              <!-- 用户头像放在最前面 -->
-              <div class="user-avatar">
-                <i class="fas fa-user-circle" />
-              </div>
-
               <!-- 用户信息区域：姓名和角色 -->
               <div class="user-main-info">
                 <div class="user-name">
@@ -101,7 +96,7 @@
                 <el-icon aria-hidden="true">
                   <SwitchButton />
                 </el-icon>
-                <span class="topbar-button-label">退出登录</span>
+                <span class="topbar-button-label">退出</span>
               </el-button>
             </div>
           </div>
@@ -387,7 +382,7 @@ const getPageInfo = (routePath: string) => {
   // 从菜单中查找匹配的菜单项
   const findMenuItem = (items: MenuItem[], path: string): MenuItem | null => {
     for (const item of items) {
-      if (item.url === path) return item
+      if ((item.url || item.path) === path) return item
       if (item.children) {
         const found = findMenuItem(item.children, path)
         if (found) return found
@@ -397,9 +392,10 @@ const getPageInfo = (routePath: string) => {
   }
 
   const menuItem = findMenuItem(menuItems.value, routePath)
+  const routeRecord = router.resolve(routePath)
   return {
-    title: menuItem?.name || route.meta?.title || '未命名页面',
-    icon: menuItem?.icon || route.meta?.icon || 'fas fa-file'
+    title: menuItem?.name || routeRecord.meta?.title || '未命名页面',
+    icon: menuItem?.icon || routeRecord.meta?.icon || 'fas fa-file'
   }
 }
 
@@ -433,6 +429,13 @@ watch(
   },
   { immediate: true }
 )
+
+// 菜单管理改名后，已打开的顶部标签也跟随菜单名称更新。
+watch(menuItems, () => {
+  tabsStore.tabs.forEach(tab => {
+    tabsStore.updateTabTitle(tab.path, getPageInfo(tab.path).title as string)
+  })
+}, { deep: true })
 
 // 生命周期
 onMounted(async () => {

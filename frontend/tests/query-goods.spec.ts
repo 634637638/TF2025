@@ -6,13 +6,13 @@ import Panel from '@/views/query/page/QueryGoodsPanel.vue'
 import type { AccessorySaleRecord } from '@/types/accessory'
 import { vTableDoubleTap } from '@/directives/table-double-tap'
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), stores: vi.fn(), hidden: new Set<string>(), returnPermission: false, exchangePermission: false }))
+const mocks = vi.hoisted(() => ({ get: vi.fn(), stores: vi.fn(), operators: vi.fn(), filterOptions: vi.fn(), productNames: vi.fn(), hidden: new Set<string>(), returnPermission: false, exchangePermission: false }))
 const queryView = ref(true), goodsView = ref(true)
 const goodsCreate = ref(false), goodsGift = ref(false)
 const isMobile = ref(false), isTablet = ref(false)
 const hiddenFields = ref(mocks.hidden)
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: mocks }))
-vi.mock('@/services/reference-options', () => ({ getStores: mocks.stores }))
+vi.mock('@/services/reference-options', () => ({ getStores: mocks.stores, searchOperators: mocks.operators, getGoodsFilterOptions: mocks.filterOptions, getGoodsProductNameOptions: mocks.productNames }))
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({
   canView: computed(() => module === 'query' ? queryView.value : goodsView.value),
   canCreate: computed(() => false),
@@ -50,8 +50,11 @@ beforeEach(() => {
   mocks.exchangePermission = false
   mocks.get.mockResolvedValue(result())
   mocks.stores.mockResolvedValue({ data: [{ id: 1, name: '一店' }] })
+  mocks.operators.mockResolvedValue({ data: [{ id: 8, name: '销售员甲' }] })
+  mocks.filterOptions.mockResolvedValue({ data: { brands: [{ id: 2, name: '苹果' }], categories: [{ id: 3, name: '充电头' }] } })
+  mocks.productNames.mockResolvedValue({ data: ['充电头', '充电线'] })
 })
-afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.resetAllMocks(); vi.unstubAllGlobals() })
+afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.useRealTimers(); vi.resetAllMocks(); vi.unstubAllGlobals() })
 
 it('展示商品销售类型、数量、原单和客户，未知成本保持空值，严格门店选项及实际分页总数', async () => {
   const wrapper = await render()
@@ -101,6 +104,82 @@ it('关键词和销售/赠送筛选重置页码，重置清空全部条件', asy
   expect(wrapper.findComponent(ElInput).props('modelValue')).toBe('')
   expect(mocks.get.mock.calls.at(-1)?.[1].params.sale_type).toBeUndefined()
   expect(mocks.get.mock.calls.at(-1)?.[1].params.store_id).toBeUndefined()
+})
+
+it('按销售员、品牌、商品名称和商品类型筛选，使用字段权限对应的控件', async () => {
+  const wrapper = await render()
+  expect(mocks.filterOptions).toHaveBeenCalledOnce()
+  const selects = wrapper.findAllComponents(ElSelect)
+  selects[2].vm.$emit('update:modelValue', 8); selects[2].vm.$emit('change', 8)
+  selects[3].vm.$emit('update:modelValue', 2); selects[3].vm.$emit('change', 2)
+  selects[4].vm.$emit('update:modelValue', '充电头'); selects[4].vm.$emit('change', '充电头')
+  selects[5].vm.$emit('update:modelValue', 3); selects[5].vm.$emit('change', 3)
+  await flushPromises()
+  expect(mocks.get.mock.calls.at(-1)?.[1].params).toMatchObject({ sale_operator_id: 8, brand_id: 2, product_name: '充电头', category_id: 3 })
+  await button(wrapper, '重置').trigger('click'); await flushPromises()
+  expect(mocks.get.mock.calls.at(-1)?.[1].params).toMatchObject({ sale_operator_id: undefined, brand_id: undefined, product_name: undefined, category_id: undefined })
+})
+
+it('商品名称远程下拉支持自由输入筛选并取消过期建议请求', async () => {
+  const wrapper = await render()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  let resolveOld!: (value: { data: string[] }) => void
+  let resolveNew!: (value: { data: string[] }) => void
+  mocks.productNames.mockReset()
+  mocks.productNames.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
+  mocks.productNames.mockReturnValueOnce(new Promise(resolve => { resolveNew = resolve }))
+  const productSelect = wrapper.findAllComponents(ElSelect)[4]
+  const searchNames = productSelect.props('remoteMethod') as (value: string) => void
+  searchNames('旧商品')
+  await vi.advanceTimersByTimeAsync(200)
+  searchNames('新商品')
+  expect(mocks.productNames.mock.calls[0][1].aborted).toBe(true)
+  await vi.advanceTimersByTimeAsync(200)
+  resolveNew({ data: ['新商品名称'] })
+  await flushPromises()
+  resolveOld({ data: ['旧商品名称'] })
+  await flushPromises()
+  const setupState = (wrapper.findComponent(Panel).vm as unknown as { $: { setupState: Record<string, unknown> } }).$?.setupState
+  expect(setupState?.productNames).toEqual(['新商品名称'])
+  productSelect.vm.$emit('update:modelValue', '自定义商品名称')
+  productSelect.vm.$emit('change', '自定义商品名称')
+  await flushPromises()
+  expect(mocks.get.mock.calls.at(-1)?.[1].params.product_name).toBe('自定义商品名称')
+})
+
+it('聚焦商品名称时加载最近成交名称供下拉选择', async () => {
+  const wrapper = await render()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  mocks.productNames.mockClear()
+  mocks.productNames.mockResolvedValue({ data: ['最近成交商品'] })
+  await wrapper.findAllComponents(ElSelect)[4].find('input').trigger('focus')
+  await vi.advanceTimersByTimeAsync(200)
+  await flushPromises()
+  expect(mocks.productNames).toHaveBeenCalledWith({ keyword: '', store_id: undefined }, expect.any(AbortSignal))
+  const setupState = (wrapper.findComponent(Panel).vm as unknown as { $: { setupState: Record<string, unknown> } }).$?.setupState
+  expect(setupState?.productNames).toEqual(['最近成交商品'])
+})
+
+it('销售员远程搜索取消旧请求，迟到结果不能覆盖新关键词', async () => {
+  const wrapper = await render()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  let resolveOld!: (value: { data: Array<{ id: number; name: string }> }) => void
+  let resolveNew!: (value: { data: Array<{ id: number; name: string }> }) => void
+  mocks.operators.mockReset()
+  mocks.operators.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve }))
+  mocks.operators.mockReturnValueOnce(new Promise(resolve => { resolveNew = resolve }))
+  const searchOperators = wrapper.findAllComponents(ElSelect)[2].props('remoteMethod') as (value: string) => void
+  searchOperators('旧关键词')
+  await vi.advanceTimersByTimeAsync(200)
+  searchOperators('新关键词')
+  expect(mocks.operators.mock.calls[0][1].signal.aborted).toBe(true)
+  await vi.advanceTimersByTimeAsync(200)
+  resolveNew({ data: [{ id: 9, name: '新销售员' }] })
+  await flushPromises()
+  resolveOld({ data: [{ id: 8, name: '旧销售员' }] })
+  await flushPromises()
+  const setupState = (wrapper.findComponent(Panel).vm as unknown as { $: { setupState: Record<string, unknown> } }).$?.setupState
+  expect(setupState?.operators).toEqual([{ id: 9, name: '新销售员' }])
 })
 
 it('查看成交资料、SN和原采购批次，关闭详情后不保留旧内容', async () => {

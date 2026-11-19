@@ -21,6 +21,7 @@
 
 - 菜单数据统一由 Pinia `menuStore` 从 `/permissions/user-menu` 加载。
 - 同层菜单按 `sort_order` 升序，同父级、同序号以菜单 ID 稳定排列；角色页面权限复用完整有效菜单的层级顺序，业务归组规则见[页面权限展示顺序](permission-capability-standards.md#页面权限的展示顺序)。
+- 菜单名称是后台页面名称的显示来源：`PageHeader` 按当前路由匹配菜单名称，顶部打开标签也按菜单名称显示；菜单改名并刷新菜单数据后，左侧菜单、页面主标题和已打开标签同步更新。没有对应菜单的公开/辅助页面保留路由或页面自身标题。
 - `SimpleSidebar`、`MobileSlideMenu` 只负责展示、展开和派发 `menu-click`，不得直接调用 `router.push`，也不得在组件内复制权限判断。
 - `SimpleAdminView` 是后台菜单点击的统一入口：外部链接通过新窗口打开，内部链接先调用 `canAccessRoutePath`，再交给 Vue Router；路由守卫负责最终认证、角色和权限校验。
 - PC 与手机端可以使用不同展示组件，但必须派发同一种 `menu-click` 事件，不能形成两套导航行为。

@@ -161,16 +161,36 @@ class QueryGoodsService {
   }
   async list(actor, input, searchFields) {
     await this.authorize(actor)
-    if (Object.keys(input).some(key => !['page', 'page_size', 'keyword', 'store_id', 'sale_type', 'start_date', 'end_date'].includes(key))) reject('存在不支持的查询条件')
+    if (Object.keys(input).some(key => !['page', 'page_size', 'keyword', 'store_id', 'sale_type', 'sale_operator_id', 'brand_id', 'product_name', 'category_id', 'start_date', 'end_date'].includes(key))) reject('存在不支持的查询条件')
     if (input.store_id !== undefined && !validId(input.store_id)) reject('门店标识无效')
+    for (const [key, label] of [['sale_operator_id', '销售员'], ['brand_id', '品牌'], ['category_id', '商品类型']]) {
+      if (input[key] !== undefined && !validId(input[key])) reject(`${label}标识无效`)
+    }
+    if (input.product_name !== undefined && (typeof input.product_name !== 'string' || input.product_name.length > 100)) reject('商品名称无效')
     const query = { page: integer(input.page, 1, 1000000), page_size: integer(input.page_size, 20, 100),
-      keyword: input.keyword ?? '', sale_type: input.sale_type, start_date: date(input.start_date), end_date: date(input.end_date) }
+      keyword: input.keyword ?? '', sale_type: input.sale_type, sale_operator_id: input.sale_operator_id === undefined ? undefined : Number(input.sale_operator_id),
+      brand_id: input.brand_id === undefined ? undefined : Number(input.brand_id), product_name: input.product_name,
+      category_id: input.category_id === undefined ? undefined : Number(input.category_id),
+      start_date: date(input.start_date), end_date: date(input.end_date) }
     if (typeof query.keyword !== 'string' || query.keyword.length > 100 ||
       (query.sale_type !== undefined && !['sale', 'gift'].includes(query.sale_type)) ||
       (query.start_date && query.end_date && query.start_date > query.end_date)) reject('查询条件无效')
     query.keyword = query.keyword.trim()
+    query.product_name = query.product_name?.trim()
     const scope = resolveStoreScope(actor, input.store_id)
     return this.readSnapshot(connection => this.repository.list(scope, query, searchFields, connection))
+  }
+  async filterOptions(actor) {
+    await this.authorize(actor)
+    return this.readSnapshot(connection => this.repository.filterOptions(connection))
+  }
+  async productNameOptions(actor, input) {
+    await this.authorize(actor)
+    if (Object.keys(input).some(key => !['keyword', 'store_id'].includes(key))) reject('存在不支持的查询条件')
+    if (input.keyword !== undefined && (typeof input.keyword !== 'string' || input.keyword.length > 100)) reject('商品名称搜索词无效')
+    if (input.store_id !== undefined && !validId(input.store_id)) reject('门店标识无效')
+    const scope = resolveStoreScope(actor, input.store_id)
+    return this.readSnapshot(connection => this.repository.productNameOptions(scope, input.keyword?.trim() || '', connection))
   }
   async detail(actor, id) {
     await this.authorize(actor)

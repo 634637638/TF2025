@@ -43,7 +43,7 @@ H5 登录与注册复用 `frontend/src/views/H5-mobile/components/H5AuthLayout.v
 
 ## 扫码器上下文
 
-手机扫码复用 `OptimizedScanner.vue` 并传入 `:phone` 品牌上下文；配件SN显式使用 `serial-profile="accessory"` 与 `scan-type="serial"`。解析及控件边界见[基础控件规范](basic-component-standards.md#扫码器解析上下文)。采用审计检查实际调用及正反例，不能通过虚构手机品牌绕过上下文。
+手机扫码复用 `OptimizedScanner.vue` 并传入真实 `:phone` 品牌上下文；配件SN显式使用 `serial-profile="accessory"`、`scan-type="serial"` 和当前 `serial-brand`。Apple配件较长条码按配件SN规则去除字段标识 `S`，普通配件厂商前缀保留。解析及控件边界见[基础控件规范](basic-component-standards.md#扫码器解析上下文)。采用审计检查实际调用及正反例，不能通过虚构手机品牌绕过上下文。
 
 ## 审计
 

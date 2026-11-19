@@ -1,6 +1,6 @@
 'use strict'
 
-const { isPersonName, isMobilePhone, normalizePhone, isMoneyInput, isIntegerInput } = require('../utils/input-values')
+const { isCustomerName, isMobilePhone, normalizePhone, isMoneyInput, isIntegerInput } = require('../utils/input-values')
 const CustomerRepository = require('../repositories/customer.repository')
 const CustomerAddressService = require('./customer-address.service')
 const AccessoryRepository = require('../repositories/accessory.repository')
@@ -217,7 +217,7 @@ class CustomerManagementService extends BaseService {
     } = body
 
     if (!name || !rawPhone) throw this.createError('缺少必需字段：姓名、手机号', 400)
-    if (!isPersonName(name, 50)) throw this.createError('姓名须为1至50字的单行文本', 400)
+    if (!isCustomerName(name, 50)) throw this.createError('客户姓名至少需要2个字符，且不能超过50字或包含换行', 400)
     if (!isMobilePhone(rawPhone)) throw this.createError('手机号格式不正确', 400)
     const phone = normalizePhone(rawPhone)
 
@@ -284,7 +284,7 @@ class CustomerManagementService extends BaseService {
       password
     } = body
 
-    if (name !== undefined && !isPersonName(name, 50)) throw this.createError('姓名须为1至50字的单行文本', 400)
+    if (name !== undefined && !isCustomerName(name, 50)) throw this.createError('客户姓名至少需要2个字符，且不能超过50字或包含换行', 400)
     if (rawPhone !== undefined && !isMobilePhone(rawPhone)) throw this.createError('手机号格式不正确', 400)
     const phone = rawPhone === undefined ? undefined : normalizePhone(rawPhone)
     if (phone !== undefined && phone !== existingCustomer.phone) {

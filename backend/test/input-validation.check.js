@@ -28,6 +28,12 @@ test('service 公共解析保留缺省、未知字段和原文，非法对象及
   for (const value of ['true', 'false', [], {}, 2, '1abc']) assert.equal(rules.boolean(value).valid, false)
 })
 
+test('客户姓名公共规则要求至少两个字符', () => {
+  const { isCustomerName } = require('../src/utils/input-values')
+  assert.equal(isCustomerName('李'), false)
+  assert.equal(isCustomerName('李明'), true)
+})
+
 test('公共数字完整格式、类型、安全整数及空值', () => {
   for (const value of ['12abc', '12元', '1e3', '0x10', 'NaN', 'Infinity', '12\n', ' ', true, false, [], [12], {}, Infinity, NaN]) {
     assert.equal(rules.number(value).valid, false, String(value))

@@ -168,3 +168,20 @@ test('git push maps unverified sync and outer network failures to established er
   assert.match(failed.body.hint, /网络连接失败/)
   assert.deepEqual(failed.body.details, { stderr: 'network', code: 7 })
 })
+
+test('git push explains GitHub workflow scope rejection without exposing remote output', async () => {
+  const result = await setup({
+    verified: false,
+    pushError: Object.assign(new Error('workflow scope required'), {
+      error: 'refusing to allow a Personal Access Token to create or update workflow .github/workflows/dependency-audit.yml without workflow scope',
+      stderr: 'remote rejected',
+      code: 1
+    })
+  }).service.pushChanges()
+
+  assert.equal(result.statusCode, 502)
+  assert.equal(result.body.code, 'GIT_REMOTE_WORKFLOW_SCOPE_REQUIRED')
+  assert.equal(result.body.error, 'GitHub Token 缺少 workflow 权限')
+  assert.match(result.body.hint, /workflow scope/)
+  assert.doesNotMatch(JSON.stringify(result.body), /dependency-audit|remote rejected/)
+})

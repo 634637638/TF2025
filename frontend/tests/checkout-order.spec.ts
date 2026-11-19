@@ -20,7 +20,7 @@ vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: {
   getHiddenFields: (module: string) => module === 'query_queryview' ? hidden.query : hidden.goods
 } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: ref(true), isTablet: ref(false) }) }))
-const Dialog = { props: ['modelValue', 'title'], emits: ['update:modelValue'], template: '<div v-if="modelValue" class="dialog"><h2>{{ title }}</h2><button @click="$emit(\'update:modelValue\', false)">关闭</button><slot /><slot name="footer" /></div>' }
+const Dialog = { props: ['modelValue', 'title', 'width', 'dialogClass'], emits: ['update:modelValue'], template: '<div v-if="modelValue" class="dialog"><h2>{{ title }}</h2><button @click="$emit(\'update:modelValue\', false)">关闭</button><slot /><slot name="footer" /></div>' }
 const Empty = { props: ['description', 'title', 'actionText'], emits: ['action'], template: '<div>{{title}}{{description}}<button @click="$emit(\'action\')">{{actionText}}</button></div>' }
 const line = (extra: Partial<CheckoutOrderItem> = {}): CheckoutOrderItem => ({ id: 201, item_type: 'accessory', sale_no: 'GOODS-A', linked_phone_sale_no: 'PHONE-A', sale_type: 'sale',
   name: '原充电器', brand_name: '配件品牌', product_model: 'MWVW3CH', color_name: '白', memory: null, imei: null, serial_numbers: ['000SN1', '000SN2'], unit: '个', quantity: 2,
@@ -206,4 +206,20 @@ it('收银凭证仅打印已核对且有权查看的原成交内容，失败或�
   expect(mocks.print).toHaveBeenCalledTimes(2)
   queryView.value = false; await flushPromises()
   expect(wrapper.text()).not.toContain('原充电器')
+})
+
+it('赠送凭证使用单一弹窗标题，隐藏无意义的零积分汇总', async () => {
+  const giftOrder = order()
+  giftOrder.items = [giftOrder.items[2]]
+  giftOrder.total_amount = giftOrder.final_amount = giftOrder.paid_amount = giftOrder.deduction_amount = 0
+  giftOrder.points_used = giftOrder.points_awarded = 0
+  mocks.get.mockResolvedValue({ success: true, data: giftOrder })
+  const wrapper = await render()
+  await wrapper.setProps({ receipt: true, saleId: 52 }); await flushPromises()
+  expect(wrapper.findComponent(Dialog).props('dialogClass')).toBe('crud-dialog-md')
+  expect(wrapper.find('.checkout-receipt__header h2').exists()).toBe(false)
+  expect(wrapper.text()).toContain('商品单号')
+  expect(wrapper.text()).not.toContain('积分抵扣')
+  expect(wrapper.text()).not.toContain('消耗积分')
+  expect(wrapper.text()).not.toContain('获得积分')
 })

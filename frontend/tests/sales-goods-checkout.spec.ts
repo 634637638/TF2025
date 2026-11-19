@@ -10,6 +10,7 @@ import SalesAdditionalGoods from '@/views/sales/page/SalesAdditionalGoods.vue'
 import RecordDescriptions from '@/components/RecordDescriptions.vue'
 import CustomerNameLockInput from '@/components/common/CustomerNameLockInput.vue'
 import { buildCheckoutInput, isCheckoutSubmissionRejected } from '@/utils/sales-checkout'
+import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { buildQuickCheckoutPhone, createDefaultQuickSaleForm } from '@/components/query/quick-sale/helpers'
 import type { CheckoutAdditionalGoodsDraft, CheckoutGoodsDraft, CheckoutCustomerForm } from '@/types/sales-checkout'
 
@@ -17,7 +18,10 @@ const mocks = vi.hoisted(() => ({ options: vi.fn(), summary: vi.fn(), quote: vi.
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isDesktop: computed(() => mocks.desktop) }) }))
 vi.mock('@/api/sales-checkout', () => ({ getCheckoutGoods: mocks.options, getFilmProducts: (customerId: number, params: object, signal: AbortSignal) => mocks.options({ ...params, film_customer_id: customerId }, signal), getCheckoutCustomerSummary: mocks.summary, getFilmCustomerSummary: mocks.summary, checkoutSale: mocks.checkout, quoteCheckoutSale: mocks.quote }))
 vi.mock('@/services/reference-options', () => ({ getStores: mocks.stores, searchOperators: mocks.operators }))
-vi.mock('@/services/customer-options', () => ({ searchCustomerOptions: mocks.customers }))
+vi.mock('@/services/customer-options', () => ({
+  searchCustomerOptions: mocks.customers,
+  createCustomerProfile: (payload: unknown) => mocks.post('/customers', payload)
+}))
 vi.mock('@/utils/unified-api', () => ({ unifiedApi: { post: mocks.post, put: mocks.put } }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 7, name: '销售员' } }) }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
@@ -113,12 +117,14 @@ describe('共同结算输入', () => {
     expect(() => buildCheckoutInput(form(), [{ ...virtual[0], phone_id: 12 }], [draft()], 'a'.repeat(32), phone)).toThrow('不一致')
   })
   it('单卖与混合单按分计合计、零价赠品、原约定零元及逐台手机关联不丢失', () => {
-    const phone = { phone_id: 12, sale_price: 100.01, label: '手机' }
+    const phone = { phone_id: 12, sale_price: 100.01, purchase_cost: 88.88, label: '手机' }
     const gift = { ...draft(), key: 'gift', sale_type: 'gift' as const, quantity: 1, linked_phone_id: 12, gift_return_unit_price: 0 }
     const data = buildCheckoutInput(form(), [phone], [{ ...draft(), linked_phone_id: 12 }, gift], 'a'.repeat(32))
     expect(data.payment_info.payment_amount).toBe(160.01)
     expect(data.accessories[1]).toMatchObject({ unit_price: 0, quantity: 1, linked_phone_id: 12, gift_return_unit_price: 0 })
-    expect(data.phones).toEqual([{ phone_id: 12, sale_price: 100.01 }])
+    expect(data.phones).toEqual([{ phone_id: 12, sale_price: 100.01, purchase_cost: 88.88 }])
+    expect(() => buildCheckoutInput(form(), [{ ...phone, purchase_cost: -1 }], [draft()], 'a'.repeat(32))).toThrow('价格须为非负数')
+    expect(() => buildCheckoutInput(form(), [{ ...phone, purchase_cost: 88.889 }], [draft()], 'a'.repeat(32))).toThrow('价格须为非负数')
     expect(buildCheckoutInput(form(), [], [draft()], 'a'.repeat(32)).accessories[0]).not.toHaveProperty('linked_phone_id')
   })
   it('SN自动计数、保留前导零，不允许同一单跨行或行内重复、超库及遗漏手机关联', () => {
@@ -358,10 +364,28 @@ describe('商品单卖与搭售结算弹窗', () => {
   })
   it('独立商品销售保留完整的销售与支付字段', async () => {
     const wrapper = await render([], { defaults: { ...form(), payment_method: 'mobile', payment_channel: 'alipay' } })
+    expect(wrapper.findComponent(Dialog).props('width')).toBe('900px')
     expect(wrapper.find('.checkout-payment').findAll('.el-form-item__label').slice(0, 3).map(label => label.text())).toEqual(['手机号', '姓名', '销售日期'])
-    for (const label of ['销售门店', '销售员', '销售日期', '支付方式', '支付渠道', '交易流水号']) expect(wrapper.text()).toContain(label)
+    for (const label of ['销售门店', '销售员', '销售日期', '支付方式', '支付渠道']) expect(wrapper.text()).toContain(label)
+    expect(wrapper.text()).not.toContain('交易流水号')
     expect(mocks.stores).toHaveBeenCalledWith({ strictScope: true })
     expect(mocks.operators).toHaveBeenCalledOnce()
+  })
+  it('商品销售日期默认北京时间当天，改选历史日期后按所选日期提交', async () => {
+    const defaultWrapper = await render([], { defaults: {} })
+    expect(defaultWrapper.findComponent({ name: 'ElDatePicker' }).props('modelValue')).toBe(TimeUtil.nowFormatted(TIME_FORMATS.DATE))
+    const wrapper = await render()
+    const datePicker = wrapper.findComponent({ name: 'ElDatePicker' })
+    const handledDate = TimeUtil.format(TimeUtil.add(TimeUtil.now(), -1, 'day'), TIME_FORMATS.DATE)
+    datePicker.vm.$emit('update:modelValue', handledDate)
+    await flushPromises()
+    await populate(wrapper)
+    await submitCheckout(wrapper)
+    await flushPromises()
+    expect(mocks.checkout).toHaveBeenCalledWith(expect.objectContaining({
+      sale_time: handledDate,
+      payment_info: expect.objectContaining({ payment_time: handledDate })
+    }))
   })
   it('明确拒绝后可修正商品，重新试算并提交；不误报结果未知', async () => {
     const wrapper = await render(); await populate(wrapper)
@@ -486,7 +510,11 @@ describe('商品单卖与搭售结算弹窗', () => {
     const editor = wrapper.findComponent(SalesAdditionalGoods)
     mocks.options.mockImplementation(async (params: { page: number; page_size: number }) => ({ success: true, data: { data: Array.from({ length: params.page === 7 ? 5 : 20 }, (_, index) => ({ ...option, id: (params.page - 1) * params.page_size + index + 1 })), pagination: { total: 125 } } }))
     await searchCatalog(wrapper, '充电')
-    for (let page = 2; page <= 7; page++) { await button(editor, '加载更多').trigger('click'); await flushPromises() }
+    const products = editor.find('.cashier-products')
+    Object.defineProperties(products.element, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 1000 }, scrollTop: { configurable: true, value: 800 } })
+    await products.trigger('scroll'); await flushPromises()
+    expect(mocks.options).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }), expect.any(AbortSignal))
+    for (let page = 3; page <= 7; page++) { await button(editor, '加载更多').trigger('click'); await flushPromises() }
     expect(editor.findAll('.cashier-product')).toHaveLength(125)
     await populate(wrapper, { ...draft(), serial_mode: true, serial_numbers: ['00AA'] })
     wrapper.findAllComponents(ElSelect)[0].vm.$emit('update:modelValue', 2); await flushPromises()
@@ -709,6 +737,13 @@ describe('商品明细积分抵扣', () => {
     await button(editor, '加入清单').trigger('click'); await flushPromises()
     expect(editor.props('modelValue')[0]).toMatchObject({ sale_type: 'gift', unit_price: 0 })
     expect(editor.props('modelValue')[0]).not.toHaveProperty('redeem_points')
+    await enterPayment(wrapper)
+    const paymentLabels = wrapper.find('.checkout-payment').findAll('.el-form-item__label').map(label => label.text())
+    expect(paymentLabels).toContain('支付方式')
+    expect(paymentLabels).not.toContain('支付渠道')
+    expect(paymentLabels).not.toContain('交易流水号')
+    expect(wrapper.find('input[aria-label="现金收取"]').exists()).toBe(false)
+    expect(wrapper.findComponent(PaymentMethodSelect).findComponent(ElSelect).props('disabled')).toBe(true)
   })
 })
 
@@ -787,6 +822,16 @@ describe('附加商品清单与一键抵扣', () => {
     const invalid = await render(phone), invalidEditor = await pick(invalid, 'goods:56', 'gift')
     expect(invalidEditor.props('modelValue')).toEqual([])
     expect(mocks.error).toHaveBeenCalledWith('无法读取赠品零售价，请联系管理员')
+  })
+  it('独立商品赠送时销售价与现金收取均只读', async () => {
+    const wrapper = await render()
+    const editor = wrapper.findComponent(SalesAdditionalGoods)
+    editor.find('.cashier-order').findComponent(ElSelect).vm.$emit('update:modelValue', 'gift')
+    await wrapper.find('button[aria-label="加入充电宝"]').trigger('click'); await flushPromises()
+    expect(editor.find('input[aria-label="充电宝价格"]').attributes('disabled')).toBeDefined()
+    await enterPayment(wrapper)
+    expect(wrapper.find('input[aria-label="现金收取"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('本单实收：¥0')
   })
   it('SN检索显示完整前导零，固定一件，重复确认不能再次加入', async () => {
     mocks.options.mockImplementation(async params => ({ success: true, data: { data: params.search_mode === 'serial' ? [{ ...option, serial_number: '00AA', quantity: 1, serial_quantity: 1 }] : [], pagination: { total: params.search_mode === 'serial' ? 1 : 0 } } }))
@@ -1139,6 +1184,11 @@ describe('商品收银分步操作', () => {
     await submitCheckout(wrapper); await flushPromises()
     expect(mocks.checkout).toHaveBeenCalledWith(expect.objectContaining({ payment_info: expect.objectContaining({ payment_amount: 60 }) }))
     expect(wrapper.text()).toContain('收款成功')
+    expect(wrapper.findComponent(Dialog).props('title')).toBe('收款成功')
+    expect(wrapper.findComponent(Dialog).props('width')).toBe('480px')
+    expect(wrapper.find('.checkout-success__icon').exists()).toBe(true)
+    expect(wrapper.find('.checkout-success__receipt').text()).toContain('实际收款')
+    expect(wrapper.find('.el-result').exists()).toBe(false)
     expect(wrapper.find('.checkout-payment').exists()).toBe(false)
     expect(button(wrapper, '确认收款')).toBeUndefined()
     expect(wrapper.emitted('success')).toHaveLength(1)

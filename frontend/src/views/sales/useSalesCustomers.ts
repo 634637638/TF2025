@@ -1,6 +1,7 @@
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { nextTick, ref, type Ref } from 'vue'
 import {
+  isValidCustomerName,
   isValidMobilePhone,
   normalizeAppleId,
   normalizePersonName,
@@ -9,7 +10,7 @@ import {
 } from '@/utils/security'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
-import { searchCustomerOptions } from '@/services/customer-options'
+import { createCustomerProfile, normalizeCustomerOption, searchCustomerOptions } from '@/services/customer-options'
 import { resolveNativeTextInput, type NativeInputInstance } from '@/utils/native-input'
 import { useCustomerNamePrompt } from '@/composables/useCustomerNamePrompt'
 import type {
@@ -92,6 +93,24 @@ const buildCustomerPayload = (name: string, phone: string, appleId: string): Sal
   preferred_contact: 'phone',
   source: 'sales'
 })
+
+const toBatchCustomer = (value: unknown): BatchCustomer => {
+  const customer = normalizeCustomerOption(value)
+  if (!customer) throw new Error('客户资料返回无效')
+  return {
+    id: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+    address: typeof customer.address === 'string' ? customer.address : '',
+    total_orders: Number(customer.total_orders || 0),
+    total_amount: Number(customer.total_amount || 0),
+    status: Number(customer.status ?? 1),
+    email: typeof customer.email === 'string' ? customer.email : undefined,
+    created_at: typeof customer.created_at === 'string' ? customer.created_at : undefined,
+    updated_at: typeof customer.updated_at === 'string' ? customer.updated_at : undefined,
+    apple_id: typeof customer.apple_id === 'string' ? customer.apple_id : undefined
+  }
+}
 
 export const useSalesCustomers = ({
   saleForm,
@@ -373,14 +392,14 @@ export const useSalesCustomers = ({
       showError('请输入客户姓名')
       return
     }
+    if (!isValidCustomerName(normalizedCustomerName, 20)) {
+      showError('客户姓名至少两个字')
+      return
+    }
 
     customerSearching.value = true
     try {
-      const response = await api.post(
-        '/customers',
-        buildCustomerPayload(normalizedCustomerName, normalizedCustomerPhone, normalizedAppleId),
-        { showError: false }
-      )
+      const response = await createCustomerProfile(buildCustomerPayload(normalizedCustomerName, normalizedCustomerPhone, normalizedAppleId))
 
       if (response.success && response.data) {
         const newCustomer = response.data as SalesCustomer
@@ -625,17 +644,17 @@ export const useSalesCustomers = ({
       showError('请输入客户姓名')
       return
     }
+    if (!isValidCustomerName(normalizedCustomerName, 20)) {
+      showError('客户姓名至少两个字')
+      return
+    }
 
     batchCustomerSearching.value = true
     try {
-      const response = await api.post(
-        '/customers',
-        buildCustomerPayload(normalizedCustomerName, normalizedCustomerPhone, normalizedAppleId),
-        { showError: false }
-      )
+      const response = await createCustomerProfile(buildCustomerPayload(normalizedCustomerName, normalizedCustomerPhone, normalizedAppleId))
 
       if (response.success && response.data) {
-        const newCustomer = response.data as BatchCustomer
+        const newCustomer = toBatchCustomer(response.data)
         selectedBatchCustomer.value = newCustomer
         batchSaleForm.customer_phone = normalizeCustomerPhone(newCustomer.phone)
         batchSaleForm.customer_name = normalizePersonName(newCustomer.name, 20)

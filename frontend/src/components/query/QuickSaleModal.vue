@@ -594,7 +594,7 @@ import { canViewAccessoryField } from '@/components/accessory-field-permissions'
 import { fieldPermissions } from '@/composables/useFieldPermissions'
 import type { CheckoutAdditionalGoodsDraft, CheckoutCustomerForm, CheckoutPhone, CheckoutQuickPhone } from '@/types/sales-checkout'
 import unifiedApi from '@/utils/unified-api'
-import { searchCustomerOptions } from '@/services/customer-options'
+import { createCustomerProfile, searchCustomerOptions } from '@/services/customer-options'
 import { getModels } from '@/services/reference-options'
 import { useAuthStore } from '@/stores/auth'
 import MobileDialog from '@/components/MobileDialog.vue'
@@ -606,7 +606,7 @@ import { PaymentChannelSelect, PaymentMethodSelect } from '@/components/payment'
 import { useMobile } from '@/composables/mobile'
 import { useTouchDoubleTap } from '@/composables/useTouchDoubleTap'
 import { onMounted, onUnmounted } from 'vue'
-import { isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
+import { isValidCustomerName, isValidMobilePhone, normalizeAppleId, normalizePersonName, normalizePhoneDigits } from '@/utils/security'
 import type { SuccessEmits, UpdateModelValueEmits } from '@/types'
 import { logger } from '@/utils/logger'
 import {
@@ -1342,11 +1342,15 @@ const createNewCustomer = async () => {
     showWarning('请输入客户姓名')
     return
   }
+  if (!isValidCustomerName(formData.customer_name, 20)) {
+    showWarning('客户姓名至少需要2个字符')
+    return
+  }
 
   try {
     customerLookupLoading.value = true
 
-    const response = await unifiedApi.post('/customers', buildQuickSaleCustomerPayload(formData))
+    const response = await createCustomerProfile(buildQuickSaleCustomerPayload(formData))
 
     if (!response.success || !response.data) {
       throw new Error(response.message || '创建客户失败')

@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount, watch, type CSSProperties } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch, type CSSProperties } from 'vue'
 
 import { scanOptimizer, type ScannerDeviceInfo } from '@/utils/scanOptimizer'
 import { parseDeviceScanResult, type DeviceScanParseOptions } from '@/utils/device-scan-result'
@@ -190,6 +190,8 @@ const getTorchCapabilities = (track: MediaStreamTrack): TorchMediaTrackCapabilit
 interface Props extends VisibleProps {
   scanType: 'imei' | 'serial'
   serialProfile?: DeviceScanParseOptions['serialProfile']
+  serialBrand?: string
+  scanValidator?: (value: string) => string | null
   phone?: ScannerPhone
   showROIDisplay?: boolean
   enableAndroidOptimization?: boolean
@@ -203,6 +205,8 @@ interface Emits extends UpdateVisibleEmits, CancelEmits {
 const props = withDefaults(defineProps<Props>(), {
   phone: undefined,
   serialProfile: 'phone',
+  serialBrand: '',
+  scanValidator: undefined,
   showROIDisplay: true,
   enableAndroidOptimization: true
 })
@@ -223,6 +227,7 @@ const candidateText = ref('')
 const scanFeedback = ref('已通过格式校验')
 const scanIssue = ref('')
 const lastScanTime = ref(0)
+const lastValidationNotice = ref({ message: '', at: 0 })
 const decoderReady = ref(false)
 const videoResolution = ref('')
 const lastDecodedRaw = ref('')
@@ -236,7 +241,7 @@ const dialogTitle = computed(() => (
   props.phone?.brand ? `${title.value} (${props.phone.brand})` : title.value
 ))
 
-const isAppleDevice = computed(() => /apple|iphone|ipad|苹果/i.test(props.phone?.brand || ''))
+const isAppleDevice = computed(() => /apple|iphone|ipad|苹果/i.test(props.serialBrand || props.phone?.brand || ''))
 
 const scanInstruction = computed(() => (
   props.scanType === 'imei'
@@ -321,6 +326,12 @@ watch(() => props.visible, (newVal) => {
   }
 })
 
+// 配件入库等入口按需挂载扫码器，组件创建时 visible 可能已经为 true。
+// 这类入口不会再触发一次 visible 变化，因此需要在挂载后启动摄像头。
+onMounted(() => {
+  if (props.visible) void startScanning()
+})
+
 const resetScanState = () => {
   closing = false
   scanCompleted.value = false
@@ -329,6 +340,7 @@ const resetScanState = () => {
   scanFeedback.value = '已通过格式校验'
   scanIssue.value = ''
   lastScanTime.value = 0
+  lastValidationNotice.value = { message: '', at: 0 }
   decoderReady.value = false
   videoResolution.value = ''
   lastDecodedRaw.value = ''
@@ -509,6 +521,18 @@ const processDecodedText = (rawText: string) => {
   scanIssue.value = ''
   candidateText.value = parsed.value
   lastScanTime.value = now
+  const validationMessage = props.scanValidator?.(parsed.value) || null
+  if (validationMessage) {
+    candidateText.value = ''
+    scanIssue.value = validationMessage
+    const now = Date.now()
+    const notice = lastValidationNotice.value
+    if (notice.message !== validationMessage || now - notice.at >= 1500) {
+      globalNotifications.warning(validationMessage)
+      lastValidationNotice.value = { message: validationMessage, at: now }
+    }
+    return
+  }
   confirmScanResult(parsed.value)
 }
 

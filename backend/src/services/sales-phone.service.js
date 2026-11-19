@@ -10,6 +10,8 @@ const { hasColumn } = require('./schema-inspector.service')
 const { generateMemberNumber } = require('../utils/member-number')
 const { getCustomerPointsConfig, reconcileCustomerPointsForSale } = require('./customer-points.service')
 const { validateSalePayment } = require('../utils/sale-payment')
+const FilmService = require('./film-service.service')
+const AccessoryService = require('./accessory.service')
 
 const rejected = (status, message) => ({ status, body: { success: false, message } })
 const abort = (status, message) => Object.assign(new Error(message), { saleResult: rejected(status, message) })
@@ -25,7 +27,7 @@ class SalesPhoneService {
     createMemberNumber = generateMemberNumber,
     getPointsConfig = getCustomerPointsConfig,
     customerAccess = new CustomerMutationAccessService(),
-    reconcilePoints = reconcileCustomerPointsForSale
+    reconcilePoints = reconcileCustomerPointsForSale, autoFilm = false, films = null, accessories = null
   } = {}) {
     this.customerAccess = customerAccess
     this.repository = repository
@@ -36,6 +38,9 @@ class SalesPhoneService {
     this.createMemberNumber = createMemberNumber
     this.getPointsConfig = getPointsConfig
     this.reconcilePoints = reconcilePoints
+    this.autoFilm = autoFilm
+    this.films = films || (autoFilm ? new FilmService() : null)
+    this.accessories = accessories || (autoFilm ? new AccessoryService() : null)
   }
 
   /** 由调用方的销售事务管理客户资料，手机与商品结算复用同一入口。 */
@@ -201,6 +206,9 @@ class SalesPhoneService {
               : (currentPhone.remarks || null)
           }
         })
+        const automaticFilms = this.autoFilm
+          ? await this.films.prepareAutomaticForSale(connection, finalizedPhones.map(phone => currentPhones.get(phone.phone_id)), salesStoreId)
+          : []
         const totalAmount = totalCents / 100
         let saleId = null
         const createdSales = []
@@ -263,6 +271,12 @@ class SalesPhoneService {
           if (result.affectedRows !== 1) throw abort(400, '部分设备状态更新失败')
         }
 
+        for (const film of automaticFilms) {
+          await this.accessories.issueSale({ ...film, store_id: salesStoreId, customer_id: customerId,
+            customer_name: customerInfo.name, customer_phone: customerInfo.phone, remarks: requestedRemarks }, actor, connection,
+          { time: saleTimeValue, sellerId: operatorId || userId, sellerName: actor.name || actor.username || '' })
+        }
+
         if (preorderId) {
           const deliveredPhone = finalizedPhones[0]
           if (finalizedPhones.length !== 1 || !preorder || Number(preorder.matched_phone_id) !== Number(deliveredPhone.phone_id)) {
@@ -290,7 +304,7 @@ class SalesPhoneService {
             salePrice: sale.phone.sale_price,
             isNew: sale.phone.is_new,
             config: pointsConfig,
-            hasAccessory
+            hasAccessory: hasAccessory || automaticFilms.length > 0
           })
           pointsEarned += points.points
           pointsEligibleAmount += points.eligibleAmount

@@ -1,5 +1,5 @@
 import { computed, nextTick, ref, type Ref } from 'vue'
-import { isValidMobilePhone, normalizeAppleId, normalizePersonName } from '@/utils/security'
+import { isValidCustomerName, isValidMobilePhone, normalizeAppleId, normalizePersonName } from '@/utils/security'
 import { unifiedApi as api } from '@/utils/unified-api'
 import { logger } from '@/utils/logger'
 import { formatAmount } from '@/utils/format'
@@ -332,6 +332,10 @@ export const useSalesCheckout = ({
       showError('请输入客户姓名')
       return
     }
+    if (!isValidCustomerName(normalizedCustomerName, 20)) {
+      showError('客户姓名至少两个字')
+      return
+    }
     if (!normalizedCustomerPhone) {
       showError('请输入客户电话')
       return
@@ -443,6 +447,10 @@ export const useSalesCheckout = ({
     }
     if (!normalizedCustomerName) {
       showError('请输入客户姓名')
+      return
+    }
+    if (!isValidCustomerName(normalizedCustomerName, 20)) {
+      showError('客户姓名至少两个字')
       return
     }
     if (!normalizedCustomerPhone) {

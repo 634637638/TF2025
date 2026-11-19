@@ -29,21 +29,28 @@
       v-else
       class="dashboard-shortcuts__list"
     >
-      <el-button
-        v-for="item in visibleItems"
-        :key="item.id"
-        v-permission="'dashboard:view'"
-        class="tf-button--compact tf-button--soft-primary"
-        native-type="button"
-        :title="item.label"
-        @click="open(item)"
+      <div
+        v-for="(page, pageIndex) in shortcutPages"
+        :key="pageIndex"
+        class="dashboard-shortcuts__page"
+        :style="{ '--shortcut-page-rows': page.rows }"
       >
-        <IconRenderer
-          :icon="item.icon"
-          aria-hidden="true"
-        />
-        <span class="dashboard-shortcut-label">{{ item.label }}</span>
-      </el-button>
+        <el-button
+          v-for="item in page.items"
+          :key="item.id"
+          v-permission="'dashboard:view'"
+          class="tf-button--compact tf-button--soft-primary"
+          native-type="button"
+          :title="item.label"
+          @click="open(item)"
+        >
+          <IconRenderer
+            :icon="item.icon"
+            aria-hidden="true"
+          />
+          <span class="dashboard-shortcut-label">{{ item.label }}</span>
+        </el-button>
+      </div>
     </div>
   </el-card>
 </template>
@@ -66,6 +73,14 @@ const { canView } = usePagePermissions('dashboard')
 const { warning, error } = useNotification()
 const failed = ref(false)
 const visibleItems = computed(() => store.items.filter(item => canUseShortcut(item, router, authStore)))
+const shortcutPages = computed(() => {
+  const pages: Array<{ items: DashboardShortcut[]; rows: number }> = []
+  for (let index = 0; index < visibleItems.value.length; index += 9) {
+    const items = visibleItems.value.slice(index, index + 9)
+    pages.push({ items, rows: Math.ceil(items.length / 3) })
+  }
+  return pages
+})
 const load = async () => {
   if (!canView.value || store.loading) return
   try { await store.load(); failed.value = false } catch (err) {
@@ -92,6 +107,7 @@ defineExpose({ load })
 
 <style scoped>
 .dashboard-shortcuts { min-width: 0; }
+.dashboard-shortcuts__page { display: contents; }
 .dashboard-shortcuts__list {
   display: flex;
   flex-wrap: wrap;
@@ -111,16 +127,24 @@ defineExpose({ load })
 @media (max-width: 767px) {
   .dashboard-shortcuts :deep(.el-card__header) { display: none; }
   .dashboard-shortcuts__list {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: calc((100% - var(--tf-space-2) - var(--tf-space-2)) / 3);
-    grid-template-rows: repeat(3, minmax(0, auto));
-    align-items: stretch;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 0;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-inline: contain;
     scroll-snap-type: inline proximity;
     scrollbar-width: none;
+  }
+  .dashboard-shortcuts__page {
+    display: grid;
+    flex: 0 0 100%;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(var(--shortcut-page-rows), minmax(0, auto));
+    align-items: stretch;
+    gap: var(--tf-space-2);
   }
   .dashboard-shortcuts__list::-webkit-scrollbar { display: none; }
   .dashboard-shortcuts__list :deep(.el-button) {

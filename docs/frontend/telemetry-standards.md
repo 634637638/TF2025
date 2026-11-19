@@ -29,6 +29,8 @@ npm run check:telemetry
 
 生产默认10%固定采样，最多每分钟一次、一个在途请求；开发、未登录或构建开关 `VITE_PERFORMANCE_REPORT_ENABLED=false` 不发送。通过 `unifiedApi` 保留认证和CSRF，关闭Loading/错误提示及错误递归上报，失败不阻塞操作。不得在此入口附加路由、URL、UA、账号、客户资料、原始资源名称或用户输入；报告历史仅内存最多20份。
 
+API 指标只记录请求次数、累计延迟和最大延迟等固定数值，不在浏览器按完整 URL、客户、用户或请求体建立指标字典。成功率和 5xx 比率由后端响应观测按规范化路由、HTTP 方法、状态码和时间窗口汇总；前端请求编号追踪、失败状态和重试契约以[错误处理规范](../guides/error-handling-standards.md#端到端接口故障闭环)为准。
+
 接收端、限流、快照解释、保留策略与部署核验见[性能指标集中上报](../backend/performance-reporting.md)。相关行为检查：
 
 ```bash

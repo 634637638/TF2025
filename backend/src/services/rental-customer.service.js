@@ -2,13 +2,13 @@
 
 const { resolveStoreScope } = require('../utils/store-scope')
 
-const CustomerMutationAccessService = require('./customer-mutation-access.service')
 const RentalCustomerRepository = require('../repositories/rental-customer.repository')
 const dataMaskingService = require('./data-masking.service')
 const { searchCustomers } = require('./customer-search.service')
 const { searchOperators } = require('./operator-search.service')
 const { isValidIdCard } = require('../utils/security-enhanced')
 const { parseInput } = require('../middleware/validation')
+const { isCustomerName } = require('../utils/input-values')
 
 const MODULE_KEY = 'rentals_rentalsview'
 const CUSTOMER_NAME = 'customer_info.customer_name'
@@ -23,13 +23,9 @@ class RentalCustomerService {
     masking = dataMaskingService,
     customerSearch = searchCustomers,
     operatorSearch = searchOperators,
-    customerAccess = new CustomerMutationAccessService(),
     validateIdCard = isValidIdCard
   } = {}) {
     if (!repository || typeof repository.getActiveStores !== 'function'
-      || typeof repository.findByPhone !== 'function'
-      || typeof repository.updateExistingIdentity !== 'function'
-      || typeof repository.create !== 'function'
       || typeof repository.findPhoneOwner !== 'function'
       || typeof repository.updateActiveCustomer !== 'function'
       || !masking || typeof masking.getUserFieldPermissions !== 'function'
@@ -37,7 +33,6 @@ class RentalCustomerService {
       || typeof validateIdCard !== 'function') {
       throw new TypeError('RentalCustomerService requires customer, permission, and search dependencies')
     }
-    this.customerAccess = customerAccess
     this.repository = repository
     this.masking = masking
     this.customerSearch = customerSearch
@@ -109,22 +104,11 @@ class RentalCustomerService {
     const name = body.name.trim()
     const phone = body.phone
     const idCard = body.id_card.trim().toUpperCase()
+    if (!isCustomerName(name, 50)) throw Object.assign(new Error('客户姓名至少需要2个字符'), { statusCode: 400 })
     if (!this.validateIdCard(idCard)) {
       throw Object.assign(new Error('请输入客户姓名、正确的手机号码和身份证号'), { statusCode: 400 })
     }
     return { name, phone, idCard }
-  }
-
-  async create(body, actor) {
-    const customer = this.normalizeCustomerInput(body)
-    const existing = await this.repository.findByPhone(customer.phone)
-    if (existing) {
-      await this.customerAccess.require(actor, 'edit')
-      await this.repository.updateExistingIdentity({ id: existing.id, ...customer })
-      return { existing: true, customer: { ...existing, name: customer.name, id_card: customer.idCard } }
-    }
-    const id = await this.repository.create(customer)
-    return { existing: false, customer: { id, name: customer.name, phone: customer.phone, id_card: customer.idCard } }
   }
 
   async update(idValue, body) {

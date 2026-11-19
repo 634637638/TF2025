@@ -24,6 +24,7 @@
   --tf-topbar-control-height: var(--tf-button-height);
   --tf-topbar-control-padding-x: var(--tf-space-2);
   --tf-topbar-control-gap: var(--tf-space-1);
+  --tf-topbar-icon-size: var(--tf-type-scale-16);
   --tf-topbar-user-info-max-width: min(46vw, 360px);
   --tf-button-mobile-nav-size: 40px;
   --tf-button-fab-size: 56px;
@@ -306,7 +307,23 @@
 /* 顶部操作使用公共默认尺寸，用户信息卡读取同一高度令牌。 */
 .el-button.tf-button--topbar {
   --tf-button-padding-x: var(--tf-topbar-control-padding-x);
+  gap: var(--tf-space-1);
   flex-shrink: 0;
+}
+
+/* Element Plus 将按钮内容包在直接子级 span 中，统一覆盖其默认 6px 间距。 */
+.el-button.tf-button--topbar > span {
+  gap: var(--tf-space-1);
+}
+
+body .el-button.el-button.tf-button--topbar .el-icon {
+  flex: 0 0 auto;
+  font-size: var(--tf-topbar-icon-size);
+}
+
+/* Element Plus 为图标后的文字增加默认外边距；顶部栏改由公共 gap 统一控制。 */
+.el-button.tf-button--topbar .el-icon + .topbar-button-label {
+  margin-left: 0;
 }
 
 .el-button.tf-button--topbar + .el-button.tf-button--topbar {

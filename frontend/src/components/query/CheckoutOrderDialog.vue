@@ -2,11 +2,14 @@
   <MobileDialog
     v-model="open"
     :title="receipt ? '销售凭证' : '整单明细'"
-    dialog-class="crud-dialog-lg"
+    dialog-class="crud-dialog-md"
     :show-default-footer="false"
     destroy-on-close
     append-to-body
   >
+    <template #header>
+      <span class="checkout-dialog-title">{{ receipt ? '销售凭证' : '整单明细' }}</span>
+    </template>
     <SectionLoading
       v-if="loading"
       text="正在核对整单成交明细..."
@@ -26,13 +29,14 @@
     >
       <template v-if="receipt">
         <header class="checkout-receipt__header">
-          <h2>销售凭证</h2>
           <div class="checkout-receipt__meta">
             <div
               v-for="field in receiptHeaderFields"
               :key="field.key"
+              class="checkout-receipt__meta-item"
             >
-              <span class="text-secondary">{{ field.label }}</span><strong>{{ field.value }}</strong>
+              <span class="text-secondary">{{ field.label }}</span>
+              <strong>{{ field.value }}</strong>
             </div>
           </div>
         </header>
@@ -42,19 +46,22 @@
           class="checkout-receipt__item print-avoid-break"
         >
           <div class="checkout-receipt__line">
-            <strong>{{ itemFields(item).find(field => field.key === 'name' && field.visible)?.value || '商品' }}</strong>
+            <div class="checkout-receipt__item-heading">
+              <strong>{{ itemFields(item).find(field => field.key === 'name' && field.visible)?.value || '商品' }}</strong>
+              <span class="checkout-receipt__description text-secondary">
+                {{ receiptItemFields(item, ['brand_name', 'product_model', 'color_name', 'memory']).map(field => field.value).join(' · ') }}
+              </span>
+            </div>
             <el-tag
               v-if="itemFields(item).some(field => field.key === 'sale_type' && field.visible)"
+              class="checkout-receipt__type"
               :type="item.sale_type === 'gift' ? 'warning' : 'success'"
             >
               {{ item.sale_type === 'gift' ? '赠送' : '销售' }}
             </el-tag>
           </div>
-          <p class="text-secondary">
-            {{ receiptItemFields(item, ['brand_name', 'product_model', 'color_name', 'memory']).map(field => field.value).join(' · ') }}
-          </p>
           <div
-            v-for="field in receiptItemFields(item, ['sale_no', 'imei', 'serial_numbers', 'linked_phone_sale_no'])"
+            v-for="field in receiptItemFields(item, ['imei', 'serial_numbers', 'linked_phone_sale_no'])"
             :key="field.key"
             class="checkout-receipt__line"
           >
@@ -62,7 +69,7 @@
           </div>
           <div class="checkout-receipt__figures">
             <div
-              v-for="field in receiptItemFields(item, ['quantity', 'unit', 'unit_price', 'total_amount', 'points_used', 'deduction_amount', 'points_awarded'])"
+              v-for="field in receiptFigureFields(item)"
               :key="field.key"
             >
               <span class="text-secondary">{{ field.label }}</span><strong>{{ field.value }}</strong>
@@ -81,8 +88,15 @@
             v-for="field in receiptTotalFields"
             :key="field.key"
             class="checkout-receipt__line"
+            :class="{ 'checkout-receipt__total-line--emphasis': field.key === 'final_amount' }"
           >
             <span>{{ field.label }}</span><strong>{{ field.value }}</strong>
+          </div>
+          <div
+            v-if="receiptPointsFields.length === 2 && receiptPointsFields.some(field => field.value !== '0')"
+            class="checkout-receipt__line"
+          >
+            <span>消耗积分 / 获得积分</span><strong>{{ receiptPointsFields[0].value }} / {{ receiptPointsFields[1].value }}</strong>
           </div>
           <p
             v-for="field in headerFields.filter(field => field.key === 'remarks' && field.visible && field.value !== '-')"
@@ -216,7 +230,7 @@ const itemFields = (row: CheckoutOrderItem): RecordDetailField[] => {
   const visible = (goodsField: Parameters<typeof goodsVisible>[0], phoneField: string) => phone ? phoneVisible(phoneField) : goodsVisible(goodsField)
   const amounts = phone ? phoneVisible('basic_info.sale_price') : goodsMoneyVisible()
   return [
-    { key: 'sale_no', label: '销售单号', value: text(row.sale_no), wide: true, visible: goodsVisible('sequence') },
+    { key: 'sale_no', label: props.receipt ? '商品单号' : '销售单号', value: text(row.sale_no), wide: true, visible: goodsVisible('sequence') },
     { key: 'name', label: phone ? '手机型号' : '商品名称', value: text(row.name), wide: true, visible: visible('name', 'basic_info.model') },
     { key: 'brand_name', label: '品牌', value: text(row.brand_name), visible: visible('brand_name', 'basic_info.brand') },
     { key: 'product_model', label: '配件型号', value: text(row.product_model), visible: !phone && goodsVisible('product_model') },
@@ -239,7 +253,23 @@ const itemFields = (row: CheckoutOrderItem): RecordDetailField[] => {
   ]
 }
 const receiptHeaderFields = computed(() => headerFields.value.filter(field => field.visible && ['order_no', 'store_name', 'sale_time', 'customer_name', 'customer_phone', 'operator_name'].includes(field.key)))
-const receiptTotalFields = computed(() => headerFields.value.filter(field => field.visible && ['total_amount', 'deduction_amount', 'final_amount', 'points_used', 'points_awarded'].includes(field.key)))
+const receiptTotalFields = computed(() => headerFields.value
+  .filter(field => field.visible && ['total_amount', 'deduction_amount', 'final_amount'].includes(field.key))
+  .filter(field => field.key !== 'deduction_amount' || field.value !== '¥0'))
+const receiptPointsFields = computed(() => headerFields.value.filter(field => field.visible && ['points_used', 'points_awarded'].includes(field.key)))
+const receiptFigureFields = (row: CheckoutOrderItem) => {
+  const fields = itemFields(row)
+  const quantity = fields.find(field => field.key === 'quantity' && field.visible)
+  const unit = fields.find(field => field.key === 'unit' && field.visible && field.value !== '-')
+  return ['sale_no', 'quantity', 'unit_price', 'total_amount']
+    .map(key => {
+      const field = fields.find(item => item.key === key && item.visible)
+      if (!field) return null
+      if (key === 'quantity' && quantity && unit) return { ...field, value: `${quantity.value} ${unit.value}` }
+      return field
+    })
+    .filter((field): field is RecordDetailField => field !== null && field.value !== '-')
+}
 const receiptItemFields = (row: CheckoutOrderItem, keys: string[]) => itemFields(row).filter(field => field.visible && keys.includes(field.key) && field.value !== '-' && !(['points_used', 'points_awarded', 'deduction_amount'].includes(field.key) && (field.value === '0' || field.value === '¥0')))
 async function load() {
   requests.cancelLatest(); order.value = null; loading.value = false; failed.value = false
@@ -263,19 +293,33 @@ watch(() => [props.modelValue, props.saleId, props.source, allowed.value,
 
 <style scoped>
 .checkout-order-document { min-width: 0; overflow-wrap: anywhere; }
-.checkout-order-document h2 { text-align: center; margin-bottom: var(--tf-space-5); }
 .checkout-order-document section { margin-top: var(--tf-space-4); }
-.checkout-receipt__header { padding-bottom: var(--tf-space-4); border-bottom: 1px dashed var(--tf-color-border-cool); }
-.checkout-receipt__meta, .checkout-receipt__figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tf-space-3); }
-.checkout-receipt__figures { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.checkout-receipt__meta > div, .checkout-receipt__figures > div { display: grid; gap: var(--tf-space-1); min-width: 0; }
-.checkout-receipt__item { padding: var(--tf-space-4) 0; border-bottom: 1px dashed var(--tf-color-border-cool); }
+.checkout-receipt__header { padding: var(--tf-space-2) 0 var(--tf-space-5); border-bottom: 1px dashed var(--tf-color-border-cool); }
+.checkout-receipt__meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tf-space-4) var(--tf-space-8); }
+.checkout-receipt__meta-item { display: grid; gap: var(--tf-space-1); min-width: 0; }
+.checkout-receipt__meta-item > span { font-size: var(--tf-font-caption); }
+.checkout-receipt__meta-item > strong { min-width: 0; color: var(--tf-dialog-body-text); font-size: var(--tf-font-body); font-weight: 700; overflow-wrap: anywhere; }
+.checkout-receipt__figures { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: var(--tf-space-4); margin-top: var(--tf-space-4); padding-top: var(--tf-space-3); border-top: 1px solid var(--tf-color-border-cool); }
+.checkout-receipt__figures > div { display: grid; gap: var(--tf-space-1); min-width: 0; }
+.checkout-receipt__figures strong { color: var(--tf-dialog-body-text); overflow-wrap: anywhere; }
+.checkout-receipt__item { margin-top: var(--tf-space-5); padding: var(--tf-space-4); border: 1px solid var(--tf-dialog-surface-soft); border-radius: var(--tf-radius-card); background: var(--tf-dialog-surface-soft); }
 .checkout-receipt__line { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--tf-space-3); margin-bottom: var(--tf-space-2); }
 .checkout-receipt__line > :first-child { flex-shrink: 0; }
 .checkout-receipt__line > :last-child { min-width: 0; text-align: right; overflow-wrap: anywhere; }
 .checkout-receipt__line > strong:first-child { min-width: 0; flex-shrink: 1; }
-.checkout-receipt__totals { display: grid; gap: var(--tf-space-2); padding-top: var(--tf-space-4); }
+.checkout-receipt__item-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--tf-space-1); min-width: 0; }
+.checkout-receipt__item-heading > strong { color: var(--tf-dialog-body-text); }
+.checkout-receipt__type { flex: 0 0 auto; }
+.checkout-receipt__description { margin: 0; }
+.checkout-receipt__totals { display: grid; gap: var(--tf-space-3); margin-top: var(--tf-space-5); padding-top: var(--tf-space-3); }
+.checkout-receipt__totals .checkout-receipt__line { margin: 0; }
+.checkout-receipt__total-line--emphasis { padding-top: var(--tf-space-3); border-top: 1px solid var(--tf-color-border-cool); font-size: var(--tf-font-subtitle); font-weight: 700; }
+.checkout-receipt__total-line--emphasis strong { color: var(--el-color-primary); font-size: var(--tf-font-title); }
+.checkout-receipt__totals > p { margin: var(--tf-space-2) 0 0; overflow-wrap: anywhere; }
+:deep(.mobile-dialog-header) { display: flex; align-items: center; width: 100%; min-width: 0; }
+.checkout-dialog-title { display: block; min-width: 0; color: var(--tf-dialog-header-text); font-size: var(--tf-dialog-title-size); font-weight: var(--tf-dialog-title-weight); line-height: var(--tf-dialog-title-line-height); }
 @media (max-width: 767px) {
-  .checkout-receipt__figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .checkout-receipt__meta { grid-template-columns: 1fr; gap: var(--tf-space-3); }
+  .checkout-receipt__figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tf-space-3); }
 }
 </style>

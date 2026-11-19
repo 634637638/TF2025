@@ -2,11 +2,12 @@ import type { ReturnStockDetails } from './return-stock'
 import type { AccessoryUsageType } from './accessory'
 import type { CustomerPointsSource } from './customer-points'
 
-/** 共同结算仅提交销售事实，采购成本由后端原批次核算。 */
+/** 共同结算提交手机销售事实及本次出库确认的入库成本。 */
 export interface CheckoutPhone {
   phone_id: number
   sale_price: number
   label: string
+  purchase_cost?: number | null
 }
 /** 快速出库的待创建设备；真实 phone_id 只能由后端事务生成。 */
 export interface CheckoutQuickPhone {
@@ -92,7 +93,7 @@ export interface SalesCheckoutInput {
   store_id: number
   operator_id: number
   customer_info: { name: string; phone: string; apple_id?: string }
-  phones: Array<Pick<CheckoutPhone, 'phone_id' | 'sale_price'>>
+  phones: Array<Pick<CheckoutPhone, 'phone_id' | 'sale_price' | 'purchase_cost'>>
   quick_phone?: CheckoutQuickPhone
   film_service?: { customer_id: number; phone_id: number; mode: 'free'; quantity: number; accessory_id?: number } | { customer_id: number; phone_id: number; mode: 'paid' }
   accessories: CheckoutGoodsItem[]

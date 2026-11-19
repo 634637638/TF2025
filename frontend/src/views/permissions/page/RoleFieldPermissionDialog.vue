@@ -22,23 +22,46 @@
           />
 
           <template v-else>
-            <el-button
-              v-for="module in modules"
-              :key="module.module_key || module.key"
-              native-type="button"
-              class="tf-button--content module-item-grid"
-              :aria-pressed="selectedModuleKey === getModuleKey(module)"
-              :title="module.name"
-              :disabled="saving"
-              @click="emit('selectModule', module)"
+            <section
+              v-for="group in fieldModuleGroups"
+              :key="group.key"
+              class="field-module-group"
             >
-              <div class="module-icon">
-                <IconRenderer :icon="module.icon" />
+              <div
+                v-if="!group.standalone"
+                class="field-module-group__heading"
+              >
+                <IconRenderer :icon="group.parent?.icon || 'fas fa-cube'" />
+                <span>{{ group.parent?.name || group.title }}</span>
+                <span class="field-module-group__badge">母模块</span>
               </div>
-              <div class="module-name">
-                {{ module.name }}
+              <div :class="['field-module-group__items', { 'has-children': !group.standalone }]">
+                <el-button
+                  v-for="module in group.modules"
+                  :key="getModuleKey(module)"
+                  native-type="button"
+                  :class="[
+                    'tf-button--content module-item-grid',
+                    { 'module-item-grid--child': !group.standalone && getModuleKey(module) !== getModuleKey(group.parent!) }
+                  ]"
+                  :aria-pressed="selectedModuleKey === getModuleKey(module)"
+                  :title="module.name"
+                  :disabled="saving"
+                  @click="emit('selectModule', module)"
+                >
+                  <div class="module-icon">
+                    <IconRenderer :icon="module.icon" />
+                  </div>
+                  <div class="module-name">
+                    {{ module.name }}
+                  </div>
+                  <span
+                    v-if="!group.standalone && getModuleKey(module) !== getModuleKey(group.parent!)"
+                    class="field-module-group__badge field-module-group__badge--child"
+                  >子模块</span>
+                </el-button>
               </div>
-            </el-button>
+            </section>
           </template>
         </div>
       </div>
@@ -272,7 +295,16 @@
 import { computed } from 'vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import SectionLoading from '@/components/SectionLoading.vue'
+import { PERMISSION_PAGE_GROUPS } from './permission-page-groups'
 import type { FieldDefinition, FieldGroup, RoleFieldModule } from '../types'
+
+type FieldModuleGroup = {
+  key: string
+  title: string
+  parent: RoleFieldModule | null
+  modules: RoleFieldModule[]
+  standalone: boolean
+}
 
 const props = defineProps<{
   configReady?: boolean
@@ -320,6 +352,53 @@ const selected = computed({
 
 const selectedFieldSet = computed(() => new Set(props.selectedFields))
 const selectedModuleKey = computed(() => props.selectedModule ? getModuleKey(props.selectedModule) : '')
+const fieldModuleGroups = computed<FieldModuleGroup[]>(() => {
+  const modules = props.modules
+  const moduleMap = new Map(modules.map(module => [getModuleKey(module), module]))
+  const modulePositions = new Map(modules.map((module, index) => [getModuleKey(module), index]))
+  const consumed = new Set<string>()
+  const groups: FieldModuleGroup[] = []
+
+  PERMISSION_PAGE_GROUPS.forEach(config => {
+    const parent = moduleMap.get(config.parentKey)
+    if (!parent) return
+
+    consumed.add(config.parentKey)
+    const childKeys = new Set(config.childKeys)
+    const children = config.childKeys
+      .map(key => moduleMap.get(key))
+      .filter((module): module is RoleFieldModule => Boolean(module))
+    children.forEach(child => consumed.add(getModuleKey(child)))
+
+    modules.forEach(module => {
+      const key = getModuleKey(module)
+      if (!consumed.has(key) && key.startsWith(config.prefix) && key !== config.parentKey && !childKeys.has(key)) {
+        children.push(module)
+        consumed.add(key)
+      }
+    })
+
+    groups.push({
+      key: config.parentKey,
+      title: config.title,
+      parent,
+      modules: [parent, ...children.sort((left, right) =>
+        (modulePositions.get(getModuleKey(left)) ?? modules.length) -
+        (modulePositions.get(getModuleKey(right)) ?? modules.length))],
+      standalone: false
+    })
+  })
+
+  modules.forEach(module => {
+    const key = getModuleKey(module)
+    if (consumed.has(key)) return
+    groups.push({ key, title: module.name, parent: null, modules: [module], standalone: true })
+  })
+
+  return groups.sort((left, right) =>
+    (modulePositions.get(getModuleKey(left.modules[0])) ?? modules.length) -
+    (modulePositions.get(getModuleKey(right.modules[0])) ?? modules.length))
+})
 const getFieldState = (field: FieldDefinition) => {
   if (selectedFieldSet.value.has(field.id)) return 'hidden'
   if (!field.editable || props.readonlyFields?.includes(field.id) ||

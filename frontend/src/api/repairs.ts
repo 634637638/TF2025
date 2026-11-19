@@ -38,9 +38,6 @@ export const repairsApi = {
     params: { keyword, page: 1, page_size: CUSTOMER_SEARCH_PAGE_SIZE },
     useCache: false
   }),
-  createCustomer: (data: { name: string; phone: string }) => (
-    unifiedApi.post<{ id: number; name: string; phone: string }>('/repairs/customers', data)
-  ),
   searchDevices: (keyword: string) => unifiedApi.get<RepairDeviceSearchResult[]>('/repairs/devices/search', {
     params: { q: keyword },
     useCache: false

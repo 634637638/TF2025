@@ -14,7 +14,7 @@ const goodsMap = { accessory_id: 'basic_info.name', quantity: 'stock_info.total_
   redeem_points: 'price_info.unit_price', gift_return_unit_price: 'price_info.unit_price', serial_numbers: 'basic_info.serial_number', sale_type: 'basic_info.usage_type' }
 
 class SalesCheckoutController {
-  constructor({ service = new SalesCheckoutService(), phoneAccess = phoneFields, goodsAccess = goodsFields, queryGoodsAccess = queryGoodsFields,
+  constructor({ service = new SalesCheckoutService({ autoFilm: true }), phoneAccess = phoneFields, goodsAccess = goodsFields, queryGoodsAccess = queryGoodsFields,
     customerAccess = new FieldAccessService({ moduleKey: 'customers_customersview', strict: true }),
     queryAccess = new FieldAccessService({ moduleKey: 'query_queryview', strict: true }),
     filmAccess = new FieldAccessService({ moduleKey: 'accessories_accessoriesview', strict: true }), permissionCheck = hasUnifiedPermission, logger = log } = {}) {
@@ -91,7 +91,9 @@ class SalesCheckoutController {
       await denied(this.phoneAccess, body, phoneMap)
       await denied(this.phoneAccess, body.customer_info, customerMap)
       await denied(this.phoneAccess, body.payment_info, { payment_method: 'sale.payment_method', payment_channel: 'sale.payment_method', transaction_no: 'sale.transaction_no' })
-      for (const row of Array.isArray(body.phones) ? body.phones : []) await denied(this.phoneAccess, row, { sale_price: 'sale.sale_price' })
+      for (const row of Array.isArray(body.phones) ? body.phones : []) await denied(this.phoneAccess, row, {
+        sale_price: 'sale.sale_price', purchase_cost: 'sale.purchase_cost'
+      })
       if (body.quick_phone !== undefined) await denied(this.phoneAccess, body.quick_phone, {
         brand_id: 'sale.brand', model_id: 'sale.model', color_id: 'sale.color', memory_id: 'sale.memory',
         supplier_id: 'sale.supplier_id', imei: 'sale.imei', serial_number: 'sale.serial_number', is_new: 'sale.condition',

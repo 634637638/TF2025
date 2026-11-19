@@ -124,7 +124,7 @@ PC 默认值：
 
 顶部登录信息卡使用 `--tf-topbar-user-info-max-width` 作为统一最大宽度（当前为视口宽度的 `46%`，上限 `360px`），宽度按头像、姓名和角色等实际内容自适应；不得使用 `flex: 1 1 auto` 或 `max-width: none` 把卡片拉伸到顶部剩余空间。窄屏下允许姓名省略，但登录信息卡、锁屏和退出按钮必须同时保持可见。
 
-主应用最顶部栏使用 `.tf-button--topbar`，高度直接跟随公共默认：PC `28px`，手机 `34px` 至 `36px`，不再维护独立的 `32px` 高度或 `64px` 最小宽度。PC 保留图标和文字、左右内边距 `8px`；手机和平板及 `compact-device` 分支只隐藏 `.topbar-button-label`，图标按钮宽度与高度一致，不能隐藏 Element Plus 自动生成的内容容器。锁屏、解锁和退出使用现有组件库图标并保留 `title/aria-label`，不依赖外部字体来显示操作图标。顶部用户信息卡等相邻控件必须使用同一个 `--tf-topbar-control-height` 变量，确保与按钮等高。按钮间距为公共 `4px`，清除 Element Plus 相邻按钮默认外边距；顶部右侧只保留一层 `--tf-space-2`（8px）留白，不叠加顶部栏与操作区的内边距。顶部按钮容器使用专用名称（当前为 `.topbar-buttons`），不得使用保留给表格操作区的 `.action-buttons`。浏览器入口为 `npm --prefix frontend run test:topbar:browser`。
+主应用最顶部栏使用 `.tf-button--topbar`，高度直接跟随公共默认：PC `28px`，手机 `34px` 至 `36px`，不再维护独立的 `32px` 高度或 `64px` 最小宽度。PC 保留图标和文字、左右内边距 `8px`；顶部锁屏/退出图标字号使用公共 `--tf-topbar-icon-size`（当前 `16px`），图标与文字间距统一为 `4px`，不叠加 Element Plus 图标后文字默认外边距，按钮宽度按内容自然适配。手机和平板及 `compact-device` 分支只隐藏 `.topbar-button-label`，图标按钮宽度与高度一致，不能隐藏 Element Plus 自动生成的内容容器。锁屏、解锁和退出使用现有组件库图标并保留 `title/aria-label`，不依赖外部字体来显示操作图标。顶部用户信息卡等相邻控件必须使用同一个 `--tf-topbar-control-height` 变量，确保与按钮等高。按钮间距为公共 `4px`，清除 Element Plus 相邻按钮默认外边距；顶部右侧只保留一层 `--tf-space-2`（8px）留白，不叠加顶部栏与操作区的内边距。顶部按钮容器使用专用名称（当前为 `.topbar-buttons`），不得使用保留给表格操作区的 `.action-buttons`。浏览器入口为 `npm --prefix frontend run test:topbar:browser`。
 
 PC 顶部登录时间使用 `--tf-type-scale-13`（13px），保证时间信息清晰可读；平板和手机隐藏时间信息，为用户信息及操作按钮保留空间。
 
