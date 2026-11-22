@@ -78,7 +78,7 @@ async function runMigration(db) {
   await ensureDataCheckBackupSchema(db)
   await db.query(`
     CREATE TABLE IF NOT EXISTS invoice_sequences (
-      sequence_date CHAR(8) NOT NULL,
+      sequence_date CHAR(12) NOT NULL,
       type_suffix VARCHAR(4) NOT NULL,
       current_sequence INT UNSIGNED NOT NULL DEFAULT 0,
       PRIMARY KEY (sequence_date, type_suffix)

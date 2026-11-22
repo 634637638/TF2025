@@ -99,6 +99,8 @@ class SalesGoodsReturnService {
     }
   }
 
+  async prepareTransaction() {}
+
   /** 仅核对原单剩余件数/SN；不把当前可选状态作为未来提交的授权凭据。 */
   async context(orderId, itemId, actor) {
     if (!getActorId(actor)) reject('请先登录', 'UNAUTHORIZED', 401)
@@ -144,6 +146,7 @@ class SalesGoodsReturnService {
       for (let attempt = 0; attempt < 3; attempt++) {
         let started = false, rollbackOnly = quote, result
         try {
+          await this.prepareTransaction(connection, input)
           await connection.beginTransaction()
           started = true
           const previous = await this.repository.request(connection, input.request_key)

@@ -64,6 +64,7 @@
     "rotate:price-sync-encryption-key": "node scripts/rotate-price-sync-encryption-key.js",
     "migrate:customer-token-hashes": "node scripts/migrate-customer-token-hashes.js",
     "repair:sale-invoice-integrity": "node scripts/repair-duplicate-sale-invoice-numbers.js",
+    "repair:document-numbers": "node scripts/repair-legacy-document-numbers.js",
     "backfill:phone-relations": "node scripts/backfill-phone-relations.js",
     "backfill:sale-invoice-numbers": "node scripts/backfill-sale-invoice-numbers.js",
     "dev": "nodemon server.js",

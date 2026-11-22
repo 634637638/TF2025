@@ -18,7 +18,7 @@ import logger from '@/utils/logger'
 import { clearCache as clearPageCache } from '@/composables/usePageCache'
 import type { CacheScope } from '@/composables/page-cache-store'
 import { useLoadingStore } from '@/stores/loading'
-import { extractBlobResponse } from './download-response'
+import { extractBlobResponse, normalizeDownloadUrl } from './download-response'
 import { resolveRequestLoadingText } from './loading-text'
 
 // API基础配置
@@ -1470,7 +1470,7 @@ class UnifiedApiManager {
    * 下载文件
    */
   download(url: string, filename?: string, config?: RequestConfig): Promise<void> {
-    return this.instance.get<Blob>(url, {
+    return this.instance.get<Blob>(normalizeDownloadUrl(url, API_CONFIG.baseURL), {
       ...config,
       responseType: 'blob'
     }).then((response: AxiosResponse<Blob> | Blob) => {

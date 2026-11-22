@@ -142,21 +142,25 @@ const readPrintedReceipt = async page => {
 }
 
 const verifyReceipt = async (page, temporary, errors) => {
-  const expected = ['原单通用充电器长名称完整显示', '原赠膜', '购买', '赠品', '原单约定 ¥12.34/件，合计 ¥12.34', '实际扣款以售后核对为准', '498积分', '实收 ¥35.02', '3件配件', '135.03', '000SN1234567890'.repeat(4)]
+  const expected = ['原单通用充电器长名称完整显示', '原赠膜', '购买', '赠品', '配件 / 赠品明细', '实收 ¥35.02', '实收 ¥0', '3件配件', '135.03', '000SN1234567890'.repeat(4)]
   await page.waitForFunction(() => {
     // 先完成真实主题过渡，再比较导出前后的颜色，避免把过渡中间值当作最终主题。
     getComputedStyle(document.querySelector('.table-number-badge')).backgroundColor
     return document.getAnimations().every(animation => animation.playState !== 'running' || animation.effect.getComputedTiming().iterations === Infinity)
   })
   const rendered = await page.$eval('[data-receipt-export]', element => ({ text: element.textContent,
+    conditionClass: element.querySelector('.receipt-phone-spec .condition-badge')?.className || '',
     badgeColor: getComputedStyle(element.querySelector('.table-number-badge')).backgroundColor,
     overflow: document.documentElement.scrollWidth > innerWidth + 1,
     totalsClipped: [...element.querySelectorAll('.totals-bar strong')].some(element => {
       const rect = element.getBoundingClientRect(), parent = element.parentElement.getBoundingClientRect()
       return rect.left < parent.left - 1 || rect.right > parent.right + 1 || rect.top < parent.top - 1 || rect.bottom > parent.bottom + 1
     }),
-    clipped: [...element.querySelectorAll('.cell-stack')].filter(cell => cell.scrollWidth > cell.clientWidth + 2).map(cell => cell.textContent) }))
+    clipped: [...element.querySelectorAll('.cell-stack, .accessory-product-cell, .accessory-linked-cell, .accessory-amount-cell, .receipt-phone-spec')].filter(cell => cell.scrollWidth > cell.clientWidth + 2).map(cell => cell.textContent) }))
   for (const value of expected) assert.ok(rendered.text.includes(value), value)
+  assert.ok(!rendered.text.includes('原价'), '凭证不应展示原价')
+  assert.ok(rendered.text.includes('128G/全新'), '手机规格分隔及全新状态文案不完整')
+  assert.match(rendered.conditionClass, /condition-new/, '全新成色未使用公共语义颜色')
   assert.equal(rendered.overflow, false, '凭证页面横向溢出')
   assert.equal(rendered.totalsClipped, false, '合计栏文字超出所属字段')
   assert.deepEqual(rendered.clipped, [], '长名称或SN被截断')
@@ -170,7 +174,8 @@ const verifyReceipt = async (page, temporary, errors) => {
   })
   const printed = await readPrintedReceipt(page)
   for (const value of expected) assert.ok(printed.text.includes(value), `打印缺少 ${value}`)
-  assert.equal(printed.tables, 2); assert.equal(printed.clipped, false); assert.equal(printed.totalsClipped, false)
+  assert.ok(!printed.text.includes('原价'), '打印不应展示原价')
+  assert.equal(printed.tables, 1); assert.equal(printed.clipped, false); assert.equal(printed.totalsClipped, false)
 
   const session = await page.createCDPSession()
   const downloads = await mkdtemp(join(temporary, 'receipt-downloads-'))
@@ -240,7 +245,7 @@ const verifyReceipt = async (page, temporary, errors) => {
   await page.waitForFunction(() => document.body.textContent.includes('手机乙赠品') && document.body.textContent.includes('235.04'))
   const combined = await readPrintedReceipt(page)
   for (const value of ['手机甲', '手机乙赠品', '2台', '4件配件', '235.04']) assert.ok(combined.text.includes(value), `合并凭证缺少 ${value}`)
-  assert.equal(combined.tables, 2); assert.equal(combined.clipped, false); assert.equal(combined.totalsClipped, false)
+  assert.equal(combined.tables, 1); assert.equal(combined.clipped, false); assert.equal(combined.totalsClipped, false)
 }
 let server, browser
 try {

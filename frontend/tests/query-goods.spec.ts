@@ -65,7 +65,14 @@ it('展示商品销售类型、数量、原单和客户，未知成本保持空�
   expect(wrapper.text()).toContain('获得积分')
   expect(wrapper.text()).not.toContain('累计积分')
   expect(wrapper.find('.status-badge.status-warning').text()).toBe('赠送')
-  expect(wrapper.findAll('th .cell').some(cell => cell.text() === '销售')).toBe(true)
+  const columnLabels = wrapper.findAll('th .cell').map(cell => cell.text())
+  expect(columnLabels.slice(1, 9)).toEqual(['销售店铺', '销售时间', '品牌', '商品名称', '商品类型', '销售', '客户姓名', '手机号'])
+  expect(columnLabels.slice(9, -1)).toEqual(['数量', '已退数量', '销售价', '实收', '成本', '抵扣金额', '获得积分', '销售员'])
+  expect(columnLabels).not.toContain('商品单号')
+  expect(columnLabels).not.toContain('未退数量')
+  expect(columnLabels).not.toContain('配件型号')
+  expect(columnLabels).not.toContain('利润')
+  expect(columnLabels).not.toContain('抵扣积分')
   expect(wrapper.text()).toContain('13900000001')
   expect(wrapper.text()).not.toContain('¥NaN')
   expect(wrapper.findComponent(Pagination).props('total')).toBe(125)
@@ -79,7 +86,7 @@ it('商品退货只针对有权限的共同原单，成功后立即重读数量�
   mocks.returnPermission = true
   mocks.get.mockResolvedValueOnce(result([row({ order_id: 10, order_item_id: 50, returned_quantity: 1, remaining_quantity: 1 })]))
   const wrapper = await render()
-  expect(wrapper.text()).toContain('已退数量'); expect(wrapper.text()).toContain('实际收款')
+  expect(wrapper.text()).toContain('已退数量'); expect(wrapper.text()).toContain('实收')
   await button(wrapper, '退货').trigger('click'); await flushPromises()
   expect(wrapper.findComponent(ReturnDialog).props('sale').order_item_id).toBe(50)
   const calls = mocks.get.mock.calls.length
@@ -184,18 +191,35 @@ it('销售员远程搜索取消旧请求，迟到结果不能覆盖新关键词'
 
 it('查看成交资料、SN和原采购批次，关闭详情后不保留旧内容', async () => {
   const wrapper = await render()
-  mocks.get.mockResolvedValueOnce({ data: { ...row(), serial_numbers: ['SN001', 'SN002'], batches: [{ id: 9, batch_no: 'IN001', supplier_name: '原采购商', quantity: 2, purchase_cost: '12.50' }] } })
+  mocks.get.mockResolvedValueOnce({ data: { ...row({ remaining_quantity: 1, profit: '15.00' }), serial_numbers: ['SN001', 'SN002'], batches: [{ id: 9, batch_no: 'IN001', supplier_name: '原采购商', quantity: 2, purchase_cost: '12.50' }] } })
   await button(wrapper, '详情').trigger('click'); await flushPromises()
   expect(mocks.get).toHaveBeenLastCalledWith('/query/goods/51', expect.objectContaining({ useCache: false }))
-  expect(wrapper.find('.dialog').text()).toContain('销售时资料')
+  expect(wrapper.find('.dialog').text()).not.toContain('销售时资料')
   expect(wrapper.find('.dialog .goods-detail__overview').exists()).toBe(true)
   expect(wrapper.find('.dialog .goods-detail__metrics').exists()).toBe(true)
   expect(wrapper.find('.dialog').text()).toContain('销售与客户')
   expect(wrapper.find('.dialog').text()).toContain('商品与规格')
   expect(wrapper.find('.dialog').text()).toContain('关联单据')
-  expect(wrapper.findAll('.goods-detail__descriptions--cards')).toHaveLength(3)
+  expect(wrapper.find('.dialog .goods-detail__compact-grid--documents').text()).toContain('商品单号')
+  expect(wrapper.find('.dialog .goods-detail__compact-grid--documents').text()).toContain('共同单号')
+  expect(wrapper.find('.dialog .goods-detail__compact-grid--documents').text()).toContain('关联手机单号')
+  const documentFields = wrapper.find('.dialog .goods-detail__compact-grid--documents').findAll('.goods-detail__compact-field')
+  expect(documentFields.map(field => field.text())).toEqual([
+    '商品单号AS001', '共同单号SO001', '备注整批公共备注', '关联手机单号PHONE001', 'SNSN001、SN002', '销售时间2026-11-13 10:00:00'
+  ])
+  expect(wrapper.find('.dialog').text()).toContain('商品单号')
+  expect(wrapper.find('.dialog').text()).toContain('未退数量')
+  expect(wrapper.find('.dialog').text()).toContain('配件型号')
+  expect(wrapper.find('.dialog').text()).toContain('利润')
+  expect(wrapper.find('.dialog').text()).toContain('¥15')
+  expect(wrapper.find('.dialog').text()).toContain('抵扣积分')
+  expect(wrapper.find('.dialog').text()).toContain('抵扣金额')
+  expect(wrapper.find('.dialog .goods-detail__compact-grid--documents').exists()).toBe(true)
+  expect(wrapper.find('.dialog .goods-detail__compact-grid--documents').text()).toContain('共同单号')
   expect(wrapper.find('.dialog').text()).toContain('SN001、SN002')
   expect(wrapper.find('.dialog').text()).toContain('原采购商')
+  expect(wrapper.find('.dialog').text()).toContain('入库批次')
+  expect(wrapper.find('.dialog').text()).toContain('IN001')
   expect(wrapper.find('.dialog').text()).toContain('¥12.5')
   expect(wrapper.find('.dialog').text()).toContain('整批公共备注')
   await button(wrapper, '关闭').trigger('click'); await flushPromises()
@@ -210,17 +234,20 @@ it('旧单明确显示当前档案，不把现行名称冒充销售快照', asyn
   expect(wrapper.findComponent(History).exists()).toBe(false)
 })
 
-it('手机商品详情使用字段卡片，长名称和客户手机号独占整行', async () => {
+it('手机商品详情使用紧凑信息面板，保留销售和客户字段', async () => {
   isMobile.value = true
   vi.stubGlobal('innerWidth', 390)
   const wrapper = await render()
   mocks.get.mockResolvedValueOnce({ data: { ...row(), serial_numbers: [], batches: [] } })
   wrapper.findComponent(ElTable).vm.$emit('row-dblclick', row()); await flushPromises()
-  const labels = wrapper.find('.dialog').findAll('.el-descriptions__label')
-  for (const label of ['商品名称', '客户手机号']) {
-    expect(labels.find(cell => cell.text() === label)?.attributes('colspan')).toBe('2')
-  }
-  expect(labels.find(cell => cell.text() === '商品类型')?.attributes('colspan')).toBe('1')
+  expect(wrapper.findAll('.dialog .goods-detail__compact-grid')).toHaveLength(4)
+  expect(wrapper.find('.dialog .goods-detail__compact-grid--customer').text()).toContain('客户手机号')
+  expect(wrapper.find('.dialog .goods-detail__compact-grid--customer').text()).toContain('13900000001')
+  const productFields = wrapper.find('.dialog .goods-detail__compact-grid--product').findAll('.goods-detail__compact-field')
+  expect(productFields.map(field => field.text())).toEqual([
+    '商品名称原单充电器', '商品类型充电头', '品牌苹果', '配件型号MWVW3CH', '条形码690001', '颜色白色'
+  ])
+  expect(wrapper.find('.dialog .goods-detail__compact-grid').text()).toContain('销售门店')
 })
 
 it('商品换货入口独立于退货权限，传入原单和换货模式，成功后无缓存刷新', async () => {
@@ -316,7 +343,7 @@ it('隐藏客户、价格和门店字段不展示，也不读取门店选项或�
   for (const field of ['customer_info.customer_phone', 'price_info.purchase_cost', 'stock_info.distribution']) mocks.hidden.add(field)
   const wrapper = await render()
   expect(wrapper.text()).not.toContain('13900000001')
-  expect(wrapper.text()).not.toContain('总成本')
+  expect(wrapper.text()).not.toContain('成本')
   expect(wrapper.text()).not.toContain('销售门店')
   expect(mocks.stores).not.toHaveBeenCalled()
   expect(mocks.get.mock.calls[0][1].params.store_id).toBeUndefined()

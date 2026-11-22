@@ -51,6 +51,18 @@ it('商品管理撤销查看后，即使保留销售和赠送动作仍拒绝', (
   expect(['view', 'create', 'gift'].map(access.hasPermission)).toEqual([false, false, false])
 })
 
+it('综合查询商品销售固定使用查询权限来源，即使角色也能查看商品管理', () => {
+  const access = useGoodsPermissions('query')
+  granted.add('accessories:view')
+  granted.add('query:view'); granted.add('query:goods-view'); granted.add('query:goods-sell')
+
+  expect([access.source.value, access.canView.value, access.canCreate.value, access.canGift.value]).toEqual([
+    'query', true, true, false
+  ])
+  expect(access.hasPermission('create')).toBe(true)
+  expect(access.hasPermission('gift')).toBe(false)
+})
+
 it('商品模式字段只读独立范围，配件、手机同名字段不会交叉限制', () => {
   fieldRules.hidden.set('accessories_accessoriesview', new Set(['customer_info.customer_phone']))
   fieldRules.hidden.set('query_queryview', new Set(['basic_info.name']))

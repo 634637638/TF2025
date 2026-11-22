@@ -977,7 +977,7 @@ function matchProductName(externalName) {
   // iPhone 关键字匹配 - 返回数据库中实际使用的型号名称
   if (normalizedInput.includes('iphone')) {
     if (normalizedInput.includes('duo')) {
-      return { brand: '苹果', model: 'iPhone Duo', external_model: null, category: 'phone' }
+      return { brand: '苹果', model: 'iPhone Duo', external_model: 'A3721', category: 'phone' }
     }
     // iPhone 18 系列。Pro Max 的外部代码已从数据源确认，其他型号在确认代码前按名称匹配。
     if (normalizedInput.includes('18')) {
@@ -1038,7 +1038,7 @@ function matchProductName(externalName) {
   if (/^\d/.test(normalizedInput)) {
     if (normalizedInput.includes('18')) {
       if (normalizedInput.includes('duo')) {
-        return { brand: '苹果', model: 'iPhone Duo', external_model: null, category: 'phone' }
+        return { brand: '苹果', model: 'iPhone Duo', external_model: 'A3721', category: 'phone' }
       }
       if (normalizedInput.includes('promax') || (normalizedInput.includes('pro') && normalizedInput.includes('max'))) {
         return { brand: '苹果', model: '18promax', external_model: 'A3718', category: 'phone' }

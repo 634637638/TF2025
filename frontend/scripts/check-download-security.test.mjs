@@ -18,7 +18,23 @@ const loadDownloadResponseModule = async () => {
   return import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 }
 
-const { extractBlobResponse } = await loadDownloadResponseModule()
+const { extractBlobResponse, normalizeDownloadUrl } = await loadDownloadResponseModule()
+
+test('下载地址移除与 Axios baseURL 重复的 API 前缀并保留签名参数', () => {
+  const signedUrl = '/api/subsidy/files/subsidy/photo.jpg?user=7&expires=123&signature=abc'
+  assert.equal(
+    normalizeDownloadUrl(signedUrl, '/api'),
+    '/subsidy/files/subsidy/photo.jpg?user=7&expires=123&signature=abc'
+  )
+})
+
+test('下载地址不重复移除普通 API 路径或重写绝对 URL', () => {
+  const relativeUrl = '/subsidy/files/subsidy/photo.jpg'
+  const absoluteUrl = 'https://files.example.test/api/subsidy/photo.jpg?signature=abc'
+  assert.equal(normalizeDownloadUrl(relativeUrl, '/api'), relativeUrl)
+  assert.equal(normalizeDownloadUrl(absoluteUrl, '/api'), absoluteUrl)
+  assert.equal(normalizeDownloadUrl('/api/subsidy/photo.jpg', 'https://api.example.test/api'), '/subsidy/photo.jpg')
+})
 
 test('下载响应接受 200 文件 Blob', () => {
   const image = new Blob(['jpeg-data'], { type: 'image/jpeg' })

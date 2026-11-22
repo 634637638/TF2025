@@ -29,6 +29,9 @@ test('公共字段写入校验同时执行隐藏、只读和显式可编辑范�
   }
   assert.equal(await service.getDeniedWrite(7, { price: 0 }, map), undefined)
   assert.equal(await service.getDeniedWrite(7, {}, map), undefined)
+  assert.equal(await service.getDeniedWrite(7, { readonly: 0 }, map, { visibleOnly: true }), undefined)
+  assert.equal(await service.getDeniedWrite(7, { other: 0 }, map, { visibleOnly: true }), undefined)
+  assert.equal(await service.getDeniedWrite(7, { cost: 0 }, map, { visibleOnly: true }), 'cost')
   const permissions = await service.getPermissions(7)
   assert.equal(service.maskPayload({ readonly: 1 }, permissions).readonly, 1)
 })

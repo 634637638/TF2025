@@ -48,6 +48,9 @@ afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.r
 it('详情按原商品销售ID读取售后数量/SN/原资金及积分事实，使用公共支付和北京时间展示', async () => {
   const wrapper = await render()
   expect(mocks.get).toHaveBeenCalledWith('/query/goods/51/aftersales', expect.objectContaining({ params: { page: 1, page_size: 20 }, useCache: false, showLoading: false, showError: false }))
+  expect(wrapper.text()).not.toContain('仅展示原销售门店与办理门店均在授权范围内的记录')
+  expect(wrapper.findAll('th .cell').map(cell => cell.text())).toContain('办理人')
+  expect(wrapper.text()).not.toContain('办理人（当前姓名）')
   for (const text of ['ORIGINAL-SN', '原单退货接收店', '办理员', '质量问题', '独立售后备注', '¥9.7', '¥0.3', '-2', '移动支付 / 微信', '2026-11-13 10:00', '2026-11-13 10:01']) expect(wrapper.text()).toContain(text)
   expect(wrapper.find('.table-number-badge').text()).toBe('1')
   expect(wrapper.findComponent(Pagination).props('total')).toBe(1)

@@ -153,6 +153,8 @@ async function fixture({ serial = false, gift = false, redemption = 0, award = 0
   })
   const service = new ExchangeService({ repository: repo, accessories: f.service, pointsLedger: f.pointsLedger,
     tableExists: async () => true, columnExists: async () => true, permissionCheck: async (user, permission) => !['query:goods-sell', 'query:goods-gift'].includes(permission) && !denied.includes(permission), now: () => time })
+  service.prepareTransaction = async () => {}
+  service.checkout.createOrderNo = async () => `SO261113${String(f.state.orders.length + 1).padStart(8, '0')}`
   service.checkout.getPointsConfig = async () => normalizePointsConfig({ include_accessories: true, accessory_points_per_100: pointsRate, redemption: { enabled: true,
     points_per_yuan: 10, max_percent: 100, sources: ['accessory'], all_accessory_categories: true } })
   const creditPoints = service.checkout.creditPoints

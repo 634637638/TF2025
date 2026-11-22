@@ -374,7 +374,13 @@
               :label="filmCustomerId ? '销售时间' : '销售日期'"
               required
             >
+              <el-input
+                v-if="filmCustomerId"
+                model-value="提交时自动记录当前时间"
+                readonly
+              />
               <el-date-picker
+                v-else
                 v-model="form.sale_time"
                 type="date"
                 :value-format="TIME_FORMATS.DATE"
@@ -667,7 +673,7 @@ const enterCheckout = () => {
   checkoutStep.value = 'payment'
 }
 const auth = useAuthStore()
-const permissions = useGoodsPermissions()
+const permissions = useGoodsPermissions(props.filmCustomerId ? 'accessories' : props.fieldSource)
 const phonePermissions = usePagePermissions('sales')
 const inventoryPermissions = usePagePermissions('inventory')
 const queryPermissions = usePagePermissions('query')

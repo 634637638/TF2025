@@ -186,9 +186,9 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-for="column in columns"
+            v-for="column in tableColumns"
             :key="column.key"
-            :label="column.label"
+            :label="tableColumnLabel(column)"
             :min-width="column.width"
             align="center"
           >
@@ -283,7 +283,6 @@
         <div class="goods-detail">
           <section class="goods-detail__overview">
             <div class="goods-detail__identity">
-              <span class="goods-detail__eyebrow">商品资料</span>
               <h2 v-if="visible('name')">
                 {{ detail.name || '-' }}
               </h2>
@@ -292,8 +291,11 @@
                 <span v-if="visible('brand_name')">{{ detail.brand_name || '-' }}</span>
                 <span v-if="visible('product_model')">{{ detail.product_model || '-' }}</span>
               </div>
-              <span class="goods-detail__snapshot-note">
-                {{ detail.has_snapshot ? '销售时资料' : '当前档案（原单无资料快照）' }}
+              <span
+                v-if="!detail.has_snapshot"
+                class="goods-detail__snapshot-note"
+              >
+                当前档案（原单无资料快照）
               </span>
             </div>
             <span
@@ -312,7 +314,7 @@
               v-if="visible('total_price')"
               class="goods-detail__metric goods-detail__metric--primary"
             >
-              <span>实际收款</span>
+              <span>实收</span>
               <strong>{{ display(detail.total_price, 'money') }}</strong>
             </div>
             <div
@@ -340,75 +342,74 @@
 
           <section class="goods-detail__section">
             <div class="goods-detail__section-heading">
-              <div>
-                <span class="goods-detail__eyebrow">交易信息</span>
-                <h3>销售与客户</h3>
-              </div>
-              <span class="goods-detail__section-hint">成交时记录</span>
+              <h3>销售与客户</h3>
             </div>
-            <RecordDescriptions
-              :column="detailDescriptionColumns"
-              direction="vertical"
-              class="goods-detail__descriptions goods-detail__descriptions--cards"
-            >
-              <el-descriptions-item
-                v-for="column in columns.filter(item => ['store_name', 'customer_name', 'customer_phone', 'returned_quantity', 'remaining_quantity', 'unit_price', 'purchase_cost', 'points_used', 'deduction_amount', 'operator_name', 'sale_time'].includes(item.key))"
-                :key="column.key"
-                :label="column.label"
-                :span="column.key === 'customer_phone' ? 2 : 1"
+            <div class="goods-detail__compact-panel goods-detail__compact-panel--sale-customer">
+              <div class="goods-detail__compact-grid">
+                <div
+                v-for="column in columns.filter(item => ['store_name', 'returned_quantity', 'remaining_quantity', 'unit_price', 'purchase_cost', 'points_used', 'deduction_amount', 'operator_name'].includes(item.key))"
+                  :key="column.key"
+                  class="goods-detail__compact-field"
+                >
+                  <span>{{ column.label }}</span>
+                  <strong :class="{ 'goods-detail__long-value': ['store_name', 'operator_name'].includes(column.key) }">
+                    {{ display(detail[column.key], column.format) }}
+                  </strong>
+                </div>
+              </div>
+              <div
+                v-if="columns.some(item => ['customer_name', 'customer_phone'].includes(item.key))"
+                class="goods-detail__compact-grid goods-detail__compact-grid--customer"
               >
-                <span :class="{ 'goods-detail__long-value': ['customer_phone', 'store_name', 'operator_name'].includes(column.key) }">
-                  {{ display(detail[column.key], column.format) }}
-                </span>
-              </el-descriptions-item>
-            </RecordDescriptions>
+                <div
+                  v-for="column in columns.filter(item => ['customer_name', 'customer_phone'].includes(item.key))"
+                  :key="column.key"
+                  class="goods-detail__compact-field"
+                >
+                  <span>{{ column.label }}</span>
+                  <strong class="goods-detail__long-value">{{ display(detail[column.key], column.format) }}</strong>
+                </div>
+              </div>
+            </div>
           </section>
 
           <section class="goods-detail__section">
-            <div class="goods-detail__section-heading">
-              <div>
-                <span class="goods-detail__eyebrow">商品属性</span>
-                <h3>商品与规格</h3>
+            <div class="goods-detail__section-heading goods-detail__section-heading--accent">
+              <h3>商品与规格</h3>
+            </div>
+            <div class="goods-detail__compact-panel goods-detail__compact-panel--product">
+              <div class="goods-detail__compact-grid goods-detail__compact-grid--product">
+                <div
+                  v-if="visible('name')"
+                  class="goods-detail__compact-field"
+                >
+                  <span>商品名称</span>
+                  <strong class="goods-detail__long-value">{{ detail.name || '-' }}</strong>
+                </div>
+                <div
+                  v-for="column in columns.filter(item => ['category', 'brand_name', 'product_model'].includes(item.key))"
+                  :key="column.key"
+                  class="goods-detail__compact-field"
+                >
+                  <span>{{ column.label }}</span>
+                  <strong>{{ display(detail[column.key], column.format) }}</strong>
+                </div>
+                <div
+                  v-if="visible('barcode')"
+                  class="goods-detail__compact-field"
+                >
+                  <span>条形码</span>
+                  <strong class="goods-detail__long-value">{{ detail.barcode || '-' }}</strong>
+                </div>
+                <div
+                  v-if="visible('color_name')"
+                  class="goods-detail__compact-field"
+                >
+                  <span>颜色</span>
+                  <strong>{{ detail.color_name || '-' }}</strong>
+                </div>
               </div>
             </div>
-            <RecordDescriptions
-              :column="detailDescriptionColumns"
-              direction="vertical"
-              class="goods-detail__descriptions goods-detail__descriptions--cards"
-            >
-              <el-descriptions-item
-                v-if="visible('name')"
-                label="商品名称"
-                :span="3"
-              >
-                <span class="goods-detail__long-value">{{ detail.name || '-' }}</span>
-              </el-descriptions-item>
-              <el-descriptions-item
-                v-for="column in columns.filter(item => ['category', 'brand_name', 'product_model'].includes(item.key))"
-                :key="column.key"
-                :label="column.label"
-              >
-                {{ display(detail[column.key], column.format) }}
-              </el-descriptions-item>
-              <el-descriptions-item
-                v-if="visible('barcode')"
-                label="条形码"
-              >
-                {{ detail.barcode || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item
-                v-if="visible('color_name')"
-                label="颜色"
-              >
-                {{ detail.color_name || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item
-                v-if="visible('unit')"
-                label="单位"
-              >
-                {{ detail.unit || '-' }}
-              </el-descriptions-item>
-            </RecordDescriptions>
           </section>
 
           <section class="goods-detail__section">
@@ -418,46 +419,50 @@
                 <h3>关联单据</h3>
               </div>
             </div>
-            <RecordDescriptions
-              :column="detailDescriptionColumns"
-              direction="vertical"
-              class="goods-detail__descriptions goods-detail__descriptions--cards"
-            >
-              <el-descriptions-item
+            <div class="goods-detail__compact-grid goods-detail__compact-grid--documents">
+              <div
                 v-if="visible('sequence')"
-                label="商品单号"
+                class="goods-detail__compact-field"
               >
-                {{ detail.sale_no || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item
+                <span>商品单号</span>
+                <strong class="goods-detail__long-value">{{ detail.sale_no || '-' }}</strong>
+              </div>
+              <div
                 v-if="visible('sequence')"
-                label="共同单号"
-                :span="2"
+                class="goods-detail__compact-field"
               >
-                <span class="goods-detail__long-value">{{ detail.order_no || '-' }}</span>
-              </el-descriptions-item>
-              <el-descriptions-item
-                v-if="visible('sequence')"
-                label="关联手机单号"
-                :span="2"
-              >
-                <span class="goods-detail__long-value">{{ detail.linked_phone_invoice || '-' }}</span>
-              </el-descriptions-item>
-              <el-descriptions-item
-                v-if="visible('serial_number')"
-                label="SN"
-                :span="2"
-              >
-                <span class="goods-detail__long-value">{{ detail.serial_numbers?.join('、') || '-' }}</span>
-              </el-descriptions-item>
-              <el-descriptions-item
+                <span>共同单号</span>
+                <strong class="goods-detail__long-value">{{ detail.order_no || '-' }}</strong>
+              </div>
+              <div
                 v-if="visible('remarks')"
-                label="备注"
-                :span="3"
+                class="goods-detail__compact-field"
               >
-                <span class="goods-detail__long-value">{{ detail.remarks || '-' }}</span>
-              </el-descriptions-item>
-            </RecordDescriptions>
+                <span>备注</span>
+                <strong class="goods-detail__long-value">{{ detail.remarks || '-' }}</strong>
+              </div>
+              <div
+                v-if="visible('sequence')"
+                class="goods-detail__compact-field"
+              >
+                <span>关联手机单号</span>
+                <strong class="goods-detail__long-value">{{ detail.linked_phone_invoice || '-' }}</strong>
+              </div>
+              <div
+                v-if="visible('serial_number')"
+                class="goods-detail__compact-field"
+              >
+                <span>SN</span>
+                <strong class="goods-detail__long-value">{{ detail.serial_numbers?.join('、') || '-' }}</strong>
+              </div>
+              <div
+                v-if="visible('created_at')"
+                class="goods-detail__compact-field"
+              >
+                <span>销售时间</span>
+                <strong class="goods-detail__long-value">{{ display(detail.sale_time, 'time') }}</strong>
+              </div>
+            </div>
           </section>
 
           <section class="goods-detail__section">
@@ -489,12 +494,12 @@
                 <el-table-column
                   v-if="visible('total_quantity')"
                   prop="quantity"
-                  label="出库数量"
+                  label="数量"
                   min-width="100"
                 />
                 <el-table-column
                   v-if="visible('purchase_cost')"
-                  label="批次进价"
+                  label="进价"
                   min-width="100"
                 >
                   <template #default="{ row }">
@@ -503,7 +508,7 @@
                 </el-table-column>
                 <el-table-column
                   v-if="visible('usage_type')"
-                  label="入库用途"
+                  label="用户"
                   min-width="100"
                 >
                   <template #default="{ row }">
@@ -617,7 +622,6 @@ import type { DateRangeValue } from '@/types/date-range'
 const { canView: canQuery, hasPermission } = usePagePermissions('query')
 const canGoods = computed(() => hasPermission('goods-view'))
 const { isMobile, isTablet } = useMobile()
-const detailDescriptionColumns = computed(() => isMobile.value || isTablet.value ? 2 : 4)
 const allowed = computed(() => canQuery.value && canGoods.value)
 const SalesGoodsCheckoutDialog = defineAsyncComponent(() => import('@/views/sales/page/SalesGoodsCheckoutDialog.vue'))
 const canSellGoods = computed(() => allowed.value && (hasPermission('goods-sell') || hasPermission('goods-gift')))
@@ -668,6 +672,7 @@ type CellFormat = 'money' | 'time' | 'type'
 interface Column { key: keyof AccessorySaleRecord; label: string; field: AccessoryFieldName; width: number; format?: CellFormat }
 const allColumns: Column[] = [
   { key: 'sale_no', label: '商品单号', field: 'sequence', width: 180 },
+  { key: 'sale_time', label: '销售时间', field: 'created_at', width: 170, format: 'time' },
   { key: 'name', label: '商品名称', field: 'name', width: 160 },
   { key: 'category', label: '商品类型', field: 'category', width: 110 },
   { key: 'brand_name', label: '品牌', field: 'brand_name', width: 100 },
@@ -680,16 +685,25 @@ const allColumns: Column[] = [
   { key: 'returned_quantity', label: '已退数量', field: 'total_quantity', width: 100 },
   { key: 'remaining_quantity', label: '未退数量', field: 'total_quantity', width: 100 },
   { key: 'unit_price', label: '销售价', field: 'unit_price', width: 110, format: 'money' },
-  { key: 'total_price', label: '实际收款', field: 'total_price', width: 110, format: 'money' },
-  { key: 'purchase_cost', label: '总成本', field: 'purchase_cost', width: 120, format: 'money' },
+  { key: 'total_price', label: '实收', field: 'total_price', width: 110, format: 'money' },
+  { key: 'purchase_cost', label: '成本', field: 'purchase_cost', width: 120, format: 'money' },
   { key: 'profit', label: '利润', field: 'profit', width: 110, format: 'money' },
   { key: 'points_used', label: '抵扣积分', field: 'total_price', width: 100 },
-  { key: 'deduction_amount', label: '积分抵扣金额', field: 'total_price', width: 120, format: 'money' },
+  { key: 'deduction_amount', label: '抵扣金额', field: 'total_price', width: 120, format: 'money' },
   { key: 'points_awarded', label: '获得积分', field: 'total_price', width: 100 },
-  { key: 'operator_name', label: '销售员', field: 'operator_name', width: 110 },
-  { key: 'sale_time', label: '销售时间', field: 'created_at', width: 170, format: 'time' }
+  { key: 'operator_name', label: '销售员', field: 'operator_name', width: 110 }
 ]
 const columns = computed(() => allColumns.filter(column => visible(column.field)))
+const tableColumnOrder: Column['key'][] = ['store_name', 'sale_time', 'brand_name', 'name', 'category', 'sale_type', 'customer_name', 'customer_phone']
+const hiddenTableColumnKeys: Column['key'][] = ['sale_no', 'remaining_quantity', 'product_model', 'profit', 'points_used']
+const tableColumns = computed(() => {
+  const visibleColumns = columns.value.filter(column => !hiddenTableColumnKeys.includes(column.key))
+  const prioritizedColumns = tableColumnOrder
+    .map(key => visibleColumns.find(column => column.key === key))
+    .filter((column): column is Column => column !== undefined)
+  return [...prioritizedColumns, ...visibleColumns.filter(column => !tableColumnOrder.includes(column.key))]
+})
+const tableColumnLabel = (column: Column) => column.key === 'store_name' ? '销售店铺' : column.key === 'customer_phone' ? '手机号' : column.label
 const goodsActionColumnWidth = computed(() => getAdaptiveActionColumnWidth(rows.value, [
   { label: '详情', visible: allowed.value }, { label: '退货', visible: canReturnRow }, { label: '换货', visible: canExchangeRow }
 ]))
@@ -820,7 +834,7 @@ defineExpose({ load, openSale })
 <style scoped lang="scss">
 .goods-detail {
   display: grid;
-  gap: var(--tf-space-5);
+  gap: var(--tf-space-4);
   min-width: 0;
   color: var(--tf-color-slate-800);
 }
@@ -831,7 +845,7 @@ defineExpose({ load, openSale })
   justify-content: space-between;
   gap: var(--tf-space-4);
   min-width: 0;
-  padding: var(--tf-space-5);
+  padding: var(--tf-space-3);
   border: 1px solid var(--tf-color-border-cool);
   border-radius: var(--tf-radius-card);
   background: var(--tf-color-surface-cool-alt);
@@ -849,8 +863,7 @@ defineExpose({ load, openSale })
 }
 
 .goods-detail__identity h2 {
-  margin-block-start: var(--tf-space-1);
-  margin-block-end: 0;
+  margin: 0;
   color: var(--tf-color-slate-900);
   font-size: var(--tf-font-section-title);
   font-weight: 700;
@@ -859,6 +872,7 @@ defineExpose({ load, openSale })
 }
 
 .goods-detail__meta {
+  margin-top: var(--tf-space-1);
   display: flex;
   flex-wrap: wrap;
   gap: var(--tf-space-2);
@@ -881,12 +895,19 @@ defineExpose({ load, openSale })
 
 .goods-detail__overview > .status-badge {
   flex: 0 0 auto;
+  border: 1px solid var(--tf-color-green-200);
+  border-radius: var(--tf-radius-full);
+  background: var(--tf-color-green-50);
+  color: var(--tf-color-green-700);
+  padding: var(--tf-space-1) var(--tf-space-3);
+  font-size: var(--tf-font-body);
+  font-weight: 700;
 }
 
 .goods-detail__metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--tf-space-3);
+  gap: var(--tf-space-2);
 }
 
 .goods-detail__metric {
@@ -894,8 +915,8 @@ defineExpose({ load, openSale })
   align-content: center;
   gap: var(--tf-space-1);
   min-width: 0;
-  min-height: 76px;
-  padding: var(--tf-space-3) var(--tf-space-4);
+  min-height: 52px;
+  padding: var(--tf-space-2);
   border-left: 3px solid var(--tf-color-slate-300);
   background: var(--tf-color-surface-gray);
 }
@@ -907,7 +928,7 @@ defineExpose({ load, openSale })
 
 .goods-detail__metric > strong {
   color: var(--tf-color-slate-800);
-  font-size: var(--tf-font-emphasis);
+  font-size: var(--tf-font-body-lg);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
@@ -942,11 +963,119 @@ defineExpose({ load, openSale })
   margin-bottom: var(--tf-space-3);
 }
 
+.goods-detail__compact-panel {
+  display: grid;
+  gap: var(--tf-space-2);
+  padding: var(--tf-space-3);
+  border: 1px solid var(--tf-color-border-blue);
+  border-radius: var(--tf-radius-card);
+  background: var(--tf-color-surface-blue-soft);
+}
+
+.goods-detail__compact-panel--product {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.goods-detail__compact-panel--sale-customer {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.goods-detail__compact-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 0;
+  border: 1px solid var(--tf-color-border-blue);
+  border-radius: var(--tf-radius-card);
+  background: var(--tf-color-surface-blue-alt);
+}
+
+.goods-detail__compact-grid--customer {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-color: var(--tf-color-emerald-200);
+  background: var(--tf-color-surface-green);
+}
+
+.goods-detail__compact-grid--product {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--tf-space-2);
+  border: 0;
+  background: transparent;
+}
+
+.goods-detail__compact-grid--documents {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--tf-space-2);
+  border: 0;
+  background: transparent;
+}
+
+.goods-detail__compact-field {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--tf-space-1) var(--tf-space-2);
+  min-width: 0;
+  padding: var(--tf-space-2) var(--tf-space-3);
+}
+
+.goods-detail__compact-field > span {
+  flex: 0 0 auto;
+  color: var(--tf-color-slate-500);
+  font-size: var(--tf-font-caption);
+}
+
+.goods-detail__compact-field > strong {
+  min-width: 0;
+  color: var(--tf-color-slate-800);
+  font-size: var(--tf-font-body);
+  font-weight: 600;
+}
+
+.goods-detail__compact-grid--product .goods-detail__compact-field,
+.goods-detail__compact-grid--documents .goods-detail__compact-field {
+  display: grid;
+  align-content: center;
+  gap: var(--tf-space-1);
+  padding: var(--tf-space-2) var(--tf-space-3);
+  border-radius: var(--tf-radius-card);
+  background: var(--tf-color-surface-cool-alt);
+}
+
+.goods-detail__compact-grid--product .goods-detail__compact-field > span,
+.goods-detail__compact-grid--documents .goods-detail__compact-field > span {
+  font-size: var(--tf-font-caption);
+}
+
+.goods-detail__compact-grid--product .goods-detail__compact-field > strong,
+.goods-detail__compact-grid--documents .goods-detail__compact-field > strong {
+  font-size: var(--tf-font-body);
+}
+
+.goods-detail__compact-grid--customer .goods-detail__compact-field > span {
+  color: var(--tf-color-emerald-800);
+}
+
+.goods-detail__compact-grid--customer .goods-detail__compact-field > strong {
+  color: var(--tf-color-emerald-800);
+}
+
+
+.goods-detail__section-heading--accent {
+  align-items: center;
+  margin-bottom: var(--tf-space-3);
+  padding-inline-start: var(--tf-space-2);
+  border-inline-start: var(--tf-space-1) solid var(--tf-color-indigo-500);
+}
+
 .goods-detail__section-heading h3 {
-  margin-block-start: var(--tf-space-1);
+  margin-block-start: 0;
   margin-block-end: 0;
   color: var(--tf-color-slate-800);
-  font-size: var(--tf-font-section-title);
+  font-size: var(--tf-font-body-lg);
   font-weight: 700;
   line-height: 1.4;
 }
@@ -967,61 +1096,6 @@ defineExpose({ load, openSale })
   min-width: 0;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-}
-
-.goods-detail :deep(.tf-record-descriptions) {
-  width: 100%;
-}
-
-.goods-detail :deep(.tf-record-descriptions .el-descriptions__body),
-.goods-detail :deep(.tf-record-descriptions .el-descriptions__table) {
-  width: 100%;
-}
-
-.goods-detail :deep(.tf-record-descriptions .el-descriptions__table) {
-  table-layout: auto;
-}
-
-.goods-detail :deep(.tf-record-descriptions .el-descriptions__label),
-.goods-detail :deep(.tf-record-descriptions .el-descriptions__content) {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.goods-detail :deep(.tf-record-descriptions .el-descriptions__label) {
-  color: var(--tf-color-slate-500);
-  font-weight: 600;
-}
-
-.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__table) {
-  border-collapse: separate;
-  border-spacing: var(--tf-space-2) 0;
-}
-
-.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__cell) {
-  box-sizing: border-box;
-  border-color: var(--el-border-color-lighter);
-  min-width: 144px;
-  padding: var(--tf-space-2) var(--tf-space-3);
-}
-
-.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__label) {
-  border: 1px solid var(--el-border-color-lighter);
-  border-bottom: 0;
-  border-radius: var(--tf-radius-card) var(--tf-radius-card) 0 0;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-secondary);
-  padding-block-end: var(--tf-space-1);
-  font-size: var(--tf-font-caption);
-}
-
-.goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__content) {
-  border: 1px solid var(--el-border-color-lighter);
-  border-top: 0;
-  border-radius: 0 0 var(--tf-radius-card) var(--tf-radius-card);
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  font-weight: 600;
 }
 
 .goods-detail :deep(.goods-aftersale-history) {
@@ -1058,7 +1132,7 @@ defineExpose({ load, openSale })
   }
 
   .goods-detail__overview {
-    padding: var(--tf-space-4);
+    padding: var(--tf-space-3);
   }
 
   .goods-detail__metrics {
@@ -1066,18 +1140,27 @@ defineExpose({ load, openSale })
     gap: var(--tf-space-2);
   }
 
+  .goods-detail__compact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .goods-detail__compact-grid--product {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .goods-detail__compact-grid--documents {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .goods-detail__metric {
-    min-height: 68px;
-    padding: var(--tf-space-2) var(--tf-space-3);
+    min-height: 48px;
+    padding: var(--tf-space-2);
   }
 
   .goods-detail__section-hint {
     max-width: 45%;
   }
 
-  .goods-detail :deep(.goods-detail__descriptions--cards .el-descriptions__table) {
-    border-spacing: var(--tf-space-2) 0;
-  }
 }
 
 @media (max-width: 360px) {

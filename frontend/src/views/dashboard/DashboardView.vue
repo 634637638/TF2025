@@ -11,7 +11,7 @@
         <PageHeader title="仪表盘">
           <template #actions>
             <el-button
-              v-if="shouldShowActionColumn(canViewField('system_info.operations'), [])"
+              v-if="shouldShowActionColumn(canViewField('system_info.operations'), [canView])"
               type="info"
               :loading="isRefreshing"
               :disabled="isRefreshing"

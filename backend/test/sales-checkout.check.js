@@ -15,6 +15,7 @@ const CustomerPointsLedgerService = require('../src/services/customer-points-led
 const { ledgerExecutor } = require('./helpers/customer-points-ledger')
 const inventoryFixture = require('./helpers/accessory-inventory')
 const { normalizePointsConfig, quoteCustomerPoints } = require('../src/utils/customer-points-rules')
+const { normalizeDateTimeWithCurrentTime } = require('../src/utils/time')
 
 const actor = { id: 7, store_ids: [1, 2], name: '操作员' }
 const request = () => ({ request_key: 'a'.repeat(32), store_id: 1, operator_id: 8,
@@ -24,7 +25,7 @@ const request = () => ({ request_key: 'a'.repeat(32), store_id: 1, operator_id: 
     { key: 'gift', accessory_id: 5, quantity: 1, unit_price: 0, sale_type: 'gift', linked_phone_id: 13, serial_numbers: ['00aa'] }],
   payment_info: { payment_method: 'cash', payment_amount: 600 }, remarks: '整批一个备注' })
 
-function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneStore = 1, goodsStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule, transactionFailure } = {}) {
+function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneStore = 1, goodsStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule, transactionFailure, normalizeGoodsTime = value => `${String(value).slice(0, 10)} 10:20:30` } = {}) {
   const state = { orders: [], items: [], payments: [], sales: [], accessorySales: [], stock: 4,
     points: initialPoints, entries: trackedPoints ? [{ id: 1, customer_id: 9, entry_type: 'award', source_type: 'phone_sale', source_id: 999, points: trackedPoints }] : [], allocations: [], customerUpdates: [], sold: [], staged: [], serials: [{ id: 1, serial_number: '00AA', accessory_id: 5, store_id: goodsStore,
       status: 'in_stock', stock_in_id: 30, purchase_cost: '10.25' }], serialEvents: [] }
@@ -103,6 +104,7 @@ function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneS
     async createQuickSalePhone(db, values) { check(db); const id = 900 + state.staged.length; state.staged.push({ id, values }); return id }
   } })
   const service = new SalesCheckoutService({ repository, phones, accessories, inventory, pointsLedger,
+    normalizeDateWithCurrentTime: normalizeGoodsTime,
     creditPoints: async (db, id, points, { sources }) => {
       assert.deepEqual(sources, state.items.filter(row => row.type === 'accessory').map(row => ({ item_id: row.id, points: row.points_awarded })))
       assert.equal(sources.reduce((sum, row) => sum + row.points, 0), points)
@@ -312,6 +314,42 @@ test('单卖商品与纯赠品不伪造手机销售或手机收款ID，已知SN�
   }
 })
 
+test('独立商品购买和赠送保留补单日期，时分秒及收款时间取提交时刻', async () => {
+  for (const gift of [false, true]) {
+    const f = fixture(), body = request()
+    body.phones = []
+    body.sale_time = '2026-11-18'
+    body.accessories = [{ ...body.accessories[1], linked_phone_id: null, sale_type: gift ? 'gift' : 'sale', unit_price: gift ? 0 : 150 }]
+    body.payment_info.payment_amount = gift ? 0 : 150
+    await f.service.checkout(body, actor)
+    assert.equal(f.state.orders[0].time, '2026-11-18 10:20:30')
+    assert.equal(f.state.items[0].time, '2026-11-18 10:20:30')
+    assert.equal(f.state.accessorySales[0].sale_time, '2026-11-18 10:20:30')
+    if (!gift) assert.equal(f.state.payments[0].time, '2026-11-18 10:20:30')
+  }
+})
+
+test('补单时间工具校验北京时间日期并保留重试幂等身份', async () => {
+  assert.equal(normalizeDateTimeWithCurrentTime('2026-11-18', () => '2026-11-20 09:08:07'), '2026-11-18 09:08:07')
+  assert.equal(normalizeDateTimeWithCurrentTime('2026-02-30', () => '2026-11-20 09:08:07'), null)
+  assert.equal(normalizeDateTimeWithCurrentTime('2026-11-18', () => 'not-a-time'), null)
+
+  let currentTime = '2026-11-20 09:08:07'
+  const f = fixture({ normalizeGoodsTime: date => `${String(date).slice(0, 10)} ${currentTime.slice(11)}` })
+  const body = request()
+  body.request_key = 'b'.repeat(32)
+  body.phones = []
+  body.sale_time = '2026-11-18'
+  body.accessories = [{ ...body.accessories[0], linked_phone_id: null, quantity: 1 }]
+  body.payment_info.payment_amount = 150
+  const first = await f.service.checkout(body, actor)
+  currentTime = '2026-11-20 09:09:10'
+  const retry = await f.service.checkout(body, actor)
+  assert.deepEqual(retry, first)
+  assert.equal(f.state.orders.length, 1)
+  assert.equal(f.state.orders[0].time, '2026-11-18 09:08:07')
+})
+
 test('商品数量行逐件积分和实付分组保存原单，改当前商品不改历史，重试不重建分组', async () => {
   for (const price of [99, 150]) {
     const f = fixture(), body = request()
@@ -427,6 +465,28 @@ test('字段权限逐域覆盖嵌套价格/客户/店铺/SN；拒绝时不进入
     await controller.checkout({ body, user: actor }, res)
     assert.equal(res.code, 403)
   }
+})
+
+test('商品结算允许可见只读字段作为新交易资料提交，隐藏字段仍返回字段标识并拒绝', async () => {
+  const checkedOptions = []
+  const access = { async getDeniedWrite(_id, _body, map, options) {
+    checkedOptions.push(options)
+    return Object.values(map).includes('price_info.profit') ? 'price_info.profit' : undefined
+  } }
+  const controller = new Controller({ permissionCheck: async () => true, phoneAccess: access, goodsAccess: access,
+    service: { async checkout() { return { order_no: 'TEST-ORDER' } } } })
+  const response = () => ({ status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } })
+  const allowed = response()
+  await controller.checkout({ body: request(), user: actor }, allowed)
+  assert.equal(allowed.body.success, true)
+  assert.ok(checkedOptions.length > 0 && checkedOptions.every(options => options.visibleOnly === true))
+
+  access.getDeniedWrite = async (_id, body, map) => body?.sale_time !== undefined ? map.sale_time : undefined
+  const denied = response()
+  await controller.checkout({ body: request(), user: actor }, denied)
+  assert.equal(denied.statusCode, 403)
+  assert.equal(denied.body.code, 'FIELD_PERMISSION_DENIED')
+  assert.equal(denied.body.field, 'sale.sale_time')
 })
 
 test('仅售商品时销售员、日期和出库方式字段隐藏同样拒绝，不依赖手机字段校验', async () => {

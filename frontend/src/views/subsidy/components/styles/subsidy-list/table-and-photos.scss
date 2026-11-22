@@ -131,6 +131,71 @@
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
   }
 
+  .qrcode-tooltip {
+    position: fixed;
+    background: var(--color-bg-white);
+    border: 1px solid var(--tf-color-border-subtle);
+    border-radius: var(--tf-radius-card);
+    padding: var(--tf-space-4);
+    box-shadow: var(--tf-shadow-floating);
+    z-index: var(--tf-z-toast);
+    min-width: 220px;
+    animation: subsidy-qrcode-fade-in var(--tf-motion-standard) var(--tf-motion-ease-standard);
+    pointer-events: auto;
+  }
+
+  .qrcode-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--tf-space-2);
+    min-width: 0;
+    margin-bottom: var(--tf-space-3);
+    white-space: nowrap;
+  }
+
+  .qrcode-title {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: var(--color-bg-white);
+    font-size: var(--tf-type-scale-12);
+    line-height: var(--tf-type-scale-22);
+    padding: 0 var(--tf-type-scale-7);
+    background: var(--tf-color-indigo-600);
+    border-radius: var(--tf-radius-compact);
+  }
+
+  .qrcode-value {
+    flex: 0 0 auto;
+    font-size: var(--tf-type-scale-12);
+    font-weight: 600;
+    line-height: var(--tf-type-scale-20);
+    color: var(--tf-color-indigo-700);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    padding: 0 var(--tf-type-scale-6);
+    background: var(--tf-color-indigo-50);
+    border: 1px solid var(--tf-color-indigo-200);
+    border-radius: var(--tf-radius-compact);
+    white-space: nowrap;
+  }
+
+  .qrcode-meta.is-imei .qrcode-title {
+    background: var(--tf-color-emerald-600);
+  }
+
+  .qrcode-meta.is-imei .qrcode-value {
+    color: var(--tf-color-emerald-700);
+    background: var(--tf-color-emerald-50);
+    border-color: var(--tf-color-emerald-200);
+  }
+
+  .qrcode-tooltip canvas {
+    display: block;
+    margin: 0 auto;
+    border: 1px solid var(--tf-color-border-subtle);
+    border-radius: var(--tf-radius-compact);
+  }
+
   .photo-icon,
   .photo-icon-empty {
     font-size: var(--tf-type-scale-12);
@@ -157,4 +222,15 @@
     line-height: 1.2;
   }
 
+}
+
+@keyframes subsidy-qrcode-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

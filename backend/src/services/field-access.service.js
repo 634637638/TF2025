@@ -33,14 +33,17 @@ class FieldAccessService {
     return this.masking.filterSensitiveFields([masked], permissions)[0]
   }
 
-  async getDeniedWrite(userId, body, fieldMap) {
+  async getDeniedWrite(userId, body, fieldMap, { visibleOnly = false } = {}) {
     const permissions = await this.getPermissions(userId)
-    return this.findDeniedWrite(body, fieldMap, permissions)
+    return this.findDeniedWrite(body, fieldMap, permissions, { visibleOnly })
   }
 
-  findDeniedWrite(body, fieldMap, permissions) {
-    const denied = new Set([...(permissions.hiddenFields || []), ...(permissions.readonlyFields || [])])
-    const editable = permissions.editableFields === undefined ? null : new Set(permissions.editableFields)
+  findDeniedWrite(body, fieldMap, permissions, { visibleOnly = false } = {}) {
+    const denied = new Set(permissions.hiddenFields || [])
+    if (!visibleOnly) {
+      for (const field of permissions.readonlyFields || []) denied.add(field)
+    }
+    const editable = visibleOnly || permissions.editableFields === undefined ? null : new Set(permissions.editableFields)
     return Object.entries(fieldMap).find(([bodyField, fieldId]) => {
       let value = body
       for (const key of bodyField.split('.')) {

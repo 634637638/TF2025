@@ -5,6 +5,23 @@ interface DownloadResponseEnvelope {
 
 const ERROR_CONTENT_TYPE_PATTERN = /(?:application\/(?:problem\+)?json|text\/(?:json|html))/i
 
+/** 去除下载地址中与 Axios baseURL 重复的 API 路径前缀。 */
+export function normalizeDownloadUrl(url: string, baseURL: string): string {
+  if (!url || /^(?:[a-z][a-z\d+.-]*:)?\/\//i.test(url)) return url
+
+  const basePath = String(baseURL || '')
+    .replace(/^https?:\/\/[^/]+/i, '')
+    .replace(/\/+$/, '')
+  if (!basePath || basePath === '/') return url
+
+  const queryIndex = url.search(/[?#]/)
+  const pathname = queryIndex === -1 ? url : url.slice(0, queryIndex)
+  if (pathname === basePath) return `/${queryIndex === -1 ? '' : url.slice(queryIndex)}`
+  if (!pathname.startsWith(`${basePath}/`)) return url
+
+  return `${pathname.slice(basePath.length) || '/'}${queryIndex === -1 ? '' : url.slice(queryIndex)}`
+}
+
 const asEnvelope = (response: unknown): DownloadResponseEnvelope | null => (
   response !== null && typeof response === 'object'
     ? response as DownloadResponseEnvelope

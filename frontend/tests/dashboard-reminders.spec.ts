@@ -12,8 +12,13 @@ vi.mock('@/composables/usePagePermissions', async () => {
   return { usePagePermissions: () => ({ canView: ref(true) }) }
 })
 vi.mock('@/composables/useFieldPermissions', () => ({
-  fieldPermissions: { init: vi.fn().mockResolvedValue(undefined), isFieldVisible: () => true },
-  shouldShowActionColumn: () => false
+  fieldPermissions: {
+    init: vi.fn().mockResolvedValue(undefined),
+    isFieldVisible: (_module: string, field: string) => !hidden.has(field)
+  },
+  shouldShowActionColumn: (fieldVisible: boolean, actionPermissions: boolean[]) => (
+    fieldVisible || actionPermissions.some(Boolean)
+  )
 }))
 vi.mock('@/views/reminders/reminder-field-permissions', () => ({ canViewReminderField: (field: string) => !hidden.has(field) }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: vi.fn(), handleApiError: vi.fn() }) }))
@@ -41,14 +46,21 @@ beforeEach(() => {
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers() })
 async function render() {
   wrapper = mount(DashboardView, { global: { stubs: {
-    PermissionGate: { template: '<div><slot /></div>' }, PageHeader: true, SectionLoading: true,
+    PermissionGate: { template: '<div><slot /></div>' },
+    PageHeader: { template: '<div><slot name="actions" /></div>' }, SectionLoading: true,
     ComprehensiveWarnings: true, PendingApprovals: true, RichContent: true, DashboardQuickAccess: true,
-    ElButton: true, ElTag: { template: '<span><slot /></span>' }
+    ElButton: { template: '<button><slot /></button>' }, ElTag: { template: '<span><slot /></span>' }
   } } })
   await flushPromises()
   return wrapper
 }
 describe('首页个人待办公告', () => {
+  it('隐藏仪表盘操作字段时仍显示页面刷新按钮', async () => {
+    hidden.add('system_info.operations')
+    const view = await render()
+    expect(view.findAll('button').some(button => button.text().includes('刷新'))).toBe(true)
+  })
+
   it('无公共公告时也显示本人稍后提醒中的任务，完成后立即消失', async () => {
     const store = useRemindersStore()
     store.active = [item]

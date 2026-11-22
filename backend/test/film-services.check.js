@@ -21,6 +21,7 @@ const code = expected => error => error.code === expected
 
 function fixture({ qualifying = true, denied = [], ready = true, enabled = true, failAt } = {}) {
   const state = { stock: 20, points: 0, orders: [], items: [], payments: [], films: [] }, calls = []
+  let currentTime = now
   let before
   const connection = { async execute(sql) { calls.push(sql); if (failAt === 'configure') throw new Error('configure-failed'); return [[]] },
     async beginTransaction() { before = structuredClone(state); calls.push('begin'); if (failAt === 'begin') throw new Error('begin-failed') },
@@ -54,7 +55,7 @@ function fixture({ qualifying = true, denied = [], ready = true, enabled = true,
         items: state.items.map(row => ({ order_id: row.order_id, quantity: row.quantity,
           total_amount: row.total_amount, name: row.snapshot.name, sale_type: row.snapshot.sale_type })) } }
   }
-  const films = new FilmService({ repository: filmRepository, permissionCheck, now: () => now,
+  const films = new FilmService({ repository: filmRepository, permissionCheck, now: () => currentTime,
     tableExists: async () => ready, columnExists: async () => ready })
   const repository = { withConnection,
     async findRequest(db, key) { check(db); return state.orders.find(row => row.request_key === key) },
@@ -80,16 +81,19 @@ function fixture({ qualifying = true, denied = [], ready = true, enabled = true,
     getPointsConfig: async () => normalizePointsConfig({ include_accessories: true, accessory_points_per_100: 100 }),
     creditPoints: async (db, _id, points) => { check(db); state.points += points },
     pointsLedger: { async ready() { return false } }, normalizeDate: value => value })
-  return { checkout, films, state, connection, calls, repository, filmRepository }
+  return { checkout, films, state, connection, calls, repository, filmRepository, setNow(value) { currentTime = value } }
 }
 
-test('免费贴膜跨购买门店，出库仍限授权服务店；一笔服务与耗膜数量分别记录且重试不重复', async () => {
-  const f = fixture(), result = await f.checkout.checkout(body(), actor)
+test('贴膜赠送使用提交时的服务端北京时间，忽略客户端日期且重试不重复', async () => {
+  const f = fixture(), result = await f.checkout.checkout(body({ sale_time: '2020-01-01' }), actor)
   assert.equal(result.film_service_id, 1); assert.equal(result.paid_amount, 0); assert.equal(result.points_earned, 0)
   assert.equal(f.state.stock, 18); assert.equal(f.state.films.length, 1); assert.equal(f.state.films[0].quantity, 2)
+  assert.equal(f.state.films[0].business_time, now); assert.equal(f.state.films[0].created_at, now)
+  assert.equal(f.state.orders[0].time, now); assert.equal(f.state.items[0].time, now)
   assert.equal(f.state.films[0].qualification_sale_id, null); assert.equal(f.state.films[0].phone_id, 11); assert.equal(f.state.films[0].model_id, 13); assert.equal(f.state.films[0].store_id, 2)
   assert.equal(f.state.payments.length, 0); assert.equal(f.state.items[0].snapshot.commission.reason, 'gift')
-  assert.deepEqual(await f.checkout.checkout(body(), actor), result)
+  f.setNow('2026-11-14 10:00:05')
+  assert.deepEqual(await f.checkout.checkout(body({ sale_time: '2020-01-01' }), actor), result)
   assert.equal(f.state.stock, 18); assert.equal(f.state.films.length, 1)
   const context = await f.films.context(actor, 9)
   assert.equal(context.service_count, 1); assert.equal(context.film_quantity, 2); assert.equal(context.data[0].items[0].sale_type, 'gift')
@@ -103,11 +107,12 @@ test('核验当前手机与客户真实关联，收费膜独立收款并积分�
   await assert.rejects(missing.checkout.checkout(body(), actor), code('FILM_DEVICE_REQUIRED'))
   assert.equal(missing.state.stock, 20); assert.equal(missing.state.films.length, 0)
   const f = fixture()
-  const paid = body({ film_service: { customer_id: 9, phone_id: 11, mode: 'paid' },
+  const paid = body({ sale_time: '2020-01-01 23:59:59', film_service: { customer_id: 9, phone_id: 11, mode: 'paid' },
     accessories: [{ key: 'paid', accessory_id: 5, quantity: 1, unit_price: 20, sale_type: 'sale' }],
     payment_info: { payment_method: 'cash', payment_amount: 20 } })
   const result = await f.checkout.checkout(paid, actor)
   assert.equal(result.paid_amount, 20); assert.equal(f.state.payments[0].amount, 20)
+  assert.equal(f.state.payments[0].time, now); assert.equal(f.state.orders[0].time, now); assert.equal(f.state.items[0].time, now)
   assert.equal(f.state.films[0].phone_id, 11); assert.equal(f.state.films[0].qualification_sale_id, null)
   assert.equal(result.points_earned, 20); assert.equal(f.state.points, 20)
   assert.equal(f.state.items[0].snapshot.commission.earned_cents, 100)
@@ -236,15 +241,16 @@ test('商品类型和单位不能设置贴膜标记，省略标记仍沿用公�
   assert.doesNotMatch(writes[0].sql, /film_enabled/)
 })
 
-test('试算后手机客户关联变化，正式办理重新校验；未来日期不能提前耗膜', async () => {
+test('试算后手机客户关联变化仍重新校验，贴膜忽略客户端未来日期', async () => {
   const f = fixture()
   await f.checkout.quote(body(), actor)
   f.filmRepository.device = async () => null
   await assert.rejects(f.checkout.checkout(body(), actor), code('FILM_DEVICE_REQUIRED'))
   assert.equal(f.state.stock, 20); assert.deepEqual(f.state.films, [])
   const future = fixture()
-  await assert.rejects(future.checkout.checkout(body({ sale_time: '2026-11-15 10:00:00' }), actor), code('FILM_SERVICE_INVALID'))
-  assert.equal(future.state.stock, 20); assert.deepEqual(future.state.orders, [])
+  await future.checkout.checkout(body({ sale_time: '2026-11-15 10:00:00' }), actor)
+  assert.equal(future.state.films[0].business_time, now)
+  assert.equal(future.state.stock, 18)
 })
 
 test('贴膜历史只给指定客户的最小服务快照，分页/权限/客户/结构故障均失败关闭并释放连接', async () => {

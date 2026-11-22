@@ -55,7 +55,7 @@
         "openStockIn": "true"
       },
       "allPermissions": [
-        "accessories:create"
+        "accessories:stock-in"
       ],
       "anyPermissions": []
     },

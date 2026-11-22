@@ -91,6 +91,7 @@ class PriceListService {
       '星辉白': '白色',
       '雪松白': '白色',
       '星光色': '白色',
+      '星光白色': '白色',
       '银色': '白色',
       '白色钛金属': '白色',
       '白色': '白色',
@@ -99,6 +100,7 @@ class PriceListService {
       '深黑色': '黑色',
       '子夜黑': '黑色',
       '星岩黑': '黑色',
+      '夜空色': '黑色',
       '深空灰': '黑色',
       '深空灰色': '黑色',
       '天空灰': '黑色',
@@ -2013,6 +2015,47 @@ class PriceListService {
     return this.sourceParser.buildExternalModelSearchUrl(searchTerm)
   }
 
+  async createPublicSourceSession(sourceUrl, headers) {
+    const source = new URL(sourceUrl)
+    const cookies = new Map()
+    let currentUrl = new URL('/', source.origin).href
+
+    for (let redirectCount = 0; redirectCount <= 8; redirectCount += 1) {
+      const cookieHeader = [...cookies].map(([name, value]) => `${name}=${value}`).join('; ')
+      const response = await axios.get(currentUrl, {
+        headers: { ...headers, ...(cookieHeader ? { Cookie: cookieHeader } : {}) },
+        timeout: TIMEOUTS.EXTERNAL_API,
+        maxRedirects: 0,
+        validateStatus: status => status < 400
+      })
+
+      for (const setCookie of response.headers['set-cookie'] || []) {
+        const cookiePair = setCookie.split(';', 1)[0]
+        const separatorIndex = cookiePair.indexOf('=')
+        if (separatorIndex > 0) {
+          cookies.set(cookiePair.slice(0, separatorIndex), cookiePair.slice(separatorIndex + 1))
+        }
+      }
+
+      const location = response.headers.location
+      if (!location) {
+        if (response.status >= 400) throw new Error(`公开源会话初始化失败，HTTP ${response.status}`)
+        return [...cookies].map(([name, value]) => `${name}=${value}`).join('; ')
+      }
+
+      if (redirectCount === 8) throw new Error('公开源会话初始化重定向次数过多')
+
+      const nextUrl = new URL(location, currentUrl)
+      if (nextUrl.hostname !== source.hostname || !['http:', 'https:'].includes(nextUrl.protocol)) {
+        throw new Error('公开源会话初始化跳转到非本站地址')
+      }
+      if (nextUrl.protocol === 'http:') nextUrl.protocol = 'https:'
+      currentUrl = nextUrl.href
+    }
+
+    throw new Error('公开源会话初始化失败')
+  }
+
   /**
    * 抓取价格数据并对外部站点的瞬时失败做一次受控重试。
    *
@@ -2076,6 +2119,7 @@ class PriceListService {
       if (config.source_type === 'public') {
         this.cookies.delete(config.id)
         this.cookies.delete(`${config.id}_array`)
+        headers.Cookie = await this.createPublicSourceSession(config.source_url, headers)
       }
 
       // 使用登录后的cookies（必须在executeSync中先登录）
@@ -2165,6 +2209,7 @@ class PriceListService {
         'iphone18pro': 'A3715',
         // 已从外部同城数据确认：iPhone 18 Pro Max 使用 A3718。
         'iphone18promax': 'A3718',
+        'iphone18duo': 'A3721',
         'iphone16': 'A3288',
         'iphone16plus': 'A3291',
         'iphone16pro': 'A3294',
@@ -3041,7 +3086,9 @@ class PriceListService {
         iphone17promax: 'A3527',
         iphone17e: 'A3635',
         iphone18pro: 'A3715',
-        iphone18promax: 'A3718'
+        iphone18promax: 'A3718',
+        iphone18duo: 'A3721',
+        iphoneduo: 'A3721'
       }
 
       const possibleNames = [
@@ -4000,15 +4047,17 @@ class PriceListService {
 
       memory = this.extractMemoryFromText(str)
 
+      const detectedModelCode = nameMapping.external_model || str.match(/\bA\d{4}\b/i)?.[0]?.toUpperCase() || null
+
       return {
         brand: nameMapping.brand,
         model: nameMapping.model,
-        external_model: nameMapping.external_model,
+        external_model: detectedModelCode,
         color: color,
         memory: memory,
         price: price,
         isLocal: this.isSameCityProduct(str),
-        modelCode: nameMapping.external_model
+        modelCode: detectedModelCode
       }
     }
 

@@ -8,7 +8,7 @@ const { isDatabaseAvailabilityError } = require('../utils/database-errors')
 const crypto = require('crypto')
 const BaseService = require('../core/base/base.service')
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
-const { formatBeijingDate, getBeijingTimeString, isBeijingDateTime } = require('../utils/time')
+const { getBeijingTimeString, isBeijingDateTime } = require('../utils/time')
 const { normalizeImei } = require('../utils/imei')
 const SystemSettingsRepository = require('../repositories/system-settings.repository')
 const AccessoryInventoryService = require('./accessory-inventory.service')
@@ -17,6 +17,7 @@ const { isIntegerInput } = require('../utils/input-values')
 const { hasColumn, hasTable } = require('./schema-inspector.service')
 const { createPurchaseSnapshot, projectPurchaseSnapshot } = require('../utils/accessory-purchase-snapshot')
 const { AccessoryTemplateColorService } = require('./accessory-template-color.service')
+const { generateDailyDocumentNumber, prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
 
 const WAREHOUSE_SETTING_KEY = 'accessory_warehouse_store_id'
 
@@ -398,19 +399,15 @@ class AccessoryService extends BaseService {
   /**
    * 生成批次号
    */
-  generateBatchNo() {
-    const date = formatBeijingDate().replaceAll('-', '').slice(2)
-    const random = crypto.randomBytes(6).toString('hex')
-    return `RK${date}${random}`
+  generateBatchNo(connection, time) {
+    return generateDailyDocumentNumber('RK', connection, time || getBeijingTimeString(), 6)
   }
 
   /**
    * 生成销售单号
    */
-  generateSaleNo() {
-    const date = formatBeijingDate().replaceAll('-', '').slice(2)
-    const random = crypto.randomBytes(6).toString('hex')
-    return `PS${date}${random}`
+  generateSaleNo(connection, time) {
+    return generateDailyDocumentNumber('PS', connection, time || getBeijingTimeString(), 6)
   }
 
   /**
@@ -832,7 +829,11 @@ class AccessoryService extends BaseService {
           const replay = checkReplay(await this.accessoryRepository.getStockInByKey(data.request_key, connection))
           if (replay) return replay
           if (transaction?.replayOnly) throw this.createError('多颜色入库凭据不完整，请核对原采购记录', 409, 'STOCK_IN_REQUEST_CONFLICT')
-          if (!transaction) { await connection.beginTransaction(); started = true }
+          if (!transaction) {
+            await prepareInvoiceNumberTransaction(connection)
+            await connection.beginTransaction()
+            started = true
+          }
           for (const targetId of new Set([storeId, ...distribution.map(item => item.store_id)])) {
             const store = await this.accessoryRepository.getReference(targetId, 'store_id', connection)
             if (!store || Number(store.status) !== 1) throw this.createError('分配门店不存在或已停用', 400, 'INVALID_REFERENCE')
@@ -849,9 +850,9 @@ class AccessoryService extends BaseService {
               throw this.createError('各门店 SN 数量必须与分配数量一致', 400, 'SERIAL_DISTRIBUTION_MISMATCH')
             }
           }
-          const batchNo = this.generateBatchNo()
           const totalAmount = costCents * quantity / 100
           const time = inventoryTime || transaction?.time || getBeijingTimeString()
+          const batchNo = await this.generateBatchNo(connection)
           const context = { accessory_id: finalId, operator_id: operatorId, operator_name: actor.name || actor.username || '', time }
           const productSnapshot = createPurchaseSnapshot(
             await this.accessoryRepository.purchaseSnapshotSource(finalId, supplierId, storeId, connection),
@@ -953,6 +954,7 @@ class AccessoryService extends BaseService {
         }
         if (!await this.accessoryRepository.stockInReady(connection)) throw this.createError('采购入库结构未就绪，请先完成迁移', 409, 'STOCK_IN_NOT_READY')
         if (await this.accessoryRepository.getStockInByKey(data.request_key, connection)) return run(true)
+        await prepareInvoiceNumberTransaction(connection)
         await connection.beginTransaction()
         try {
           await this.accessoryRepository.templateColors.assertReady(connection)
@@ -1118,7 +1120,7 @@ class AccessoryService extends BaseService {
     const grossCents = Math.round(price * 100) * quantity
     const totalCents = contextOptions.resolveTotalCents ? await contextOptions.resolveTotalCents(existing) : grossCents
     if (!Number.isSafeInteger(totalCents) || totalCents < 0 || totalCents > grossCents) throw this.createError('商品实收金额异常', 409, 'VALIDATION_ERROR')
-    const saleNo = this.generateSaleNo()
+    const saleNo = await this.generateSaleNo(connection, time)
     const saleId = await this.accessoryRepository.createSalesRecord({ sale_no: saleNo, sale_type: type,
       accessory_id: accessoryId, store_id: storeId, customer_id: customerId, customer_name: name, customer_phone: phone,
       quantity, unit_price: price, total_price: totalCents / 100, purchase_cost: costCents === null ? null : costCents / 100,

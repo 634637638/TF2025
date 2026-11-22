@@ -27,6 +27,9 @@ function fixture({ events = [incoming(1, 10, 2), incoming(2, 20, 2)], serials = 
     async execute(sql, params) {
       if (sql.includes('FROM sales_goods_exchanges e')) return [[]]
       if (sql === 'SELECT id, points FROM customers WHERE id = ?') return [state.customers[params[0]] === undefined ? [] : [{ id: params[0], points: state.customers[params[0]] }]]
+      if (sql.startsWith('SELECT id, name, phone, points FROM customers WHERE id = ?')) return [state.customers[params[0]] === undefined ? [] : [{
+        id: params[0], name: '客户', phone: '13800000000', points: state.customers[params[0]]
+      }]]
       if (sql.includes('information_schema.COLUMNS')) return [installed ? [{ present: 1 }] : []]
       return ledger.execute(sql, params)
     },
@@ -65,6 +68,7 @@ function fixture({ events = [incoming(1, 10, 2), incoming(2, 20, 2)], serials = 
     async createSerialEvent(data, db) { check(db); state.serialEvents.push(data); if (failure === 'serial_event' && data.event_type === 'return') throw new Error('serial-event-failed') }
   }
   const service = new AccessoryService({ repository, inventoryService: new AccessoryInventoryService({ repository: new AccessoryInventoryRepository() }) })
+  service.generateSaleNo = async () => `PS261113${String(state.sales.length + 1).padStart(6, '0')}`
   const transaction = async operation => {
     const previous = tail
     let release

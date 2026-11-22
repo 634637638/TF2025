@@ -39,7 +39,9 @@ class SalesCheckoutController {
       if (customer.hiddenFields?.includes('customer.balance')) data.balance = null
       return res.json({ success: true, data })
     } catch (error) {
-      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID' })
+      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({
+        success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID', ...(error.field ? { field: error.field } : {})
+      })
       this.logger.error('读取贴膜客户积分资料失败:', { requestId: req.requestId, error })
       return res.status(500).json({ success: false, message: '客户积分资料读取失败，请重试', code: 'INTERNAL_ERROR' })
     }
@@ -66,7 +68,9 @@ class SalesCheckoutController {
       if (customer.hiddenFields?.includes('customer.balance')) data.balance = null
       return res.json({ success: true, data })
     } catch (error) {
-      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID' })
+      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({
+        success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID', ...(error.field ? { field: error.field } : {})
+      })
       this.logger.error('读取附加商品客户资料失败:', { requestId: req.requestId, error })
       return res.status(500).json({ success: false, message: '客户会员资料读取失败，请重试', code: 'INTERNAL_ERROR' })
     }
@@ -85,7 +89,10 @@ class SalesCheckoutController {
       }
     }
     const denied = async (fields, value, map) => {
-      if (await fields.getDeniedWrite(id, value, map)) throw Object.assign(new Error('不能使用已隐藏的结算字段'), { statusCode: 403, code: 'FIELD_PERMISSION_DENIED' })
+      const deniedField = await fields.getDeniedWrite(id, value, map, { visibleOnly: true })
+      if (deniedField) throw Object.assign(new Error('不能使用已隐藏的结算字段'), {
+        statusCode: 403, code: 'FIELD_PERMISSION_DENIED', field: deniedField
+      })
     }
     if (Array.isArray(body.phones) && body.phones.length || body.quick_phone !== undefined) {
       await denied(this.phoneAccess, body, phoneMap)
@@ -115,13 +122,16 @@ class SalesCheckoutController {
     try {
       goodsAccess ||= await this.resolveGoodsAccess(req)
       await this.enforceFields(req, goodsAccess)
-      if (await goodsAccess.getDeniedWrite(req.user.id, { total_amount: 0 }, { total_amount: 'price_info.total_price' })) {
-        return res.status(403).json({ success: false, message: '无权查看结算汇总金额', code: 'FIELD_PERMISSION_DENIED' })
+      const deniedTotalField = await goodsAccess.getDeniedWrite(req.user.id, { total_amount: 0 }, { total_amount: 'price_info.total_price' }, { visibleOnly: true })
+      if (deniedTotalField) {
+        return res.status(403).json({ success: false, message: '无权查看结算汇总金额', code: 'FIELD_PERMISSION_DENIED', field: deniedTotalField })
       }
       const data = await this.service.quote(req.body || {}, req.user)
       return res.json({ success: true, data })
     } catch (error) {
-      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID' })
+      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({
+        success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID', ...(error.field ? { field: error.field } : {})
+      })
       this.logger.error('结算积分试算失败:', { requestId: req.requestId, error })
       return res.status(500).json({ success: false, message: '积分试算失败，请稍后重试', code: 'INTERNAL_ERROR' })
     }
@@ -136,7 +146,9 @@ class SalesCheckoutController {
       // 结果只回订单、销售关联及成交汇总，不把内部采购成本或资料快照交给客户端。
       return res.json({ success: true, message: '整单结算成功', data })
     } catch (error) {
-      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID' })
+      if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({
+        success: false, message: error.message, code: error.code || 'CHECKOUT_INVALID', ...(error.field ? { field: error.field } : {})
+      })
       this.logger.error('整单结算失败:', { requestId: req.requestId, error })
       return res.status(500).json({ success: false, message: '结算失败，请核对订单后重试', code: 'INTERNAL_ERROR', request_id: req.requestId || null })
     }

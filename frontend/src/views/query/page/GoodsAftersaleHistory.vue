@@ -4,7 +4,6 @@
     class="goods-aftersale-history"
   >
     <h3>商品售后记录</h3>
-    <p>仅展示原销售门店与办理门店均在授权范围内的记录，退款、补款按本商品归属展示。</p>
     <p v-if="canViewMoney && hasExchange">
       换货原件抵付用于新件结算，实际资金往来仅为退款或补款。
     </p>
@@ -118,7 +117,7 @@ const definitions: Column[] = [
   { key: 'gift_charge_quantity', label: '未退赠品扣款数量', width: 150, field: 'total_quantity' },
   { key: 'serial_numbers', label: '退回SN', width: 180, field: 'serial_number', format: 'serials' },
   { key: 'store_name', label: '办理门店', width: 120, field: 'distribution' },
-  { key: 'operator_name', label: '办理人（当前姓名）', width: 150, field: 'operator_name' },
+  { key: 'operator_name', label: '办理人', width: 150, field: 'operator_name' },
   { key: 'base_refund_amount', label: '原实付应退', width: 120, financial: true, format: 'money' },
   { key: 'points_recovery_amount', label: '已用积分优惠追回', width: 150, financial: true, format: 'money' },
   { key: 'points_compensation_amount', label: '已追回优惠补退', width: 140, financial: true, format: 'money' },

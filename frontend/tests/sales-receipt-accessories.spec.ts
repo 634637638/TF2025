@@ -30,12 +30,36 @@ const button = (wrapper: ReturnType<typeof mount>, text: string) => wrapper.find
 beforeEach(() => { canView.value = true; mocks.hidden.clear(); mocks.get.mockResolvedValue({ success: true, data: [goods(), goods({ id: 52, name: '钢化膜', sale_type: 'gift', quantity: 1, unit_price: 0, total_price: 0, points_used: 0, deduction_amount: 0, serial_numbers: [] })] }) })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.restoreAllMocks(); vi.clearAllMocks() })
 
-it('手机凭证显示购买与赠品、数量、SN及积分抵扣，按实际净额合计且赠品零计价', async () => {
+it('手机凭证单表展示购买与赠品、数量、SN和实收', async () => {
   const wrapper = await render()
-  for (const text of ['充电器', '钢化膜', '购买', '赠品', '000SN1、000SN2', '498积分', '¥4.98', '实收 ¥35.02', '1台', '3件配件', '¥ 135.03']) expect(wrapper.text()).toContain(text)
+  for (const text of ['充电器', '钢化膜', '购买', '赠品', '配件 / 赠品明细', '000SN1、000SN2', '实收 ¥35.02', '实收 ¥0', '1台', '3件配件', '¥ 135.03']) expect(wrapper.text()).toContain(text)
+  expect(wrapper.text()).not.toContain('原价 ¥40')
+  expect(wrapper.text()).toContain('关联： PHONE-A')
+  expect(wrapper.text()).not.toContain('关联：苹果 手机甲')
+  expect(wrapper.findAll('.receipt-table')).toHaveLength(1)
+  expect(wrapper.find('.receipt-unified-table').exists()).toBe(true)
+  expect(wrapper.find('.receipt-section-label').text()).toBe('配件 / 赠品明细')
+  expect(wrapper.findAll('.receipt-unified-table .el-table__header-wrapper th')).toHaveLength(6)
+  expect(wrapper.findAll('.accessory-row--sale')).toHaveLength(1)
+  expect(wrapper.findAll('.accessory-row--gift')).toHaveLength(1)
+  expect(wrapper.find('.accessory-product-heading').text()).toContain('购买')
+  expect(wrapper.findAll('.accessory-product-heading')[1].text()).toContain('赠送')
   expect(mocks.get).toHaveBeenCalledWith(81, expect.any(AbortSignal))
   expect(wrapper.find('.totals-bar').text()).not.toContain('140.01')
   expect(button(wrapper, '打印').attributes('disabled')).toBeUndefined()
+})
+
+it('手机规格使用独立斜杠分隔并按全新或二手显示公共成色颜色', async () => {
+  const wrapper = await render([phone({ color: '白色', memory: '256GB', isNew: 1 })])
+  const spec = wrapper.find('.receipt-phone-spec')
+  expect(spec.text()).toBe('白色/256GB/全新')
+  expect(spec.find('.condition-badge').classes()).toContain('condition-new')
+  expect(spec.findAll('.receipt-phone-spec__separator')).toHaveLength(2)
+
+  await wrapper.setProps({ items: [phone({ color: '黑色', memory: '128GB', isNew: 0 })] })
+  const usedSpec = wrapper.find('.receipt-phone-spec')
+  expect(usedSpec.text()).toBe('黑色/128GB/二手')
+  expect(usedSpec.find('.condition-badge').classes()).toContain('condition-used')
 })
 
 it('部分退货后凭证只展示剩余商品和金额，打印使用相同内容', async () => {
@@ -136,16 +160,16 @@ it('缺失原销售ID禁止出具完整凭证；批发和划拨保留原行为�
   expect(mocks.get).not.toHaveBeenCalled()
 })
 
-it('赠品约定区分未记录及零元，按原数量展示但不计入实收；权限隐藏时不显示', async () => {
+it('赠品约定字段不展示但仍保留原凭据校验，且不计入实收', async () => {
   for (const price of [null, 0, 12.34]) {
     mocks.get.mockResolvedValueOnce({ success: true, data: [goods({ sale_type: 'gift', unit_price: 0, total_price: 0,
       points_used: 0, deduction_amount: 0, gift_return_unit_price: price, gift_return_total: price === null ? null : price * 2,
       gift_agreement_state: price === null ? 'not_recorded' : 'recorded' })] })
     const wrapper = await render()
-    expect(wrapper.text()).toContain(price === null ? '原单未记录约定金额' : `原单约定 ¥${price}/件`)
+    expect(wrapper.text()).not.toContain('赠品未退约定')
+    expect(wrapper.text()).not.toContain('实际扣款以售后核对为准')
     expect(wrapper.find('.totals-bar').text()).toContain('¥ 100.01')
     mocks.hidden.add('price_info.total_price'); await flushPromises()
-    expect(wrapper.text()).not.toContain('赠品未退约定')
     mocks.hidden.clear()
   }
 })
@@ -159,17 +183,18 @@ it('损坏的赠品约定不能出具完整凭证，禁止打印和图片导出'
   expect(button(wrapper, '保存图片').attributes('disabled')).toBeDefined()
 })
 
-it('打印的新文档包含同一份购买、赠品、原约定、SN及净额，不另取当前商品价格', async () => {
+it('打印的新文档包含同一份购买、赠品、SN及净额，不另取当前商品价格', async () => {
   const wrapper = await render()
   const printed = document.implementation.createHTMLDocument('receipt-test')
   Object.defineProperty(printed, 'fonts', { value: { ready: Promise.resolve() } })
   const print = vi.fn()
   vi.spyOn(window, 'open').mockReturnValue({ document: printed, print } as unknown as Window)
   await button(wrapper, '打印').trigger('click'); await flushPromises()
-  for (const text of ['充电器', '钢化膜', '赠品', '原单未记录约定金额', '000SN1', '135.03']) expect(printed.body.textContent).toContain(text)
+  for (const text of ['充电器', '钢化膜', '赠品', '000SN1', '135.03']) expect(printed.body.textContent).toContain(text)
+  expect(printed.body.textContent).not.toContain('赠品未退约定')
   const receipt = printed.body.querySelector('.sales-receipt.sales-receipt-theme')
   expect(receipt).not.toBeNull()
-  expect(receipt?.querySelectorAll('.receipt-table')).toHaveLength(2)
+  expect(receipt?.querySelectorAll('.receipt-table')).toHaveLength(1)
   expect(print).toHaveBeenCalledOnce()
 })
 
@@ -193,6 +218,7 @@ it('保存图片截取包含配件的当前凭证，成功后释放canvas及临�
     expect(mocks.capture).toHaveBeenCalledOnce()
     const content = mocks.capture.mock.calls[0][0] as HTMLElement
     for (const text of ['充电器', '1件配件', '000SN2', '117.52']) expect(content.textContent).toContain(text)
+    expect(content.textContent).not.toContain('赠品未退约定')
     expect(content.textContent).not.toContain('000SN1')
     expect(create).toHaveBeenCalledOnce(); expect(canvas.width).toBe(1)
     await vi.advanceTimersByTimeAsync(1000)

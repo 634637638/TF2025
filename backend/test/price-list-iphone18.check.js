@@ -22,12 +22,14 @@ test('iPhone 18 aliases map to the correct local models', () => {
   assert.equal(matchProductName('18duo')?.model, 'iPhone Duo')
 })
 
-test('iPhone 17 aliases keep their confirmed external model codes', () => {
+test('iPhone aliases keep their confirmed external model codes', () => {
   assert.equal(matchProductName('iPhone 17')?.external_model, 'A3521')
   assert.equal(matchProductName('iPhone 17 Pro')?.external_model, 'A3524')
   assert.equal(matchProductName('iPhone 17 Pro Max')?.external_model, 'A3527')
   assert.equal(matchProductName('iPhone Air')?.external_model, 'A3518')
   assert.equal(matchProductName('iPhone 17E')?.external_model, 'A3635')
+  assert.equal(matchProductName('iPhone Duo')?.external_model, 'A3721')
+  assert.equal(matchProductName('18duo')?.external_model, 'A3721')
 })
 
 test('iPhone 18 colors normalize to local color names', () => {
@@ -40,6 +42,8 @@ test('iPhone 18 colors normalize to local color names', () => {
   assert.equal(priceListService.normalizeColor('灰色'), '黑色')
   assert.equal(priceListService.normalizeColor('天空灰'), '黑色')
   assert.equal(priceListService.normalizeColor('深空灰'), '黑色')
+  assert.equal(priceListService.normalizeColor('夜空色'), '黑色')
+  assert.equal(priceListService.normalizeColor('星光白色'), '白色')
   assert.equal(priceListService.normalizeColor('酒红'), '红色')
   assert.equal(priceListService.normalizeColor('大红色'), '红色')
 })
@@ -72,6 +76,24 @@ test('external iPhone 18 Pro Max rows retain model, color and memory details', a
   assert.equal(parsed?.memory, '512GB')
   assert.equal(parsed?.color, '勃艮第酒红色')
   assert.equal(parsed?.isLocal, true)
+})
+
+test('external iPhone Duo rows retain A3721 and normalize Duo colors', async () => {
+  const white = await priceListService.parseExternalProduct(
+    '苹果 iPhone Duo (A3721)-1TB-同城-星光白色'
+  )
+  const black = await priceListService.parseExternalProduct(
+    '苹果 iPhone Duo (A3721)-256GB-同城-夜空色'
+  )
+
+  assert.equal(white?.model, 'iPhone Duo')
+  assert.equal(white?.modelCode, 'A3721')
+  assert.equal(white?.memory, '1TB')
+  assert.equal(white?.color, '星光白色')
+  assert.equal(priceListService.normalizeColor(white?.color), '白色')
+  assert.equal(black?.modelCode, 'A3721')
+  assert.equal(black?.memory, '256GB')
+  assert.equal(priceListService.normalizeColor(black?.color), '黑色')
 })
 
 test('external searches try confirmed model codes before display-name fallbacks', () => {

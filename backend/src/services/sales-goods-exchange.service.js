@@ -10,6 +10,7 @@ const { normalizeCheckoutGoods } = require('../utils/checkout-goods-input')
 const { allocateAftersaleSettlement } = require('../utils/sales-aftersale-settlement')
 const { validId, moneyCents } = require('../utils/sale-input')
 const { hasColumn } = require('./schema-inspector.service')
+const { prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
 
 const reject = (message, code = 'CHECKOUT_RETURN_CONFLICT', statusCode = 409) => {
   throw Object.assign(new Error(message), { statusCode, code })
@@ -28,6 +29,10 @@ class SalesGoodsExchangeService extends SalesGoodsReturnService {
     for (const action of ['query:view', 'query:exchange', 'query:goods-view']) {
       if (!await this.permissionCheck(actor, action)) reject('无权办理商品换货', 'PERMISSION_DENIED', 403)
     }
+  }
+
+  async prepareTransaction(connection) {
+    await prepareInvoiceNumberTransaction(connection)
   }
 
   contextFacts(plan, orderId, itemId) {
@@ -74,7 +79,7 @@ class SalesGoodsExchangeService extends SalesGoodsReturnService {
     const pointsSnapshot = input.replacement.redeem_points ? await this.pointsLedger.snapshot(connection, Number(order.customer_id), { preserveSources: true }) : null
     const original = await this.returnGoods(connection, input, actor, loaded, `gx:${input.request_key}`)
     const replacement = { ...input.replacement, ...(replacementType === 'gift' && plan.item.gift_return_unit_price !== null ? { gift_return_unit_price: plan.item.gift_return_unit_price } : {}) }
-    const orderId = await repo.createOrder(connection, { order_no: this.checkout.createOrderNo(),
+    const orderId = await repo.createOrder(connection, { order_no: await this.checkout.createOrderNo(connection, input.time),
       request_key: createHash('sha256').update(`goods_exchange:${input.request_key}`).digest('hex').slice(0, 32), request_hash: hash,
       customer_id: Number(order.customer_id), customer_name: order.customer_name, customer_phone: order.customer_phone,
       store_id: input.store_id, operator_id: input.operator_id, created_by: input.actor_id, time: input.time, remarks: input.remarks, config })

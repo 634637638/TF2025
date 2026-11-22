@@ -8,6 +8,7 @@ const { validId, moneyCents } = require('../utils/sale-input')
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
 const { createPurchaseSnapshot, projectPurchaseSnapshot } = require('../utils/accessory-purchase-snapshot')
 const { getBeijingTimeString } = require('../utils/time')
+const { prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
 
 const inputKeys = ['request_key', 'accessory_id', 'brand_id', 'product_model', 'supplier_id', 'store_id', 'total_quantity', 'purchase_cost', 'usage_type', 'serial_tracking', 'serial_numbers', 'remarks']
 
@@ -125,6 +126,7 @@ class AccessoryStockCorrectionService extends BaseService {
       return await this.repository.withConnection(async connection => {
         await this.assertReady(connection)
         await connection.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
+        await prepareInvoiceNumberTransaction(connection)
         await connection.beginTransaction()
         try {
           // 先按稳定顺序锁根模板，再锁原采购，兼容销售/划拨的锁顺序。
@@ -199,7 +201,7 @@ class AccessoryStockCorrectionService extends BaseService {
             ...(Number(finalId) === Number(row.accessory_id) ? { brand_name: purchase.brand_name } : {}),
             ...(supplierId === Number(row.supplier_id) ? { supplier_name: purchase.supplier_name } : {}),
             ...(storeId === Number(row.store_id) ? { store_name: purchase.store_name } : {}) }, { accessory_id: finalId, supplier_id: supplierId, store_id: storeId })
-          const replacement = { batch_no: this.accessories.generateBatchNo(), accessory_id: finalId, supplier_id: supplierId, store_id: storeId,
+          const replacement = { batch_no: await this.accessories.generateBatchNo(connection), accessory_id: finalId, supplier_id: supplierId, store_id: storeId,
             quantity, purchase_cost: costCents / 100, total_amount: costCents * quantity / 100, distribution: JSON.stringify(input.distribution),
             remarks: body.remarks === undefined ? row.remarks : body.remarks.trim(), operator_id: row.operator_id, operator_name: row.operator_name,
             inventory_time: row.inventory_time, status: 'completed', product_snapshot: snapshot, request_key: body.request_key, request_hash: hash }

@@ -166,52 +166,111 @@
 
           <div class="items-list">
             <el-table
-              :data="items"
-              class="data-table compact-fit-table receipt-table"
+              :data="receiptRows"
+              class="data-table compact-fit-table receipt-table receipt-unified-table"
               :style="receiptTableStyle"
               border
               :fit="true"
               table-layout="fixed"
+              row-key="key"
+              :row-class-name="receiptRowClass"
+              :span-method="receiptSpanMethod"
             >
               <el-table-column
                 label="序号"
-                :width="$getNumberColumnWidth((items || []).map((_row, $index) => $index + 1), 68)"
+                :width="$getNumberColumnWidth(receiptRows.filter(row => row.kind !== 'accessory-section').map((_row, index) => index + 1), 68)"
                 align="center"
               >
-                <template #default="{ $index }">
-                  <span class="table-number-badge">{{ $index + 1 }}</span>
+                <template #default="{ row }">
+                  <span
+                    v-if="row.kind === 'accessory-section'"
+                    class="receipt-section-label"
+                  >配件 / 赠品明细</span>
+                  <span
+                    v-else
+                    class="table-number-badge"
+                  >{{ row.index + 1 }}</span>
                 </template>
               </el-table-column>
               <el-table-column
-                label="商品名称"
-                min-width="150"
+                label="商品 / 配件名称"
+                min-width="205"
+                class-name="complete-text-column"
+              >
+                <template #default="{ row }">
+                  <template v-if="row.kind === 'phone'">
+                    <strong class="receipt-product-name">{{ row.item.brand }} {{ row.item.model }}</strong>
+                  </template>
+                  <div
+                    v-else-if="row.kind === 'accessory'"
+                    class="accessory-product-cell"
+                  >
+                    <div class="accessory-product-heading">
+                      <strong
+                        v-if="canViewAccessoryField('name')"
+                        class="receipt-product-name"
+                      >{{ row.accessory.goods.name || '-' }}</strong>
+                      <span
+                        v-if="canViewAccessoryField('usage_type')"
+                        :class="['status-badge', row.accessory.goods.sale_type === 'gift' ? 'status-warning' : 'status-success']"
+                      >{{ row.accessory.goods.sale_type === 'gift' ? '赠送' : row.accessory.goods.sale_type === 'sale' ? '购买' : '-' }}</span>
+                    </div>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column
+                label="规格 / 成色"
+                :min-width="receiptSpecColumnWidth"
                 align="center"
                 class-name="complete-text-column"
               >
                 <template #default="{ row }">
-                  <strong class="receipt-product-name">{{ row.brand }} {{ row.model }}</strong>
+                  <template v-if="row.kind === 'phone'">
+                    <div class="receipt-phone-spec">
+                      <span>{{ row.item.color || '-' }}</span>
+                      <span
+                        class="receipt-phone-spec__separator"
+                        aria-hidden="true"
+                      >/</span>
+                      <span>{{ row.item.memory || '-' }}</span>
+                      <span
+                        class="receipt-phone-spec__separator"
+                        aria-hidden="true"
+                      >/</span>
+                      <span :class="['condition-badge', row.item.isNew === 1 ? 'condition-new' : 'condition-used']">
+                        {{ row.item.isNew === 1 ? '全新' : '二手' }}
+                      </span>
+                    </div>
+                  </template>
+                  <span
+                    v-else-if="row.kind === 'accessory'"
+                    class="accessory-product-meta"
+                  >
+                    {{ [canViewAccessoryField('brand_name') ? row.accessory.goods.brand_name : '', canViewAccessoryField('product_model') ? row.accessory.goods.product_model : '', canViewAccessoryField('color_name') ? row.accessory.goods.color_name : ''].filter(Boolean).join(' / ') || '-' }}
+                  </span>
                 </template>
               </el-table-column>
               <el-table-column
-                label="规格/成色"
-                min-width="145"
-                align="center"
-                class-name="complete-text-column"
-              >
-                <template #default="{ row }">
-                  {{ row.color }} / {{ row.memory }} / {{ row.isNew === 1 ? '全新' : '二手' }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="设备信息（IMEI / SN）"
-                min-width="220"
-                align="center"
+                label="设备 / SN信息"
+                min-width="210"
                 class-name="wrapped-text-column"
               >
                 <template #default="{ row }">
-                  <div class="cell-stack">
-                    <span v-if="row.imei">IMEI：{{ row.imei }}</span>
-                    <span v-else>SN：{{ row.serialNumber || '-' }}</span>
+                  <template v-if="row.kind === 'phone'">
+                    <div class="cell-stack">
+                      <span v-if="row.item.imei">IMEI：{{ row.item.imei }}</span>
+                      <span v-else>SN：{{ row.item.serialNumber || '-' }}</span>
+                    </div>
+                  </template>
+                  <div
+                    v-else-if="row.kind === 'accessory'"
+                    class="accessory-linked-cell"
+                  >
+                    <span class="accessory-linked-phone">关联： {{ row.accessory.phone.imei || row.accessory.phone.serialNumber || '-' }}</span>
+                    <span
+                      v-if="canViewAccessoryField('serial_number') && row.accessory.goods.serial_numbers?.length"
+                      class="accessory-linked-sn"
+                    >配件SN：{{ row.accessory.goods.serial_numbers.join('、') }}</span>
                   </div>
                 </template>
               </el-table-column>
@@ -220,102 +279,30 @@
                 width="72"
                 align="center"
               >
-                <template #default>
-                  1
+                <template #default="{ row }">
+                  <template v-if="row.kind === 'phone'">1</template>
+                  <template v-else-if="row.kind === 'accessory'">
+                    {{ canViewAccessoryField('total_quantity') ? row.accessory.goods.quantity ?? '-' : '-' }}{{ canViewAccessoryField('unit') ? row.accessory.goods.unit : '' }}
+                  </template>
                 </template>
               </el-table-column>
               <el-table-column
                 label="金额"
-                width="112"
+                :min-width="receiptAmountColumnWidth"
                 align="center"
               >
                 <template #default="{ row }">
-                  <strong class="receipt-product-amount">{{ `¥${formatPrice(row.salePrice)}` }}</strong>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-
-          <div
-            v-if="accessoryRows.length"
-            class="items-list"
-          >
-            <el-table
-              :data="accessoryRows"
-              class="data-table compact-fit-table receipt-table"
-              border
-              :fit="true"
-              table-layout="fixed"
-            >
-              <el-table-column
-                label="序号"
-                :width="$getNumberColumnWidth(accessoryRows.map((_row, index) => index + 1), 68)"
-                align="center"
-              >
-                <template #default="{ $index }">
-                  <span class="table-number-badge">{{ $index + 1 }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="配件 / 赠品"
-                min-width="190"
-                class-name="complete-text-column"
-              >
-                <template #default="{ row }">
-                  <div class="cell-stack">
+                  <template v-if="row.kind === 'phone'">
+                    <strong class="receipt-product-amount">{{ `¥${formatPrice(row.item.salePrice)}` }}</strong>
+                  </template>
+                  <div
+                    v-else-if="row.kind === 'accessory'"
+                    :class="['accessory-amount-cell', { 'is-gift': row.accessory.goods.sale_type === 'gift' }]"
+                  >
                     <strong
-                      v-if="canViewAccessoryField('name')"
-                      class="receipt-product-name"
-                    >{{ row.goods.name || '-' }}</strong>
-                    <span v-if="canViewAccessoryField('usage_type')">{{ row.goods.sale_type === 'gift' ? '赠品' : row.goods.sale_type === 'sale' ? '购买' : '-' }}</span>
-                    <span v-if="showGiftAgreement(row.goods)">赠品未退约定：{{ giftReturnAgreementText(row.goods) }}</span>
-                    <span>{{ [canViewAccessoryField('brand_name') ? row.goods.brand_name : '', canViewAccessoryField('product_model') ? row.goods.product_model : '', canViewAccessoryField('color_name') ? row.goods.color_name : ''].filter(Boolean).join(' / ') }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="关联手机 / SN"
-                min-width="220"
-                class-name="wrapped-text-column"
-              >
-                <template #default="{ row }">
-                  <div class="cell-stack">
-                    <span>{{ row.phone.brand }} {{ row.phone.model }}</span>
-                    <span>{{ row.phone.imei || row.phone.serialNumber || '-' }}</span>
-                    <span v-if="canViewAccessoryField('serial_number') && row.goods.serial_numbers?.length">配件SN：{{ row.goods.serial_numbers.join('、') }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column
-                v-if="canViewAccessoryField('total_quantity')"
-                label="数量"
-                width="90"
-                align="center"
-              >
-                <template #default="{ row }">
-                  {{ row.goods.quantity ?? '-' }}{{ canViewAccessoryField('unit') ? row.goods.unit : '' }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                v-if="canViewAccessoryField('unit_price')"
-                label="单价"
-                width="100"
-                align="center"
-              >
-                <template #default="{ row }">
-                  {{ receiptMoney(row.goods.unit_price) }}
-                </template>
-              </el-table-column>
-              <el-table-column
-                v-if="canViewAccessoryField('total_price')"
-                label="积分抵扣 / 金额"
-                min-width="150"
-                align="center"
-              >
-                <template #default="{ row }">
-                  <div class="cell-stack">
-                    <span v-if="row.goods.points_used != null">{{ row.goods.points_used }}积分 / {{ receiptMoney(row.goods.deduction_amount) }}</span>
-                    <strong class="receipt-product-amount">实收 {{ receiptMoney(row.goods.total_price) }}</strong>
+                      v-if="canViewAccessoryField('total_price')"
+                      class="receipt-product-amount accessory-actual-amount"
+                    >实收 {{ receiptMoney(row.accessory.goods.total_price) }}</strong>
                   </div>
                 </template>
               </el-table-column>
@@ -402,11 +389,12 @@ import { loadHtml2Canvas, normalizeCanvasColors } from '@/utils/html2canvas'
 import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { formatRmbUppercase, formatAmount } from '@/utils/format'
 import { getPhoneReceiptAccessories } from '@/api/sales-receipt'
-import { isGiftReturnAgreement, giftReturnAgreementText } from '@/utils/query-goods'
+import { isGiftReturnAgreement } from '@/utils/query-goods'
 import type { ReceiptItem, SearchPhoneResult, PhoneReceiptAccessory } from '@/types/sales-receipt'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { canViewQueryGoodsField as canViewAccessoryField } from '@/components/accessory-field-permissions'
+import { getTextColumnMinWidth } from '@/utils/table-layout'
 
 
 interface Props extends VisibleProps {
@@ -509,7 +497,60 @@ const canViewAccessories = computed(() => queryPermissions.canView.value && quer
 const { nextRequest, cancelLatest, isCanceledError } = useLatestRequest()
 const accessoryLoading = ref(false)
 const accessoryError = ref('')
-const accessoryRows = ref<Array<{ phone: ReceiptItem; goods: PhoneReceiptAccessory }>>([])
+type AccessoryReceiptRow = { phone: ReceiptItem; goods: PhoneReceiptAccessory }
+type ReceiptTableRow =
+  | { kind: 'phone'; key: string; item: ReceiptItem; index: number }
+  | { kind: 'accessory-section'; key: string }
+  | { kind: 'accessory'; key: string; accessory: AccessoryReceiptRow; index: number }
+
+const accessoryRows = ref<AccessoryReceiptRow[]>([])
+const receiptRows = computed<ReceiptTableRow[]>(() => {
+  const phoneRows: ReceiptTableRow[] = props.items.map((item, index) => ({
+    kind: 'phone',
+    key: `phone-${item.sale_id ?? item.phone_id}-${index}`,
+    item,
+    index
+  }))
+  if (!accessoryRows.value.length) return phoneRows
+  return [
+    ...phoneRows,
+    { kind: 'accessory-section', key: 'accessory-section' },
+    ...accessoryRows.value.map((accessory, index) => ({
+      kind: 'accessory' as const,
+      key: `accessory-${accessory.phone.sale_id ?? accessory.phone.phone_id}-${accessory.goods.id}-${index}`,
+      accessory,
+      index
+    }))
+  ]
+})
+const receiptSpecColumnWidth = computed(() => getTextColumnMinWidth([
+  '规格 / 成色',
+  ...props.items.map(item => `${item.color || '-'}/${item.memory || '-'}/${item.isNew === 1 ? '全新' : '二手'}`),
+  ...accessoryRows.value.map(row => [
+    canViewAccessoryField('brand_name') ? row.goods.brand_name : '',
+    canViewAccessoryField('product_model') ? row.goods.product_model : '',
+    canViewAccessoryField('color_name') ? row.goods.color_name : ''
+  ].filter(Boolean).join('/') || '-')
+], {
+  minWidth: 176,
+  maxWidth: 190,
+  horizontalPadding: 20,
+  asciiCharacterWidth: 7,
+  wideCharacterWidth: 12
+}))
+const receiptAmountColumnWidth = computed(() => getTextColumnMinWidth([
+  '金额',
+  ...props.items.map(item => `¥${formatPrice(item.salePrice)}`),
+  ...accessoryRows.value
+    .filter(row => canViewAccessoryField('total_price'))
+    .map(row => `实收 ¥${formatAmount(row.goods.total_price ?? 0)}`)
+], {
+  minWidth: 112,
+  maxWidth: 136,
+  horizontalPadding: 16,
+  asciiCharacterWidth: 7,
+  wideCharacterWidth: 12
+}))
 const loadAccessories = async () => {
   cancelLatest()
   accessoryRows.value = []
@@ -543,8 +584,16 @@ watch(() => [props.visible, props.status, props.items.map(item => `${item.phone_
 
 const accessoryQuantity = computed(() => canViewAccessoryField('total_quantity') && accessoryRows.value.every(row => row.goods.quantity !== null)
   ? accessoryRows.value.reduce((sum, row) => sum + Number(row.goods.quantity), 0) : '-')
-const showGiftAgreement = (row: PhoneReceiptAccessory) => row.sale_type === 'gift' && row.gift_agreement_state !== null &&
-  (['usage_type', 'total_quantity', 'unit_price', 'total_price'] as const).every(canViewAccessoryField)
+const receiptRowClass = ({ row }: { row?: ReceiptTableRow }) => {
+  if (!row) return ''
+  if (row.kind === 'accessory-section') return 'receipt-row--accessory-section'
+  if (row.kind === 'accessory') return row.accessory.goods.sale_type === 'gift' ? 'accessory-row--gift' : 'accessory-row--sale'
+  return 'receipt-row--phone'
+}
+const receiptSpanMethod = ({ row, columnIndex }: { row: ReceiptTableRow; columnIndex: number }) => {
+  if (row.kind !== 'accessory-section') return undefined
+  return columnIndex === 0 ? [1, 6] : [0, 0]
+}
 const canExport = computed(() => !accessoryLoading.value && !accessoryError.value)
 const canTotal = computed(() => canExport.value && accessoryRows.value.every(row => row.goods.total_price !== null) &&
   (!accessoryRows.value.length || canViewAccessoryField('total_price') && canViewAccessoryField('unit_price') && canViewAccessoryField('total_quantity') && canViewAccessoryField('usage_type')))

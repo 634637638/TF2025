@@ -8,7 +8,8 @@ const {
   prepareInvoiceNumberTransaction,
   generateInvoiceNumber,
   generatePurchaseNumber,
-  generateInvoiceNumberForDate
+  generateInvoiceNumberForDate,
+  generateDailyDocumentNumber
 } = require('../src/utils/invoice-number')
 const { formatBeijingDate } = require('../src/utils/time')
 
@@ -204,20 +205,20 @@ test('concurrent committed sales do not receive duplicate gap numbers', async ()
 test('purchase numbers use the locked transactional daily sequence', async () => {
   const database = createDatabase([], 3)
   const connection = await begin(database)
-  const number = await generatePurchaseNumber(connection, '2026-11-05')
-  assert.equal(number, 'PO20261105000004')
+  const number = await generatePurchaseNumber(connection, '2026-11-05 14:30:00')
+  assert.equal(number, 'PO26110514300004')
   connection.insertPurchase(number)
   await connection.commit()
-  assert.equal(database.sequences.get('20261105:PO'), 4)
+  assert.equal(database.sequences.get('202611051430:PO'), 4)
   assert.equal(database.committedPurchases.size, 1)
 })
 
-test('concurrent purchase number allocations serialize on the daily sequence row', async () => {
+test('concurrent purchase number allocations serialize on the minute sequence row', async () => {
   const database = createDatabase()
   const allocate = async () => {
     const connection = await begin(database)
     try {
-      const number = await generatePurchaseNumber(connection, '2026-11-05')
+      const number = await generatePurchaseNumber(connection, '2026-11-05 14:30:00')
       connection.insertPurchase(number)
       await connection.commit()
       return number
@@ -228,7 +229,28 @@ test('concurrent purchase number allocations serialize on the daily sequence row
   }
   const numbers = await Promise.all(Array.from({ length: 8 }, allocate))
   assert.equal(new Set(numbers).size, 8)
-  assert.deepEqual(numbers.sort(), Array.from({ length: 8 }, (_, index) => `PO20261105${String(index + 1).padStart(6, '0')}`))
+  assert.deepEqual(numbers.sort(), Array.from({ length: 8 }, (_, index) => `PO2611051430${String(index + 1).padStart(4, '0')}`))
+})
+
+test('purchase numbers reset at the next minute and daily documents use their own sequences', async () => {
+  const database = createDatabase()
+  assert.equal(await (async () => {
+    const connection = await begin(database)
+    try {
+      const value = await generatePurchaseNumber(connection, '2026-11-05 14:30:00')
+      await connection.commit()
+      return value
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    }
+  })(), 'PO26110514300001')
+  const nextMinute = await begin(database)
+  assert.equal(await generatePurchaseNumber(nextMinute, '2026-11-05 14:31:00'), 'PO26110514310001')
+  assert.equal(await generateDailyDocumentNumber('PS', nextMinute, '2026-11-05', 6), 'PS261105000001')
+  assert.equal(await generateDailyDocumentNumber('RK', nextMinute, '2026-11-05', 6), 'RK261105000001')
+  assert.equal(await generateDailyDocumentNumber('SO', nextMinute, '2026-11-05', 8), 'SO26110500000001')
+  await nextMinute.rollback()
 })
 
 test('parallel allocations on the same connection reserve distinct numbers', async () => {
@@ -394,4 +416,20 @@ test('invoice integrity repair is preview-first, transactional and date-aware', 
   assert.match(source, /remaining_duplicate_groups: 0/)
   assert.match(source, /remaining_misaligned_rows: 0/)
   assert.match(source, /remaining_legacy_rows: 0/)
+})
+
+test('legacy document repair blocks unknown purchase minutes and updates snapshots by row ID', () => {
+  const repair = require('../scripts/repair-legacy-document-numbers')
+  assert.equal(repair.normalizeDateTime('2026-11-05 14:30:00'), '2026-11-05 14:30:00')
+  assert.equal(repair.normalizeDateTime('2026-02-30 14:30:00'), null)
+  const grouped = repair.groupPurchaseNumbers([
+    { id: 1, purchase_number: 'PO20261105000001', inventory_time: '2026-11-05 14:30:00' },
+    { id: 2, purchase_number: 'PO20261105000001', inventory_time: '2026-11-05 14:30:00' },
+    { id: 3, purchase_number: 'PO20261105000002', inventory_time: null }
+  ])
+  assert.deepEqual(grouped.groups[0].ids, [1, 2])
+  assert.equal(grouped.blocked[0].id, 3)
+  const retained = repair.planPurchaseGroups([{ id: 4, purchase_number: 'PO26110514300001', inventory_time: '2026-11-05 14:30:00' }])
+  assert.equal(retained.groups[0].new_number, 'PO26110514300001')
+  assert.equal(repair.replaceSnapshotNumber({ sale_no: 'OLD' }, 'sale_no', 'PS261105000001'), '{"sale_no":"PS261105000001"}')
 })

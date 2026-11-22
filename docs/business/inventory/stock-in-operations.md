@@ -11,9 +11,10 @@
 
 ## 入库单号
 
-- 入库单号格式为 `PO + 北京时间日期 + 至少 6 位日序号`，例如 `PO20261105000001`。
-- 序号使用 `invoice_sequences` 表中 `(sequence_date, type_suffix='PO')` 的唯一行锁分配，并与入库事务一起提交。失败回滚时序号更新也回滚。
-- 历史入库单号不会被改写。旧格式包含时分秒和随机后缀，与新格式 `PO + 日期 + 序号` 不同；新格式序号以事务序列表为唯一分配来源。
+- 手机采购单号格式为 `PO + YYMMDD + HHmm + 4位分钟序号`，例如 `PO26112114300001`，共16位；分钟序号从 `0001` 开始。
+- 序号使用 `invoice_sequences` 表中 `(北京时间YYYYMMDDHHmm, type_suffix='PO')` 唯一行锁分配，并与入库事务一起提交。失败回滚时序号更新也回滚，同一分钟内并发分配不会重复。
+- 商品销售/赠送、商品采购批次和共同销售单分别使用 `PS + YYMMDD + 6位日序号`、`RK + YYMMDD + 6位日序号` 和 `SO + YYMMDD + 8位日序号`。商品单号统一由 `backend/src/utils/invoice-number.js` 生成。
+- 历史单号通过 `npm --prefix backend run repair:document-numbers` 只读预览，确认数据库完整备份后使用同一命令追加 `-- --apply` 执行。脚本同步共同单明细快照中的商品单号；入库时间不能确认分钟的手机采购记录会阻止整批更新，不会按日期伪造时分。
 - 所有采购入库单号都由 `backend/src/utils/invoice-number.js` 生成；不要在页面或其他路由自行拼接 `PO` 单号。
 
 ## 部署和验证

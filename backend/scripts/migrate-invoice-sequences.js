@@ -56,12 +56,17 @@ async function inspect(db) {
   if (tables.length === 0) return { exists: false }
 
   const expectedColumns = [
-    ['sequence_date', 'char(8)', 'NO'],
+    ['sequence_date', 'char(12)', 'NO'],
     ['type_suffix', 'varchar(4)', 'NO'],
     ['current_sequence', 'int unsigned', 'NO']
   ]
+  let needsSequenceDateExpansion = false
   for (const [name, type, nullable] of expectedColumns) {
     const column = columns.find(item => item.COLUMN_NAME === name)
+    if (name === 'sequence_date' && String(column?.COLUMN_TYPE || '').toLowerCase() === 'char(8)' && column.IS_NULLABLE === nullable) {
+      needsSequenceDateExpansion = true
+      continue
+    }
     if (!column || String(column.COLUMN_TYPE).toLowerCase() !== type || column.IS_NULLABLE !== nullable) {
       throw new Error(`${TABLE_NAME}.${name} 不符合预期结构`)
     }
@@ -72,17 +77,17 @@ async function inspect(db) {
     throw new Error(`${TABLE_NAME} 主键必须为 (sequence_date, type_suffix)`)
   }
 
-  return { exists: true }
+  return { exists: true, needsSequenceDateExpansion }
 }
 
 async function main() {
   const db = await createConnection()
   try {
     const before = await inspect(db)
-    if (!before.exists && !applyChanges) {
+    if ((!before.exists || before.needsSequenceDateExpansion) && !applyChanges) {
       console.log(JSON.stringify({
         status: 'dry_run',
-        pending: ['create_invoice_sequences'],
+        pending: before.exists ? ['expand_sequence_date_to_minute_key'] : ['create_invoice_sequences'],
         apply_command: 'npm run migrate:invoice-sequences -- --apply'
       }, null, 2))
       return
@@ -91,18 +96,20 @@ async function main() {
     if (!before.exists) {
       await db.execute(`
         CREATE TABLE ${TABLE_NAME} (
-          sequence_date CHAR(8) NOT NULL,
+          sequence_date CHAR(12) NOT NULL,
           type_suffix VARCHAR(4) NOT NULL,
           current_sequence INT UNSIGNED NOT NULL DEFAULT 0,
           PRIMARY KEY (sequence_date, type_suffix)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `)
+    } else if (before.needsSequenceDateExpansion) {
+      await db.execute(`ALTER TABLE ${TABLE_NAME} MODIFY COLUMN sequence_date CHAR(12) NOT NULL`)
     }
 
     const after = await inspect(db)
     if (!after.exists) throw new Error(`${TABLE_NAME} 迁移后校验失败`)
     console.log(JSON.stringify({
-      status: before.exists ? 'already_ready' : 'migrated_and_verified',
+      status: before.needsSequenceDateExpansion || !before.exists ? 'migrated_and_verified' : 'already_ready',
       table: TABLE_NAME
     }, null, 2))
   } finally {

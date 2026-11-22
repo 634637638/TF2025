@@ -43,6 +43,8 @@
 
 外部来源的搜索候选词、目标型号识别、有效报价行判断和检索URL构造统一由 `backend/src/services/price-source-parser.service.js` 实现。主服务保留原四个公共方法委托，注入现有HTML解析器及统一来源地址；解析单元不读取环境、Cookie或数据库，也不发起请求。代码优先/名称补搜、Duo别名、人民币商品行识别及空品牌筛选均保留原行为；此处判断只决定是否继续解析，不能代替写回前的严格品牌、型号、容量和颜色匹配。
 
+公开未登录来源请求报价前，主服务先访问同源首页并逐跳保留匿名会话 Cookie，之后复用于报价及型号补搜请求。重定向只允许同主机，并将跳转中的 HTTP 地址升级为 HTTPS；公开源不复用账号来源的登录 Cookie。
+
 ```bash
-ENV_FILE=test/missing-unit-env RUN_DB_TESTS=false node --test backend/test/price-source-parser.check.js backend/test/price-product-matcher.check.js backend/test/price-list-iphone18.check.js backend/test/price-channel-pricing.check.js backend/test/price-list-management.check.js backend/test/price-list-public-search-contract.check.js
+ENV_FILE=test/missing-unit-env RUN_DB_TESTS=false node --test backend/test/price-source-parser.check.js backend/test/price-product-matcher.check.js backend/test/price-list-iphone18.check.js backend/test/price-list-public-session.check.js backend/test/price-channel-pricing.check.js backend/test/price-list-management.check.js backend/test/price-list-public-search-contract.check.js
 ```

@@ -14,7 +14,7 @@ import type { DashboardShortcut } from '@/types/dashboard-shortcut'
 const mocks = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(),
   success: vi.fn(), warning: vi.fn(), error: vi.fn(), confirm: vi.fn() }))
 vi.mock('@/api/dashboard-shortcuts', () => ({ dashboardShortcutsApi: mocks }))
-const acl = reactive({ permissions: ['dashboard:view', 'system:view', 'system:edit', 'system:delete', 'inventory:view', 'inventory:create', 'accessories:view', 'accessories:create', 'query:view', 'query:goods-view', 'query:goods-sell'], mobile: false })
+const acl = reactive({ permissions: ['dashboard:view', 'system:view', 'system:edit', 'system:delete', 'inventory:view', 'inventory:create', 'accessories:view', 'accessories:stock-in', 'accessories:create', 'query:view', 'query:goods-view', 'query:goods-sell'], mobile: false })
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ hasPermission: (permission: string) => acl.permissions.includes('*') || acl.permissions.includes(permission) }) }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: computed(() => acl.mobile) }) }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
@@ -37,7 +37,7 @@ async function makeRouter(path = '/dashboard') {
 let wrapper: VueWrapper | undefined
 beforeEach(() => {
   setActivePinia(createPinia())
-  acl.permissions = ['dashboard:view', 'system:view', 'system:edit', 'system:delete', 'inventory:view', 'inventory:create', 'accessories:view', 'accessories:create', 'query:view', 'query:goods-view', 'query:goods-sell']
+  acl.permissions = ['dashboard:view', 'system:view', 'system:edit', 'system:delete', 'inventory:view', 'inventory:create', 'accessories:view', 'accessories:stock-in', 'accessories:create', 'query:view', 'query:goods-view', 'query:goods-sell']
   acl.mobile = false
   for (const mock of Object.values(mocks)) mock.mockReset()
   mocks.list.mockResolvedValue({ success: true, data: [] })
@@ -78,6 +78,16 @@ describe('快捷方式目标及权限', () => {
     }
     expect(canUseShortcut(entry({ enabled: false }), router, { hasPermission: () => true })).toBe(false)
     expect(canUseShortcut(entry({ target: 'phone-stock-in' }), router, { hasPermission: permission => permission === 'inventory:view' })).toBe(false)
+  })
+  it('商品入库快捷方式使用独立的配件入库权限，不要求商品档案创建权限', async () => {
+    const router = await makeRouter()
+    const stockIn = entry({ label: '商品入库', target: 'goods-stock-in', icon: 'fas fa-box-open' })
+    const hasStockIn = (permissions: string[]) => canUseShortcut(stockIn, router, {
+      hasPermission: permission => permissions.includes(permission)
+    })
+    expect(hasStockIn(['accessories:view', 'accessories:stock-in'])).toBe(true)
+    expect(hasStockIn(['accessories:view', 'accessories:create'])).toBe(false)
+    expect(hasStockIn(['accessories:stock-in'])).toBe(false)
   })
 })
 

@@ -14,7 +14,7 @@
 const mysql = require('mysql2/promise')
 const config = require('../config')
 const { isConnected } = require('../config/database')
-const { formatLocalDate, formatBeijingDate } = require('./time')
+const { formatLocalDate, formatBeijingDate, formatBeijingDateTime } = require('./time')
 const { schemaChangesAllowed } = require('./schema-change-policy')
 
 let sequenceTableReady
@@ -40,7 +40,7 @@ const ensureSequenceTable = async (connection) => {
   if (!sequenceTableReady) {
     sequenceTableReady = connection.execute(`
       CREATE TABLE IF NOT EXISTS invoice_sequences (
-        sequence_date CHAR(8) NOT NULL,
+        sequence_date CHAR(12) NOT NULL,
         type_suffix VARCHAR(4) NOT NULL,
         current_sequence INT UNSIGNED NOT NULL DEFAULT 0,
         PRIMARY KEY (sequence_date, type_suffix)
@@ -95,45 +95,101 @@ async function generatePurchaseNumber(connection, purchaseDate = new Date()) {
   const scope = transactionReservations.get(connection)
   if (!scope) throw new Error('请在开始入库事务前调用 prepareInvoiceNumberTransaction')
 
-  const dateStr = getInvoiceDateKey(purchaseDate)
-  const allocation = scope.pending.then(() => allocatePurchaseNumber(connection, dateStr, scope.numbers))
+  const purchaseTime = getBeijingPurchaseTime(purchaseDate)
+  const fullDate = purchaseTime.slice(0, 10).replace(/-/g, '')
+  const minute = purchaseTime.slice(11, 13) + purchaseTime.slice(14, 16)
+  const compactDate = fullDate.slice(2) + minute
+  const sequenceDate = `${fullDate}${minute}`
+  const allocation = scope.pending.then(() => allocatePrefixedSequence(connection, {
+    sequenceDate,
+    sequenceType: 'PO',
+    prefix: 'PO',
+    displayDate: compactDate,
+    digits: 4,
+    limit: 9999,
+    reservations: scope.numbers
+  }))
   scope.pending = allocation.then(() => {}, () => {})
   return allocation
 }
 
-async function allocatePurchaseNumber(connection, dateStr, reservations) {
-  const key = `${dateStr}PO`
+async function generateDailyDocumentNumber(prefix, connection, date, digits) {
+  if (!connection) throw new Error('生成单据编号需要数据库连接')
+  const scope = transactionReservations.get(connection)
+  if (!scope) throw new Error('请在开始业务事务前调用 prepareInvoiceNumberTransaction')
+  if (!['PS', 'RK', 'SO'].includes(prefix) || !Number.isInteger(digits) || digits < 1 || digits > 8) {
+    throw new Error('单据编号规则无效')
+  }
+  const sequenceDate = getInvoiceDateKey(date)
+  const allocation = scope.pending.then(() => allocatePrefixedSequence(connection, {
+    sequenceDate,
+    sequenceType: prefix,
+    prefix,
+    displayDate: sequenceDate.slice(2),
+    digits,
+    limit: 10 ** digits - 1,
+    reservations: scope.numbers
+  }))
+  scope.pending = allocation.then(() => {}, () => {})
+  return allocation
+}
+
+function getBeijingPurchaseTime(value) {
+  if (value instanceof Date || value === undefined) return formatBeijingDateTime(value || new Date())
+  if (typeof value !== 'string') throw new Error('采购单号时间无效')
+  const trimmed = value.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return `${trimmed} 00:00:00`
+  const localMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})(?::\d{2})?$/)
+  let result
+  if (localMatch) result = `${localMatch[1]} ${localMatch[2]}:${localMatch[3]}:00`
+  else {
+    const parsed = new Date(trimmed)
+    result = Number.isFinite(parsed.getTime()) ? formatBeijingDateTime(parsed) : ''
+  }
+  const dateKey = result.slice(0, 10).replace(/-/g, '')
+  const parsedDate = new Date(`${result.slice(0, 10)}T00:00:00Z`)
+  const hour = Number(result.slice(11, 13)), minute = Number(result.slice(14, 16)), second = Number(result.slice(17, 19))
+  if (!/^\d{8}$/.test(dateKey) || Number.isNaN(parsedDate.getTime()) || hour > 23 || minute > 59 || second > 59 ||
+    `${String(parsedDate.getUTCFullYear()).padStart(4, '0')}${String(parsedDate.getUTCMonth() + 1).padStart(2, '0')}${String(parsedDate.getUTCDate()).padStart(2, '0')}` !== dateKey ||
+    !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(result)) {
+    throw new Error('采购单号时间无效')
+  }
+  return result
+}
+
+async function allocatePrefixedSequence(connection, { sequenceDate, sequenceType, prefix, displayDate, digits, limit, reservations }) {
+  const key = `${sequenceDate}:${sequenceType}`
   const reserved = reservations.get(key) || new Set()
-  if (!reservations.has(key)) await ensureSequenceRow(connection, dateStr, 'PO')
+  if (!reservations.has(key)) await ensureSequenceRow(connection, sequenceDate, sequenceType)
 
   const [[sequenceRow]] = await connection.execute(
     `SELECT current_sequence
      FROM invoice_sequences
      WHERE sequence_date = ? AND type_suffix = ?
      FOR UPDATE`,
-    [dateStr, 'PO']
+    [sequenceDate, sequenceType]
   )
-  if (!sequenceRow) throw new Error('入库单号序列表不存在，请先运行数据库结构迁移')
+  if (!sequenceRow) throw new Error('单号序列表不存在，请先运行数据库结构迁移')
 
   let sequence = Number(sequenceRow.current_sequence) || 0
   for (const value of reserved) sequence = Math.max(sequence, value)
   sequence += 1
-  if (!Number.isSafeInteger(sequence) || sequence > 0xffffffff) {
-    throw new Error('当日入库单号序列已用尽')
+  if (!Number.isSafeInteger(sequence) || sequence > limit) {
+    throw new Error('当前单号序列已用尽')
   }
 
   const [updateResult] = await connection.execute(
     `UPDATE invoice_sequences
      SET current_sequence = ?
      WHERE sequence_date = ? AND type_suffix = ?`,
-    [sequence, dateStr, 'PO']
+    [sequence, sequenceDate, sequenceType]
   )
   if (updateResult.affectedRows !== 1) {
-    throw new Error('入库单号序列表更新失败')
+    throw new Error('单号序列表更新失败')
   }
   reserved.add(sequence)
   reservations.set(key, reserved)
-  return `PO${dateStr}${String(sequence).padStart(6, '0')}`
+  return `${prefix}${displayDate}${String(sequence).padStart(digits, '0')}`
 }
 
 async function allocateInvoiceNumber(connection, dateStr, typeSuffix, reservations) {
@@ -288,6 +344,7 @@ module.exports = {
   getInvoiceTypeSuffix,
   generateInvoiceNumber,
   generatePurchaseNumber,
+  generateDailyDocumentNumber,
   generateInvoiceNumberForDate,
   parseInvoiceNumber
 }

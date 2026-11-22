@@ -226,6 +226,8 @@ describe('商品单卖与搭售结算弹窗', () => {
     expect(paymentLabels).not.toContain('现金收取')
     expect(paymentLabels).not.toContain('找零')
     expect(paymentLabels).toContain('销售时间')
+    expect(wrapper.findAll('input').map(input => (input.element as HTMLInputElement).value)).toContain('提交时自动记录当前时间')
+    expect(wrapper.findComponent({ name: 'ElDatePicker' }).exists()).toBe(false)
     for (const label of ['销售门店', '客户手机号', '客户姓名', '销售员', '销售日期']) expect(paymentLabels).not.toContain(label)
     expect(wrapper.findComponent(CustomerNameLockInput).exists()).toBe(false)
     const line = wrapper.findComponent(SalesGoodsLine)

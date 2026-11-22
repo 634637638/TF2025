@@ -31,7 +31,7 @@
 | 功能 | 现有目标 | 额外动作 |
 | --- | --- | --- |
 | 手机入库 | `/inventory?openStockIn=true` | `inventory:create`，复用已有入库路由参数 |
-| 商品入库 | `/accessories?openStockIn=true` | `accessories:create` |
+| 商品入库 | `/accessories?openStockIn=true` | `accessories:stock-in` |
 | 商品销售 | `/query?mode=goods&openSale=true` | `query:goods-view`，并具备 `query:goods-sell` 或 `query:goods-gift` |
 
 商品入库/商品销售使用公共 `useRouteDialog` 消费参数，等待异步商品面板就绪，兼容KeepAlive，再次进入不重复打开；无权时消费旧参数但不打开。商品销售直达原商品收银，打开不创建交易；其原有收费、授权赠送和库存校验继续生效。不带 `mode=goods` 的综合查询仍默认手机模式，撤销商品查看权限时回到手机模式。

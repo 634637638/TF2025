@@ -11,8 +11,8 @@ const { normalizeCheckoutGoods } = require('../utils/checkout-goods-input')
 const { normalizeQuickCheckoutPhone } = require('../utils/quick-checkout-phone')
 const { validId, moneyCents } = require('../utils/sale-input')
 const { validateSalePayment } = require('../utils/sale-payment')
-const { normalizeDateTime } = require('../utils/time')
-const { prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
+const { normalizeDateTime, normalizeDateTimeWithCurrentTime } = require('../utils/time')
+const { prepareInvoiceNumberTransaction, generateDailyDocumentNumber } = require('../utils/invoice-number')
 const { getCustomerPointsConfig, creditCheckoutPoints } = require('./customer-points.service')
 const { quoteCheckoutPoints } = require('../utils/checkout-points')
 const { createGoodsCommission } = require('../utils/goods-commission')
@@ -49,9 +49,10 @@ class SalesCheckoutService {
   constructor({ repository = new SalesCheckoutRepository(), phones = new SalesPhoneService(),
     accessories = new AccessoryService(), inventory = new InventoryService(), pointsLedger = new CustomerPointsLedgerService(), permissionCheck = hasUnifiedPermission,
     prepareInvoice = prepareInvoiceNumberTransaction, getPointsConfig = getCustomerPointsConfig, creditPoints = creditCheckoutPoints,
-    normalizeDate = normalizeDateTime, createOrderNo = () => `SO${crypto.randomUUID().replaceAll('-', '')}`, films = null, autoFilm = false } = {}) {
+    normalizeDate = normalizeDateTime, normalizeDateWithCurrentTime = normalizeDateTimeWithCurrentTime,
+    createOrderNo = (connection, time) => generateDailyDocumentNumber('SO', connection, time, 8), films = null, autoFilm = false } = {}) {
     Object.assign(this, { repository, phones, accessories, inventory, pointsLedger, permissionCheck, prepareInvoice, getPointsConfig, creditPoints, normalizeDate, createOrderNo,
-      films: films || (autoFilm ? new FilmService() : null), autoFilm })
+      normalizeDateWithCurrentTime, films: films || (autoFilm ? new FilmService() : null), autoFilm })
   }
 
   normalize(body, actor) {
@@ -67,8 +68,9 @@ class SalesCheckoutService {
     const customer = { name: text(body.customer_info.name, 50, '客户姓名'), phone: text(body.customer_info.phone, 20, '手机号').replace(/\D/g, '') }
     if (customer.name.length < 2 || !filmService && !/^1[3-9]\d{9}$/.test(customer.phone)) reject('请填写客户姓名和有效手机号')
     if (body.customer_info.apple_id !== undefined) customer.apple_id = text(body.customer_info.apple_id, 100, 'Apple ID')
-    const time = this.normalizeDate(body.sale_time, false)
-    if (!body.sale_time || !time) reject('销售时间格式无效')
+    const goodsOnly = !filmService && !body.quick_phone && (!body.phones || !body.phones.length) && Array.isArray(body.accessories) && body.accessories.length > 0
+    const time = filmService ? this.films.now() : goodsOnly ? this.normalizeDateWithCurrentTime(body.sale_time) : this.normalizeDate(body.sale_time, false)
+    if (!filmService && (!body.sale_time || !time)) reject('销售时间格式无效')
     const quickPhone = body.quick_phone === undefined ? null : normalizeQuickCheckoutPhone(body.quick_phone)
     if (quickPhone && body.phones !== undefined && (!Array.isArray(body.phones) || body.phones.length)) reject('快速出库不能同时选择已有库存手机')
     // 临时关联1仅在规范化载荷内标识本次新设备，落账前替换为真实设备ID。
@@ -101,7 +103,7 @@ class SalesCheckoutService {
     const paidCents = body.payment_info.payment_amount === undefined ? null : moneyCents(body.payment_info.payment_amount)
     if (hasRedemption && paidCents === null) reject('积分抵扣结算须填写实际收款金额')
     if (!hasRedemption && body.payment_info.payment_amount !== undefined && paidCents !== total) reject('实收须与整单明细合计一致，本接口暂不支持定金或部分收款')
-    const paymentTime = this.normalizeDate(body.payment_info.payment_time || time, true)
+    const paymentTime = filmService || goodsOnly ? time : this.normalizeDate(body.payment_info.payment_time || time, true)
     if (!paymentTime) reject('收款时间格式无效')
     return { request_key: body.request_key.toLowerCase(), store_id: storeId, actor_id: actorId, operator_id: Number(body.operator_id ?? actorId),
       customer, phones: normalizedPhones, accessories: normalizedAccessories, time, remarks: text(body.remarks, 1000, '备注'),
@@ -225,10 +227,16 @@ class SalesCheckoutService {
   async checkout(body, actor) {
     const input = this.normalize(body, actor)
     await this.authorize(input, actor)
-    const hash = crypto.createHash('sha256').update(JSON.stringify(input)).digest('hex')
+    const goodsOnly = !input.film_service && !input.quick_phone && input.phones.length === 0 && input.accessories.length > 0
+    const requestIdentity = input.film_service
+      ? { ...input, time: undefined, payment: { ...input.payment, payment_time: undefined } }
+      : goodsOnly
+        ? { ...input, time: input.time.slice(0, 10), payment: { ...input.payment, payment_time: undefined } }
+        : input
+    const hash = crypto.createHash('sha256').update(JSON.stringify(requestIdentity)).digest('hex')
     return this.repository.withConnection(async connection => {
       for (let attempt = 0; attempt < 3; attempt++) {
-        if (input.phones.length) await this.prepareInvoice(connection)
+        await this.prepareInvoice(connection)
         let started = false
         try {
           await connection.beginTransaction()
@@ -341,7 +349,7 @@ class SalesCheckoutService {
       key: String(row.phone_id), source: Number(snapshots.find(phone => Number(phone.id) === row.phone_id).is_new) === 1 ? 'new' : 'used',
       amount_cents: moneyCents(row.sale_price), is_gift: false, redeem_points: 0
     })) })
-    const orderNo = this.createOrderNo()
+    const orderNo = await this.createOrderNo(connection, input.time)
     const orderId = await repo.createOrder(connection, { order_no: orderNo, request_key: input.request_key,
       request_hash: requestHash, customer_id: customerId,
       customer_name: input.customer.name, customer_phone: input.customer.phone, store_id: input.store_id,
