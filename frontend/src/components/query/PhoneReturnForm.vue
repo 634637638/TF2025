@@ -246,7 +246,7 @@
       :disabled="!canQuote"
       @click="calculate"
     >
-      核对退款
+      价格核算
     </el-button>
     <el-button
       v-if="allowed"

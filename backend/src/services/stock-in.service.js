@@ -9,12 +9,13 @@ const { prepareInvoiceNumberTransaction: prepareInvoiceNumbersUtil, generatePurc
 const { assertStoreInScope, resolveStoreScope } = require('../utils/store-scope')
 const log = require('../utils/log')
 const { isMoneyInput, isEmptyInput } = require('../utils/input-values')
+const { normalizeBusinessDateTime: defaultNormalizeBusinessDateTime } = require('../utils/time')
 const MAX_STOCK_IN_PRODUCTS = 200
 
 class StockInService extends BaseService {
-  constructor({ database = getDatabase, logger = log, repository = new StockInRepository(), validateImei = validateImeiUtil, prepareInvoiceNumbers = prepareInvoiceNumbersUtil, generatePurchaseNumber = generatePurchaseNumberUtil } = {}) {
+  constructor({ database = getDatabase, logger = log, repository = new StockInRepository(), validateImei = validateImeiUtil, prepareInvoiceNumbers = prepareInvoiceNumbersUtil, generatePurchaseNumber = generatePurchaseNumberUtil, normalizeBusinessDateTime = defaultNormalizeBusinessDateTime } = {}) {
     super()
-    Object.assign(this, { database, logger, repository, validateImei, prepareInvoiceNumbers, generatePurchaseNumber })
+    Object.assign(this, { database, logger, repository, validateImei, prepareInvoiceNumbers, generatePurchaseNumber, normalizeBusinessDateTime })
   }
   static formatRecord(record) {
     return {
@@ -82,7 +83,7 @@ class StockInService extends BaseService {
           remarks
         } = body
 
-        const inventoryTime = inventory_time
+        const inventoryTime = this.normalizeBusinessDateTime(inventory_time)
         const finalRemarks = remarks ?? ''
 
         // 统一使用当前登录用户作为入库操作员，不再回退到固定管理员ID

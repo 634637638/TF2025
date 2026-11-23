@@ -12,6 +12,8 @@ export interface RecordDetailField {
   value: string | number | boolean | null | undefined
   visible: boolean
   wide?: boolean
+  section?: string
+  desktopColumnSpan?: 2 | 3 | 4
 }
 
 // ==================== 通用 Props ====================

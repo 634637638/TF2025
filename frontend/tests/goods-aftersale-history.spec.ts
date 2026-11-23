@@ -13,7 +13,7 @@ vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFieldVisible: (_module: string, field: string) => !mocks.hidden.has(field) } }))
 
 const row = (extra: Partial<GoodsAftersaleRecord> = {}): GoodsAftersaleRecord => ({ id: 31, quantity: 1, serial_numbers: ['ORIGINAL-SN'],
-  operation_type: 'goods_return', replacement: null, replacement_amount: 0, exchange_credit_amount: 0,
+  operation_type: 'goods_return', replacement: null, replacement_amount: 0, additional_amount: 0, exchange_credit_amount: 0,
   gift_charge_quantity: 0, gift_charge_amount: 0,
   return_reason: '质量问题', base_refund_amount: 10, points_recovery_amount: 0.3, points_compensation_amount: 0,
   refund_amount: 9.7, collection_amount: 0, settlement_offset_amount: 0, points_delta: -2, points_award_returned: 5, points_redemption_returned: 0,
@@ -172,7 +172,7 @@ it('归属金额守卫拒绝抵扣调整不守恒、半脱敏、非法精度和�
     row({ base_refund_amount: Number.MAX_SAFE_INTEGER, refund_amount: Number.MAX_SAFE_INTEGER })]) {
     expect(isGoodsAftersalesPage(result([invalid]).data, 1, 20)).toBe(false)
   }
-  const masked = row({ gift_charge_amount: null, replacement_amount: null, exchange_credit_amount: null, base_refund_amount: null, points_recovery_amount: null, points_compensation_amount: null,
+  const masked = row({ gift_charge_amount: null, replacement_amount: null, additional_amount: null, exchange_credit_amount: null, base_refund_amount: null, points_recovery_amount: null, points_compensation_amount: null,
     refund_amount: null, collection_amount: null, settlement_offset_amount: null, points_delta: null,
     points_award_returned: null, points_redemption_returned: null, settlement_method: null, settlement_channel: null })
   expect(isGoodsAftersalesPage(result([masked]).data, 1, 20)).toBe(true)
@@ -196,13 +196,13 @@ it('未退赠品扣款与实物返库分列展示，0件返库不伪装成已退
 })
 
 const exchange = () => row({ operation_type: 'goods_exchange', base_refund_amount: 20, points_recovery_amount: 0,
-  refund_amount: 0, collection_amount: 30, replacement_amount: 50, exchange_credit_amount: 20,
-  replacement: { order_no: 'NEW-ORDER', sale_no: 'NEW-SALE', name: '新充电器', operator_name: '新商品销售员', serial_numbers: ['NEW-SN'] } })
+  refund_amount: 0, collection_amount: 30, replacement_amount: 50, additional_amount: 0, exchange_credit_amount: 20,
+  replacement: { order_no: 'NEW-ORDER', sale_no: 'NEW-SALE', name: '新充电器', operator_name: '换货员示例', serial_numbers: ['NEW-SN'] } })
 
 it('换货历史展示原件抵付、新件单号/SN/销售员和净补差，类型与手机联合退货区分', async () => {
   mocks.get.mockResolvedValueOnce(result([exchange(), row({ id: 32, operation_type: 'phone_return' })]))
   const wrapper = await render()
-  for (const text of ['商品换货', '手机联合退货', 'NEW-ORDER', 'NEW-SALE', '新充电器', 'NEW-SN', '新商品销售员',
+  for (const text of ['商品换货', '手机联合退货', 'NEW-ORDER', 'NEW-SALE', '新充电器', 'NEW-SN', '换货员示例',
     '新件净应付', '原件抵付新件', '¥20', '¥50', '¥30', '实际资金往来仅为退款或补款']) expect(wrapper.text()).toContain(text)
   expect(wrapper.find('.empty[data-state="error"]').exists()).toBe(false)
 })
@@ -224,9 +224,9 @@ it('换入资料遵守原单号/名称/SN/销售员权限，隐藏资金时不�
   const value = exchange()
   mocks.get.mockResolvedValueOnce(result([row({ ...value, replacement: { order_no: null, sale_no: null, name: null, serial_numbers: null, operator_name: null },
     base_refund_amount: null, points_recovery_amount: null, points_compensation_amount: null, gift_charge_amount: null,
-    refund_amount: null, collection_amount: null, settlement_offset_amount: null, replacement_amount: null, exchange_credit_amount: null,
+    refund_amount: null, collection_amount: null, settlement_offset_amount: null, replacement_amount: null, additional_amount: null, exchange_credit_amount: null,
     points_delta: null, points_award_returned: null, points_redemption_returned: null, settlement_method: null, settlement_channel: null })]))
   const wrapper = await render()
-  for (const text of ['NEW-ORDER', 'NEW-SALE', '新充电器', 'NEW-SN', '新商品销售员', '新件净应付', '原件抵付新件', '¥0']) expect(wrapper.text()).not.toContain(text)
+  for (const text of ['NEW-ORDER', 'NEW-SALE', '新充电器', 'NEW-SN', '换货员示例', '新件净应付', '原件抵付新件', '¥0']) expect(wrapper.text()).not.toContain(text)
   expect(wrapper.find('.empty[data-state="error"]').exists()).toBe(false)
 })

@@ -7,7 +7,7 @@ const { generateMemberNumber } = require('../utils/member-number')
 const { reconcileCustomerPointsForSale } = require('./customer-points.service')
 const { validateImei } = require('../utils/imei')
 const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
-const { formatLocalDate } = require('../utils/time')
+const { formatLocalDate, normalizeBusinessDateTime } = require('../utils/time')
 const log = require('../utils/log')
 const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const { normalizePhoneStatus } = require('../utils/phone-status')
@@ -97,8 +97,14 @@ class PhoneUpdateService {
           const effectiveSupplierId = valueOrCurrent(supplier_id, currentPhone.supplier_id)
           const effectivePurchaseCost = valueOrCurrent(purchase_cost, currentPhone.purchase_cost)
           const effectiveSalePrice = valueOrCurrent(sale_price, currentPhone.sale_price)
-          const effectiveInventoryTime = valueOrCurrent(inventory_time, currentPhone.inventory_time)
-          const effectiveSaleTime = valueOrCurrent(sale_time, currentPhone.sale_time)
+          const effectiveInventoryTime = inventory_time === undefined || inventory_time === null || inventory_time === ''
+            ? valueOrCurrent(inventory_time, currentPhone.inventory_time)
+            : normalizeBusinessDateTime(inventory_time)
+          if (inventory_time !== undefined && inventory_time !== null && inventory_time !== '' && !effectiveInventoryTime) throw new Error('入库时间格式无效')
+          const effectiveSaleTime = sale_time === undefined || sale_time === null || sale_time === ''
+            ? valueOrCurrent(sale_time, currentPhone.sale_time)
+            : normalizeBusinessDateTime(sale_time)
+          if (sale_time !== undefined && sale_time !== null && sale_time !== '' && !effectiveSaleTime) throw new Error('销售时间格式无效')
           const effectiveStatus = normalizePhoneStatus(valueOrCurrent(status, currentPhone.status))
           const finalNotes = valueOrCurrent(remarks, currentPhone.remarks) ?? ''
 

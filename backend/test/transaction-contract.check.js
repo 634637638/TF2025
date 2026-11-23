@@ -275,7 +275,7 @@ test('stock-in accepts only canonical inventory fields', () => {
   const payloadBuilder = frontend.slice(frontend.indexOf('export const buildStockInSubmitPayload'))
   assert.match(route, /router\.post\('\/', unifiedAuth, requireAnyPermission\(\['stock-in:create', 'inventory:create'\]\), stockInController\.create\.bind\(stockInController\)\)/)
   assert.match(controller, /async create\(req, res\)/)
-  assert.match(service, /const inventoryTime = inventory_time/)
+  assert.match(service, /const inventoryTime = this\.normalizeBusinessDateTime\(inventory_time\)/)
   assert.match(service, /const finalRemarks = remarks \?\? ''/)
   assert.match(service, /total_amount: products\.reduce\([\s\S]*product\.purchase_cost/)
   assert.match(service, /inventory_time: inventoryTime/)
@@ -367,8 +367,8 @@ test('quick-sale accepts canonical IDs, prices, times and operator fields', () =
   }
   assert.doesNotMatch(service, /purchase_price|stock_in_date|customer_idcard/)
   assert.match(service, /Number\.isInteger\(id\)/)
-  assert.match(service, /normalizeDateTime\(inventory_time, false\)/)
-  assert.match(service, /normalizeDateTime\(sale_time, false\)/)
+  assert.match(service, /normalizeBusinessDateTime\(inventory_time\)/)
+  assert.match(service, /this\.normalizeBusinessDateTime\(sale_time\)/)
   assert.match(service, /purchaseCost, salePrice/)
   assert.doesNotMatch(service, /purchaseCost \|\||salePrice \|\||sale_price \|\| 0/)
   assert.match(service, /apple_id/)
@@ -538,7 +538,7 @@ test('wholesale transfer accepts canonical sale_time only', () => {
 
   assert.match(controller, /sale_time[\s\S]*this\.transferService\.wholesaleToPeer/)
   assert.doesNotMatch(controller, /sale_date|normalizedSaleTime/)
-  assert.match(service, /normalizeDateTime\(sale_time, true\)/)
+  assert.match(service, /normalizeBusinessDateTime\(sale_time\)/)
   assert.match(frontend, /payload\.sale_time = options\.formData\.sale_time/)
   assert.doesNotMatch(frontend, /payload\.sale_date/)
   assert.doesNotMatch(types, /sale_date\??:/)
@@ -747,9 +747,24 @@ test('sales page and extracted modules use canonical fields without runtime comp
   assert.doesNotMatch(route, /legacy(?:SalePrice|SaleDate|Price|Limit|DateStart|DateEnd)/)
   assert.doesNotMatch(route, /date_start:|date_end:|sale_date:|limit: legacyLimit|price: legacy/)
   assert.doesNotMatch(route, /TEMP_\$\{Date\.now\(\)\}|临时客户/)
-  assert.match(salesService, /this\.normalizeDate\(saleTime, false\)/)
+  assert.match(salesService, /this\.normalizeBusinessTime\(saleTime\)/)
   assert.match(types, /inventory_time\?: string/)
   assert.doesNotMatch(types, /Inventorytime\?:/)
+})
+
+test('手机入库、手机编辑、快速出库和配件入库统一保存秒级北京时间', () => {
+  const stockIn = read('src/services/stock-in.service.js')
+  const inventory = read('src/services/inventory.service.js')
+  const accessory = read('src/services/accessory.service.js')
+  const quickPhone = read('src/utils/quick-checkout-phone.js')
+  const phoneUpdate = read('src/services/phone-update.service.js')
+
+  assert.match(stockIn, /this\.normalizeBusinessDateTime\(inventory_time\)/)
+  assert.match(inventory, /this\.normalizeBusinessDateTime\(updateData\.inventory_time\)/)
+  assert.match(inventory, /const inventoryTime = this\.normalizeBusinessDateTime\(inventory_time\)/)
+  assert.match(phoneUpdate, /normalizeBusinessDateTime\(inventory_time\)/)
+  assert.match(quickPhone, /normalizeBusinessDateTime\(value\.inventory_time\)/)
+  assert.match(accessory, /isBeijingDateTime\(inventoryTime\)/)
 })
 
 test('data import exposes controlled file tokens and server-owned task IDs', () => {

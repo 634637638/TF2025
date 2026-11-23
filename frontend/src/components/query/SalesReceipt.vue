@@ -280,7 +280,9 @@
                 align="center"
               >
                 <template #default="{ row }">
-                  <template v-if="row.kind === 'phone'">1</template>
+                  <template v-if="row.kind === 'phone'">
+                    1
+                  </template>
                   <template v-else-if="row.kind === 'accessory'">
                     {{ canViewAccessoryField('total_quantity') ? row.accessory.goods.quantity ?? '-' : '-' }}{{ canViewAccessoryField('unit') ? row.accessory.goods.unit : '' }}
                   </template>
@@ -541,9 +543,9 @@ const receiptSpecColumnWidth = computed(() => getTextColumnMinWidth([
 const receiptAmountColumnWidth = computed(() => getTextColumnMinWidth([
   '金额',
   ...props.items.map(item => `¥${formatPrice(item.salePrice)}`),
-  ...accessoryRows.value
-    .filter(row => canViewAccessoryField('total_price'))
-    .map(row => `实收 ¥${formatAmount(row.goods.total_price ?? 0)}`)
+  ...(canViewAccessoryField('total_price')
+    ? accessoryRows.value.map(row => `实收 ¥${formatAmount(row.goods.total_price ?? 0)}`)
+    : [])
 ], {
   minWidth: 112,
   maxWidth: 136,

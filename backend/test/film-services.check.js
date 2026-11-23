@@ -80,7 +80,8 @@ function fixture({ qualifying = true, denied = [], ready = true, enabled = true,
           purchase_cost: row.quantity, accessory: product, serial_numbers: [] } } },
     getPointsConfig: async () => normalizePointsConfig({ include_accessories: true, accessory_points_per_100: 100 }),
     creditPoints: async (db, _id, points) => { check(db); state.points += points },
-    pointsLedger: { async ready() { return false } }, normalizeDate: value => value })
+    pointsLedger: { async ready() { return false } }, normalizeDate: value => value,
+    prepareInvoice: async () => {}, createOrderNo: async () => 'SO-FILM-TEST' })
   return { checkout, films, state, connection, calls, repository, filmRepository, setNow(value) { currentTime = value } }
 }
 

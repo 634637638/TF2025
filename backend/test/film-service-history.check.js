@@ -19,8 +19,9 @@ function fixture(t) {
     sales: 'id INTEGER PRIMARY KEY, phone_id, customer_id, sale_type, status, sale_time, store_id',
     stores: 'id INTEGER PRIMARY KEY, name', users: 'id INTEGER PRIMARY KEY, name',
     sales_orders: 'id INTEGER PRIMARY KEY, order_no',
-    sales_order_items: 'id INTEGER PRIMARY KEY, order_id, item_type, quantity, total_amount, snapshot',
-    customer_film_services: 'id INTEGER PRIMARY KEY, order_id UNIQUE, customer_id, qualification_sale_id, store_id, operator_id, created_by, quantity, business_time, created_at, phone_id, model_id, phone_snapshot'
+    accessories: 'id INTEGER PRIMARY KEY, template_id, unit_id, unit', accessory_units: 'id INTEGER PRIMARY KEY, name',
+    sales_order_items: 'id INTEGER PRIMARY KEY, order_id, accessory_id, linked_phone_sale_id, item_type, quantity, total_amount, snapshot',
+    customer_film_services: 'id INTEGER PRIMARY KEY, order_id, phone_id, customer_id, qualification_sale_id, store_id, operator_id, created_by, quantity, business_time, created_at, model_id, phone_snapshot, UNIQUE(order_id, phone_id)'
   }
   for (const [name, columns] of Object.entries(schema)) db.exec(`CREATE TABLE ${name} (${columns})`)
   // SQLite的JSON_EXTRACT已返回字符串标量；无需MySQL额外的字符串去引号步骤。
@@ -52,6 +53,9 @@ function fixture(t) {
   insert('customers', { id: 9 }); insert('customers', { id: 10 })
   insert('stores', { id: 1, name: '购买店' }); insert('stores', { id: 2, name: '服务店' })
   insert('users', { id: 7, name: '贴膜员工' })
+  insert('accessory_units', { id: 1, name: '张' }); insert('accessory_units', { id: 2, name: '副' })
+  insert('accessories', { id: 31, template_id: null, unit_id: 1, unit: '张' })
+  insert('accessories', { id: 32, template_id: null, unit_id: 2, unit: '副' })
   const sale = (id, extra = {}) => insert('sales', { id, phone_id: 11, customer_id: 9, store_id: 1,
     sale_type: 'retail', status: 'completed', sale_time: '2026-11-01 09:00:00', ...extra })
   function film(id, { customerId = 9, storeId = 2, quantities = [1], phoneId = null } = {}) {
@@ -59,13 +63,41 @@ function fixture(t) {
     insert('customer_film_services', { id, order_id: id, customer_id: customerId, qualification_sale_id: null,
       store_id: storeId, operator_id: 7, created_by: 7, quantity: quantities.reduce((sum, value) => sum + value, 0),
       business_time: now, created_at: now, phone_id: phoneId })
-    quantities.forEach((quantity, index) => insert('sales_order_items', { id: id * 10 + index, order_id: id,
+    quantities.forEach((quantity, index) => insert('sales_order_items', { id: id * 10 + index, order_id: id, accessory_id: index ? 31 : 32, linked_phone_sale_id: null,
       item_type: 'accessory', quantity, total_amount: index ? 0 : quantity * 20,
-      snapshot: JSON.stringify({ name: index ? '原免费膜' : '原收费膜', sale_type: index ? 'gift' : 'sale',
+      snapshot: JSON.stringify({ name: index ? '原赠送膜' : '原收费耳机', unit: index ? '张' : '副', sale_type: index ? 'gift' : 'sale',
         supplier_name: '内部采购资料', purchase_cost: 3 }) }))
   }
   return { db, service, repository, connection, calls, sale, film, insert, get leases() { return leases } }
 }
+
+test('一单多台手机自动赠膜历史按手机销售ID只显示对应实物膜', async t => {
+  const f = fixture(t)
+  f.sale(1); f.sale(2, { phone_id: 12 })
+  f.insert('sales_orders', { id: 90, order_no: 'SO-AUTO' })
+  for (const [id, phoneId, saleId] of [[91, 11, 1], [92, 12, 2]]) {
+    f.insert('customer_film_services', { id, order_id: 90, customer_id: 9, qualification_sale_id: null,
+      store_id: 1, operator_id: 7, created_by: 7, quantity: 1, business_time: now, created_at: now,
+      phone_id: phoneId, model_id: 13, phone_snapshot: JSON.stringify({ model_name: 'iPhone 13', sale_id: saleId, automatic: true }) })
+    f.insert('sales_order_items', { id: id + 100, order_id: 90, accessory_id: 31, linked_phone_sale_id: saleId, item_type: 'accessory',
+      quantity: 1, total_amount: 0, snapshot: JSON.stringify({ name: `免费膜${phoneId}`, sale_type: 'gift' }) })
+  }
+  const context = await f.service.context(actor, 9)
+  assert.equal(context.service_count, 2)
+  assert.deepEqual(context.data.map(row => [row.phone_id, row.items.map(item => item.name)]), [[12, ['免费膜12']], [11, ['免费膜11']]])
+  const gifts = await f.service.context(actor, 9, { sale_type: 'gift' })
+  assert.equal(gifts.pagination.total, 2)
+})
+
+test('缺少单位快照时直接读取商品档案单位', async t => {
+  const f = fixture(t)
+  f.sale(1)
+  f.film(1)
+  f.insert('sales_order_items', { id: 99, order_id: 1, accessory_id: 31, linked_phone_sale_id: null,
+    item_type: 'accessory', quantity: 1, total_amount: 0, snapshot: JSON.stringify({ name: '钢化膜', sale_type: 'gift' }) })
+  const context = await f.service.context(actor, 9)
+  assert.equal(context.data[0].items.find(item => item.name === '钢化膜').unit, '张')
+})
 
 test('按当前手机客户关系确认权益，跨店及旧退货状态不阻止，纯客户历史不提供办理资格', async t => {
   const f = fixture(t)
@@ -96,15 +128,15 @@ test('一次贴膜多件耗材仍计一次，跨店历史保留原成交资料�
   f.film(1, { storeId: 1, quantities: [2, 1] })
   f.film(2, { storeId: 2, quantities: [1] })
   f.film(3, { customerId: 10, quantities: [50] })
-  f.insert('sales_order_items', { id: 99, order_id: 1, item_type: 'phone', quantity: 1, total_amount: 9999,
+  f.insert('sales_order_items', { id: 99, order_id: 1, accessory_id: null, linked_phone_sale_id: null, item_type: 'phone', quantity: 1, total_amount: 9999,
     snapshot: JSON.stringify({ name: '原手机', sale_type: 'retail' }) })
   const context = await f.service.context(actor, 9)
   assert.equal(context.service_count, 2)
   assert.equal(context.film_quantity, 4)
   assert.deepEqual(context.data.map(row => [row.id, row.store_name, row.quantity]), [[2, '服务店', 1], [1, '购买店', 3]])
   assert.deepEqual(context.data[1].items, [
-    { name: '原收费膜', sale_type: 'sale', quantity: 2, total_amount: 40 },
-    { name: '原免费膜', sale_type: 'gift', quantity: 1, total_amount: 0 }
+    { name: '原收费耳机', unit: '副', sale_type: 'sale', quantity: 2, total_amount: 40 },
+    { name: '原赠送膜', unit: '张', sale_type: 'gift', quantity: 1, total_amount: 0 }
   ])
   for (const hidden of ['qualification_sale_id', 'created_by', 'supplier_name', 'purchase_cost', 'snapshot']) {
     assert.equal(JSON.stringify(context).includes(`"${hidden}"`), false)
@@ -127,6 +159,7 @@ test('贴膜分页仅返回当前客户该页商品，次数与用膜总量保�
   assert.deepEqual(result.pagination, { page: 2, page_size: 20, total: 21, total_pages: 2, has_next: false, has_prev: true })
   assert.deepEqual(result.data.map(row => [row.id, row.items.length]), [[1, 1]])
   assert.equal(result.data[0].items[0].total_amount, 40)
+  assert.equal(result.data[0].items[0].unit, '副')
   const empty = await f.service.context(actor, 9, { page: 3, page_size: 20 })
   assert.deepEqual(empty.data, [])
   assert.equal(empty.service_count, 21)

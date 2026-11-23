@@ -84,6 +84,7 @@ class QueryGoodsRepository {
     appendStoreScopeCondition(scope, 's.store_id', conditions, params)
     // 仅由客户定向历史服务设置；公开商品列表不接受customer_id筛选。
     if (query.customer_id !== undefined) { conditions.push('s.customer_id = ?'); params.push(query.customer_id) }
+    if (query.film_only) conditions.push(`${product.category} LIKE '%膜%'`)
     if (query.sale_type) { conditions.push('s.sale_type = ?'); params.push(query.sale_type) }
     if (query.sale_operator_id !== undefined) { conditions.push('s.operator_id = ?'); params.push(query.sale_operator_id) }
     if (query.brand_id !== undefined) { conditions.push(`${product.brand_name} = (SELECT name FROM brands WHERE id = ?)`); params.push(query.brand_id) }

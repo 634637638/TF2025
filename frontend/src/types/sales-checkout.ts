@@ -128,7 +128,7 @@ export interface FilmServiceContext {
   data: Array<{ phone_id?: number | null; model_id?: number | null; phone_model_name?: string | null; id: number; order_id: number | null; order_no: string | null; quantity: number | null;
     store_id: number | null; store_name: string | null; operator_id: number | null; operator_name: string | null;
     business_time: string | null; created_at: string | null;
-    items: Array<{ name: string | null; sale_type: AccessoryUsageType | null; quantity: number | null; total_amount: number | string | null }> }>
+    items: Array<{ name: string | null; unit?: string | null; sale_type: AccessoryUsageType | null; quantity: number | null; total_amount: number | string | null }> }>
   pagination: { page: number; page_size: number; total: number; total_pages: number; has_next: boolean; has_prev: boolean }
 }
 
@@ -195,18 +195,22 @@ export interface GoodsExchangeContext extends GoodsReturnContext {
 }
 export interface GoodsExchangeInput extends GoodsReturnInput {
   operator_id: number
-  replacement: Pick<CheckoutGoodsItem, 'accessory_id' | 'unit_price' | 'serial_numbers' | 'redeem_points'>
+  replacement: Pick<CheckoutGoodsItem, 'accessory_id' | 'quantity' | 'unit_price' | 'serial_numbers' | 'redeem_points'>
+  additional_goods?: Array<Pick<CheckoutGoodsItem, 'key' | 'accessory_id' | 'quantity' | 'unit_price' | 'sale_type' | 'serial_numbers' | 'gift_return_unit_price'>>
 }
 export interface GoodsExchangeQuote extends GoodsReturnQuote {
   operator_id: number
   replacement_accessory_id: number
   replacement_serial_numbers: string[]
   replacement_amount: number
+  additional_amount?: number
   replacement_paid_amount: number
+  additional_paid_amount?: number
   original_collection_amount: number
   points_used: number
   points_earned: number
   deduction_amount: number
+  additional_goods?: Array<{ accessory_id: number; quantity: number; amount: number; sale_type: AccessoryUsageType; serial_numbers: string[] }>
 }
 export interface GoodsExchangeResult extends GoodsExchangeQuote {
   aftersale_id: number

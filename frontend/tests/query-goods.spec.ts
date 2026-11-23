@@ -27,7 +27,7 @@ const row = (extra: Partial<AccessorySaleRecord> = {}): AccessorySaleRecord => (
   purchase_cost: null, profit: null, points_awarded: 0, operator_name: '销售员甲', sale_time: '2026-11-13 10:00:00', remarks: '整批公共备注', has_snapshot: 1, ...extra })
 const result = (rows = [row()], total = 125) => ({ data: { data: rows, pagination: { total } } })
 const Dialog = { props: { modelValue: Boolean }, emits: ['update:modelValue'], template: '<div v-if="modelValue" class="dialog"><button @click="$emit(\'update:modelValue\', false)">关闭</button><slot /><footer v-if="$slots.footer"><slot name="footer" /></footer></div>' }
-const Pagination = { props: ['current', 'total', 'pageSize'], emits: ['change'], template: '<button @click="$emit(\'change\', 2)">第二页</button>' }
+const Pagination = { props: ['current', 'total', 'pageSize', 'pageSizes', 'showPageSizes'], emits: ['change'], template: '<div><button @click="$emit(\'change\', 2, pageSize)">第二页</button><button v-for="size in pageSizes" :key="size" @click="$emit(\'change\', current, size)">每页{{ size }}条</button></div>' }
 const Search = { emits: ['search', 'reset'], template: '<div class="search"><slot name="primary" /><slot /><button @click="$emit(\'search\')">搜索</button><button @click="$emit(\'reset\')">重置</button></div>' }
 const ReturnDialog = { props: ['modelValue', 'sale', 'mode'], emits: ['success', 'update:modelValue'], template: '<button v-if="modelValue" class="return-dialog" @click="$emit(\'success\'); $emit(\'update:modelValue\', false)">完成退货</button>' }
 const History = { props: ['saleId'], template: '<section class="aftersales">原单售后历史</section>' }
@@ -76,10 +76,22 @@ it('展示商品销售类型、数量、原单和客户，未知成本保持空�
   expect(wrapper.text()).toContain('13900000001')
   expect(wrapper.text()).not.toContain('¥NaN')
   expect(wrapper.findComponent(Pagination).props('total')).toBe(125)
+  expect(wrapper.findComponent(Pagination).props('pageSizes')).toEqual([20, 50, 100])
+  expect(wrapper.findComponent(Pagination).props('showPageSizes')).toBe(true)
   expect(mocks.stores).toHaveBeenCalledWith({ strictScope: true })
   expect(mocks.get).toHaveBeenCalledWith('/query/goods', expect.objectContaining({ params: expect.objectContaining({ page: 1, page_size: 20 }), useCache: false, showLoading: false }))
   await button(wrapper, '第二页').trigger('click'); await flushPromises()
   expect(mocks.get).toHaveBeenLastCalledWith('/query/goods', expect.objectContaining({ params: expect.objectContaining({ page: 2 }) }))
+})
+
+it('切换商品模式每页条数后回到第一页并提交新的页大小', async () => {
+  const wrapper = await render()
+  await button(wrapper, '第二页').trigger('click'); await flushPromises()
+  await button(wrapper, '每页50条').trigger('click'); await flushPromises()
+  expect(mocks.get).toHaveBeenLastCalledWith('/query/goods', expect.objectContaining({
+    params: expect.objectContaining({ page: 1, page_size: 50 })
+  }))
+  expect(wrapper.findComponent(Pagination).props()).toMatchObject({ current: 1, pageSize: 50 })
 })
 
 it('商品退货只针对有权限的共同原单，成功后立即重读数量，不改写原销售事实', async () => {

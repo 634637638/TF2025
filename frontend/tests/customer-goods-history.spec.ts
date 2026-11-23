@@ -3,7 +3,6 @@ import { computed, reactive, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import History from '@/views/customers/page/CustomerGoodsHistory.vue'
-import RecordDescriptions from '@/components/RecordDescriptions.vue'
 import RecordDetailDialog from '@/components/RecordDetailDialog.vue'
 import { vTableDoubleTap } from '@/directives/table-double-tap'
 import { isCustomerGoodsPage } from '@/utils/query-goods'
@@ -31,14 +30,14 @@ const Empty = { props: ['description', 'title', 'actionText'], emits: ['action']
 const DetailShell = { props: ['modelValue'], emits: ['update:modelValue'], template: '<section v-if="modelValue" class="record-detail-shell"><button aria-label="关闭商品记录详情" @click="$emit(\'update:modelValue\', false)">×</button><slot /><footer v-if="$slots.footer"><slot name="footer" /></footer></section>' }
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async () => {
-  const wrapper = mount(History, { props: { customerId: 8, active: true }, global: { plugins: [ElementPlus], components: { RecordDescriptions, RecordDetailDialog },
+  const wrapper = mount(History, { props: { customerId: 8, active: true }, global: { plugins: [ElementPlus], components: { RecordDetailDialog },
     stubs: { MobileDialog: DetailShell, Pagination, CheckoutOrderDialog: Order, SectionLoading: { template: '<p>正在查询客户商品记录...</p>' }, DataEmptyState: Empty },
     directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': vTableDoubleTap } } })
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
 const button = (wrapper: ReturnType<typeof mount>, text: string) => wrapper.findAll('button').find(item => item.text() === text)!
 const openOrder = async (wrapper: ReturnType<typeof mount>) => {
-  await wrapper.find('[data-mobile-record]').trigger('dblclick'); await flushPromises()
+  await button(wrapper, '明细').trigger('click'); await flushPromises()
   await wrapper.find('.record-detail-shell footer button').trigger('click'); await flushPromises()
 }
 beforeEach(() => { Object.assign(access, { customers: true, query: true, accessories: true }); hidden.value = []; isMobile.value = true; isTablet.value = false; mocks.get.mockResolvedValue({ success: true, data: page() }) })
@@ -49,7 +48,13 @@ it('按客户ID读取购买和赠品，已全退仍可进入原单，不把记�
     unit_price: 0, total_price: 0, points_used: 0, deduction_amount: 0 })]) })
   const wrapper = await render()
   expect(mocks.get).toHaveBeenCalledWith('/query/customers/8/goods', expect.objectContaining({ params: { page: 1, page_size: 10 }, useCache: false, showLoading: false, showError: false }))
-  for (const text of ['原充电头', '原赠膜', '购买', '赠送', '原成交净额', '¥35', '已退数量', '未退数量', '原备注']) expect(wrapper.text()).toContain(text)
+  for (const text of ['原充电头', '原赠膜', '购买', '赠送', '2', '1', '明细']) expect(wrapper.text()).toContain(text)
+  expect(wrapper.text()).toContain('¥35')
+  expect(wrapper.text()).toContain('2026-11-14')
+  expect(wrapper.text()).not.toContain('2026-11-14 10:00:00')
+  for (const text of ['原成交净额', '已退数量', '未退数量', '原备注']) expect(wrapper.text()).not.toContain(text)
+  await button(wrapper, '明细').trigger('click'); await flushPromises()
+  for (const text of ['原成交净额', '¥35', '已退数量', '未退数量', '原备注']) expect(wrapper.text()).toContain(text)
   await openOrder(wrapper)
   expect(wrapper.find('.order').text()).toContain('51 goods')
   expect(wrapper.text()).not.toContain('消费总额')
@@ -96,6 +101,7 @@ it('隐藏字段变化清理原内容，合法NULL不显示为零，旧历史不
     unit_price: null, total_price: null, points_used: null, points_awarded: null, deduction_amount: null, has_order: false, has_snapshot: 0 })]) })
   hidden.value = ['basic_info.name', 'stock_info.total_quantity']; await flushPromises()
   expect(wrapper.text()).not.toContain('原充电头'); expect(wrapper.text()).not.toContain('原成交净额'); expect(wrapper.text()).not.toContain('¥0')
+  await button(wrapper, '明细').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('历史记录未保存商品快照')
   expect(wrapper.findAll('button').some(item => item.text() === '整单明细')).toBe(false)
 })
@@ -121,6 +127,12 @@ it('首次缺任一模块权限时不发请求', async () => {
   expect(mocks.get).not.toHaveBeenCalled()
 })
 
+it('贴膜模式沿用同一客户历史接口并传递服务端筛选条件', async () => {
+  const wrapper = await render()
+  await wrapper.setProps({ filmOnly: true }); await flushPromises()
+  expect(mocks.get).toHaveBeenLastCalledWith('/query/customers/8/goods', expect.objectContaining({ params: { page: 1, page_size: 10, film_only: true } }))
+})
+
 it('隐藏客户关联字段清除记录和原单，且不以客户ID重读受限关联', async () => {
   const wrapper = await render()
   await openOrder(wrapper)
@@ -139,50 +151,55 @@ it('响应校验拒绝重复行、错误退货数量和缺字段，允许空页�
   expect(isCustomerGoodsPage(page([row({ quantity: null, returned_quantity: null, remaining_quantity: null, total_price: null, points_awarded: null })]), 1, 10)).toBe(true)
 })
 
-it('手机和平板记录单击不打开，双击公共详情后仅底部提供整单动作', async () => {
-  for (const tablet of [false, true]) {
-    isMobile.value = !tablet; isTablet.value = tablet
-    const wrapper = await render()
-    const record = wrapper.find('[data-mobile-record]')
-    expect(record.exists()).toBe(true)
-    expect(record.find('button').exists()).toBe(false)
-    await record.trigger('click')
-    expect(wrapper.find('.record-detail-shell').exists()).toBe(false)
-    await record.trigger('dblclick'); await flushPromises()
-    const detail = wrapper.find('.record-detail-shell')
-    expect(detail.text()).toContain('原充电头')
-    expect(detail.find('footer').text()).toBe('整单明细')
-    expect(detail.findAll('.tf-record-details__field--wide').some(field => field.text().includes('原备注'))).toBe(true)
-    await detail.find('footer button').trigger('click'); await flushPromises()
-    expect(wrapper.find('.record-detail-shell').exists()).toBe(false)
-    expect(wrapper.find('.order').text()).toContain('51 goods')
-    wrapper.unmount()
-  }
+it('桌面和移动端均通过单行查看按钮进入完整详情，整单操作位于详情底部', async () => {
+  const wrapper = await render()
+  const record = wrapper.find('tr.el-table__row')
+  expect(record.exists()).toBe(true)
+  expect(record.text()).toContain('购买')
+  expect(record.text()).toContain('原充电头')
+  expect(record.text()).toContain('2')
+  expect(record.findAll('button').map(item => item.text())).toEqual(['明细'])
+  await record.find('button').trigger('click'); await flushPromises()
+  const detail = wrapper.find('.record-detail-shell')
+  expect(detail.text()).toContain('原充电头')
+  expect(wrapper.findComponent(RecordDetailDialog).props('desktopColumns')).toBe(4)
+  expect(wrapper.findComponent(RecordDetailDialog).props('tabletColumns')).toBe(3)
+  expect(wrapper.findComponent(RecordDetailDialog).props('dialogClass')).toBe('record-detail-dialog crud-dialog-lg')
+  expect(detail.find('footer').text()).toBe('整单明细')
+  const detailFields = detail.findAll('.tf-record-details__field')
+  const returnedIndex = detailFields.findIndex(field => field.text().includes('已退数量'))
+  const remainingIndex = detailFields.findIndex(field => field.text().includes('未退数量'))
+  expect(remainingIndex).toBe(returnedIndex + 1)
+  expect(detailFields[returnedIndex].classes()).not.toContain('tf-record-details__field--wide')
+  expect(detailFields[remainingIndex].classes()).not.toContain('tf-record-details__field--wide')
+  expect(detailFields.find(field => field.text().includes('原备注')).classes()).toContain('tf-record-details__field--desktop-span-2')
+  await detail.find('footer button').trigger('click'); await flushPromises()
+  expect(wrapper.find('.record-detail-shell').exists()).toBe(false)
+  expect(wrapper.find('.order').text()).toContain('51 goods')
 })
 
-it('手机详情关闭可重开，翻页及字段撤权立即清理，旧历史只读时不保留空操作区', async () => {
+it('查看详情关闭可重开，翻页及字段撤权立即清理，旧历史只读时不保留空操作区', async () => {
   const wrapper = await render()
-  await wrapper.find('[data-mobile-record]').trigger('dblclick'); await flushPromises()
+  await button(wrapper, '明细').trigger('click'); await flushPromises()
   await wrapper.find('[aria-label="关闭商品记录详情"]').trigger('click'); await flushPromises()
   expect(wrapper.find('.record-detail-shell').exists()).toBe(false)
-  await wrapper.find('[data-mobile-record]').trigger('dblclick'); await flushPromises()
+  await button(wrapper, '明细').trigger('click'); await flushPromises()
   expect(wrapper.find('.record-detail-shell').exists()).toBe(true)
   mocks.get.mockResolvedValueOnce({ success: true, data: page([row({ id: 61, name: '末页商品', has_order: false, has_snapshot: 0 })], 2, 10, 11) })
   await button(wrapper, '下一页').trigger('click'); await flushPromises()
   expect(wrapper.find('.record-detail-shell').exists()).toBe(false)
-  await wrapper.find('[data-mobile-record]').trigger('dblclick'); await flushPromises()
+  await button(wrapper, '明细').trigger('click'); await flushPromises()
   expect(wrapper.find('.record-detail-shell').text()).toContain('历史记录未保存商品快照')
   expect(wrapper.find('.record-detail-shell footer').exists()).toBe(false)
   hidden.value = ['customer_info.customer_phone']; await flushPromises()
   expect(wrapper.text()).toBe('')
 })
 
-it('桌面保留原单按钮，不通过手机双击入口额外打开窗口', async () => {
-  isMobile.value = false
+it('桌面列表同样使用查看按钮，详情关闭后通过整单入口查看原单', async () => {
   const wrapper = await render()
-  expect(wrapper.find('[data-mobile-record] button').text()).toBe('整单明细')
-  await wrapper.find('[data-mobile-record]').trigger('dblclick'); await flushPromises()
-  expect(wrapper.find('.record-detail-shell').exists()).toBe(false)
-  await button(wrapper, '整单明细').trigger('click'); await flushPromises()
+  expect(wrapper.find('tr.el-table__row button').text()).toBe('明细')
+  await button(wrapper, '明细').trigger('click'); await flushPromises()
+  expect(wrapper.find('.record-detail-shell').exists()).toBe(true)
+  await wrapper.find('.record-detail-shell footer button').trigger('click'); await flushPromises()
   expect(wrapper.find('.order').text()).toContain('51 goods')
 })

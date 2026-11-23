@@ -68,7 +68,7 @@ item,{...item,id:202,name:'原赠膜',sale_type:'gift',serial_numbers:[],quantit
 gift_return_unit_price:12.34,gift_return_total:12.34,gift_agreement_state:'recorded'}]};
 const {default:Order}=await import('/src/components/query/CheckoutOrderDialog.vue');
 const {default:History}=await import('/src/views/customers/page/CustomerGoodsHistory.vue');
-const {default:Film}=await import('/src/components/query/FilmServiceDialog.vue');
+const {default:CustomerFilmHistory}=await import('/src/views/customers/page/CustomerFilmHistory.vue');
 const {default:Receipt}=await import('/src/components/query/SalesReceipt.vue');
 const {default:PhoneDetail}=await import('/src/components/query/QueryDetailDialog.vue');
 const phoneDetailMode=location.pathname==='/phone-detail';
@@ -93,9 +93,9 @@ store_id:2,store_name:'跨店服务门店长名称完整显示',operator_id:7,op
 items:[{name:'跨店贴膜记录'+index,sale_type:'gift',quantity:2,total_amount:0}]}));
 window.mockRead=(url,config)=>{if(url.endsWith('/film-services')){const {page,page_size:size}=config.params;return {customer_id:9,eligible_for_free:false,service_count:21,free_count:21,paid_count:0,film_quantity:42,device_service_count:null,device_film_quantity:null,
 data:window.filmRows.slice((page-1)*size,page*size),pagination:{page,page_size:size,total:21,total_pages:Math.ceil(21/size),has_next:page*size<21,has_prev:page>1}}}
-if(url.endsWith('/accessories'))return structuredClone(url.includes('/82/')?[{...window.receiptGoods[1],id:53,name:'手机乙赠品'}]:window.receiptGoods);if(url.endsWith('/goods')){const {page,page_size:size}=config.params;return {data:window.goodsRows.slice((page-1)*size,page*size),pagination:{page,page_size:size,total:11,total_pages:Math.ceil(11/size),has_next:page<Math.ceil(11/size),has_prev:page>1}}}return structuredClone(window.data)};
+if(url.endsWith('/accessories'))return structuredClone(url.includes('/82/')?[{...window.receiptGoods[1],id:53,name:'手机乙赠品'}]:window.receiptGoods);if(url.endsWith('/goods')){const {page,page_size:size,film_only}=config.params;const rows=film_only?window.goodsRows.map((row,index)=>({...row,id:700+index,name:'跨店贴膜记录'+index,category:'钢化膜',sale_type:'gift',total_price:0,unit_price:0})):window.goodsRows;return {data:rows.slice((page-1)*size,page*size),pagination:{page,page_size:size,total:rows.length,total_pages:Math.ceil(rows.length/size),has_next:page*size<rows.length,has_prev:page>1}}}return structuredClone(window.data)};
 applyDeviceRootClass();const open=ref(true);window.reopen=()=>{open.value=true};
-const app=createApp({render:()=>phoneDetailMode?h(PhoneDetail,{modelValue:open.value,'onUpdate:modelValue':value=>open.value=value,detailItem:window.phoneDetail,canEdit:false,canDelete:false,canReturnToStock:false}):filmMode?h(Film,{modelValue:open.value,'onUpdate:modelValue':value=>open.value=value,customer:{id:9,name:'原客户',phone:'13900000001'}}):receiptMode?h(Receipt,{visible:open.value,items:window.receipt.items,status:window.receipt.status,receiptNumber:window.receipt.number,
+const app=createApp({render:()=>phoneDetailMode?h(PhoneDetail,{modelValue:open.value,'onUpdate:modelValue':value=>open.value=value,detailItem:window.phoneDetail,canEdit:false,canDelete:false,canReturnToStock:false}):filmMode?h(CustomerFilmHistory,{active:true,customer:{id:9,name:'原客户',phone:'13900000001'}}):receiptMode?h(Receipt,{visible:open.value,items:window.receipt.items,status:window.receipt.status,receiptNumber:window.receipt.number,
 customerName:'原客户',customerPhone:'13900000001',storeName:'原销售店',salesOperator:'原销售员',saleDate:'2026-11-14 10:00:00',onClose:()=>open.value=false}):historyMode?h(MobileDialog,{modelValue:true,title:'客户详情',dialogClass:'crud-dialog-lg',showDefaultFooter:false},()=>h(History,{customerId:8,active:true})):
 h(Order,{modelValue:open.value,'onUpdate:modelValue':v=>open.value=v,saleId:51,source:'goods'})});
 app.use(createPinia());app.use(ElementPlus);app.component('MobileDialog',MobileDialog);app.component('RecordDescriptions',RecordDescriptions);app.component('RecordDetailDialog',RecordDetailDialog);
@@ -337,7 +337,8 @@ try {
       console.log(purchaseReturn ? `采购退供试算 ${width}px ${dark ? '暗' : '明'}：普通/SN、退款/留抵/冲应付、切换失效/迟到响应/失败重试/撤权通过（只读内存服务）` : filmService ? `贴膜办理 ${width}px ${dark ? '暗' : '明'}：跨店/取消/免费及收费/积分净额/原键重试/历史重读/撤权通过（内存服务）` : goodsPage ? `商品查询 ${mode} ${width}px ${dark ? '暗' : '明'}：检索/分页/筛选/原单与售后/失败重试/撤权及迟到响应通过` : goodsExchange ? `商品换货 ${mode} ${width}px ${dark ? '暗' : '明'}：原SN/新销售员/净差价/积分/未知冻结及重试/撤权通过` : phoneReturn ? `手机联合退货 ${mode} ${width}px ${dark ? '暗' : '明'}：原单/收费保留及退回/SN/赠品扣款/退款补款/未知冻结及重试通过` : quickSale ? `快速出库 ${width}px ${dark ? '暗' : '明'}：真实表单/客户继承/公共宽度/取消保留/最新价格/购买赠送/单次合单提交通过` : salesPage ? `销售整页 ${mode} ${width}px ${dark ? '暗' : '明'}：${actions}通过` : `结算组件 ${mode} ${width}px ${dark ? '暗' : '明'}：真实检索/SN/赠送/关联/积分/防重重试/撤权通过`)
       continue
     }
-    await page.waitForFunction(value => document.body.textContent.includes(value), {}, sample).catch(error => { throw new Error(error.message + ': ' + errors.join(' | ')) })
+    const readyText = film ? '贴膜记录' : sample
+    await page.waitForFunction(value => document.body.textContent.includes(value), {}, readyText).catch(error => { throw new Error(error.message + ': ' + errors.join(' | ')) })
     await page.evaluate(dark => { document.documentElement.classList.toggle('dark', dark); document.documentElement.dataset.theme = dark ? 'dark' : 'light' }, dark)
     if (history || film) {
       await (history ? verifyCustomerGoodsHistory(page, capture) : verifyCustomerFilmHistory(page, capture))

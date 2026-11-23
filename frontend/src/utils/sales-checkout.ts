@@ -93,7 +93,7 @@ const goodsReturnFacts = (value: unknown, context: GoodsReturnContext, input: Go
 /** 换入用途来自原单实际扣款核对，不按旧赠品标记或客户端售价推断。 */
 export const isGoodsExchangeContext = (value: unknown, orderId: number, itemId: number): value is GoodsExchangeContext =>
   record(value) && isGoodsReturnContext(value, orderId, itemId) && typeof value.gift_charge_settled === 'boolean' &&
-  (value.gift_charge_settled ? value.sale_type === 'gift' && value.replacement_sale_type === 'sale' : value.replacement_sale_type === value.sale_type)
+  (!value.gift_charge_settled || value.sale_type === 'gift') && value.replacement_sale_type === (value.sale_type === 'gift' ? 'sale' : value.sale_type)
 
 export const isGoodsReturnQuote = (value: unknown, context: GoodsReturnContext, input: GoodsReturnInput): value is GoodsReturnQuote =>
   goodsReturnFacts(value, context, input) && Math.round(value.base_refund_amount * 100) + Math.round(value.points_compensation_amount * 100) -
@@ -101,7 +101,7 @@ export const isGoodsReturnQuote = (value: unknown, context: GoodsReturnContext, 
 
 /** 新件按完整净价核验，现金只确认本次净差价；销售员及新旧SN均与当前草稿一致。 */
 export const isGoodsExchangeQuote = (value: unknown, context: GoodsReturnContext, input: GoodsExchangeInput): value is GoodsExchangeQuote => {
-  if (!isGoodsExchangeContext(context, context.order_id, context.item_id) || !record(value) || !goodsReturnFacts(value, context, input) || value.operator_id !== input.operator_id ||
+  if (input.replacement.quantity !== input.quantity || !isGoodsExchangeContext(context, context.order_id, context.item_id) || !record(value) || !goodsReturnFacts(value, context, input) || value.operator_id !== input.operator_id ||
     value.replacement_accessory_id !== input.replacement.accessory_id || !serialList(value.replacement_serial_numbers) ||
     JSON.stringify([...value.replacement_serial_numbers].sort()) !== JSON.stringify([...(input.replacement.serial_numbers || [])].sort()) ||
     !nonnegativeInteger(value.points_used) || value.points_used !== (input.replacement.redeem_points || 0) || !nonnegativeInteger(value.points_earned) ||
@@ -109,12 +109,26 @@ export const isGoodsExchangeQuote = (value: unknown, context: GoodsReturnContext
   const fields = ['replacement_amount', 'replacement_paid_amount', 'original_collection_amount', 'deduction_amount']
   if (!fields.every(key => typeof value[key] === 'number' && value[key] >= 0 && Number.isSafeInteger(Math.round(value[key] * 100)) &&
     Math.abs(value[key] * 100 - Math.round(value[key] * 100)) < 0.000001)) return false
-  const newAmount = Math.round(Number(value.replacement_amount) * 100), paid = Math.round(Number(value.replacement_paid_amount) * 100),
+  const hasAdditional = Boolean((input.additional_goods || []).length || value.additional_amount !== undefined || value.additional_paid_amount !== undefined || value.additional_goods !== undefined)
+  if (hasAdditional && (typeof value.additional_amount !== 'number' || !nullableMoney(value.additional_amount) ||
+    typeof value.additional_paid_amount !== 'number' || !nullableMoney(value.additional_paid_amount) || !Array.isArray(value.additional_goods))) return false
+  const newAmount = Math.round(Number(value.replacement_amount) * 100), additional = Math.round(Number(value.additional_amount || 0) * 100), paid = Math.round(Number(value.replacement_paid_amount) * 100),
+    additionalPaid = Math.round(Number(value.additional_paid_amount || 0) * 100),
     original = Math.round(Number(value.original_collection_amount) * 100), deduction = Math.round(Number(value.deduction_amount) * 100),
     collection = Math.round(value.collection_amount * 100)
-  const net = Math.round(value.base_refund_amount * 100) + Math.round(value.points_compensation_amount * 100) - Math.round(value.points_recovery_amount * 100) - newAmount
-  return Number.isSafeInteger(net) && Number.isSafeInteger(newAmount + deduction) && newAmount + deduction === Math.round(input.replacement.unit_price * 100) * input.quantity &&
-    paid === Math.min(collection, newAmount) && original === Math.max(0, collection - newAmount) &&
+  const additionalRows = [...(input.additional_goods || [])].sort((a, b) => a.accessory_id - b.accessory_id || a.key.localeCompare(b.key))
+  const additionalExpected = additionalRows.reduce((sum, row) => sum + Math.round(row.unit_price * 100) * row.quantity, 0)
+  const responseAdditions: unknown[] = Array.isArray(value.additional_goods) ? value.additional_goods : []
+  if (hasAdditional && (responseAdditions.length !== additionalRows.length || responseAdditions.some((entry, index) => {
+    if (!record(entry)) return true
+    const row = entry
+    return row.accessory_id !== additionalRows[index].accessory_id || row.quantity !== additionalRows[index].quantity || row.sale_type !== additionalRows[index].sale_type ||
+    typeof row.amount !== 'number' || !nullableMoney(row.amount) || Math.round(row.amount * 100) !== Math.round(additionalRows[index].unit_price * 100) * additionalRows[index].quantity ||
+    !serialList(row.serial_numbers) || JSON.stringify([...row.serial_numbers].sort()) !== JSON.stringify([...(additionalRows[index].serial_numbers || [])].sort())
+  }))) return false
+  const net = Math.round(value.base_refund_amount * 100) + Math.round(value.points_compensation_amount * 100) - Math.round(value.points_recovery_amount * 100) - newAmount - additional
+  return Number.isSafeInteger(net) && additional === additionalExpected && Number.isSafeInteger(newAmount + deduction) && newAmount + deduction === Math.round(input.replacement.unit_price * 100) * input.quantity &&
+    paid === Math.min(newAmount, Math.max(0, collection - additional)) && additionalPaid === Math.min(additional, collection) && original === Math.max(0, collection - newAmount - additional) &&
     net === Math.round(value.refund_amount * 100) - collection && (value.points_used > 0 || deduction === 0)
 }
 
@@ -124,7 +138,8 @@ export const isGoodsExchangeResult = (value: unknown, context: GoodsReturnContex
   value.replacement_order_id !== context.order_id && Number(value.replacement_item_id) > context.item_id && Number(value.root_item_id) <= context.item_id &&
   typeof value.exchange_credit_amount === 'number' && value.exchange_credit_amount >= 0 && Number.isSafeInteger(Math.round(value.exchange_credit_amount * 100)) &&
   Math.abs(value.exchange_credit_amount * 100 - Math.round(value.exchange_credit_amount * 100)) < 0.000001 && Math.round(value.exchange_credit_amount * 100) ===
-    Math.max(0, Math.round(value.replacement_amount * 100) - Math.round(value.collection_amount * 100))
+    Math.max(0, Math.round(value.replacement_amount * 100) - Math.min(Math.round(value.replacement_amount * 100),
+      Math.max(0, Math.round(value.collection_amount * 100) - Math.round(Number(value.additional_amount || 0) * 100))))
 
 /** 同笔手机售后一次确认净资金，逐条核对返库和未退赠品，不能把扣款数量算作已退。 */
 export const isPhoneReturnQuote = (value: unknown, context: PhoneReturnChecklist, input: PhoneReturnInput): value is PhoneReturnQuote => {

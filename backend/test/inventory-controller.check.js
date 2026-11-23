@@ -400,7 +400,9 @@ test('库存更新保留统一权限、旧入库时间兼容、字段映射和�
   const updateCall = calls.find(call => call.sql.startsWith('UPDATE phones SET'))
   assert.match(updateCall.sql, /purchase_cost = \?, supplier_id = \?, inventory_time = \?, quality_grade = \?, is_new = \?/)
   assert.doesNotMatch(updateCall.sql, /store_id|brand_id|model_id|color_id|memory_id|status =/)
-  assert.deepEqual(updateCall.params, ['new-imei', 'SERIAL-15', 100, 3, '2026-11-07', 'A', 1, '15'])
+  assert.deepEqual(updateCall.params.slice(0, 4), ['new-imei', 'SERIAL-15', 100, 3])
+  assert.match(updateCall.params[4], /^2026-11-07 \d{2}:\d{2}:\d{2}$/)
+  assert.deepEqual(updateCall.params.slice(5), ['A', 1, '15'])
   assert.deepEqual(response.body.data, {
     id: 15, imei: 'new-imei', serial_number: 'SERIAL-15', purchase_cost: 100,
     quality_grade: 'A', inventory_time: '2026-11-07', sale_time: null

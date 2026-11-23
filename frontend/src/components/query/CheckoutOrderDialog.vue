@@ -2,7 +2,7 @@
   <MobileDialog
     v-model="open"
     :title="receipt ? '销售凭证' : '整单明细'"
-    dialog-class="crud-dialog-md"
+    dialog-class="record-detail-dialog crud-dialog-lg"
     :show-default-footer="false"
     destroy-on-close
     append-to-body
@@ -107,8 +107,8 @@
         </footer>
       </template>
       <template v-else>
-        <p>以下为本次结算的原成交记录，退换货及后续退款请查看售后历史。</p>
         <RecordDescriptions
+          class="checkout-order-descriptions checkout-order-summary"
           :column="3"
           border
         >
@@ -118,15 +118,19 @@
             :label="field.label"
             :span="field.wide ? 3 : 1"
           >
-            {{ field.value }}
+            <span :class="fieldValueClass(field.key, field.value)">{{ field.value }}</span>
           </el-descriptions-item>
         </RecordDescriptions>
         <section
           v-for="item in order.items"
           :key="item.id"
+          class="checkout-order-section"
         >
-          <h3>{{ item.item_type === 'phone' ? '手机' : '配件商品' }}</h3>
+          <h3 class="checkout-order-section__title">
+            {{ item.item_type === 'phone' ? '手机' : '配件商品' }}
+          </h3>
           <RecordDescriptions
+            class="checkout-order-descriptions"
             :column="3"
             border
           >
@@ -136,7 +140,7 @@
               :label="field.label"
               :span="field.wide ? 3 : 1"
             >
-              {{ field.value }}
+              <span :class="fieldValueClass(field.key, field.value)">{{ field.value }}</span>
             </el-descriptions-item>
           </RecordDescriptions>
         </section>
@@ -202,6 +206,13 @@ const phoneVisible = (field: string) => fieldPermissions.isFieldVisible('query_q
 const containsPhone = computed(() => order.value?.items.some(row => row.item_type === 'phone' || row.linked_phone_sale_no !== null) || false)
 const text = (value: unknown) => value === null || value === undefined || value === '' ? '-' : String(value)
 const money = (value: number | null | undefined) => value === null || value === undefined ? '-' : `¥${formatAmount(value)}`
+const fieldValueClass = (key: string, value: RecordDetailField['value']) => {
+  if (key === 'sale_type') return value === '赠送' ? 'status-badge status-warning' : value === '购买' ? 'status-badge status-success' : ''
+  if (['total_amount', 'final_amount', 'paid_amount', 'unit_price', 'gross_amount', 'deduction_amount'].includes(key)) return 'checkout-order-value--amount'
+  if (key === 'points_awarded') return 'checkout-order-value--success'
+  if (key === 'points_used') return 'checkout-order-value--accent'
+  return ''
+}
 const commonVisible = (goodsField: Parameters<typeof goodsVisible>[0], phoneField: string) =>
   goodsVisible(goodsField) && (!containsPhone.value || phoneVisible(phoneField))
 const goodsMoneyVisible = () => (['usage_type', 'total_quantity', 'unit_price', 'total_price'] as const).every(goodsVisible)
@@ -293,7 +304,15 @@ watch(() => [props.modelValue, props.saleId, props.source, allowed.value,
 
 <style scoped>
 .checkout-order-document { min-width: 0; overflow-wrap: anywhere; }
-.checkout-order-document section { margin-top: var(--tf-space-4); }
+.checkout-order-summary { margin-bottom: var(--tf-space-5); }
+.checkout-order-section { margin-top: var(--tf-space-5); }
+.checkout-order-section__title { margin: 0 0 var(--tf-space-3); color: var(--tf-dialog-body-text); font-size: var(--tf-font-section-title); font-weight: 700; line-height: var(--tf-line-height-body); }
+.checkout-order-value--amount { color: var(--el-color-primary); font-weight: 600; }
+.checkout-order-value--success { color: var(--el-color-success); font-weight: 600; }
+.checkout-order-value--accent { color: var(--el-color-primary); font-weight: 600; }
+:deep(.checkout-order-descriptions .el-descriptions__label) { color: var(--tf-color-text-secondary); font-weight: 600; }
+:deep(.checkout-order-descriptions .el-descriptions__content) { min-width: 0; color: var(--tf-dialog-body-text); overflow-wrap: anywhere; }
+:deep(.checkout-order-descriptions .el-descriptions__cell) { vertical-align: top; }
 .checkout-receipt__header { padding: var(--tf-space-2) 0 var(--tf-space-5); border-bottom: 1px dashed var(--tf-color-border-cool); }
 .checkout-receipt__meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tf-space-4) var(--tf-space-8); }
 .checkout-receipt__meta-item { display: grid; gap: var(--tf-space-1); min-width: 0; }
@@ -317,7 +336,7 @@ watch(() => [props.modelValue, props.saleId, props.source, allowed.value,
 .checkout-receipt__total-line--emphasis strong { color: var(--el-color-primary); font-size: var(--tf-font-title); }
 .checkout-receipt__totals > p { margin: var(--tf-space-2) 0 0; overflow-wrap: anywhere; }
 :deep(.mobile-dialog-header) { display: flex; align-items: center; width: 100%; min-width: 0; }
-.checkout-dialog-title { display: block; min-width: 0; color: var(--tf-dialog-header-text); font-size: var(--tf-dialog-title-size); font-weight: var(--tf-dialog-title-weight); line-height: var(--tf-dialog-title-line-height); }
+.checkout-dialog-title { position: absolute; left: 50%; display: block; width: max-content; max-width: calc(100% - var(--tf-dialog-header-padding-right) - var(--tf-dialog-header-padding-x)); min-width: 0; color: var(--tf-dialog-header-text); font-size: var(--tf-dialog-title-size); font-weight: var(--tf-dialog-title-weight); line-height: var(--tf-dialog-title-line-height); text-align: center; transform: translateX(-50%); }
 @media (max-width: 767px) {
   .checkout-receipt__meta { grid-template-columns: 1fr; gap: var(--tf-space-3); }
   .checkout-receipt__figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--tf-space-3); }

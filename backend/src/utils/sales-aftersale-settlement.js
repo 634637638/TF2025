@@ -43,7 +43,7 @@ function distribute(items, total, positive) {
 /** 整笔资金只确认一次；明细保存原应退/积分事实及本次实际退款、补款的分币归属。 */
 function allocateAftersaleSettlement(lines, { version = 1 } = {}) {
   if (!Array.isArray(lines) || !lines.length) conflict()
-  if (![1, 2, 3].includes(version)) conflict()
+  if (![1, 2, 3, 4].includes(version)) conflict()
   const items = lines.map(line => {
     if (!line || typeof line !== 'object' || Array.isArray(line)) conflict()
     const item = { original_item_id: integer(line.original_item_id, 1),
@@ -52,16 +52,19 @@ function allocateAftersaleSettlement(lines, { version = 1 } = {}) {
     if (item.points_delta > 2147483647) conflict()
     if (version >= 2) item.gift_charge_cents = integer(line.gift_charge_cents)
     else if (line.gift_charge_cents !== undefined && line.gift_charge_cents !== 0) conflict()
-    if (version === 3) item.replacement_cents = integer(line.replacement_cents)
+    if (version >= 3) item.replacement_cents = integer(line.replacement_cents)
     else if (line.replacement_cents !== undefined && line.replacement_cents !== 0) conflict()
-    return { ...item, net: sum([item.base_refund_cents, item.compensation_cents, -item.recovery_cents, -(item.gift_charge_cents || 0), -(item.replacement_cents || 0)]) }
+    if (version === 4) item.additional_cents = integer(line.additional_cents)
+    else if (line.additional_cents !== undefined && line.additional_cents !== 0) conflict()
+    return { ...item, net: sum([item.base_refund_cents, item.compensation_cents, -item.recovery_cents, -(item.gift_charge_cents || 0), -(item.replacement_cents || 0), -(item.additional_cents || 0)]) }
   }).sort((a, b) => a.original_item_id - b.original_item_id)
   if (new Set(items.map(item => item.original_item_id)).size !== items.length) conflict()
   const net = sum(items.map(item => item.net))
   const totals = Object.fromEntries(['base_refund_cents', 'recovery_cents', 'compensation_cents', 'points_delta']
     .map(key => [key, sum(items.map(item => item[key]))]))
   if (version >= 2) totals.gift_charge_cents = sum(items.map(item => item.gift_charge_cents))
-  if (version === 3) totals.replacement_cents = sum(items.map(item => item.replacement_cents))
+  if (version >= 3) totals.replacement_cents = sum(items.map(item => item.replacement_cents))
+  if (version === 4) totals.additional_cents = sum(items.map(item => item.additional_cents))
   if (totals.points_delta < -2147483648 || totals.points_delta > 2147483647) conflict()
   totals.refund_cents = Math.max(net, 0)
   totals.collection_cents = Math.max(-net, 0)
@@ -79,8 +82,9 @@ function readAftersaleSettlement(header, rows, { verifiedItemOrders } = {}) {
   const head = Object.fromEntries(amounts.map(key => [key, key === 'points_delta' ? integer(header[key], -2147483648) : integer(header[key])]))
   const charge = header.gift_charge_cents === undefined ? 0 : integer(header.gift_charge_cents)
   const replacement = header.replacement_cents === undefined ? 0 : integer(header.replacement_cents)
+  const additional = header.additional_cents === undefined ? 0 : integer(header.additional_cents)
   if (head.points_delta > 2147483647 || head.refund_cents && head.collection_cents ||
-    sum([head.base_refund_cents, head.compensation_cents, -head.recovery_cents, -charge, -replacement]) !== head.refund_cents - head.collection_cents) conflict()
+    sum([head.base_refund_cents, head.compensation_cents, -head.recovery_cents, -charge, -replacement, -additional]) !== head.refund_cents - head.collection_cents) conflict()
   const ids = new Set()
   const entries = rows.map(row => {
     if (!row || typeof row !== 'object') conflict()
@@ -97,8 +101,8 @@ function readAftersaleSettlement(header, rows, { verifiedItemOrders } = {}) {
       settlement = { version: 1, ...head, offset_cents: 0 }
     } else {
       const value = fact.settlement
-      if (!value || typeof value !== 'object' || Array.isArray(value) || ![1, 2, 3].includes(value.version)) conflict()
-      const keys = [...settlementKeys, ...(value.version >= 2 ? ['gift_charge_cents'] : []), ...(value.version === 3 ? ['replacement_cents'] : [])]
+      if (!value || typeof value !== 'object' || Array.isArray(value) || ![1, 2, 3, 4].includes(value.version)) conflict()
+      const keys = [...settlementKeys, ...(value.version >= 2 ? ['gift_charge_cents'] : []), ...(value.version >= 3 ? ['replacement_cents'] : []), ...(value.version === 4 ? ['additional_cents'] : [])]
       if (Object.keys(value).length !== keys.length || keys.some(key => !Object.hasOwn(value, key))) conflict()
       settlement = Object.fromEntries(keys.map(key => [key, ['offset_cents', 'points_delta'].includes(key) ? signed(value[key]) : integer(value[key])]))
     }
@@ -106,11 +110,12 @@ function readAftersaleSettlement(header, rows, { verifiedItemOrders } = {}) {
     if (crossOrder && settlement.version !== 2) conflict()
     if (settlement.version === 1 ? charge !== 0 || fact.gift_charge !== undefined || fact.gift_refund_cents !== undefined :
       header.gift_charge_cents === undefined || integer(fact.gift_charge?.amount_cents ?? 0) !== settlement.gift_charge_cents) conflict()
-    if (settlement.version === 3) {
-      const exchange = fact.exchange, keys = ['replacement_order_id', 'replacement_item_id', 'replacement_cents', 'quantity', 'root_order_id', 'root_item_id']
-      if (rows.length !== 1 || row.item_type !== 'accessory' || header.replacement_cents === undefined || header.operation_type !== 'goods_exchange' ||
+    if (settlement.version >= 3) {
+      const exchange = fact.exchange, keys = ['replacement_order_id', 'replacement_item_id', 'replacement_cents', ...(settlement.version === 4 ? ['additional_cents'] : []), 'quantity', 'root_order_id', 'root_item_id']
+      if (settlement.version === 3 && rows.length !== 1 || row.item_type !== 'accessory' || header.replacement_cents === undefined || header.operation_type !== 'goods_exchange' ||
         !exchange || typeof exchange !== 'object' || Array.isArray(exchange) || Object.keys(exchange).length !== keys.length || keys.some(key => !Object.hasOwn(exchange, key)) ||
-        integer(exchange.replacement_cents) !== settlement.replacement_cents || integer(exchange.quantity, 1) !== integer(row.quantity, 1) || exchange.quantity > 999999 ||
+        integer(exchange.replacement_cents) !== settlement.replacement_cents || settlement.version === 4 && integer(exchange.additional_cents) !== settlement.additional_cents ||
+        integer(exchange.quantity, 1) !== integer(row.quantity, 1) || exchange.quantity > 999999 ||
         integer(exchange.replacement_item_id, 1) <= itemId || integer(exchange.replacement_order_id, 1) === integer(header.order_id, 1) ||
         integer(exchange.root_item_id, 1) > itemId || !integer(exchange.root_order_id, 1)) conflict()
     } else if (replacement !== 0 || fact.exchange !== undefined) conflict()
@@ -121,7 +126,8 @@ function readAftersaleSettlement(header, rows, { verifiedItemOrders } = {}) {
   const expected = allocateAftersaleSettlement(entries.map(entry => ({ original_item_id: entry.original_item_id, ...entry.settlement })), { version })
   if (amounts.some(key => head[key] !== expected.totals[key])) conflict()
   if (version >= 2 && charge !== expected.totals.gift_charge_cents) conflict()
-  if (version === 3 && replacement !== expected.totals.replacement_cents) conflict()
+  if (version >= 3 && replacement !== expected.totals.replacement_cents) conflict()
+  if (version === 4 && additional !== expected.totals.additional_cents) conflict()
   const byId = new Map(expected.items.map(item => [item.original_item_id, item.settlement]))
   for (const entry of entries) {
     const target = byId.get(entry.original_item_id)

@@ -52,10 +52,11 @@ test('共同结算异常不能使依赖售后及贴膜虚假就绪，原错误�
   const secret = 'private-database-fixture'
   const f = fixture({ 'sales-checkout': () => { throw new Error(secret) } })
   const result = await checkAccessoryReleaseSchema(f.connection, f)
-  assert.deepEqual(result.counts, { ready: migrations.length - 5, pending: 0, blocked: 4, error: 1 })
+  assert.deepEqual(result.counts, { ready: migrations.length - 6, pending: 0, blocked: 5, error: 1 })
   assert.equal(result.results.find(row => row.name === 'sales-aftersales').status, 'blocked')
   assert.equal(result.results.find(row => row.name === 'film-services').status, 'blocked')
   assert.equal(result.results.find(row => row.name === 'film-cancellations').status, 'blocked')
+  assert.equal(result.results.find(row => row.name === 'film-order-phone-index').status, 'blocked')
   assert.equal(JSON.stringify(result).includes(secret), false)
   assert.equal(f.events.at(-1), 'rollback')
 })

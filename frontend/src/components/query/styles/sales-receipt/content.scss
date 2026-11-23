@@ -115,14 +115,6 @@
   line-height: var(--tf-line-height-compact);
 }
 
-:deep(.receipt-unified-table .table-number-badge) {
-  width: var(--admin-data-table-badge-height);
-  min-width: var(--admin-data-table-badge-height);
-  padding: 0;
-  border-radius: var(--tf-radius-full);
-  font-weight: 600;
-}
-
 :deep(.receipt-unified-table .el-table__body tr.accessory-row--sale > td) {
   background: var(--tf-color-indigo-50);
 }

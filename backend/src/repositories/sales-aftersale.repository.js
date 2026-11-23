@@ -37,12 +37,12 @@ class SalesAftersaleRepository extends SalesCheckoutRepository {
     const [result] = await connection.execute(`INSERT INTO sales_aftersales
       (request_key, request_hash, order_id, operation_type, customer_id, original_store_id, store_id, created_by,
        base_refund_cents, recovery_cents, compensation_cents, refund_cents, collection_cents, points_delta,
-       settlement_method, settlement_channel, business_time, remarks, result_snapshot, created_at${phoneReturn || exchange ? ', gift_charge_cents' : ''}${exchange ? ', replacement_cents' : ''})
-      VALUES (?, ?, ?, '${exchange ? 'goods_exchange' : phoneReturn ? 'phone_return' : 'goods_return'}', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${phoneReturn || exchange ? ', ?' : ''}${exchange ? ', ?' : ''})`,
+       settlement_method, settlement_channel, business_time, remarks, result_snapshot, created_at${phoneReturn || exchange ? ', gift_charge_cents' : ''}${exchange ? ', replacement_cents, additional_cents' : ''})
+      VALUES (?, ?, ?, '${exchange ? 'goods_exchange' : phoneReturn ? 'phone_return' : 'goods_return'}', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${phoneReturn || exchange ? ', ?' : ''}${exchange ? ', ?, ?' : ''})`,
     [row.request_key, row.request_hash, row.order_id, row.customer_id, row.original_store_id, row.store_id, row.actor_id,
       row.base_refund_cents, row.recovery_cents, row.compensation_cents, row.refund_cents, row.collection_cents, row.points_delta,
       row.settlement_method, row.settlement_channel, row.time, row.remarks, JSON.stringify(row.result), row.created_at,
-      ...(phoneReturn || exchange ? [row.gift_charge_cents] : []), ...(exchange ? [row.replacement_cents] : [])])
+      ...(phoneReturn || exchange ? [row.gift_charge_cents] : []), ...(exchange ? [row.replacement_cents, row.additional_cents] : [])])
     return Number(result.insertId)
   }
   async createAftersaleItem(connection, row) {
@@ -77,13 +77,19 @@ class SalesAftersaleRepository extends SalesCheckoutRepository {
 
   async exchangeForItem(connection, itemId, { lock = true } = {}) {
     const [rows] = await connection.execute(`SELECT e.*, a.order_id, a.customer_id, a.operation_type,
-      a.base_refund_cents, a.recovery_cents, a.compensation_cents, a.gift_charge_cents, a.replacement_cents,
+      a.base_refund_cents, a.recovery_cents, a.compensation_cents, a.gift_charge_cents, a.replacement_cents, a.additional_cents,
       a.refund_cents, a.collection_cents, a.points_delta, i.id AS aftersale_item_id, i.quantity AS returned_quantity, i.fact_snapshot
       FROM sales_goods_exchanges e LEFT JOIN sales_aftersales a ON a.id = e.aftersale_id
       LEFT JOIN sales_aftersale_items i ON i.aftersale_id = a.id AND i.original_item_id = e.original_item_id
       WHERE e.replacement_item_id = ?${lock ? ' FOR UPDATE' : ''}`, [itemId])
     if (rows.length > 1) throw Object.assign(new Error('商品换货关联重复'), { statusCode: 409, code: 'CHECKOUT_RETURN_CONFLICT' })
     return rows[0] || null
+  }
+
+  async exchangeAdditions(connection, aftersaleId, { lock = true } = {}) {
+    const [rows] = await connection.execute(`SELECT aftersale_id, replacement_order_id, replacement_item_id, quantity, amount_cents
+      FROM sales_goods_exchange_additions WHERE aftersale_id = ? ORDER BY replacement_item_id${lock ? ' FOR UPDATE' : ''}`, [aftersaleId])
+    return rows
   }
 
   async exchangeRootPhone(connection, saleId, { lock = true } = {}) {

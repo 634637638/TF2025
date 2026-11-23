@@ -1,11 +1,13 @@
 'use strict'
 
+const crypto = require('node:crypto')
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
 
 const CustomerMutationAccessService = require('./customer-mutation-access.service')
 const SalesPhoneRepository = require('../repositories/sales-phone.repository')
-const { generateInvoiceNumber, prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
-const { normalizeDateTime } = require('../utils/time')
+const SalesCheckoutRepository = require('../repositories/sales-checkout.repository')
+const { generateInvoiceNumber, generateDailyDocumentNumber, prepareInvoiceNumberTransaction } = require('../utils/invoice-number')
+const { normalizeDateTime, normalizeBusinessDateTime } = require('../utils/time')
 const { hasColumn } = require('./schema-inspector.service')
 const { generateMemberNumber } = require('../utils/member-number')
 const { getCustomerPointsConfig, reconcileCustomerPointsForSale } = require('./customer-points.service')
@@ -20,9 +22,12 @@ const { validId, moneyCents } = require('../utils/sale-input')
 class SalesPhoneService {
   constructor({
     repository = new SalesPhoneRepository(),
+    checkoutRepository = new SalesCheckoutRepository(),
     normalizeDate = normalizeDateTime,
+    normalizeBusinessTime = normalizeBusinessDateTime,
     prepareInvoiceTransaction = prepareInvoiceNumberTransaction,
     generateInvoice = generateInvoiceNumber,
+    generateOrderNumber = generateDailyDocumentNumber,
     inspectColumn = hasColumn,
     createMemberNumber = generateMemberNumber,
     getPointsConfig = getCustomerPointsConfig,
@@ -31,9 +36,12 @@ class SalesPhoneService {
   } = {}) {
     this.customerAccess = customerAccess
     this.repository = repository
+    this.checkoutRepository = checkoutRepository
     this.normalizeDate = normalizeDate
+    this.normalizeBusinessTime = normalizeBusinessTime
     this.prepareInvoiceTransaction = prepareInvoiceTransaction
     this.generateInvoice = generateInvoice
+    this.generateOrderNumber = generateOrderNumber
     this.inspectColumn = inspectColumn
     this.createMemberNumber = createMemberNumber
     this.getPointsConfig = getPointsConfig
@@ -41,6 +49,91 @@ class SalesPhoneService {
     this.autoFilm = autoFilm
     this.films = films || (autoFilm ? new FilmService() : null)
     this.accessories = accessories || (autoFilm ? new AccessoryService() : null)
+  }
+
+  async createStandaloneOrder({ connection, customer, customerId, salesStoreId, operatorId, userId, saleTime,
+    remarks, payment, paymentIds, createdSales, issuedFilms, pointsConfig }) {
+    const repository = this.checkoutRepository
+    const phoneIds = createdSales.map(sale => sale.phone.phone_id)
+    const phones = await repository.phoneSnapshots(connection, phoneIds)
+    const sales = await repository.sales(connection, createdSales.map(sale => sale.saleId))
+    if (phones.length !== createdSales.length || sales.length !== createdSales.length) throw abort(409, '手机共同订单明细不完整')
+    const phoneSnapshots = new Map(phones.map(phone => [Number(phone.id), phone]))
+    const salesById = new Map(sales.map(sale => [Number(sale.id), sale]))
+    const salesByPhone = new Map(createdSales.map(sale => [Number(sale.phone.phone_id), sale.saleId]))
+    const totalAmount = createdSales.reduce((sum, sale) => sum + moneyCents(sale.phone.sale_price), 0) / 100
+    const orderNo = await this.generateOrderNumber('SO', connection, saleTime, 8)
+    const requestHash = crypto.createHash('sha256').update(JSON.stringify({
+      phones: createdSales.map(({ saleId, phone }) => [saleId, phone.phone_id, phone.sale_price]),
+      customerId, salesStoreId, operatorId, saleTime, remarks, payment
+    })).digest('hex')
+    const orderId = await repository.createOrder(connection, {
+      order_no: orderNo, request_key: crypto.randomUUID(), request_hash: requestHash,
+      customer_id: customerId, customer_name: customer.name, customer_phone: customer.phone,
+      store_id: salesStoreId, operator_id: operatorId || userId, created_by: userId,
+      time: saleTime, remarks, config: pointsConfig
+    })
+    await repository.linkPayments(connection, paymentIds, orderId)
+    let pointsAwarded = 0
+    let totalCostCents = 0
+    let totalCostKnown = true
+    const addCost = value => {
+      if (value === null || value === undefined) {
+        totalCostKnown = false
+        return
+      }
+      const cents = moneyCents(value)
+      if (cents === null) throw abort(409, '商品成本快照异常，手机销售已取消')
+      totalCostCents += cents
+    }
+    for (const { saleId, phone } of createdSales) {
+      const sale = salesById.get(Number(saleId))
+      const snapshot = phoneSnapshots.get(Number(phone.phone_id))
+      if (!sale || !snapshot) throw abort(409, '手机共同订单快照不完整')
+      const points = Number(sale.points_awarded || 0)
+      pointsAwarded += points
+      addCost(sale.purchase_cost)
+      await repository.createItem(connection, {
+        order_id: orderId, key: `phone:${phone.phone_id}`, type: 'phone', sale_id: saleId,
+        phone_id: phone.phone_id, quantity: 1, unit_price: sale.sale_price, total_amount: sale.sale_price,
+        purchase_cost: sale.purchase_cost, points_awarded: points,
+        snapshot: { ...snapshot, invoice_number: sale.invoice_number, remarks }, time: saleTime
+      })
+    }
+    for (const { request, issued } of issuedFilms) {
+      const linkedPhoneSaleId = salesByPhone.get(Number(request.linked_phone_id))
+      if (!linkedPhoneSaleId) throw abort(409, '自动赠膜关联手机不存在')
+      await repository.createItem(connection, {
+        order_id: orderId, key: `goods:${request.key}`, type: 'accessory', accessory_sale_id: issued.sale_id,
+        accessory_id: request.accessory_id, linked_phone_sale_id: linkedPhoneSaleId, quantity: issued.quantity,
+        unit_price: request.unit_price, total_amount: issued.total_price, purchase_cost: issued.purchase_cost,
+        points_awarded: 0,
+        snapshot: { name: issued.accessory.name, category_id: issued.accessory.category_id,
+          category: issued.accessory.category, brand_id: issued.accessory.brand_id, brand_name: issued.accessory.brand_name,
+          product_model: issued.accessory.product_model, barcode: issued.accessory.barcode,
+          template_id: issued.accessory.template_id, model_id: issued.accessory.model_id, model_ids: issued.accessory.model_ids,
+          compatible_model_names: issued.accessory.compatible_model_names, color_id: issued.accessory.color_id,
+          color_name: issued.accessory.color_name, unit: issued.accessory.unit, unit_id: issued.accessory.unit_id,
+          sale_type: 'gift', sale_no: issued.sale_no, serial_numbers: issued.serial_numbers,
+          points_used: 0, deduction_cents: 0, gross_cents: 0, gift_return_unit_price: null, remarks }, time: saleTime
+      })
+      if (typeof this.films?.appendAutomatic !== 'function') throw abort(409, '自动赠膜历史服务不可用')
+      await this.films.appendAutomatic(connection, {
+        orderId, customerId, storeId: salesStoreId, operatorId: operatorId || userId, createdBy: userId,
+        businessTime: saleTime, request, phone: phoneSnapshots.get(Number(request.linked_phone_id)),
+        saleId: linkedPhoneSaleId, issuedQuantity: issued.quantity
+      })
+      addCost(issued.purchase_cost)
+    }
+    await repository.completeOrder(connection, {
+      id: orderId, total_amount: totalAmount, final_amount: totalAmount,
+      total_cost: totalCostKnown ? totalCostCents / 100 : null,
+      total_profit: totalCostKnown ? totalAmount - totalCostCents / 100 : null,
+      points_awarded: pointsAwarded, payment_method: payment.payment_method,
+      payment_channel: payment.payment_channel, time: saleTime,
+      result: { order_id: orderId, order_no: orderNo, total_amount: totalAmount, paid_amount: totalAmount }
+    })
+    return { order_id: orderId, order_no: orderNo }
   }
 
   /** 由调用方的销售事务管理客户资料，手机与商品结算复用同一入口。 */
@@ -89,7 +182,7 @@ class SalesPhoneService {
       advance_payment: advancePayment
     } = body
 
-    const saleTimeValue = this.normalizeDate(saleTime, false)
+    const saleTimeValue = this.normalizeBusinessTime(saleTime)
     if (!saleTimeValue) return { ...rejected(400, '销售时间格式无效'), apiError: true }
 
     if (!['retail', 'batch', 'batch_item', undefined].includes(saleType)) return rejected(400, '此接口仅支持零售，批发及划拨请使用对应入口')
@@ -271,10 +364,12 @@ class SalesPhoneService {
           if (result.affectedRows !== 1) throw abort(400, '部分设备状态更新失败')
         }
 
+        const issuedFilms = []
         for (const film of automaticFilms) {
-          await this.accessories.issueSale({ ...film, store_id: salesStoreId, customer_id: customerId,
+          const issued = await this.accessories.issueSale({ ...film, store_id: salesStoreId, customer_id: customerId,
             customer_name: customerInfo.name, customer_phone: customerInfo.phone, remarks: requestedRemarks }, actor, connection,
           { time: saleTimeValue, sellerId: operatorId || userId, sellerName: actor.name || actor.username || '' })
+          issuedFilms.push({ request: film, issued })
         }
 
         if (preorderId) {
@@ -310,6 +405,13 @@ class SalesPhoneService {
           pointsEligibleAmount += points.eligibleAmount
         }
 
+        let sharedOrder = null
+        if (!transactionConnection) {
+          sharedOrder = await this.createStandaloneOrder({ connection, customer: customerInfo, customerId,
+            salesStoreId, operatorId, userId, saleTime: saleTimeValue, remarks: requestedRemarks || null,
+            payment, paymentIds, createdSales, issuedFilms, pointsConfig })
+        }
+
         if (!transactionConnection) await connection.commit()
         transactionStarted = false
         return {
@@ -326,6 +428,7 @@ class SalesPhoneService {
               customer_phone: customerInfo.phone,
               phones_sold: finalizedPhones.length,
               total_amount: totalAmount,
+              ...(sharedOrder || {}),
               points_earned: pointsEarned,
               points_eligible_amount: pointsEligibleAmount,
               phone_details: createdSales.map(({ phone, saleId: itemSaleId }) => ({

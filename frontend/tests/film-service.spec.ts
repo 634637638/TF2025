@@ -27,7 +27,7 @@ const fixture = (page = 1, customerId = 9, phoneId?: number): FilmServiceContext
   free_count: 0, paid_count: 21,
   device_service_count: phoneId ? 3 : null, device_film_quantity: phoneId ? 4 : null,
   data: [{ id: page, order_id: 8, order_no: `FILM${page}`, quantity: 2, store_id: 2, store_name: '服务二店', operator_id: 7, operator_name: '办理员', business_time: '2026-11-14 09:00:00', created_at: '2026-11-14 09:02:00',
-    items: [{ name: '免费钢化膜', sale_type: 'gift', quantity: 1, total_amount: 0 }, { name: '收费钢化膜', sale_type: 'sale', quantity: 1, total_amount: 20 }] }],
+    items: [{ name: '免费钢化膜', unit: '张', sale_type: 'gift', quantity: 1, total_amount: 0 }, { name: '收费耳机', unit: '副', sale_type: 'sale', quantity: 1, total_amount: 20 }] }],
   pagination: { page, page_size: 10, total: 21, total_pages: 3, has_next: page < 3, has_prev: page > 1 } })
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async (phoneId: number | undefined = 11) => {
@@ -139,7 +139,7 @@ describe('按当前手机办理贴膜及跨店历史', () => {
     expect(mocks.context).toHaveBeenLastCalledWith(9, 1, 10, expect.any(AbortSignal), 11)
     expect(start(wrapper).text()).toBe('贴膜完成')
     expect(start(wrapper).attributes('disabled')).toBeDefined()
-  expect(mocks.stores).toHaveBeenCalledWith({ strictScope: true })
+    expect(mocks.stores).toHaveBeenCalledWith({ strictScope: true })
   })
   it('从手机详情动作传当前客户及手机，切换或撤权后不能沿用旧入口', async () => {
     const item: QueryItem = { 基本信息: { phone_id: 1 }, 客户信息: { customer_id: 9, customer_name: customer.name, customer_phone: customer.phone },
@@ -164,9 +164,11 @@ describe('按当前手机办理贴膜及跨店历史', () => {
     expect(wrapper.text()).toContain('贴膜设备')
     expect(wrapper.text()).not.toContain('本次手机型号')
     expect(wrapper.text()).toContain('免费钢化膜')
-    expect(wrapper.text()).toContain('收费钢化膜')
-    expect(wrapper.text()).toContain('免费')
+    expect(wrapper.text()).toContain('收费耳机')
+    expect(wrapper.text()).toContain('赠送')
     expect(wrapper.text()).toContain('收费')
+    expect(wrapper.text()).toContain('本次消耗1 张')
+    expect(wrapper.text()).toContain('本次消耗1 副')
     expect(wrapper.text()).toContain('¥20')
     expect(wrapper.findAll('.film-history-card')).toHaveLength(1)
     expect(wrapper.get('.film-history-list').attributes('aria-label')).toBe('贴膜历史记录列表')
@@ -174,7 +176,6 @@ describe('按当前手机办理贴膜及跨店历史', () => {
     expect(wrapper.get('.film-history-card').text()).toContain('贴膜时间')
     expect(wrapper.get('.film-history-card').text()).not.toContain('服务时间')
     expect(wrapper.get('.film-history-card').text()).not.toContain('记录时间')
-    expect(wrapper.get('.film-history-card').text()).toContain('本次消耗1 张')
     expect(wrapper.get('.film-history-card').text()).not.toContain('耗膜数量')
     expect(wrapper.get('.film-history-card').classes()).toContain('film-history-card--paid')
     expect(mocks.context).toHaveBeenLastCalledWith(9, 1, 10, expect.any(AbortSignal), 11)
@@ -196,9 +197,9 @@ describe('按当前手机办理贴膜及跨店历史', () => {
       const data = fixture(page, id, phone)
       data.service_count = 8; data.free_count = 4; data.paid_count = 4
       data.data[0].items = saleType === 'gift'
-        ? [{ name: '免费钢化膜', sale_type: 'gift', quantity: 1, total_amount: 0 }]
+        ? [{ name: '赠送钢化膜', unit: '张', sale_type: 'gift', quantity: 1, total_amount: 0 }]
         : saleType === 'sale'
-          ? [{ name: '收费钢化膜', sale_type: 'sale', quantity: 1, total_amount: 20 }]
+          ? [{ name: '收费耳机', unit: '副', sale_type: 'sale', quantity: 1, total_amount: 20 }]
           : data.data[0].items
       data.pagination = { page, page_size: pageSize, total: saleType ? 4 : 8, total_pages: 1, has_next: false, has_prev: false }
       return { success: true, data }
@@ -206,17 +207,17 @@ describe('按当前手机办理贴膜及跨店历史', () => {
     const wrapper = await render()
     expect(wrapper.get('.film-history__title').text()).toContain('贴膜记录8')
     expect(wrapper.get('.film-history-filter').text()).toContain('全部 8')
-    expect(wrapper.get('.film-history-filter').text()).toContain('免费 4')
+    expect(wrapper.get('.film-history-filter').text()).toContain('赠送 4')
     expect(wrapper.get('.film-history-filter').text()).toContain('收费 4')
     const filter = wrapper.findAllComponents(ElRadioGroup)[1]
     filter.vm.$emit('update:modelValue', 'free'); filter.vm.$emit('change', 'free'); await flushPromises()
     expect(mocks.context).toHaveBeenLastCalledWith(9, 1, 10, expect.any(AbortSignal), 11, 'gift')
-    expect(wrapper.text()).toContain('免费钢化膜')
-    expect(wrapper.text()).not.toContain('收费钢化膜')
+    expect(wrapper.text()).toContain('赠送钢化膜')
+    expect(wrapper.text()).not.toContain('收费耳机')
     filter.vm.$emit('update:modelValue', 'paid'); filter.vm.$emit('change', 'paid'); await flushPromises()
     expect(mocks.context).toHaveBeenLastCalledWith(9, 1, 10, expect.any(AbortSignal), 11, 'sale')
-    expect(wrapper.text()).toContain('收费钢化膜')
-    expect(wrapper.text()).not.toContain('免费钢化膜')
+    expect(wrapper.text()).toContain('收费耳机')
+    expect(wrapper.text()).not.toContain('赠送钢化膜')
     filter.vm.$emit('update:modelValue', 'all'); filter.vm.$emit('change', 'all'); await flushPromises()
     expect(mocks.context).toHaveBeenLastCalledWith(9, 1, 10, expect.any(AbortSignal), 11)
   })

@@ -258,7 +258,8 @@
         :page-size="pageSize"
         :total="total"
         :disabled="loading"
-        :show-page-sizes="false"
+        :page-sizes="pageSizes"
+        :show-page-sizes="true"
         @change="changePage"
       />
     </div>
@@ -347,7 +348,7 @@
             <div class="goods-detail__compact-panel goods-detail__compact-panel--sale-customer">
               <div class="goods-detail__compact-grid">
                 <div
-                v-for="column in columns.filter(item => ['store_name', 'returned_quantity', 'remaining_quantity', 'unit_price', 'purchase_cost', 'points_used', 'deduction_amount', 'operator_name'].includes(item.key))"
+                  v-for="column in columns.filter(item => ['store_name', 'returned_quantity', 'remaining_quantity', 'unit_price', 'purchase_cost', 'points_used', 'deduction_amount', 'operator_name'].includes(item.key))"
                   :key="column.key"
                   class="goods-detail__compact-field"
                 >
@@ -634,7 +635,8 @@ const rows = ref<AccessorySaleRecord[]>([])
 const stores = ref<ReferenceRecord[]>([])
 const operators = ref<ReferenceRecord[]>([]), brands = ref<ReferenceRecord[]>([]), categories = ref<ReferenceRecord[]>([])
 const productNames = ref<string[]>([])
-const page = ref(1), pageSize = 20, total = ref(0)
+const pageSizes = [20, 50, 100]
+const page = ref(1), pageSize = ref(pageSizes[0]), total = ref(0)
 const expanded = ref(false), keyword = ref(''), storeId = ref<number>(), saleType = ref('')
 const operatorId = ref<number>(), brandId = ref<number>(), categoryId = ref<number>(), productName = ref<string | null>('')
 const operatorLoading = ref(false)
@@ -723,7 +725,7 @@ const load = async () => {
   failed.value = false
   try {
     const response = await unifiedApi.get<Pick<PaginatedResponse<AccessorySaleRecord>, 'data' | 'pagination'>>('/query/goods', {
-      params: { page: page.value, page_size: pageSize, keyword: keyword.value.trim() || undefined,
+      params: { page: page.value, page_size: pageSize.value, keyword: keyword.value.trim() || undefined,
         store_id: visible('distribution') ? storeId.value : undefined,
         sale_type: visible('usage_type') ? saleType.value || undefined : undefined,
         sale_operator_id: visible('operator_name') ? operatorId.value : undefined,
@@ -776,7 +778,12 @@ const searchProductNameOptions = (value: string) => {
     } finally { if (request.isLatest()) productNameLoading.value = false }
   }, 200)
 }
-const changePage = (value: number) => { page.value = value; void load().catch(() => {}) }
+const changePage = (value: number, nextPageSize = pageSize.value) => {
+  const sizeChanged = nextPageSize !== pageSize.value
+  pageSize.value = nextPageSize
+  page.value = sizeChanged ? 1 : value
+  void load().catch(() => {})
+}
 const openDetail = async (row: Pick<AccessorySaleRecord, 'id'>) => {
   if (!allowed.value) return
   const request = details.nextRequest()
@@ -831,345 +838,5 @@ onBeforeUnmount(() => {
 defineExpose({ load, openSale })
 </script>
 
-<style scoped lang="scss">
-.goods-detail {
-  display: grid;
-  gap: var(--tf-space-4);
-  min-width: 0;
-  color: var(--tf-color-slate-800);
-}
-
-.goods-detail__overview {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--tf-space-4);
-  min-width: 0;
-  padding: var(--tf-space-3);
-  border: 1px solid var(--tf-color-border-cool);
-  border-radius: var(--tf-radius-card);
-  background: var(--tf-color-surface-cool-alt);
-}
-
-.goods-detail__identity {
-  min-width: 0;
-}
-
-.goods-detail__eyebrow {
-  display: block;
-  color: var(--tf-color-slate-500);
-  font-size: var(--tf-font-caption);
-  font-weight: 600;
-}
-
-.goods-detail__identity h2 {
-  margin: 0;
-  color: var(--tf-color-slate-900);
-  font-size: var(--tf-font-section-title);
-  font-weight: 700;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.goods-detail__meta {
-  margin-top: var(--tf-space-1);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--tf-space-2);
-  color: var(--tf-color-slate-600);
-  font-size: var(--tf-font-body);
-}
-
-.goods-detail__meta > span + span::before {
-  content: '·';
-  margin-right: var(--tf-space-2);
-  color: var(--tf-color-slate-400);
-}
-
-.goods-detail__snapshot-note {
-  display: inline-block;
-  margin-top: var(--tf-space-2);
-  color: var(--tf-color-slate-500);
-  font-size: var(--tf-font-caption);
-}
-
-.goods-detail__overview > .status-badge {
-  flex: 0 0 auto;
-  border: 1px solid var(--tf-color-green-200);
-  border-radius: var(--tf-radius-full);
-  background: var(--tf-color-green-50);
-  color: var(--tf-color-green-700);
-  padding: var(--tf-space-1) var(--tf-space-3);
-  font-size: var(--tf-font-body);
-  font-weight: 700;
-}
-
-.goods-detail__metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--tf-space-2);
-}
-
-.goods-detail__metric {
-  display: grid;
-  align-content: center;
-  gap: var(--tf-space-1);
-  min-width: 0;
-  min-height: 52px;
-  padding: var(--tf-space-2);
-  border-left: 3px solid var(--tf-color-slate-300);
-  background: var(--tf-color-surface-gray);
-}
-
-.goods-detail__metric > span {
-  color: var(--tf-color-slate-500);
-  font-size: var(--tf-font-caption);
-}
-
-.goods-detail__metric > strong {
-  color: var(--tf-color-slate-800);
-  font-size: var(--tf-font-body-lg);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.goods-detail__metric--primary {
-  border-color: var(--tf-color-blue-500);
-}
-
-.goods-detail__metric--primary > strong {
-  color: var(--tf-color-blue-700);
-}
-
-.goods-detail__metric--success {
-  border-color: var(--tf-status-success-border);
-}
-
-.goods-detail__metric--success > strong {
-  color: var(--tf-status-success-color);
-}
-
-.goods-detail__section {
-  min-width: 0;
-  padding-top: var(--tf-space-4);
-  border-top: 1px solid var(--tf-color-border-cool);
-}
-
-.goods-detail__section-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--tf-space-3);
-  margin-bottom: var(--tf-space-3);
-}
-
-.goods-detail__compact-panel {
-  display: grid;
-  gap: var(--tf-space-2);
-  padding: var(--tf-space-3);
-  border: 1px solid var(--tf-color-border-blue);
-  border-radius: var(--tf-radius-card);
-  background: var(--tf-color-surface-blue-soft);
-}
-
-.goods-detail__compact-panel--product {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.goods-detail__compact-panel--sale-customer {
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-
-.goods-detail__compact-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  min-width: 0;
-  border: 1px solid var(--tf-color-border-blue);
-  border-radius: var(--tf-radius-card);
-  background: var(--tf-color-surface-blue-alt);
-}
-
-.goods-detail__compact-grid--customer {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-color: var(--tf-color-emerald-200);
-  background: var(--tf-color-surface-green);
-}
-
-.goods-detail__compact-grid--product {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--tf-space-2);
-  border: 0;
-  background: transparent;
-}
-
-.goods-detail__compact-grid--documents {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--tf-space-2);
-  border: 0;
-  background: transparent;
-}
-
-.goods-detail__compact-field {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--tf-space-1) var(--tf-space-2);
-  min-width: 0;
-  padding: var(--tf-space-2) var(--tf-space-3);
-}
-
-.goods-detail__compact-field > span {
-  flex: 0 0 auto;
-  color: var(--tf-color-slate-500);
-  font-size: var(--tf-font-caption);
-}
-
-.goods-detail__compact-field > strong {
-  min-width: 0;
-  color: var(--tf-color-slate-800);
-  font-size: var(--tf-font-body);
-  font-weight: 600;
-}
-
-.goods-detail__compact-grid--product .goods-detail__compact-field,
-.goods-detail__compact-grid--documents .goods-detail__compact-field {
-  display: grid;
-  align-content: center;
-  gap: var(--tf-space-1);
-  padding: var(--tf-space-2) var(--tf-space-3);
-  border-radius: var(--tf-radius-card);
-  background: var(--tf-color-surface-cool-alt);
-}
-
-.goods-detail__compact-grid--product .goods-detail__compact-field > span,
-.goods-detail__compact-grid--documents .goods-detail__compact-field > span {
-  font-size: var(--tf-font-caption);
-}
-
-.goods-detail__compact-grid--product .goods-detail__compact-field > strong,
-.goods-detail__compact-grid--documents .goods-detail__compact-field > strong {
-  font-size: var(--tf-font-body);
-}
-
-.goods-detail__compact-grid--customer .goods-detail__compact-field > span {
-  color: var(--tf-color-emerald-800);
-}
-
-.goods-detail__compact-grid--customer .goods-detail__compact-field > strong {
-  color: var(--tf-color-emerald-800);
-}
-
-
-.goods-detail__section-heading--accent {
-  align-items: center;
-  margin-bottom: var(--tf-space-3);
-  padding-inline-start: var(--tf-space-2);
-  border-inline-start: var(--tf-space-1) solid var(--tf-color-indigo-500);
-}
-
-.goods-detail__section-heading h3 {
-  margin-block-start: 0;
-  margin-block-end: 0;
-  color: var(--tf-color-slate-800);
-  font-size: var(--tf-font-body-lg);
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.goods-detail__section-hint {
-  color: var(--tf-color-slate-500);
-  font-size: var(--tf-font-caption);
-  text-align: right;
-}
-
-.goods-detail__long-value {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.goods-detail__table-wrap {
-  width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-}
-
-.goods-detail :deep(.goods-aftersale-history) {
-  min-width: 0;
-  padding-top: var(--tf-space-4);
-  border-top: 1px solid var(--tf-color-border-cool);
-}
-
-.goods-detail :deep(.goods-aftersale-history h3) {
-  margin-block-start: 0;
-  margin-block-end: var(--tf-space-2);
-  color: var(--tf-color-slate-800);
-  font-size: var(--tf-font-section-title);
-  line-height: 1.4;
-}
-
-.goods-detail :deep(.goods-aftersale-history p) {
-  margin-block-start: 0;
-  margin-block-end: var(--tf-space-2);
-  color: var(--tf-color-slate-500);
-  font-size: var(--tf-font-caption);
-  line-height: 1.5;
-}
-
-.goods-detail :deep(.goods-aftersale-history .table-wrapper) {
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-}
-
-@media (max-width: 767px) {
-  .goods-detail {
-    gap: var(--tf-space-4);
-  }
-
-  .goods-detail__overview {
-    padding: var(--tf-space-3);
-  }
-
-  .goods-detail__metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--tf-space-2);
-  }
-
-  .goods-detail__compact-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .goods-detail__compact-grid--product {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .goods-detail__compact-grid--documents {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .goods-detail__metric {
-    min-height: 48px;
-    padding: var(--tf-space-2);
-  }
-
-  .goods-detail__section-hint {
-    max-width: 45%;
-  }
-
-}
-
-@media (max-width: 360px) {
-  .goods-detail__meta {
-    gap: var(--tf-space-1);
-  }
-
-  .goods-detail__meta > span + span::before {
-    margin-right: var(--tf-space-1);
-  }
-}
-</style>
+<style scoped lang="scss" src="./styles/query-goods-detail/base.scss"></style>
+<style scoped lang="scss" src="./styles/query-goods-detail/responsive.scss"></style>

@@ -41,14 +41,9 @@
   ],
   "src/components/query/SalesReceipt.vue": [
     {
-      "data": "items",
+      "data": "receiptRows",
       "purpose": "related-details",
-      "reason": "销售凭证打印及保存图片的只读手机明细，属于凭证内容，无行操作。"
-    },
-    {
-      "data": "accessoryRows",
-      "purpose": "related-details",
-      "reason": "销售凭证内随单配件只读明细，属于凭证内容，无行操作。"
+      "reason": "销售凭证打印及保存图片使用的合并明细数据，属于只读凭证内容，无行操作。"
     }
   ],
   "src/components/stock-in/StockInPhoneListSection.vue": [

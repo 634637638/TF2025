@@ -12,7 +12,7 @@ const definitions = {
       customer_id: 'int', original_store_id: 'int', store_id: 'int', created_by: 'int', base_refund_cents: 'bigint unsigned',
       recovery_cents: 'bigint unsigned', compensation_cents: 'bigint unsigned', refund_cents: 'bigint unsigned', collection_cents: 'bigint unsigned',
       points_delta: 'int', settlement_method: 'varchar(20)', settlement_channel: 'varchar(64)', business_time: 'datetime',
-      remarks: 'varchar(200)', result_snapshot: 'json', created_at: 'datetime', gift_charge_cents: 'bigint unsigned', replacement_cents: 'bigint unsigned'
+      remarks: 'varchar(200)', result_snapshot: 'json', created_at: 'datetime', gift_charge_cents: 'bigint unsigned', replacement_cents: 'bigint unsigned', additional_cents: 'bigint unsigned'
     },
     nullable: ['settlement_method', 'settlement_channel'],
     indexes: { PRIMARY: ['id'], uq_sales_aftersale_request: ['request_key'], idx_sales_aftersale_order: ['order_id', 'id'],
@@ -27,13 +27,17 @@ const definitions = {
       replacement_item_id: 'bigint unsigned', root_order_id: 'int', root_item_id: 'bigint unsigned', quantity: 'int unsigned', exchange_credit_cents: 'bigint unsigned' },
     nullable: [], indexes: { PRIMARY: ['id'], uq_sales_exchange_aftersale: ['aftersale_id'], uq_sales_exchange_order: ['replacement_order_id'],
       uq_sales_exchange_item: ['replacement_item_id'], idx_sales_exchange_original: ['original_item_id', 'id'], idx_sales_exchange_root: ['root_order_id', 'root_item_id', 'id'] }
+  },
+  sales_goods_exchange_additions: {
+    columns: { id: 'bigint unsigned', aftersale_id: 'bigint unsigned', replacement_order_id: 'int', replacement_item_id: 'bigint unsigned', quantity: 'int unsigned', amount_cents: 'bigint unsigned' },
+    nullable: [], indexes: { PRIMARY: ['id'], uq_sales_exchange_addition_item: ['replacement_item_id'], idx_sales_exchange_addition_aftersale: ['aftersale_id', 'id'], idx_sales_exchange_addition_order: ['replacement_order_id', 'replacement_item_id'] }
   }
 }
 const type = value => String(value).toLowerCase().replace(/\b(int|bigint)\(\d+\)/g, '$1')
 const unique = name => name === 'PRIMARY' || name.startsWith('uq_')
 const ddl = table => {
   const schema = definitions[table]
-  const columns = Object.entries(schema.columns).map(([name, target]) => `\`${name}\` ${target}${['request_key', 'request_hash'].includes(name) ? ' CHARACTER SET ascii COLLATE ascii_bin' : ''} ${schema.nullable.includes(name) ? 'NULL' : 'NOT NULL'}${name === 'id' ? ' AUTO_INCREMENT' : ''}${['gift_charge_cents', 'replacement_cents'].includes(name) ? ' DEFAULT 0' : ''}`)
+  const columns = Object.entries(schema.columns).map(([name, target]) => `\`${name}\` ${target}${['request_key', 'request_hash'].includes(name) ? ' CHARACTER SET ascii COLLATE ascii_bin' : ''} ${schema.nullable.includes(name) ? 'NULL' : 'NOT NULL'}${name === 'id' ? ' AUTO_INCREMENT' : ''}${['gift_charge_cents', 'replacement_cents', 'additional_cents'].includes(name) ? ' DEFAULT 0' : ''}`)
   const indexes = Object.entries(schema.indexes).map(([name, fields]) => `${name === 'PRIMARY' ? 'PRIMARY KEY' : `${unique(name) ? 'UNIQUE ' : ''}KEY \`${name}\``} (${fields.map(field => `\`${field}\``).join(', ')})`)
   return `CREATE TABLE \`${table}\` (${[...columns, ...indexes].join(',\n')}) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
 }
@@ -52,7 +56,7 @@ async function inspect(db) {
     if (fields.some(field => !Object.hasOwn(schema.columns, field.COLUMN_NAME))) throw new Error(`共同售后字段数量冲突：${table}`)
     for (const [name, target] of Object.entries(schema.columns)) {
       const field = fields.find(row => row.COLUMN_NAME === name)
-      if (table === 'sales_aftersales' && ['gift_charge_cents', 'replacement_cents'].includes(name) && !field) {
+      if (table === 'sales_aftersales' && ['gift_charge_cents', 'replacement_cents', 'additional_cents'].includes(name) && !field) {
         missingMoneyColumns.push(name)
         sql.push(`ALTER TABLE \`sales_aftersales\` ADD COLUMN \`${name}\` bigint unsigned NOT NULL DEFAULT 0`)
         continue
@@ -60,7 +64,7 @@ async function inspect(db) {
       const legacyOperation = name === 'operation_type' && field && ["enum('goods_return')", "enum('goods_return','phone_return')"].includes(type(field.COLUMN_TYPE))
       if (!field || !legacyOperation && type(field.COLUMN_TYPE) !== target || field.IS_NULLABLE !== (schema.nullable.includes(name) ? 'YES' : 'NO') ||
         name === 'id' && !field.EXTRA?.includes('auto_increment') ||
-        ['gift_charge_cents', 'replacement_cents'].includes(name) && String(field.COLUMN_DEFAULT) !== '0' ||
+        ['gift_charge_cents', 'replacement_cents', 'additional_cents'].includes(name) && String(field.COLUMN_DEFAULT) !== '0' ||
         ['request_key', 'request_hash'].includes(name) && field.COLLATION_NAME !== 'ascii_bin') throw new Error(`共同售后字段结构冲突：${table}.${name}`)
       if (legacyOperation) sql.push(`ALTER TABLE \`sales_aftersales\` MODIFY COLUMN \`operation_type\` ${target} NOT NULL`)
     }

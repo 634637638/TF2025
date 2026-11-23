@@ -106,7 +106,7 @@ async function fixture({ serial = false, gift = false, redemption = 0, award = 0
       if (failure === 'header') throw new Error('header-failed')
       const fields = ['request_key', 'request_hash', 'order_id', 'customer_id', 'original_store_id', 'store_id', 'created_by',
         'base_refund_cents', 'recovery_cents', 'compensation_cents', 'refund_cents', 'collection_cents', 'points_delta', 'settlement_method',
-        'settlement_channel', 'business_time', 'remarks', 'result_snapshot', 'created_at', 'gift_charge_cents', 'replacement_cents']
+        'settlement_channel', 'business_time', 'remarks', 'result_snapshot', 'created_at', 'gift_charge_cents', 'replacement_cents', 'additional_cents']
       const id = s.headers.length + 1, operation = sql.includes("'goods_exchange'") ? 'goods_exchange' : sql.includes("'phone_return'") ? 'phone_return' : 'goods_return'
       s.headers.push({ id, operation_type: operation, ...Object.fromEntries(fields.slice(0, params.length).map((field, i) => [field, params[i]])) })
       return [{ insertId: id }]
@@ -117,6 +117,13 @@ async function fixture({ serial = false, gift = false, redemption = 0, award = 0
       s.facts.push({ id, aftersale_id: params[0], original_item_id: params[1], quantity: params[2], fact_snapshot: params[3] })
       return [{ insertId: id }]
     }
+    if (sql.startsWith('INSERT INTO sales_goods_exchange_additions')) {
+      if (failure === 'addition') throw new Error('addition-failed')
+      const fields = ['aftersale_id', 'replacement_order_id', 'replacement_item_id', 'quantity', 'amount_cents']
+      s.additions ||= []
+      s.additions.push(Object.fromEntries(fields.map((field, i) => [field, params[i]])))
+      return [{ insertId: s.additions.length }]
+    }
     if (sql.startsWith('INSERT INTO sales_goods_exchanges')) {
       if (failure === 'link') throw new Error('link-failed')
       const fields = ['aftersale_id', 'original_item_id', 'replacement_order_id', 'replacement_item_id', 'root_order_id', 'root_item_id', 'quantity', 'exchange_credit_cents']
@@ -124,6 +131,7 @@ async function fixture({ serial = false, gift = false, redemption = 0, award = 0
       s.exchanges.push({ id, ...Object.fromEntries(fields.map((field, i) => [field, params[i]])) })
       return [{ insertId: id }]
     }
+    if (sql.includes('FROM sales_goods_exchange_additions WHERE aftersale_id')) return [s.additions || []]
     if (sql.startsWith('UPDATE sales_orders SET')) {
       if (failure === 'complete') throw new Error('complete-failed')
       const fields = ['total_amount', 'final_amount', 'total_cost', 'total_profit', 'paid_amount', 'points_awarded', 'payment_method', 'payment_channel', 'time', 'checkout_result']
@@ -164,7 +172,8 @@ async function fixture({ serial = false, gift = false, redemption = 0, award = 0
   }
   return { ...f, service, repo, calls, retry() { failure = '' },
     quote: (patch = {}, user = actor) => service.quote(10, 50, body(patch), user),
-    submit: (patch = {}, user = actor) => service.submit(10, 50, body({ settlement: cash(0, 30), ...patch }), user) }
+    submit: (patch = {}, user = actor) => service.submit(10, 50, body({ settlement: cash(0, failure === 'addition' ? 40 : 30),
+      ...(failure === 'addition' ? { additional_goods: [{ accessory_id: 6, quantity: 1, unit_price: 10 }] } : {}), ...patch }), user) }
 }
 
 test('20元换50元：原件跨店返库、新件扣库、独立原价快照与原单关联，仅记录30元补款', async () => {
@@ -187,7 +196,52 @@ test('20元换50元：原件跨店返库、新件扣库、独立原价快照与�
   await assert.rejects(f.submit({ operator_id: 7 }), { code: 'CHECKOUT_RETURN_REQUEST_CONFLICT' })
 })
 
-test('换低价、等价或赠品原用途替换：只记录退款/零资金，赠品沿用原单约定与手机关联', async () => {
+test('一笔换货允许多个额外购买商品，主换入与额外购买分别结算并共享库存回滚', async () => {
+  const f = await fixture()
+  f.state.products[7] = { id: 7, name: '新转接头', status: 1, template_id: 8, category_id: 1 }
+  f.state.extraStocks[7] = { 1: 0, 2: 3 }
+  f.state.events.push({ id: f.state.events.length + 1, accessory_id: 7, store_id: 2, stock_in_id: 21, purchase_cost: 5,
+    usage_type: 'sale', serial_tracking: 0, event_type: 'stock_in', quantity_delta: 3, sale_id: null })
+  const result = await f.submit({ additional_goods: [{ accessory_id: 6, quantity: 2, unit_price: 10 }, { accessory_id: 7, quantity: 1, unit_price: 15 }],
+    settlement: cash(0, 65) })
+  assert.equal(result.replacement_amount, 50)
+  assert.equal(result.additional_amount, 35)
+  assert.equal(result.collection_amount, 65)
+  assert.equal(result.replacement_paid_amount, 30)
+  assert.equal(result.additional_paid_amount, 35)
+  assert.equal(f.state.orders.at(-1).total_amount, 85)
+  assert.equal(f.state.headers[0].additional_cents, 3500)
+  assert.equal(f.state.additions.length, 2)
+  assert.equal(f.state.extraStocks[6][2], 1)
+  assert.equal(f.state.extraStocks[7][2], 2)
+})
+
+test('一笔换货允许额外赠送商品，赠品按零元出库并不增加应收或积分', async () => {
+  const f = await fixture()
+  f.state.extraStocks[6][2] += 2
+  f.state.events.push({ id: f.state.events.length + 1, accessory_id: 6, store_id: 2, stock_in_id: 22, purchase_cost: 30,
+    usage_type: 'gift', serial_tracking: 0, event_type: 'stock_in', quantity_delta: 2, sale_id: null })
+  const result = await f.submit({ additional_goods: [{ accessory_id: 6, quantity: 1, unit_price: 0, sale_type: 'gift' }], settlement: cash(0, 30) })
+  assert.equal(result.additional_amount, 0)
+  assert.equal(result.additional_paid_amount, 0)
+  assert.equal(result.collection_amount, 30)
+  assert.equal(f.state.sales.at(-1).sale_type, 'gift')
+  assert.equal(JSON.parse(f.state.items.at(-1).snapshot).sale_type, 'gift')
+  assert.equal(f.state.orders.at(-1).paid_amount, 30)
+  assert.equal(JSON.parse(f.state.items.at(-1).snapshot).points_units.every(unit => unit.points_awarded === 0), true)
+})
+
+test('含额外购买商品的换货仍可通过后续售后祖先链核验', async () => {
+  const f = await fixture()
+  const first = await f.submit({ additional_goods: [{ accessory_id: 6, quantity: 2, unit_price: 10 }], settlement: cash(0, 50) })
+  assert.equal(first.collection_amount, 50)
+  const returns = new ReturnService({ repository: f.repo, accessories: f.service.accessories, pointsLedger: f.pointsLedger,
+    tableExists: async () => true, permissionCheck: async () => true, now: () => time })
+  const context = await returns.context(first.replacement_order_id, first.replacement_item_id, actor)
+  assert.equal(context.remaining_quantity, 1)
+})
+
+test('换低价、等价或免费赠品换收费新件：按新件售价核算差价并保留原单关联', async () => {
   for (const [price, refund] of [[10, 10], [20, 0]]) {
     const f = await fixture()
     const result = await f.submit({ replacement: { accessory_id: 6, unit_price: price }, settlement: cash(refund) })
@@ -195,11 +249,21 @@ test('换低价、等价或赠品原用途替换：只记录退款/零资金，�
     assert.equal(f.state.orders.at(-1).paid_amount, 0); assert.equal(result.exchange_credit_amount, price)
   }
   const f = await fixture({ gift: true })
-  await f.submit({ replacement: { accessory_id: 6, unit_price: 0 }, settlement: cash(0) })
+  const result = await f.submit({ replacement: { accessory_id: 6, unit_price: 50 }, settlement: cash(0, 50) })
   const item = f.state.items.at(-1), snapshot = JSON.parse(item.snapshot)
-  assert.equal(snapshot.sale_type, 'gift'); assert.equal(snapshot.gift_return_unit_price, 12)
-  assert.equal(item.linked_phone_sale_id, 21); assert.equal(item.points_awarded, 0)
-  assert.equal(f.state.headers[0].refund_cents, 0); assert.equal(f.state.headers[0].collection_cents, 0)
+  assert.equal(result.collection_amount, 50)
+  assert.equal(snapshot.sale_type, 'sale'); assert.equal(snapshot.gift_return_unit_price, null)
+  assert.equal(item.linked_phone_sale_id, 21); assert.equal(f.state.headers[0].refund_cents, 0); assert.equal(f.state.headers[0].collection_cents, 5000)
+})
+
+test('主换入数量可作为换货件数来源，服务端按锁定原单计算剩余可换数量', async () => {
+  const f = await fixture()
+  const result = await f.submit({ quantity: undefined, replacement: { accessory_id: 6, quantity: 2, unit_price: 50 }, settlement: cash(0, 60) })
+  assert.equal(result.quantity, 2)
+  assert.equal(result.remaining_quantity, 0)
+  assert.equal((await f.service.context(10, 50, actor)).remaining_quantity, 0)
+  await assert.rejects(f.submit({ request_key: key(2), replacement: { accessory_id: 6, quantity: 1, unit_price: 50 }, settlement: cash(0, 30) }),
+    { statusCode: 409 })
 })
 
 test('换货将旧件原提成冲回绑定原销售员，新件单独冻结新销售员规则且客户差价不混入提成', async () => {
@@ -310,7 +374,7 @@ test('换货允许原数量件与新SN件互换，跟踪模式沿用各自真实
   }
 })
 
-for (const failure of ['replacement', 'reward', 'header', 'fact', 'link', 'complete', 'inventory', 'stock']) test(`换货${failure}阶段失败整笔回滚，保留原交易，原键可重试`, async () => {
+for (const failure of ['replacement', 'reward', 'header', 'fact', 'link', 'addition', 'complete', 'inventory', 'stock']) test(`换货${failure}阶段失败整笔回滚，保留原交易，原键可重试`, async () => {
   const f = await fixture({ fail: failure }), before = structuredClone(f.state)
   if (['inventory', 'stock'].includes(failure)) f.failAt(failure)
   await assert.rejects(f.submit())
@@ -431,18 +495,12 @@ test('手机退货包含全部原件与替换件，按各自真实原单返库�
   await assert.rejects(query.aftersales(actor, f.state.sales.at(-1).id), { code: 'CHECKOUT_RETURN_CONFLICT' })
 })
 
-test('替换赠品同样要求退回或按最初约定扣款；随后退还只退实际扣款，保留原手机关联', async () => {
-  const f = await fixture({ gift: true }), first = await f.submit({ replacement: { accessory_id: 6, unit_price: 0 }, settlement: cash(0) })
-  const service = phoneReturns(f), request = phoneRequest([phoneLine(50, 0, true), phoneLine(first.replacement_item_id, 0, true)], 76)
-  const result = await service.submit(10, 21, request, actor)
-  assert.equal(result.gift_charge_amount, 24); assert.equal(result.refund_amount, 76)
-  assert.equal(f.state.extraStocks[6][2], 3)
-  const returns = new ReturnService({ repository: f.repo, accessories: f.service.accessories, pointsLedger: f.pointsLedger,
-    tableExists: async () => true, permissionCheck: async () => true, now: () => time })
-  const refund = body({ request_key: key(9), settlement: cash(12) }); delete refund.replacement
-  const restored = await returns.submit(first.replacement_order_id, first.replacement_item_id, refund, actor)
-  assert.equal(restored.refund_amount, 12); assert.equal(f.state.extraStocks[6][2], 4)
-  assert.equal(f.state.items.at(-1).linked_phone_sale_id, 21)
+test('免费赠品换入收费新件后按新件净成交继续办理，保留完整换货关联', async () => {
+  const f = await fixture({ gift: true }), first = await f.submit({ replacement: { accessory_id: 6, unit_price: 50 }, settlement: cash(0, 50) })
+  const result = await f.service.submit(first.replacement_order_id, first.replacement_item_id,
+    body({ request_key: key(9), replacement: { accessory_id: 6, unit_price: 60 }, settlement: cash(0, 10) }), actor)
+  assert.equal(result.base_refund_amount, 50); assert.equal(result.collection_amount, 10)
+  assert.equal(result.root_item_id, 50); assert.equal(f.state.items.at(-1).linked_phone_sale_id, 21)
 })
 
 test('手机核对不能漏掉替换件或接受伪造跨单关系，后段失败整体保留原销售及库存', async () => {
@@ -484,8 +542,8 @@ test('换货实际权限、双门店范围、实物确认、同键内容、差�
     const f = await fixture({ denied: [permission] })
     await assert.rejects(f.submit(), { statusCode: 403 }); assert.equal(f.state.exchanges.length, 0)
   }
-  const gift = await fixture({ gift: true, denied: ['accessories:gift'] })
-  await assert.rejects(gift.submit({ replacement: { accessory_id: 6, unit_price: 0 }, settlement: cash(0) }), { statusCode: 403 })
+  const gift = await fixture({ gift: true, denied: ['accessories:sell'] })
+  await assert.rejects(gift.submit({ replacement: { accessory_id: 6, unit_price: 50 }, settlement: cash(0, 50) }), { statusCode: 403 })
   const f = await fixture({ deadlocks: 1 })
   await assert.rejects(f.submit({}, { id: 7, store_ids: [2] }), { statusCode: 403 })
   await assert.rejects(f.submit({ settlement: cash(0, 29) }), { code: 'CHECKOUT_RETURN_QUOTE_CHANGED' })
@@ -650,13 +708,12 @@ test('用途转换后连续换货和退货仍核对最初赠品原单，后续�
   assert.equal((await service.context(10, 50, actor)).remaining_quantity, 1)
 })
 
-test('赠品先换货、手机扣款后再转为收费新件，历史核验完整祖先链及原实际抵付', async () => {
+test('免费赠品换收费新件后连续换货，历史核验完整祖先链', async () => {
   const f = await fixture({ gift: true })
-  const gift = await f.submit({ replacement: { accessory_id: 6, unit_price: 0 }, settlement: cash(0) })
-  await phoneReturns(f).submit(10, 21, phoneRequest([phoneLine(50, 0, true), phoneLine(gift.replacement_item_id, 0, true)], 76), actor)
+  const gift = await f.submit({ replacement: { accessory_id: 6, unit_price: 50 }, settlement: cash(0, 50) })
   const result = await f.service.submit(gift.replacement_order_id, gift.replacement_item_id,
-    body({ request_key: key(2), replacement: { accessory_id: 6, unit_price: 50 }, settlement: cash(0, 38) }), actor)
-  assert.equal(result.root_item_id, 50); assert.equal(result.base_refund_amount, 12)
+    body({ request_key: key(2), replacement: { accessory_id: 6, unit_price: 50 }, settlement: cash(0) }), actor)
+  assert.equal(result.root_item_id, 50); assert.equal(result.base_refund_amount, 50); assert.equal(result.collection_amount, 0)
   const history = new QueryGoodsService({ permissionCheck: async () => true, goodsReturns: f.service, repository: {
     withConnection: operation => f.transaction(db => withReadConnection(operation, db)),
     async aftersales(_scope, _id, _query, verify, connection) {
@@ -668,7 +725,7 @@ test('赠品先换货、手机扣款后再转为收费新件，历史核验完�
     }
   } })
   const before = f.calls.length, rows = await history.aftersales(actor, gift.replacement_item_id)
-  assert.equal(rows.data[0].exchange_credit_amount, 12); assert.equal(rows.data[0].collection_amount, 38)
+  assert.equal(rows.data[0].exchange_credit_amount, 50); assert.equal(rows.data[0].collection_amount, 0)
   assert.equal(rows.data[0].replacement.order_no, f.state.orders.at(-1).order_no)
   assert.equal(f.calls.slice(before).some(sql => /FOR UPDATE|INSERT|UPDATE|DELETE/.test(sql)), false)
 })

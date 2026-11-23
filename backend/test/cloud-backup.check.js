@@ -59,7 +59,7 @@ test('网页登录 Token 支持 JSON，配置加密落盘且 API 不回传凭据
   assert.equal(fs.statSync(repository.filename).mode & 0o777, 0o600)
   assert.deepEqual(service.getSettings(), {
     accountId: repository.read().accounts[0].id, accounts: service.getAccounts().accounts,
-    enabled: true, hasToken: true, driveId: '', folderId: 'target-folder', folderName: '',
+    enabled: true, hasToken: true, hasBackupPassword: false, driveId: '', folderId: 'target-folder', folderName: '',
     schedule: service.getSchedule(repository.read()), retention: service.getRetention(repository.read()), lastError: ''
   })
   service.saveSettings({ enabled: false, folderId: 'target-folder', driveId: '', token: '' })
@@ -79,6 +79,19 @@ test('只填 Token 即可连接并识别云盘，未选择目录不会开始自�
   assert.equal(JSON.stringify(result).includes(TEST_TOKEN), false)
   assert.throws(() => service.saveSettings({ enabled: true, folderId: '', driveId: '' }), /目录/)
   assert.throws(() => service.enqueue(filename), /配置/)
+})
+
+test('备份密码加密保存且设置接口只返回已设置状态', async t => {
+  const { service, repository } = await fixture(t)
+  const accountId = service.getSettings().accountId
+  service.saveSettings({ accountId, enabled: false, folderId: 'target-folder', driveId: '', backupPassword: 'backup-test-password' })
+  const disk = fs.readFileSync(repository.filename, 'utf8')
+  assert.equal(disk.includes('backup-test-password'), false)
+  assert.match(repository.read().config.backupPassword, /^enc:v1:/)
+  assert.equal(service.getSettings().hasBackupPassword, true)
+  assert.equal(JSON.stringify(service.getSettings()).includes('backup-test-password'), false)
+  service.saveSettings({ accountId, enabled: false, folderId: 'target-folder', driveId: '', clearBackupPassword: true })
+  assert.equal(service.getSettings().hasBackupPassword, false)
 })
 
 test('云盘目录与回收站支持分页且只向前端回传文件白名单字段', async () => {

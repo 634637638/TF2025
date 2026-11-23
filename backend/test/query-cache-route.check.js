@@ -77,6 +77,25 @@ test('登录响应每次重新执行范围和字段检查，解绑或撤权后�
   assert.equal(getCacheStats().total, 0)
 })
 
+test('客户商品历史清除条件式缓存头并禁止保存响应', () => {
+  const routeSource = fs.readFileSync(path.join(root, 'src/routes/query.js'), 'utf8')
+  const { noStore } = require('../src/middleware/cache')
+  const req = { headers: { 'if-none-match': '"previous-etag"', 'if-modified-since': 'Sun, 22 Nov 2026 00:00:00 GMT' } }
+  const headers = {}
+  const res = { set(name, value) { headers[name] = value } }
+  let nextCalls = 0
+
+  noStore(req, res, () => { nextCalls += 1 })
+
+  assert.equal(req.headers['if-none-match'], undefined)
+  assert.equal(req.headers['if-modified-since'], undefined)
+  assert.equal(headers['Cache-Control'], 'private, no-store')
+  assert.equal(headers.Pragma, 'no-cache')
+  assert.equal(headers.Expires, '0')
+  assert.equal(nextCalls, 1)
+  assert.match(routeSource, /router\.get\('\/customers\/:customerId\/goods',\s*noStore,/)
+})
+
 test('匿名公开响应仍可缓存，带凭据的请求不读取公开缓存', () => {
   const { cacheMiddleware, clearCache } = require('../src/middleware/cache')
   clearCache()

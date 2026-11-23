@@ -19,7 +19,7 @@
 - [收款方式字段迁移](../guides/sales-transfer-transaction-standards.md#收款方式字段迁移) - `payment_records.payment_method`旧枚举改为20字符文本，保留原数据，逐台手机收款关联真实`sales.id`，不重建订单头
 - [共同结算结构迁移](../guides/sales-transfer-transaction-standards.md#共同结算结构迁移) - 复用 `sales_orders`、新增 `sales_order_items`，收款新增 `sales_order_id` 且保留旧手机销售关联；受控迁移及有历史拒绝回退
 - [商品原批次返库字段](../backend/accessory-entry.md#商品原批次返库事务基础) - 原库存流水扩展返库事件与三个可空追溯/幂等字段，不新增平行库存；2026-11-14已迁移回读，真实业务未验收，有历史禁止回退
-- [商品售后凭据迁移](../guides/sales-transfer-transaction-standards.md#商品售后凭据迁移) - 追加 `sales_aftersales/sales_aftersale_items/sales_goods_exchanges`，支持原表原地增加 phone_return/goods_exchange、gift_charge_cents/replacement_cents 及换货根关系，v2/v3逐行JSON保留旧版本；原销售/收款事实保留，默认零写预览、有历史禁止回退；2026-11-14已迁移回读，真实业务未验收
+- [商品售后凭据迁移](../guides/sales-transfer-transaction-standards.md#商品售后凭据迁移) - 追加 `sales_aftersales/sales_aftersale_items/sales_goods_exchanges/sales_goods_exchange_additions`，支持原表原地增加 phone_return/goods_exchange、gift_charge_cents/replacement_cents/additional_cents 及换货根关系，v2-v4逐行JSON保留旧版本；原销售/收款事实保留，默认零写预览、有历史禁止回退；本次新增结构仍需按迁移脚本预览并在授权后执行
 - [商品提成核销结构](../business/salary-record-standard.md#核销结构迁移与回滚) - `salary_records.goods_commission_snapshot`及`salary_goods_settlements`，全局唯一来源、原工资RESTRICT关联、元数据确定整数类型及受控备份/回退；正式工资金额/保存/发放及页面已接入代码，已迁移回读，真实工资未验收
 
 客户销售积分字段迁移使用 `npm --prefix backend run migrate:customer-sale-points` 预览，确认目标和备份后才可追加 `-- --apply`；应用请求进程不执行该 DDL。

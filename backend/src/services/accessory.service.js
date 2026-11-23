@@ -8,7 +8,7 @@ const { isDatabaseAvailabilityError } = require('../utils/database-errors')
 const crypto = require('crypto')
 const BaseService = require('../core/base/base.service')
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
-const { getBeijingTimeString, isBeijingDateTime } = require('../utils/time')
+const { getBeijingTimeString, isBeijingDateTime, normalizeBusinessDateTime } = require('../utils/time')
 const { normalizeImei } = require('../utils/imei')
 const SystemSettingsRepository = require('../repositories/system-settings.repository')
 const AccessoryInventoryService = require('./accessory-inventory.service')
@@ -690,8 +690,10 @@ class AccessoryService extends BaseService {
   parseStockInInput(data, actor) {
     if (data.color_variants !== undefined) throw this.createError('请先选择具体颜色再入库，不能提交整组颜色规格', 400, 'COLOR_VARIANT_REQUIRED')
     const operatorId = this.getActorId(actor)
-    const inventoryTime = data.inventory_time
-    if (inventoryTime !== undefined && !isBeijingDateTime(inventoryTime)) throw this.createError('请选择有效的入库时间（北京时间，精确到秒）', 400, 'VALIDATION_ERROR')
+    const inventoryTime = data.inventory_time === undefined ? undefined : normalizeBusinessDateTime(data.inventory_time)
+    if ((data.inventory_time !== undefined && !inventoryTime) || (inventoryTime !== undefined && !isBeijingDateTime(inventoryTime))) {
+      throw this.createError('请选择有效的入库时间（北京时间，精确到秒）', 400, 'VALIDATION_ERROR')
+    }
     if (typeof data.request_key !== 'string' || !/^[a-f0-9]{32}$/.test(data.request_key)) {
       throw this.createError('入库请求标识无效，请重新打开入库窗口', 400, 'VALIDATION_ERROR')
     }

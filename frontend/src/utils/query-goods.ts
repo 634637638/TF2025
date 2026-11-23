@@ -32,9 +32,10 @@ const validRow = (value: unknown): value is GoodsAftersaleRecord => {
       value.quantity !== null && replacement.serial_numbers.length !== value.quantity || value.quantity === 0) return false
   } else if (replacement !== null || [value.replacement_amount, value.exchange_credit_amount].some(amount => amount !== null && amount !== 0)) return false
   const amounts = moneyFields.map(key => value[key])
-  const financial = [...amounts, value.settlement_offset_amount, value.points_delta, value.points_award_returned,
+  const additionalAmount = value.additional_amount === undefined ? null : value.additional_amount
+  const financial = [...amounts, additionalAmount, value.settlement_offset_amount, value.points_delta, value.points_award_returned,
     value.points_redemption_returned, value.settlement_method, value.settlement_channel]
-  if (amounts.some(amount => amount !== null && !money(amount)) ||
+  if (additionalAmount !== null && !money(additionalAmount) || amounts.some(amount => amount !== null && !money(amount)) ||
     value.settlement_offset_amount !== null && !signedMoney(value.settlement_offset_amount)) return false
   if (amounts.every(amount => amount === null)) {
     if (financial.some(item => item !== null)) return false
@@ -42,11 +43,12 @@ const validRow = (value: unknown): value is GoodsAftersaleRecord => {
     if (!amounts.every(money) || !signedMoney(value.settlement_offset_amount) ||
       ['points_delta', 'points_award_returned', 'points_redemption_returned'].some(key => value[key] === null)) return false
     const [base, recovery, compensation, refund, collection, charge, newAmount, credit] = amounts.map(amount => Math.round(amount * 100))
+    const additional = additionalAmount === null ? 0 : Math.round(additionalAmount * 100)
     const offset = Math.round(value.settlement_offset_amount * 100)
-    const net = base + compensation - recovery - charge - newAmount - offset
+    const net = base + compensation - recovery - charge - newAmount - additional - offset
     if (![base + compensation, base + compensation - recovery - charge, net].every(Number.isSafeInteger) ||
       refund && collection || net !== refund - collection ||
-      value.operation_type === 'goods_exchange' && (credit !== Math.max(0, newAmount - collection) || offset !== 0 || charge !== 0)) return false
+      value.operation_type === 'goods_exchange' && (credit !== Math.max(0, newAmount - Math.min(newAmount, Math.max(0, collection - additional))) || offset !== 0 || charge !== 0)) return false
   }
   return true
 }

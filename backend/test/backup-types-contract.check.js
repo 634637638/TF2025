@@ -17,10 +17,10 @@ const createResponse = () => ({
 test('backup service accepts only canonical full and database backup filenames', () => {
   assert.equal(backupService.isValidBackupFilename('backup_20261104_120000.zip'), true)
   assert.equal(backupService.isValidBackupFilename('sql-20261104_120000.sql'), true)
+  assert.equal(backupService.isValidBackupFilename('sql-20261104_120000.zip'), true)
   assert.equal(backupService.isValidBackupFilename('database_20261104_120000.sql'), true)
   assert.equal(backupService.isValidBackupFilename('../sql-20261104_120000.sql'), false)
-  assert.equal(backupService.isValidBackupFilename('database_20261104_120000.zip'), false)
-  assert.equal(backupService.isValidBackupFilename('sql-20261104_120000.zip'), false)
+  assert.equal(backupService.isValidBackupFilename('database_20261104_120000.zip'), true)
   assert.equal(backupService.isValidBackupFilename('sql-20261104_120000.sql.tmp'), false)
 })
 

@@ -3,7 +3,7 @@ const FieldAccessService = require('./field-access.service')
 const CustomerMutationAccessService = require('./customer-mutation-access.service')
 const { withConnection } = require('../core/db/connection')
 const { getDatabase } = require('../config/database')
-const { normalizeDateTime } = require('../utils/time')
+const { normalizeBusinessDateTime } = require('../utils/time')
 const { prepareInvoiceNumberTransaction, generateInvoiceNumber } = require('../utils/invoice-number')
 const { reconcileCustomerPointsForSale } = require('./customer-points.service')
 const log = require('../utils/log')
@@ -105,7 +105,8 @@ class TransferService {
         if (!sale_time) {
           throw new Error('销售时间不能为空')
         }
-        const saleTimeStr = normalizeDateTime(sale_time, true)
+        const saleTimeStr = normalizeBusinessDateTime(sale_time)
+        if (!saleTimeStr) throw new Error('销售时间格式无效')
 
         let success_count = 0
         const results = []
@@ -370,7 +371,8 @@ class TransferService {
         if (!sale_time) {
           throw new Error('划拨时间不能为空')
         }
-        const saleTimeStr = normalizeDateTime(sale_time, true)
+        const saleTimeStr = normalizeBusinessDateTime(sale_time)
+        if (!saleTimeStr) throw new Error('划拨时间格式无效')
 
         let success_count = 0
         const failed_phones = []

@@ -67,27 +67,22 @@ class FilmService {
 
   /** 手机成交随单自动消耗一张免费专用膜；只返回零价赠送明细，实际出库仍由商品服务完成。 */
   async prepareAutomaticForSale(connection, phones, storeId, { lock = true } = {}) {
-    try {
-      await this.ready(connection)
-    } catch (error) {
-      // 自动赠膜是手机销售的可选附加动作；迁移尚未部署时不能阻断手机成交。
-      if (error?.code === 'FILM_SERVICE_NOT_READY') return []
-      throw error
-    }
+    await this.ready(connection)
     if (!Array.isArray(phones) || !phones.length || !validId(storeId)) reject('自动贴膜销售资料无效')
     const accessories = []
     const reserved = new Map()
     for (const phone of phones) {
       if (!validId(phone?.id) || !validId(phone?.model_id)) reject('销售手机缺少有效型号，无法自动匹配贴膜', 409, 'FILM_DEVICE_REQUIRED')
       const matches = await this.repository.matchingTemplates(connection, Number(phone.model_id), { lock })
-      if (matches.length !== 1) continue
+      if (matches.length !== 1) reject(matches.length ? '手机型号对应多款自动赠膜模板，请先整理为唯一模板' : '手机型号未配置自动赠膜模板，无法完成销售', 409, 'FILM_TEMPLATE_REQUIRED')
       const stock = await this.repository.availableProducts(connection, Number(matches[0].id), Number(storeId), { lock })
       const plain = stock.filter(row => Number(row.quantity) > Number(row.serial_quantity))
-      if (plain.length !== 1) continue
+      if (plain.length !== 1) reject(plain.length ? '自动赠膜商品不唯一，请先整理门店可用商品' : '自动赠膜库存不足，无法完成销售', 409,
+        plain.length ? 'FILM_STOCK_AMBIGUOUS' : 'FILM_STOCK_INSUFFICIENT')
       const product = plain[0]
       const available = Number(product.quantity) - Number(product.serial_quantity)
       const alreadyReserved = reserved.get(Number(product.id)) || 0
-      if (available - alreadyReserved < 1) continue
+      if (available - alreadyReserved < 1) reject('自动赠膜库存不足，无法完成销售', 409, 'FILM_STOCK_INSUFFICIENT')
       reserved.set(Number(product.id), alreadyReserved + 1)
       accessories.push({ key: `auto-film:${Number(phone.id)}`, accessory_id: Number(product.id), quantity: 1, unit_price: 0,
         sale_type: 'gift', linked_phone_id: Number(phone.id), serial_numbers: [], redeem_points: 0, gift_return_unit_price: null,
@@ -154,6 +149,24 @@ class FilmService {
     return Number(id)
   }
 
+  /** 手机销售自动赠膜也写入统一贴膜历史，库存与该销售共用同一事务。 */
+  async appendAutomatic(connection, { orderId, customerId, storeId, operatorId, createdBy, businessTime, request, phone, saleId, issuedQuantity }) {
+    if (!request?.auto_film || !validId(orderId) || !validId(customerId) || !validId(storeId) ||
+      !validId(operatorId) || !validId(createdBy) || !validId(request.linked_phone_id) || !validId(saleId) ||
+      !phone || !validId(phone.model_id) || !validId(issuedQuantity ?? request.quantity)) {
+      reject('自动赠膜记录资料不完整', 409, 'FILM_SERVICE_INVALID')
+    }
+    const id = await this.repository.append(connection, {
+      order_id: Number(orderId), customer_id: Number(customerId), qualification_sale_id: null,
+      phone_id: Number(request.linked_phone_id), model_id: Number(phone.model_id),
+      phone_snapshot: { model_name: phone.model_name ?? null, sale_id: Number(saleId), automatic: true },
+      store_id: Number(storeId), operator_id: Number(operatorId), created_by: Number(createdBy),
+      quantity: Number(issuedQuantity ?? request.quantity), business_time: businessTime, created_at: this.now()
+    })
+    if (!validId(id)) reject('自动赠膜记录保存失败', 409, 'FILM_SERVICE_CONFLICT')
+    return Number(id)
+  }
+
   async context(actor, customerId, query = {}) {
     await this.authorize(actor)
     if (!validId(customerId) || !query || typeof query !== 'object' || Array.isArray(query) ||
@@ -186,8 +199,9 @@ class FilmService {
             operator_id: row.operator_id, operator_name: row.operator_name ?? null,
             business_time: row.business_time, created_at: row.created_at,
             phone_id: row.phone_id ?? null, model_id: row.model_id ?? null, phone_model_name: row.phone_model_name ?? null,
-            items: history.items.filter(item => Number(item.order_id) === Number(row.order_id))
-              .map(({ name, sale_type, quantity, total_amount }) => ({ name, sale_type, quantity, total_amount })) })),
+            items: history.items.filter(item => Number(item.order_id) === Number(row.order_id) &&
+              (!row.automatic || Number(item.linked_phone_sale_id) === Number(row.phone_sale_id)))
+              .map(({ name, unit, sale_type, quantity, total_amount }) => ({ name, unit: unit || null, sale_type, quantity, total_amount })) })),
           pagination: { page: Number(page), page_size: Number(size), total: history.filtered_total,
             total_pages: Math.ceil(history.filtered_total / Number(size)), has_next: Number(page) * Number(size) < history.filtered_total, has_prev: Number(page) > 1 } }
       } finally {

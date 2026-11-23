@@ -20,7 +20,7 @@ const fixture = (hiddenFields = []) => {
   const reads = [], permissions = []
   const repository = { withConnection: withReadConnection, async list(scope, query, fields, connection) {
     reads.push({ scope, query, fields, connection })
-    return { data: [structuredClone(record), { ...record, id: 52, order_id: null, order_no: null, has_snapshot: 0, linked_phone_store_id: 3 }], pagination: { total: 125 } }
+    return { data: [structuredClone(record), { ...record, id: 52, order_id: null, order_no: null, has_snapshot: '0', linked_phone_store_id: 3 }], pagination: { total: 125 } }
   } }
   const service = new Service({ repository, permissionCheck: async (_actor, permission) => { permissions.push(permission); return true } })
   const masking = { async getUserFieldPermissions() { return { hiddenFields } }, filterSensitiveFields(rows) { return rows } }
@@ -36,6 +36,9 @@ test('客户商品历史沿用三模块授权及门店范围，真实客户ID和
   assert.ok(f.reads[0].connection)
   assert.equal(result.pagination.total, 125)
   assert.equal(result.data[0].remaining_quantity, 0)
+  assert.equal(result.data[0].has_snapshot, true)
+  assert.equal(result.data[1].has_snapshot, false)
+  assert.equal(typeof result.data[0].has_snapshot, 'boolean')
   assert.equal(result.data[0].has_order, true)
   assert.equal(result.data[1].has_order, false)
   assert.equal(result.data[0].linked_phone_invoice, 'PHONE1')
@@ -43,6 +46,13 @@ test('客户商品历史沿用三模块授权及门店范围，真实客户ID和
   for (const row of result.data) for (const key of ['customer_id', 'customer_name', 'customer_phone', 'purchase_cost', 'profit', 'order_id', 'order_item_id', 'linked_phone_store_id']) {
     assert.equal(Object.hasOwn(row, key), false, key)
   }
+})
+
+test('客户贴膜历史只允许显式筛选参数并传入服务端类型条件', async () => {
+  const f = fixture(), result = await f.service.customerHistory(actor, '8', { page: 2, page_size: 20, film_only: true })
+  assert.deepEqual(f.reads[0].query, { page: 2, page_size: 20, customer_id: 8, film_only: true })
+  assert.equal(result.pagination.total, 125)
+  await assert.rejects(f.service.customerHistory(actor, 8, { film_only: false }), { statusCode: 400 })
 })
 
 test('任一查看权限缺失和匿名均在租借连接前拒绝', async () => {

@@ -19,7 +19,7 @@ async function fixture(t, ready = true) {
   let failAfter = Infinity, changed = false
   const db = { async query(sql, params = []) {
     const table = params[0]
-    if (sql.includes('information_schema') && typeof table === 'string' && (table.startsWith('sales_aftersale') || table === 'sales_goods_exchanges')) {
+    if (sql.includes('information_schema') && typeof table === 'string' && (table.startsWith('sales_aftersale') || table === 'sales_goods_exchanges' || table === 'sales_goods_exchange_additions')) {
       if (sql.includes('information_schema.TABLES')) return [tables.filter(row => row.TABLE_NAME === table)]
       if (sql.includes('information_schema.COLUMNS')) return [fields.filter(row => row.TABLE_NAME === table)]
       if (sql.includes('information_schema.STATISTICS')) return [indexes.filter(row => row.TABLE_NAME === table).sort((a, b) => a.SEQ_IN_INDEX - b.SEQ_IN_INDEX)]
@@ -46,7 +46,7 @@ async function fixture(t, ready = true) {
       }
       return [{}]
     }
-    if (/^(CREATE|DROP) TABLE `sales_(?:aftersale|goods_exchanges)/.test(sql)) {
+    if (/^(CREATE|DROP) TABLE `sales_(?:aftersale|goods_exchange)/.test(sql)) {
       if (writes.length === failAfter) { failAfter = Infinity; throw new Error('ddl-interrupted') }
       writes.push(sql)
       const name = sql.match(/TABLE `(\w+)`/)[1]
@@ -59,7 +59,7 @@ async function fixture(t, ready = true) {
       tables.push({ TABLE_NAME: name, ENGINE: 'InnoDB' }); data[name] = []
       for (const match of sql.matchAll(/`(\w+)` ((?:bigint|int)(?: unsigned)?|varchar\(\d+\)|char\(\d+\)|enum\('[^)]*\)|json|datetime)(?: CHARACTER SET ascii COLLATE ascii_bin)? (NOT NULL|NULL)( AUTO_INCREMENT)?/g)) {
         fields.push({ TABLE_NAME: name, COLUMN_NAME: match[1], COLUMN_TYPE: match[2], IS_NULLABLE: match[3] === 'NULL' ? 'YES' : 'NO',
-          COLUMN_DEFAULT: ['gift_charge_cents', 'replacement_cents'].includes(match[1]) ? '0' : null,
+          COLUMN_DEFAULT: ['gift_charge_cents', 'replacement_cents', 'additional_cents'].includes(match[1]) ? '0' : null,
           EXTRA: match[4] ? 'auto_increment' : '', COLLATION_NAME: ['request_key', 'request_hash'].includes(match[1]) ? 'ascii_bin' : null })
       }
       for (const match of sql.matchAll(/(PRIMARY KEY|(?:UNIQUE )?KEY `(\w+)`) \(([^)]+)\)/g)) {
@@ -74,12 +74,12 @@ async function fixture(t, ready = true) {
   return { db, file, fields, indexes, tables, data, foreign, writes, interrupt(count) { failAfter = count }, mutate() { changed = true } }
 }
 
-test('共同售后迁移要求原共同单结构完整；默认三张追加凭据预览零写入，不新建库存或积分主表', async t => {
+test('共同售后迁移要求原共同单结构完整；默认四张追加凭据预览零写入，不新建库存或积分主表', async t => {
   const notReady = await fixture(t, false)
   await assert.rejects(migrate(notReady.db), /先完成共同结算/)
   const f = await fixture(t), result = await migrate(f.db)
-  assert.equal(result.status, 'dry_run'); assert.equal(result.sql.length, 3)
-  assert.equal(result.sql.map(sql => sql.match(/CREATE TABLE `(\w+)`/)[1]).sort().join(','), 'sales_aftersale_items,sales_aftersales,sales_goods_exchanges')
+  assert.equal(result.status, 'dry_run'); assert.equal(result.sql.length, 4)
+  assert.equal(result.sql.map(sql => sql.match(/CREATE TABLE `(\w+)`/)[1]).sort().join(','), 'sales_aftersale_items,sales_aftersales,sales_goods_exchange_additions,sales_goods_exchanges')
   assert.equal(f.writes.length, 0)
 })
 
@@ -94,7 +94,7 @@ test('执行先独占0600摘要/结构备份；原数据摘要守恒，重复运
   assert.equal(Object.keys(backup.tables).length, 11)
   assert.deepEqual(Object.keys(backup.tables.sales_orders).sort(), ['count', 'digest'])
   assert.equal((await fs.stat(backupFile)).mode & 0o777, 0o600)
-  assert.equal((await migrate(f.db)).status, 'already_ready'); assert.equal(f.writes.length, 3)
+  assert.equal((await migrate(f.db)).status, 'already_ready'); assert.equal(f.writes.length, 4)
 })
 
 test('中断只补缺失表；字段、大小写排序、唯一索引和外键冲突均拒绝覆盖', async t => {
@@ -118,7 +118,7 @@ test('中断只补缺失表；字段、大小写排序、唯一索引和外键�
 test('只有空凭据允许受控回退，头或明细任一有历史连预览均拒绝；迁移期间原事实变化报错', async t => {
   const f = await fixture(t)
   await migrate(f.db, { apply: true, backupFile: f.file('before') })
-  for (const table of ['sales_aftersales', 'sales_aftersale_items', 'sales_goods_exchanges']) {
+  for (const table of ['sales_aftersales', 'sales_aftersale_items', 'sales_goods_exchanges', 'sales_goods_exchange_additions']) {
     f.data[table].push({ id: 1 })
     await assert.rejects(migrate(f.db, { rollback: true }), /已有共同售后历史/)
     f.data[table] = []

@@ -250,8 +250,8 @@ class SalesGoodsReturnService {
         link.operation_type !== 'goods_exchange' || !source || typeof source !== 'object' || Array.isArray(source) ||
         Object.keys(source).length !== 4 || source.original_order_id !== Number(link.order_id) ||
         source.original_item_id !== Number(link.original_item_id) || source.root_order_id !== root.root_order_id || source.root_item_id !== root.root_item_id ||
-        moneyCents(current.order.final_amount) !== Number(link.replacement_cents) ||
-        moneyCents(current.order.paid_amount) !== Math.min(Number(link.collection_cents), Number(link.replacement_cents))) reject('商品换货关联凭据不一致', 'CHECKOUT_RETURN_CONFLICT', 409)
+        moneyCents(current.order.final_amount) !== Number(link.replacement_cents) + Number(link.additional_cents || 0) ||
+        moneyCents(current.order.paid_amount) !== Math.min(Number(link.collection_cents), Number(link.replacement_cents) + Number(link.additional_cents || 0))) reject('商品换货关联凭据不一致', 'CHECKOUT_RETURN_CONFLICT', 409)
       let parent
       try {
         parent = await this.loadOriginal(connection, { order_id: Number(link.order_id), item_id: Number(link.original_item_id), quantity: 0, serial_numbers: [] }, actor, { lock })
@@ -266,17 +266,21 @@ class SalesGoodsReturnService {
       const exchange = fact.fact.exchange
       const giftRefund = Object.hasOwn(fact.fact, 'gift_refund_cents') || Object.hasOwn(fact.fact, 'gift_charge_aftersale_id')
       // 用途转换只接受真实历史中已结清的赠品扣款；不能仅改新件快照放宽原赠品责任。
+      const freeGiftConversion = !giftRefund && parent.plan.item.sale_type === 'gift' && current.plan.item.sale_type === 'sale' &&
+        current.plan.item.gift_return_unit_price === null
       if (giftRefund ? parent.plan.item.sale_type !== 'gift' || current.plan.item.sale_type !== 'sale' ||
         current.plan.item.gift_return_unit_price !== null || parent.plan.gift_charge_aftersale_id === null ||
         fact.fact.gift_charge_aftersale_id !== parent.plan.gift_charge_aftersale_id ||
         fact.fact.gift_refund_cents !== Number(link.quantity) * moneyCents(parent.plan.item.gift_return_unit_price) ||
         fact.fact.gift_refund_cents !== fact.settlement.base_refund_cents :
-        parent.plan.item.sale_type !== current.plan.item.sale_type || parent.plan.item.gift_return_unit_price !== current.plan.item.gift_return_unit_price) {
+        !freeGiftConversion && (parent.plan.item.sale_type !== current.plan.item.sale_type ||
+          parent.plan.item.gift_return_unit_price !== current.plan.item.gift_return_unit_price)) {
         reject('替换商品用途或原赠品实际扣款凭据不一致', 'CHECKOUT_RETURN_CONFLICT', 409)
       }
       if (exchange.replacement_item_id !== itemId || exchange.replacement_order_id !== Number(current.order.id) ||
         exchange.root_order_id !== root.root_order_id || exchange.root_item_id !== root.root_item_id || exchange.quantity !== Number(link.quantity) ||
-        Number(link.exchange_credit_cents) !== Math.max(0, fact.settlement.replacement_cents - fact.settlement.collection_cents) ||
+        Number(link.exchange_credit_cents) !== Math.max(0, fact.settlement.replacement_cents - Math.min(fact.settlement.replacement_cents,
+          Math.max(0, fact.settlement.collection_cents - (fact.settlement.additional_cents || 0)))) ||
         exchange.replacement_cents !== moneyCents(current.plan.item.total_amount)) reject('换货新商品金额或根关联与原售后不一致', 'CHECKOUT_RETURN_CONFLICT', 409)
       current = parent
     }

@@ -96,24 +96,43 @@
           </el-form-item>
         </div>
         <template v-if="!manageOnly && !browserVisible">
+          <div class="cloud-settings-panel">
+            <el-form-item
+              label="备份压缩密码"
+              class="cloud-settings-field"
+            >
+              <el-input
+                v-model="backupPassword"
+                type="password"
+                show-password
+                autocomplete="new-password"
+                maxlength="128"
+                placeholder="8–128 个字符，留空保留当前密码"
+                :disabled="busy"
+                aria-label="备份压缩密码"
+              />
+              <div class="cloud-password-state">
+                <el-text>{{ hasBackupPassword ? '已设置密码，新备份将加密。' : '未设置密码，新备份将不加密。' }}</el-text>
+                <el-checkbox
+                  v-if="hasBackupPassword"
+                  v-model="clearBackupPassword"
+                  :disabled="busy"
+                >
+                  清除已保存密码
+                </el-checkbox>
+              </div>
+            </el-form-item>
+          </div>
           <div class="cloud-settings-panel cloud-policy-panel">
             <el-form-item
-              label="定时生成备份"
+              label="自动备份计划"
               class="cloud-settings-field"
             >
               <div class="cloud-setting-row">
-                <span>按设定间隔自动生成本地备份。</span>
-                <el-switch
-                  v-model="schedule.enabled"
-                  :disabled="busy"
-                  aria-label="定时生成备份"
-                />
+                <span>开启自动备份后，系统先生成备份，再上传到所选云盘目录。</span>
               </div>
             </el-form-item>
-            <div
-              v-if="schedule.enabled"
-              class="cloud-policy-fields tf-form-row"
-            >
+            <div class="cloud-policy-fields tf-form-row">
               <el-form-item
                 label="备份间隔（小时）"
                 :error="scheduleIntervalError"
@@ -149,7 +168,7 @@
                 </el-select>
               </el-form-item>
             </div>
-            <el-text v-if="schedule.enabled">
+            <el-text v-if="form.enabled">
               下次执行（北京时间）：{{ scheduleUnchanged ? formatDateTime(scheduleStatus?.nextRunAt) : '保存后计算' }}
             </el-text>
             <el-text v-if="scheduleStatus?.lastRunAt">
@@ -164,15 +183,15 @@
           </div>
           <div class="cloud-settings-panel">
             <el-form-item
-              label="自动备份"
+              label="自动备份并上传"
               class="cloud-settings-field"
             >
               <div class="cloud-setting-row">
-                <span>开启自动备份backups内所有文件。</span>
+                <span>按计划生成新备份并上传，首次开启后立即执行。</span>
                 <el-switch
                   v-model="form.enabled"
                   :disabled="busy"
-                  aria-label="自动备份"
+                  aria-label="自动备份并上传"
                 />
               </div>
             </el-form-item>
@@ -367,11 +386,14 @@ const { success, error } = useNotification()
 const requests = useLatestRequest()
 const { canDelete } = usePagePermissions('backup')
 const form = reactive({ enabled: false, accountId: '', folderId: '', folderName: '', driveId: '', driveName: '' })
+const backupPassword = ref('')
+const hasBackupPassword = ref(false)
+const clearBackupPassword = ref(false)
 const schedule = reactive<BackupScheduleInput>({ enabled: false, intervalHours: 24, type: 'full' })
 const retention = reactive<BackupRetentionInput>({ enabled: false, sqlCount: 10, zipCount: 10 })
 const scheduleStatus = ref<BackupSchedule | null>(null)
 const retentionStatus = ref<BackupRetention | null>(null)
-const scheduleUnchanged = computed(() => schedule.enabled === scheduleStatus.value?.enabled
+const scheduleUnchanged = computed(() => form.enabled === scheduleStatus.value?.enabled
   && schedule.intervalHours === scheduleStatus.value?.intervalHours && schedule.type === scheduleStatus.value?.type)
 const scheduleStatusText = computed(() => ({ idle: '尚未执行', running: '正在生成', success: '生成成功', failed: '生成失败' })[scheduleStatus.value?.lastStatus || 'idle'])
 const scheduleIntervalError = computed(() => Number.isInteger(schedule.intervalHours) && schedule.intervalHours >= 1 && schedule.intervalHours <= 720 ? '' : '请输入 1–720 的整数')
@@ -479,6 +501,9 @@ const changeAccount = () => {
 
 watch(visible, async open => {
   reset()
+  backupPassword.value = ''
+  clearBackupPassword.value = false
+  hasBackupPassword.value = false
   editingAccount.value = false
   browserVisible.value = false
   browserBusy.value = false
@@ -502,9 +527,10 @@ watch(visible, async open => {
       if (!response.success || !response.data) throw new Error(response.message || '读取配置失败')
       accounts.value = response.data.accounts
       form.enabled = response.data.enabled
+      hasBackupPassword.value = response.data.hasBackupPassword
       scheduleStatus.value = response.data.schedule
       retentionStatus.value = response.data.retention
-      Object.assign(schedule, { enabled: response.data.schedule.enabled, intervalHours: response.data.schedule.intervalHours, type: response.data.schedule.type })
+      Object.assign(schedule, { enabled: response.data.enabled, intervalHours: response.data.schedule.intervalHours, type: response.data.schedule.type })
       Object.assign(retention, { enabled: response.data.retention.enabled, sqlCount: response.data.retention.sqlCount, zipCount: response.data.retention.zipCount })
       form.accountId = response.data.accountId || accounts.value[0]?.id || ''
       applyAccount()
@@ -562,11 +588,17 @@ const persist = async () => {
   if (!form.folderId.trim()) throw new Error('请先选择备份保存目录')
   if (scheduleIntervalError.value) throw new Error('备份间隔须为 1–720 小时')
   if (canDelete.value && (sqlCountError.value || zipCountError.value)) throw new Error('SQL 和 ZIP 保留数量须分别为 1–1000 份')
-  const response = await backupCloudApi.save({ ...form, schedule: { ...schedule }, ...(canDelete.value ? { retention: { ...retention } } : {}) })
+  const passwordSettings = clearBackupPassword.value
+    ? { clearBackupPassword: true }
+    : backupPassword.value ? { backupPassword: backupPassword.value } : {}
+  const response = await backupCloudApi.save({ ...form, ...passwordSettings, schedule: { ...schedule, enabled: form.enabled }, ...(canDelete.value ? { retention: { ...retention } } : {}) })
   if (!response.success || !response.data) throw new Error(response.message || '保存失败')
   accounts.value = response.data.accounts
   scheduleStatus.value = response.data.schedule
   retentionStatus.value = response.data.retention
+  hasBackupPassword.value = response.data.hasBackupPassword
+  backupPassword.value = ''
+  clearBackupPassword.value = false
   emit('saved')
 }
 const save = async () => {
@@ -603,6 +635,14 @@ const test = async () => {
 }
 .cloud-settings-field {
   margin: 0;
+}
+.cloud-password-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--tf-space-2);
+  margin-top: var(--tf-space-2);
 }
 .cloud-policy-panel {
   display: flex;

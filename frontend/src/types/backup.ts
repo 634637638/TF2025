@@ -55,6 +55,7 @@ export interface CloudAccountInput {
 export interface CloudBackupSettings extends CloudAccountList {
   enabled: boolean
   hasToken: boolean
+  hasBackupPassword: boolean
   driveId: string
   folderId: string
   folderName?: string
@@ -84,6 +85,8 @@ export interface CloudBackupSettingsInput {
   driveName?: string
   folderId: string
   folderName?: string
+  backupPassword?: string
+  clearBackupPassword?: boolean
   schedule?: BackupScheduleInput
   retention?: BackupRetentionInput
 }

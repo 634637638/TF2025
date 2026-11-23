@@ -196,6 +196,7 @@ let clockTimer: ReturnType<typeof setInterval> | null = null
 let removeRouteGuard: (() => void) | undefined
 let lastLoadedAt = 0
 let loadPendingPromise: Promise<void> | null = null
+let loadPendingRevision = -1
 let queueRevision = 0
 let disposed = false
 let mandatoryIds = new Set<number>()
@@ -286,34 +287,48 @@ const appendQueue = (items: ReminderQueueItem[]) => {
   if (!visible.value) visible.value = true
 }
 
-const loadPending = (force = false): Promise<void> => {
+const loadPending = (force = false, isLogin = false): Promise<void> => {
   if (
     !isAuthenticated.value ||
     (!canUsePendingReminder.value && !canUseCompletionNotice.value)
   ) return Promise.resolve()
   if (!force && Date.now() - lastLoadedAt < REFRESH_GAP_MS) return Promise.resolve()
-  if (loadPendingPromise) return loadPendingPromise
+  if (loadPendingPromise) {
+    if (!force || loadPendingRevision === queueRevision) return loadPendingPromise
+  }
 
   lastLoadedAt = Date.now()
   const requestRevision = queueRevision
+  loadPendingRevision = requestRevision
   const queuedIds = queue.value.filter(item => item.kind === 'reminder').map(item => item.occurrence_id)
-  loadPendingPromise = (async () => {
-    const [pendingResult, completionResult, activeResult] = await Promise.allSettled([
+  const requestPromise = (async () => {
+    // 登录时先同步本人未完成清单，并将其作为本次队列校验，确保未完成待办每次登录都会提醒。
+    if (canUsePendingReminder.value) {
+      try {
+        await remindersStore.refresh()
+      } catch (error) {
+        logger.debug('加载首页待办失败', error)
+      }
+    }
+    const loginQueuedIds = isLogin
+      ? remindersStore.active.map(item => item.occurrence_id)
+      : []
+    const pendingQueuedIds = [...new Set([...queuedIds, ...loginQueuedIds])]
+    const [pendingResult, completionResult] = await Promise.allSettled([
       // 此请求在后台持续同步首页公告与强制提醒，关闭普通通知不影响它。
       canUsePendingReminder.value && notificationsEnabled.value
         ? api.get('/reminders/my/pending', {
           showLoading: false,
           useCache: false,
-          params: { queued_occurrence_ids: queuedIds.length ? queuedIds.join(',') : undefined }
+          params: { queued_occurrence_ids: pendingQueuedIds.length ? pendingQueuedIds.join(',') : undefined }
         })
         : Promise.resolve(null),
       canUseCompletionNotice.value && notificationsEnabled.value
         ? api.get('/reminders/completed/pending', { showLoading: false, useCache: false })
-        : Promise.resolve(null),
-      canUsePendingReminder.value ? remindersStore.refresh() : Promise.resolve()
+        : Promise.resolve(null)
     ])
 
-    for (const result of [pendingResult, completionResult, activeResult]) {
+    for (const result of [pendingResult, completionResult]) {
       if (result.status === 'rejected') logger.debug('加载待办提醒失败', result.reason)
     }
     const pendingResponse = pendingResult.status === 'fulfilled' ? pendingResult.value : null
@@ -348,10 +363,14 @@ const loadPending = (force = false): Promise<void> => {
       logger.debug('加载待办提醒失败', error)
     })
     .finally(() => {
-      loadPendingPromise = null
+      if (loadPendingPromise === requestPromise) {
+        loadPendingPromise = null
+        loadPendingRevision = -1
+      }
     })
 
-  return loadPendingPromise
+  loadPendingPromise = requestPromise
+  return requestPromise
 }
 
 const removeOccurrence = (occurrenceId: number, markSeen: boolean) => {
@@ -441,6 +460,7 @@ const confirmCustomSnooze = () => {
 const resetSession = () => {
   authStore.exitLock = false
   remindersStore.reset()
+  lastLoadedAt = 0
   queue.value = []
   queueRevision += 1
   visible.value = false
@@ -452,7 +472,7 @@ const resetSession = () => {
 watch([isAuthenticated, () => authStore.user?.id], ([authenticated], previous) => {
   // 切换身份及退出时同步清除个人清单，并让旧响应失效。
   if (!authenticated || previous) resetSession()
-  if (authenticated) void loadPending(true)
+  if (authenticated) void loadPending(true, true)
 })
 watch([canUsePendingReminder, canUseCompletionNotice], ([pendingAllowed, completionAllowed]) => {
   queueRevision += 1
@@ -520,7 +540,7 @@ onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   window.addEventListener('focus', handleWindowFocus)
   document.addEventListener('visibilitychange', handleVisibilityChange)
-  await loadPending(true)
+  await loadPending(true, true)
 })
 
 onUnmounted(() => {

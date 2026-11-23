@@ -4,6 +4,13 @@ const SalesAftersaleRepository = require('./sales-aftersale.repository')
 
 /** 换货追加关系及替换订单；现金仅保存在售后凭据，不重复创建全额收款。 */
 class SalesGoodsExchangeRepository extends SalesAftersaleRepository {
+  async createExchangeAddition(connection, row) {
+    const [result] = await connection.execute(`INSERT INTO sales_goods_exchange_additions
+      (aftersale_id, replacement_order_id, replacement_item_id, quantity, amount_cents) VALUES (?, ?, ?, ?, ?)`,
+    [row.aftersale_id, row.replacement_order_id, row.replacement_item_id, row.quantity, row.amount_cents])
+    return Number(result.insertId)
+  }
+
   async createExchange(connection, row) {
     const [result] = await connection.execute(`INSERT INTO sales_goods_exchanges
       (aftersale_id, original_item_id, replacement_order_id, replacement_item_id, root_order_id, root_item_id, quantity, exchange_credit_cents)

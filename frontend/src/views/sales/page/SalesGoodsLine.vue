@@ -51,6 +51,18 @@
               label="赠送"
               value="gift"
             />
+            <el-option
+              v-if="modelValue.sale_type === 'sale' && !canCreate"
+              label="销售"
+              value="sale"
+              disabled
+            />
+            <el-option
+              v-if="modelValue.sale_type === 'gift' && !canGift"
+              label="赠送"
+              value="gift"
+              disabled
+            />
           </el-select>
         </el-form-item>
       </el-col>
@@ -211,7 +223,7 @@ const props = withDefaults(defineProps<{ fieldSource?: 'accessories' | 'query'; 
 const effectiveFieldSource = computed(() => props.filmOnly ? 'accessories' : props.fieldSource || permissions.source.value)
 const canViewAccessoryField = (field: AccessoryFieldName) => effectiveFieldSource.value === 'query' ? canViewQueryGoodsField(field) : canViewStockField(field)
 const emit = defineEmits<{ 'update:modelValue': [value: CheckoutGoodsDraft]; remove: [] }>()
-const permissions = useGoodsPermissions()
+const permissions = useGoodsPermissions(props.fieldSource)
 const queryPermissions = usePagePermissions('query')
 const filmAllowed = computed(() => props.filmOnly && !!props.filmCustomerId && !!props.filmPhoneId && queryPermissions.canView.value && queryPermissions.hasPermission('film'))
 const canCreate = computed(() => props.filmOnly ? filmAllowed.value : permissions.canCreate.value)

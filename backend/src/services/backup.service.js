@@ -7,6 +7,8 @@ const fs = require('fs')
 const path = require('path')
 const { spawn } = require('child_process')
 const { pipeline } = require('node:stream/promises')
+const archiver = require('archiver')
+const ZipEncrypted = require('archiver-zip-encrypted')
 const dbConfig = require('../config/database')
 const { PRODUCTION_RUNTIME_FILES } = require('../config/runtime-files')
 const log = require('../utils/log')
@@ -25,6 +27,15 @@ if (!fs.existsSync(BACKUP_DIR)) {
 
 const BACKUP_FILENAME_PATTERN = /^backup_\d{8}_\d{6}\.zip$/
 const DATABASE_BACKUP_FILENAME_PATTERN = /^(?:sql-|database_)\d{8}_\d{6}\.sql$/
+const DATABASE_ARCHIVE_FILENAME_PATTERN = /^(?:sql-|database_)\d{8}_\d{6}\.zip$/
+
+let encryptedFormatRegistered = false
+
+const ensureEncryptedArchiveFormat = () => {
+  if (encryptedFormatRegistered) return
+  archiver.registerFormat('zip-encrypted', ZipEncrypted)
+  encryptedFormatRegistered = true
+}
 
 const ensureBackupConfig = () => {
   const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME } = process.env
@@ -51,9 +62,23 @@ class BackupService {
     return BACKEND_ROOT
   }
 
+  setEncryptionPasswordProvider(provider) {
+    this.encryptionPasswordProvider = typeof provider === 'function' ? provider : null
+  }
+
+  getEncryptionPassword() {
+    const password = this.encryptionPasswordProvider?.()
+    return typeof password === 'string' ? password : ''
+  }
+
+  isDatabaseBackupFilename(filename) {
+    return typeof filename === 'string'
+      && (DATABASE_BACKUP_FILENAME_PATTERN.test(filename) || DATABASE_ARCHIVE_FILENAME_PATTERN.test(filename))
+  }
+
   isValidBackupFilename(filename) {
     return typeof filename === 'string'
-      && (BACKUP_FILENAME_PATTERN.test(filename) || DATABASE_BACKUP_FILENAME_PATTERN.test(filename))
+      && (BACKUP_FILENAME_PATTERN.test(filename) || this.isDatabaseBackupFilename(filename))
       && path.basename(filename) === filename
   }
 
@@ -99,11 +124,13 @@ class BackupService {
   async createBackup(type = 'full') {
     if (this.creatingBackup) throw Object.assign(new Error('已有备份正在创建，请稍后重试'), { statusCode: 409 })
     this.creatingBackup = true
-    try { return await this.createBackupContents(type) }
+    try {
+      return await this.createBackupContents(type, this.getEncryptionPassword())
+    }
     finally { this.creatingBackup = false }
   }
 
-  async createBackupContents(type) {
+  async createBackupContents(type, encryptionPassword = '') {
     if (!['full', 'database'].includes(type)) {
       throw new Error('备份类型无效')
     }
@@ -112,15 +139,22 @@ class BackupService {
 
     const timestamp = this.getTimestamp()
     if (type === 'database') {
-      const filename = `sql-${timestamp}.sql`
+      const backupName = `sql-${timestamp}`
+      const filename = `${backupName}.zip`
       const filePath = path.join(BACKUP_DIR, filename)
-      const temporaryPath = `${filePath}.tmp`
+      const sqlTemporaryPath = path.join(BACKUP_DIR, `${backupName}.sql.tmp`)
+      const temporaryZipPath = `${filePath}.tmp`
       if (fs.existsSync(filePath)) throw Object.assign(new Error('同一秒已有备份，请稍后重试'), { statusCode: 409 })
 
       try {
-        await this.backupDatabase(temporaryPath)
-        fs.appendFileSync(temporaryPath, '\n-- TF2025 database backup complete\n')
-        fs.renameSync(temporaryPath, filePath)
+        await this.backupDatabase(sqlTemporaryPath)
+        fs.appendFileSync(sqlTemporaryPath, '\n-- TF2025 database backup complete\n')
+        await this.compressBackup(sqlTemporaryPath, temporaryZipPath, {
+          password: encryptionPassword,
+          entryName: `${backupName}.sql`
+        })
+        fs.renameSync(temporaryZipPath, filePath)
+        fs.rmSync(sqlTemporaryPath, { force: true })
         const stats = fs.statSync(filePath)
         return {
           filename,
@@ -131,7 +165,8 @@ class BackupService {
           created_at: new Date().toISOString()
         }
       } catch (error) {
-        fs.rmSync(temporaryPath, { force: true })
+        fs.rmSync(sqlTemporaryPath, { force: true })
+        fs.rmSync(temporaryZipPath, { force: true })
         if (fs.existsSync(filePath)) {
           fs.rmSync(filePath, { force: true })
         }
@@ -170,7 +205,9 @@ class BackupService {
 
       // 6. 压缩成 ZIP（使用更快速度）
       log.debug('[Backup] 正在压缩...')
-      const compressionStats = await this.compressBackup(backupPath, temporaryZipPath)
+      const compressionStats = await this.compressBackup(backupPath, temporaryZipPath, {
+        password: encryptionPassword
+      })
       fs.renameSync(temporaryZipPath, zipPath)
 
       // 7. 计算备份大小
@@ -493,12 +530,21 @@ class BackupService {
   /**
    * 压缩备份文件（优化速度）
    */
-  async compressBackup(sourcePath, outputPath) {
-    const { ZipArchive } = await import('archiver')
+  async compressBackup(sourcePath, outputPath, { password = '', entryName } = {}) {
     return new Promise((resolve, reject) => {
       const output = fs.createWriteStream(outputPath)
       // 使用较低的压缩级别，大幅提升速度
-      const archive = new ZipArchive({ zlib: { level: 1 } }) // level 1 = 最快速度
+      let archive
+      if (password) {
+        ensureEncryptedArchiveFormat()
+        archive = archiver.create('zip-encrypted', {
+          zlib: { level: 1 },
+          encryptionMethod: 'aes256',
+          password
+        })
+      } else {
+        archive = archiver('zip', { zlib: { level: 1 } }) // level 1 = 最快速度
+      }
 
       let fileCount = 0
       const startTime = Date.now()
@@ -531,7 +577,8 @@ class BackupService {
       })
 
       archive.pipe(output)
-      archive.directory(sourcePath, false)
+      if (fs.statSync(sourcePath).isDirectory()) archive.directory(sourcePath, false)
+      else archive.append(fs.createReadStream(sourcePath), { name: entryName || path.basename(sourcePath) })
       archive.finalize()
     })
   }
@@ -547,7 +594,7 @@ class BackupService {
         const stats = fs.statSync(filePath)
         return {
           filename: file,
-          type: DATABASE_BACKUP_FILENAME_PATTERN.test(file) ? 'database' : 'full',
+          type: this.isDatabaseBackupFilename(file) ? 'database' : 'full',
           size: this.formatFileSize(stats.size),
           size_bytes: stats.size,
           created_at: stats.mtime.toISOString()

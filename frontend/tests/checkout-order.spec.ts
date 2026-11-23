@@ -41,6 +41,7 @@ afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.r
 
 it('整单显示原手机、购买及赠品、SN和积分；请求复用统一接口且关闭缓存及全局Loading', async () => {
   const wrapper = await render()
+  expect(wrapper.text()).not.toContain('以下为本次结算的原成交记录')
   for (const value of ['原手机型号', '原充电器', '原赠膜', '赠送', '000SN1、000SN2', '整批公共备注', '本单现金入账', '¥115', '500']) expect(wrapper.text()).toContain(value)
   expect(mocks.get).toHaveBeenCalledWith('/query/goods/51/order', expect.objectContaining({ signal: expect.any(AbortSignal), useCache: false, showLoading: false, showError: false }))
   expect(wrapper.findAll('.el-descriptions').every(item => item.classes().includes('tf-record-descriptions'))).toBe(true)
@@ -216,7 +217,7 @@ it('赠送凭证使用单一弹窗标题，隐藏无意义的零积分汇总', a
   mocks.get.mockResolvedValue({ success: true, data: giftOrder })
   const wrapper = await render()
   await wrapper.setProps({ receipt: true, saleId: 52 }); await flushPromises()
-  expect(wrapper.findComponent(Dialog).props('dialogClass')).toBe('crud-dialog-md')
+  expect(wrapper.findComponent(Dialog).props('dialogClass')).toBe('record-detail-dialog crud-dialog-lg')
   expect(wrapper.find('.checkout-receipt__header h2').exists()).toBe(false)
   expect(wrapper.text()).toContain('商品单号')
   expect(wrapper.text()).not.toContain('积分抵扣')

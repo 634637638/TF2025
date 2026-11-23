@@ -14,8 +14,8 @@ vi.mock('@/api/backup', () => ({ backupCloudApi: { accounts: vi.fn(), saveAccoun
 
 const account: CloudAccount = { id: 'account-a', name: '自己的网盘', hasToken: true, folderId: 'existing-folder', folderName: '业务备份', driveId: 'drive', driveName: '资源库' }
 const second: CloudAccount = { ...account, id: 'account-b', name: '第二个网盘', folderId: 'second-folder', folderName: '第二个目录' }
-const stored = { enabled: true, ...account, accountId: account.id, accounts: [account, second], lastError: '',
-  schedule: { enabled: false, intervalHours: 24, type: 'full' as const, nextRunAt: null, lastRunAt: null, lastStatus: 'idle' as const, lastError: '', lastFilename: '' },
+const stored = { enabled: true, hasBackupPassword: false, ...account, accountId: account.id, accounts: [account, second], lastError: '',
+  schedule: { enabled: true, intervalHours: 24, type: 'full' as const, nextRunAt: '2026-11-11T12:00:00.000Z', lastRunAt: null, lastStatus: 'idle' as const, lastError: '', lastFilename: '' },
   retention: { enabled: false, sqlCount: 10, zipCount: 10, lastRunAt: null, lastDeleted: 0, lastError: '' } }
 const connection = (id = account.id) => ({ accountId: id, settings: stored, directory: id === second.id ? { ...second } : { ...account },
   directoryError: '', drives: [{ id: 'drive', name: '资源库' }], defaultDriveId: 'drive' })
@@ -66,17 +66,37 @@ const selectAccount = async (wrapper: DialogWrapper, id: string) => {
 describe('命名云盘账户及备份设置', () => {
   it('文案按要求调整，无旧提示、Token 回显及底部关闭按钮；保存选中的账户', async () => {
     const wrapper = await openDialog()
-    expect(wrapper.text()).toContain('开启自动备份backups内所有文件。')
+    expect(wrapper.text()).toContain('按计划生成新备份并上传，首次开启后立即执行。')
+    expect(wrapper.text()).toContain('系统先生成备份，再上传到所选云盘目录。')
     expect(wrapper.text()).toContain('自动备份')
     expect(wrapper.text()).toContain('当前备份目录：资源库/业务备份')
     expect(wrapper.text()).not.toContain('本地文件继续保留')
     expect(wrapper.text()).not.toContain('填写网页登录 Token')
-    expect(wrapper.find('input[type=password]').exists()).toBe(false)
+    expect(wrapper.find('input[type=password]').exists()).toBe(true)
     expect(wrapper.findAll('button').some(button => button.text() === '关闭')).toBe(false)
     await click(wrapper, '保存设置')
     expect(backupCloudApi.save).toHaveBeenCalledWith({ accountId: account.id, enabled: true, driveId: 'drive', folderId: 'existing-folder', folderName: '业务备份', driveName: '资源库',
-      schedule: { enabled: false, intervalHours: 24, type: 'full' }, retention: { enabled: false, sqlCount: 10, zipCount: 10 } })
+      schedule: { enabled: true, intervalHours: 24, type: 'full' }, retention: { enabled: false, sqlCount: 10, zipCount: 10 } })
     expect(wrapper.emitted('saved')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('关闭自动备份并上传时同时关闭自动生成计划', async () => {
+    const wrapper = await openDialog()
+    wrapper.findAllComponents({ name: 'ElSwitch' })[0].vm.$emit('update:modelValue', false)
+    await click(wrapper, '保存设置')
+    expect(backupCloudApi.save).toHaveBeenCalledWith(expect.objectContaining({
+      enabled: false, schedule: { enabled: false, intervalHours: 24, type: 'full' }
+    }))
+    wrapper.unmount()
+  })
+
+  it('设置备份压缩密码时将密码提交保存，读取配置只展示是否已设置', async () => {
+    const wrapper = await openDialog()
+    await wrapper.find('input[type=password]').setValue('backup-test-password')
+    await click(wrapper, '保存设置')
+    expect(backupCloudApi.save).toHaveBeenCalledWith(expect.objectContaining({ backupPassword: 'backup-test-password' }))
+    expect(wrapper.text()).toContain('未设置密码，新备份将不加密。')
     wrapper.unmount()
   })
 
@@ -92,7 +112,7 @@ describe('命名云盘账户及备份设置', () => {
     await click(wrapper, '保存账户')
     expect(backupCloudApi.saveAccount).toHaveBeenCalledWith({ name: '家庭网盘', token: 'synthetic-form-refresh-token' }, undefined)
     expect(backupCloudApi.save).not.toHaveBeenCalled()
-    expect(wrapper.find('input[type=password]').exists()).toBe(false)
+    expect(wrapper.find('input[type=password]').exists()).toBe(true)
     await click(wrapper, '浏览云盘 / 选择目录')
     expect(backupCloudApi.connect).toHaveBeenCalledWith('new-account', expect.any(AbortSignal))
     const browser = wrapper.findComponent({ name: 'CloudDriveBrowser' })
@@ -212,7 +232,7 @@ describe('命名云盘账户及备份设置', () => {
     const wrapper = await openDialog()
     const switches = wrapper.findAllComponents({ name: 'ElSwitch' })
     switches[0].vm.$emit('update:modelValue', true)
-    switches[2].vm.$emit('update:modelValue', true)
+    switches[1].vm.$emit('update:modelValue', true)
     await flushPromises()
     const fields = wrapper.findAllComponents({ name: 'ElInputNumber' })
     fields[0].vm.$emit('update:modelValue', 6)
@@ -245,18 +265,18 @@ describe('命名云盘账户及备份设置', () => {
   it('无删除权限时不提交清理规则，仍可保存定时备份', async () => {
     permissions.canDelete = false
     const wrapper = await openDialog()
-    expect(wrapper.findAllComponents({ name: 'ElSwitch' })[2].props('disabled')).toBe(true)
+    expect(wrapper.findAllComponents({ name: 'ElSwitch' })[1].props('disabled')).toBe(true)
     await click(wrapper, '保存设置')
     const input = vi.mocked(backupCloudApi.save).mock.calls[0][0]
     expect(input.retention).toBeUndefined()
-    expect(input.schedule).toEqual({ enabled: false, intervalHours: 24, type: 'full' })
+    expect(input.schedule).toEqual({ enabled: true, intervalHours: 24, type: 'full' })
     wrapper.unmount()
   })
 
   it('规则范围校验失败不提交请求，修正后正常保存', async () => {
     const wrapper = await openDialog()
     wrapper.findAllComponents({ name: 'ElSwitch' })[0].vm.$emit('update:modelValue', true)
-    wrapper.findAllComponents({ name: 'ElSwitch' })[2].vm.$emit('update:modelValue', true)
+    wrapper.findAllComponents({ name: 'ElSwitch' })[1].vm.$emit('update:modelValue', true)
     await flushPromises()
     wrapper.findAllComponents({ name: 'ElInputNumber' })[0].vm.$emit('update:modelValue', undefined)
     await click(wrapper, '保存设置')

@@ -54,6 +54,8 @@
 - ISO 8601 只用于机器数据传输、日志和导出。使用 `TimeUtil.toISOString()`，不要把带 `Z` 的字符串当作北京时间显示值。
 - 页面显示使用 `formatDateTime()`、`formatDate()`、`formatTime()` 或 `TimeUtil.getFriendlyTime()`，不要直接调用浏览器本地化日期 API。
 
+交易和入库业务时间统一保存到秒级北京时间。手机入库、快速出库手机入库时间、综合查询/库存管理/销售管理编辑模态框中的手机入库时间、销售时间、批发、划拨、商品出库和自动贴膜等日期-only输入，服务端复用 `backend/src/utils/time.js` 的 `normalizeBusinessDateTime()` 补为“所选日期 + 提交时当前北京时间”；完整日期时间输入保留提交的时分秒。配件采购入库要求完整秒级时间并由同一公共校验工具核验。页面展示按场景选择精度，日期列表使用 `formatDate()`，流水、商品明细、凭证和详情使用 `formatDateTime()`。数据库字段仍保存完整 `YYYY-MM-DD HH:mm:ss`，展示层不得因为只显示日期而截断存储值。
+
 ## 允许的技术计时
 
 `Date.now()` 可以用于缓存 TTL、请求去重、性能统计、动画/手势时长、限流窗口、随机 ID 和文件名唯一性。这些场景不属于业务日期显示，不需要强行转换为 `TimeUtil`。

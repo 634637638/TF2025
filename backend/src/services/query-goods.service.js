@@ -3,7 +3,7 @@
 const QueryGoodsRepository = require('../repositories/query-goods.repository')
 const SalesGoodsReturnService = require('./sales-goods-return.service')
 const { isIntegerInput } = require('../utils/input-values')
-const { validId } = require('../utils/sale-input')
+const { validId, moneyCents } = require('../utils/sale-input')
 const { getActorId } = require('../types/actor')
 const { resolveStoreScope } = require('../utils/store-scope')
 const { hasUnifiedPermission } = require('../middleware/unified-auth')
@@ -56,7 +56,9 @@ const historyRecord = (row, options, replacement = null) => {
   // 明确列出公开字段，不透传请求摘要、原始快照和内部库存/积分凭据。
   return { id: historyInteger(row.id, 1), operation_type: row.operation_type, replacement,
     replacement_amount: (settlement.replacement_cents || 0) / 100,
-    exchange_credit_amount: replacement ? Math.max(0, settlement.replacement_cents - collection) / 100 : 0,
+    additional_amount: (settlement.additional_cents || 0) / 100,
+    exchange_credit_amount: replacement ? Math.max(0, settlement.replacement_cents - Math.min(settlement.replacement_cents,
+      Math.max(0, collection - (settlement.additional_cents || 0)))) / 100 : 0,
     quantity, serial_numbers: fact.serial_numbers, return_reason: fact.return_reason,
     gift_charge_quantity: chargedQuantity, gift_charge_amount: (settlement.gift_charge_cents || 0) / 100,
     base_refund_amount: base / 100, points_recovery_amount: recovery / 100, points_compensation_amount: compensation / 100,
@@ -205,8 +207,10 @@ class QueryGoodsService {
     await this.authorize(actor)
     if (!await this.permissionCheck(actor, 'customers:view')) reject('无权查询客户商品记录', 403, 'PERMISSION_DENIED')
     if (!validId(customerId)) reject('客户标识无效')
-    if (Object.keys(input).some(key => !['page', 'page_size'].includes(key))) reject('存在不支持的查询条件')
-    const query = { page: integer(input.page, 1, 1000000), page_size: integer(input.page_size, 10, 100), customer_id: Number(customerId) }
+    if (Object.keys(input).some(key => !['page', 'page_size', 'film_only'].includes(key)) ||
+      input.film_only !== undefined && ![true, 'true'].includes(input.film_only)) reject('存在不支持的查询条件')
+    const query = { page: integer(input.page, 1, 1000000), page_size: integer(input.page_size, 10, 100), customer_id: Number(customerId),
+      ...(input.film_only === undefined ? {} : { film_only: true }) }
     const scope = resolveStoreScope(actor, null)
     const result = await this.readSnapshot(connection => this.repository.list(scope, query, [], connection))
     // 定向列表不输出客户主档、采购成本/利润或内部订单明细ID；原单仍独立鉴权。
@@ -215,6 +219,7 @@ class QueryGoodsService {
       'unit_price', 'total_price', 'points_awarded', 'points_used', 'deduction_amount', 'operator_name', 'sale_time', 'remarks', 'has_snapshot']
     return { ...result, data: result.data.map(row => ({ ...Object.fromEntries(keys.map(key => [key, row[key]])),
       linked_phone_invoice: scope.allStores || scope.storeIds.includes(Number(row.linked_phone_store_id)) ? row.linked_phone_invoice : null,
+      has_snapshot: row.has_snapshot === true || row.has_snapshot === 1 || row.has_snapshot === '1',
       has_order: Boolean(row.order_id) })) }
   }
   async phoneReceipt(actor, saleId) {
@@ -312,7 +317,7 @@ class QueryGoodsService {
   /** 换货历史必须核验实际关系表及完整祖先链，不能仅按JSON声明展示新商品。 */
   async verifyExchangeHistory(connection, header, actor) {
     const [entry] = readAftersaleSettlement(header, header.settlement_items)
-    if (entry.settlement.version !== 3) invalidHistory()
+    if (![3, 4].includes(entry.settlement.version)) invalidHistory()
     const exchange = entry.fact.exchange
     let data
     try { data = await this.goodsReturns.load(connection, { order_id: exchange.replacement_order_id,
@@ -327,10 +332,30 @@ class QueryGoodsService {
       Number(original.store_id) !== Number(header.original_store_id) || Number(original.customer_id) !== Number(header.customer_id) ||
       Number(data.order.customer_id) !== Number(header.customer_id) || Number(data.order.store_id) !== Number(header.store_id) ||
       data.lineage.root_order_id !== exchange.root_order_id || data.lineage.root_item_id !== exchange.root_item_id ||
-      Number(link.exchange_credit_cents) !== Math.max(0, entry.settlement.replacement_cents - entry.settlement.collection_cents) ||
+      Number(link.exchange_credit_cents) !== Math.max(0, entry.settlement.replacement_cents - Math.min(entry.settlement.replacement_cents, Math.max(0, entry.settlement.collection_cents - (entry.settlement.additional_cents || 0)))) ||
       typeof data.order.order_no !== 'string' || !data.order.order_no.trim() ||
       typeof data.row.sale_no !== 'string' || !data.row.sale_no.trim() ||
       typeof data.row.sale_operator_name !== 'string' || !data.row.sale_operator_name.trim()) invalidHistory()
+    if (entry.settlement.version === 4) {
+      const additions = await repository.exchangeAdditions(connection, Number(header.id), { lock: false })
+      const additionalCents = Number(entry.settlement.additional_cents || 0)
+      if (additionalCents > 0 && (!additions.length || additions.reduce((sum, row) => sum + Number(row.amount_cents), 0) !== additionalCents)) invalidHistory()
+      if (moneyCents(data.order.final_amount) !== entry.settlement.replacement_cents + additionalCents ||
+        moneyCents(data.order.paid_amount) !== Math.min(entry.settlement.collection_cents, entry.settlement.replacement_cents + additionalCents)) invalidHistory()
+      for (const row of additions) {
+        if (Number(row.replacement_order_id) !== Number(data.order.id) || !validId(row.replacement_item_id) ||
+          Number(row.quantity) < 1 || !Number.isSafeInteger(Number(row.amount_cents)) || Number(row.amount_cents) < 0) invalidHistory()
+        let addition
+        try { addition = await this.goodsReturns.load(connection, { order_id: Number(row.replacement_order_id), item_id: Number(row.replacement_item_id),
+          quantity: 0, serial_numbers: [] }, actor, { lock: false }) }
+        catch (error) { if (error.statusCode === 404) invalidHistory(); throw error }
+        const amount = Number(row.amount_cents)
+        if (Number(addition.order.customer_id) !== Number(header.customer_id) || Number(addition.order.store_id) !== Number(header.store_id) ||
+          Number(addition.plan.item.quantity) !== Number(row.quantity) || !['sale', 'gift'].includes(addition.plan.item.sale_type) ||
+          addition.plan.item.sale_type === 'sale' && amount <= 0 || addition.plan.item.sale_type === 'gift' && amount !== 0 ||
+          Math.round(Number(addition.plan.item.unit_price) * Number(row.quantity) * 100) !== amount) invalidHistory()
+      }
+    }
     return { order_no: data.order.order_no, sale_no: data.row.sale_no, name: data.plan.item.name,
       operator_name: data.row.sale_operator_name, serial_numbers: data.plan.item.serial_numbers }
   }

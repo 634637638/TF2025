@@ -24,3 +24,19 @@ test('backup compression supports the current archiver module export', async t =
   assert.equal(result.size_bytes, fs.statSync(output).size)
   assert.ok(result.duration_ms >= 0)
 })
+
+test('备份密码使用 AES-256 ZIP 加密，未提供密码无法直接读取', async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tf-backup-encrypted-'))
+  const source = path.join(root, 'source')
+  const output = path.join(root, 'backup.zip')
+  fs.mkdirSync(source, { recursive: true })
+  fs.writeFileSync(path.join(source, 'secret.txt'), 'tf2025-encrypted-backup')
+
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }))
+
+  await backupService.compressBackup(source, output, { password: 'backup-test-password' })
+  const header = fs.readFileSync(output)
+  assert.deepEqual([...header.subarray(0, 4)], [0x50, 0x4b, 0x03, 0x04])
+  assert.equal((header.readUInt16LE(6) & 1) === 1, true)
+  assert.equal(header.includes(Buffer.from('backup-test-password')), false)
+})

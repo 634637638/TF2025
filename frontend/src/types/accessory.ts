@@ -134,6 +134,7 @@ export interface GoodsAftersaleRecord {
   operation_type: 'goods_return' | 'phone_return' | 'goods_exchange'
   replacement: GoodsExchangeReplacement | null
   replacement_amount: number | null
+  additional_amount: number | null
   /** 原件用于抵付新件的金额，不是另一笔现金收款。 */
   exchange_credit_amount: number | null
   quantity: number | null

@@ -44,7 +44,7 @@ async function fixture(t) {
     },
     async createBackup(type) {
       created.push(type)
-      const filename = `${type === 'database' ? 'sql-' : 'backup_'}20261110_${String(++serial).padStart(6, '0')}.${type === 'database' ? 'sql' : 'zip'}`
+      const filename = `${type === 'database' ? 'sql-' : 'backup_'}20261110_${String(++serial).padStart(6, '0')}.zip`
       add(filename)
       return { filename }
     }
@@ -94,9 +94,9 @@ test('旧状态默认不启用生成或清理；策略校验失败保持原子�
     assert.throws(() => f.save({ schedule: { enabled: true, intervalHours: 24, type: 'full' }, retention }), error => error.statusCode === 400)
     assert.deepEqual(f.repository.read(), before)
   }
-  const result = f.save({ schedule: { enabled: true, intervalHours: 24, type: 'full', nextRunAt: 'past', lastStatus: 'success' },
+  const result = f.save({ enabled: true, schedule: { enabled: true, intervalHours: 24, type: 'full', nextRunAt: 'past', lastStatus: 'success' },
     retention: { enabled: true, sqlCount: 10, zipCount: 10, lastError: 'injected' } })
-  assert.equal(result.schedule.nextRunAt, new Date(f.now() + 24 * HOUR).toISOString())
+  assert.equal(result.schedule.nextRunAt, new Date(f.now()).toISOString())
   assert.equal(result.schedule.lastStatus, 'idle')
   assert.equal(result.retention.lastError, '')
 })
@@ -106,12 +106,8 @@ test('到期自动生成 SQL 并进入既有上传队列，重启保留下次时
   const input = { enabled: true, intervalHours: 6, type: 'database' }
   f.save({ enabled: true, schedule: input })
   await f.service.tick()
-  assert.deepEqual(f.created, [])
-  f.advance(6 * HOUR)
-  await f.service.tick()
   assert.deepEqual(f.created, ['database'])
-  assert.deepEqual(f.uploaded, ['sql-20261110_000001.sql'])
-  assert.equal(f.service.getSettings().schedule.lastStatus, 'success')
+  assert.deepEqual(f.uploaded, ['sql-20261110_000001.zip'])
   const next = f.service.getSettings().schedule.nextRunAt
   f.save({ enabled: true, schedule: input })
   assert.equal(f.service.getSettings().schedule.nextRunAt, next, '不改规则的保存不顺延计划')
@@ -119,17 +115,34 @@ test('到期自动生成 SQL 并进入既有上传队列，重启保留下次时
   assert.equal(restarted.getSettings().schedule.nextRunAt, next)
   await restarted.tick()
   assert.equal(f.created.length, 1)
+  f.advance(6 * HOUR)
+  await restarted.tick()
+  assert.deepEqual(f.created, ['database', 'database'])
+  assert.deepEqual(f.uploaded, ['sql-20261110_000001.zip', 'sql-20261110_000002.zip'])
+  assert.equal(f.service.getSettings().schedule.lastStatus, 'success')
   f.advance(30 * HOUR)
   await restarted.tick()
   await restarted.tick()
-  assert.equal(f.created.length, 2, '不追补停机期间的每个周期')
+  assert.equal(f.created.length, 3, '不追补停机期间的每个周期')
   assert.equal(restarted.getSettings().schedule.nextRunAt, new Date(f.now() + 6 * HOUR).toISOString())
-  assert.equal(f.uploaded.length, 2)
+  assert.equal(f.uploaded.length, 3)
+})
+
+test('首次开启自动备份时立即先生成完整备份，再上传生成文件', async t => {
+  const f = await fixture(t)
+  const enabledAt = f.now()
+  f.save({ enabled: true })
+  assert.equal(f.service.getSettings().schedule.enabled, true)
+  assert.equal(f.service.getSettings().schedule.nextRunAt, new Date(enabledAt).toISOString())
+  await f.service.tick()
+  assert.deepEqual(f.created, ['full'])
+  assert.deepEqual(f.uploaded, ['backup_20261110_000001.zip'])
+  assert.equal(f.service.getSettings().schedule.lastStatus, 'success')
 })
 
 test('同一时刻的周期检查及其他进程不能重复生成，手动生成占用时推迟执行', async t => {
   const f = await fixture(t)
-  f.save({ schedule: { enabled: true, intervalHours: 1, type: 'full' } })
+  f.save({ enabled: true, schedule: { enabled: true, intervalHours: 1, type: 'full' } })
   f.advance(HOUR)
   f.backup.creatingBackup = true
   await f.service.tick()
@@ -175,7 +188,7 @@ test('生成失败不上传半成品，持久化脱敏错误及重试时间，�
 
 test('异常重启识别中断记录并退避，关闭生成规则不再执行也不影响上传开关', async t => {
   const f = await fixture(t)
-  f.save({ schedule: { enabled: true, intervalHours: 1, type: 'full' } })
+  f.save({ enabled: true, schedule: { enabled: true, intervalHours: 1, type: 'full' } })
   const state = f.repository.read()
   state.schedule.lastStatus = 'running'
   f.repository.write(state)

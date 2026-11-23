@@ -24,7 +24,7 @@ const goods=[{id:56,name:'原装充电器',brand_name:'实际品牌',product_mod
 window.mockRead=(url,config)=>{
   if(url.startsWith('/query/goods/')&&url.endsWith('/order'))return {success:true,data:window.fixture.lastOrder};
   if(url==='/sales/checkout/customer-summary')return {success:true,data:{member_number:'VIP001',points:1000,available_points:1000,balance:25}};
-  if(url!=='/accessories/sale-options')throw Error('未登记的隔离读取');
+  if(!['/accessories/sale-options','/query/goods/sale-options'].includes(url))throw Error('未登记的隔离读取');
   window.fixture.reads.push(structuredClone(config.params));
   const rows=config.params.search_mode==='serial' ? ['00AAA','00BBB'].filter(sn=>!config.params.search||(config.params.match_mode==='exact'?sn===config.params.search:sn.includes(config.params.search))).map(serial_number=>({...goods[0],serial_number,quantity:1,serial_quantity:1})) : goods.filter(row=>!config.params.search||(config.params.match_mode==='exact'?row.barcode===config.params.search:[row.name,row.category,row.barcode,row.product_model].some(value=>value.includes(config.params.search))));
   return {success:true,data:{data:rows,pagination:{total:rows.length}}};

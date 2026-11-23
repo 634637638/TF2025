@@ -6,7 +6,7 @@ const FilmServiceController = require('../controllers/film-service.controller')
 const SalesCheckoutController = require('../controllers/sales-checkout.controller')
 const AccessoryController = require('../controllers/accessory.controller')
 const { unifiedAuth, requirePermission, requireAnyPermission } = require('../middleware/unified-auth')
-const { cacheMiddleware } = require('../middleware/cache')
+const { cacheMiddleware, noStore } = require('../middleware/cache')
 const { CACHE_TTL } = require('../config/constants')
 
 // 实例化控制器
@@ -38,7 +38,7 @@ router.post('/goods/checkout/quote', requirePermission('query:view'), requirePer
 router.post('/goods/checkout', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift']), salesCheckoutController.queryGoodsCheckout.bind(salesCheckoutController))
 
 router.get('/goods', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.list.bind(queryGoodsController))
-router.get('/customers/:customerId/goods', requirePermission('customers:view'), requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.customerHistory.bind(queryGoodsController))
+router.get('/customers/:customerId/goods', noStore, requirePermission('customers:view'), requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.customerHistory.bind(queryGoodsController))
 router.get('/goods/:id', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.detail.bind(queryGoodsController))
 router.get('/goods/:id/order', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.goodsOrder.bind(queryGoodsController))
 router.get('/sales/:saleId/order', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.phoneOrder.bind(queryGoodsController))

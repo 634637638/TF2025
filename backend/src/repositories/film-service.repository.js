@@ -80,9 +80,13 @@ class FilmServiceRepository extends BaseRepository {
   async history(connection, customerId, { page, page_size: pageSize, phone_id: phoneId = null, sale_type: saleType = 'all' }) {
     const saleExists = `EXISTS (SELECT 1 FROM sales_order_items sale_item WHERE sale_item.order_id = f.order_id
       AND sale_item.item_type = 'accessory'
+      AND (COALESCE(JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.automatic')), 'false') NOT IN ('true', '1')
+        OR sale_item.linked_phone_sale_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.sale_id')) AS UNSIGNED))
       AND JSON_UNQUOTE(JSON_EXTRACT(sale_item.snapshot, '$.sale_type')) = 'sale')`
     const giftExists = `EXISTS (SELECT 1 FROM sales_order_items gift_item WHERE gift_item.order_id = f.order_id
       AND gift_item.item_type = 'accessory'
+      AND (COALESCE(JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.automatic')), 'false') NOT IN ('true', '1')
+        OR gift_item.linked_phone_sale_id = CAST(JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.sale_id')) AS UNSIGNED))
       AND JSON_UNQUOTE(JSON_EXTRACT(gift_item.snapshot, '$.sale_type')) = 'gift')`
     const filter = saleType === 'sale' ? `AND ${saleExists}` : saleType === 'gift' ? `AND NOT ${saleExists} AND ${giftExists}` : ''
     const [[summary]] = await connection.execute(`SELECT COUNT(*) AS total,
@@ -99,16 +103,22 @@ class FilmServiceRepository extends BaseRepository {
     const [rows] = await connection.execute(`SELECT f.id, f.order_id, o.order_no, f.quantity,
       f.store_id, st.name AS store_name, f.operator_id, u.name AS operator_name,
       f.business_time, f.created_at, f.phone_id, f.model_id,
-      JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.model_name')) AS phone_model_name FROM customer_film_services f
+      JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.model_name')) AS phone_model_name,
+      JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.sale_id')) AS phone_sale_id,
+      JSON_UNQUOTE(JSON_EXTRACT(f.phone_snapshot, '$.automatic')) AS automatic FROM customer_film_services f
       JOIN sales_orders o ON o.id = f.order_id LEFT JOIN stores st ON st.id = f.store_id
       LEFT JOIN users u ON u.id = f.operator_id WHERE f.customer_id = ? ${filter}
       ORDER BY f.id DESC LIMIT ? OFFSET ?`, [customerId, pageSize, (page - 1) * pageSize])
     const filteredTotal = saleType === 'sale' ? totals.paid_count : saleType === 'gift' ? totals.free_count : totals.total
     if (!rows.length) return { rows, ...totals, filtered_total: filteredTotal, items: [] }
-    const [items] = await connection.execute(`SELECT i.order_id, i.quantity, i.total_amount,
+    const [items] = await connection.execute(`SELECT i.order_id, i.accessory_id, i.linked_phone_sale_id, i.quantity, i.total_amount,
       JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.name')) AS name,
+      COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.unit')), 'null'), unit.name, t.unit, a.unit) AS unit,
       JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.sale_type')) AS sale_type
-      FROM sales_order_items i WHERE i.item_type = 'accessory'
+      FROM sales_order_items i LEFT JOIN accessories a ON a.id = i.accessory_id
+      LEFT JOIN accessories t ON t.id = a.template_id
+      LEFT JOIN accessory_units unit ON unit.id = COALESCE(t.unit_id, a.unit_id)
+      WHERE i.item_type = 'accessory'
         AND i.order_id IN (${rows.map(() => '?').join(',')}) ORDER BY i.id`, rows.map(row => row.order_id))
     return { rows, ...totals, filtered_total: filteredTotal, items }
   }

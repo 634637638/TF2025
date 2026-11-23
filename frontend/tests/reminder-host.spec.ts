@@ -64,6 +64,46 @@ afterEach(() => {
 })
 
 describe('全局提醒改期与完成回归', () => {
+  it('旧提醒请求未返回时退出并重新登录会重新拉取未完成待办', async () => {
+    let finishFirstRequest!: (response: { success: boolean; data: ReturnType<typeof reminder>[] }) => void
+    pendingGet.mockImplementationOnce(() => new Promise(resolve => { finishFirstRequest = resolve }))
+      .mockResolvedValueOnce({ success: true, data: [reminder({ title: '重新登录后的待办' })] })
+    const wrapper = await render()
+
+    const authStore = useAuthStore()
+    authStore.isAuthenticated = false
+    await flushPromises()
+    authStore.isAuthenticated = true
+    await flushPromises()
+
+    finishFirstRequest({ success: true, data: [reminder({ title: '退出前的旧待办' })] })
+    await flushPromises()
+
+    expect(api.get.mock.calls.filter(([url]) => url === '/reminders/my/pending')).toHaveLength(2)
+    expect(wrapper.text()).toContain('重新登录后的待办')
+    expect(wrapper.text()).not.toContain('退出前的旧待办')
+  })
+
+  it('重新登录时用本人未完成清单绕过普通提示节流', async () => {
+    activeGet.mockResolvedValue({ success: true, data: [reminder()] })
+    pendingGet.mockResolvedValue({ success: true, data: [] })
+    const wrapper = await render()
+    const authStore = useAuthStore()
+
+    authStore.isAuthenticated = false
+    await flushPromises()
+    authStore.isAuthenticated = true
+    await flushPromises()
+
+    const pendingCalls = api.get.mock.calls.filter(([url]) => url === '/reminders/my/pending')
+    expect(pendingCalls.at(-1)?.[1]).toEqual({
+      showLoading: false,
+      useCache: false,
+      params: { queued_occurrence_ids: '11' }
+    })
+    expect(wrapper.text()).not.toContain('待办')
+  })
+
   it('改期后尚未到提醒时间或已被处理的旧弹窗在轮询时撤下', async () => {
     pendingGet.mockResolvedValueOnce({ success: true, data: [reminder()] })
       .mockResolvedValue({ success: true, data: [] })

@@ -47,6 +47,10 @@ class CloudBackupService extends BaseService {
     this.clientActions = new Set()
     this.lastError = ''
     this.backup.canDeleteBackup = filename => !this.isProtected(filename)
+    this.backup.setEncryptionPasswordProvider?.(() => {
+      const encrypted = this.repository.read().config.backupPassword
+      return encrypted ? decryptConfigSecret(encrypted) : ''
+    })
   }
 
   account(state, accountId = state.config.accountId) {
@@ -74,6 +78,7 @@ class CloudBackupService extends BaseService {
     return {
       ...this.getAccounts(), enabled: state.config.enabled === true, hasToken: Boolean(account?.token),
       driveId: account?.driveId || '', folderId: account?.folderId || '', folderName: account?.folderName || '',
+      hasBackupPassword: Boolean(state.config.backupPassword),
       schedule: this.getSchedule(state), retention: this.getRetention(state), lastError: this.lastError
     }
   }
@@ -151,7 +156,25 @@ class CloudBackupService extends BaseService {
     if (!release) throw this.createError('上传任务正在执行，请稍后修改云盘配置', 409)
     try {
       const state = this.repository.read()
+      const backupPassword = input.backupPassword
+      if (input.clearBackupPassword !== undefined && typeof input.clearBackupPassword !== 'boolean') {
+        throw this.createError('清除备份密码参数无效', 400)
+      }
+      if (backupPassword !== undefined && (typeof backupPassword !== 'string'
+        || backupPassword.length > 128 || (backupPassword.length > 0 && backupPassword.length < 8)
+        || /[\u0000-\u001f\u007f]/.test(backupPassword))) {
+        throw this.createError('备份密码须为 8–128 个字符，且不能包含控制字符', 400)
+      }
+      const wasEnabled = state.config.enabled === true
       this.updatePolicies(state, input)
+      const currentSchedule = this.getSchedule(state)
+      const shouldStartAutomaticBackup = input.enabled && (!wasEnabled || !currentSchedule.enabled)
+      if (input.enabled) {
+        state.schedule = { ...currentSchedule, enabled: true,
+          nextRunAt: shouldStartAutomaticBackup ? new Date(this.now()).toISOString() : currentSchedule.nextRunAt }
+      } else {
+        state.schedule = { ...currentSchedule, enabled: false, nextRunAt: null }
+      }
       const account = this.account(state, input.accountId)
       if (!input.enabled) {
         for (const task of state.tasks) {
@@ -177,9 +200,12 @@ class CloudBackupService extends BaseService {
         folderName: typeof input.folderName === 'string' ? input.folderName.trim().slice(0, 1024)
           : changed ? '' : account.folderName || '',
         revision: changed ? crypto.randomUUID() : account.revision })
-      state.config = { enabled: input.enabled, accountId: account.id }
+      if (input.clearBackupPassword === true) delete state.config.backupPassword
+      else if (backupPassword) state.config.backupPassword = encryptConfigSecret(backupPassword)
+      state.config = { ...state.config, enabled: input.enabled, accountId: account.id }
       this.repository.write(state)
       this.lastError = ''
+      if (shouldStartAutomaticBackup) this.kick()
     } finally { release() }
     return this.getSettings()
   }
@@ -615,8 +641,12 @@ class CloudBackupService extends BaseService {
         try { files.push({ ...file, info: this.backupInfo(file.filename) }) }
         catch (error) { if (error.statusCode !== 400 && error.code !== 'ENOENT') failed = true }
       }
-      for (const [extension, keep] of [['.sql', retention.sqlCount], ['.zip', retention.zipCount]]) {
-        const group = files.filter(file => file.filename.endsWith(extension))
+      for (const [type, keep] of [['database', retention.sqlCount], ['full', retention.zipCount]]) {
+        const group = files.filter(file => {
+          const database = this.backup.isDatabaseBackupFilename?.(file.filename)
+            ?? /^(?:sql-|database_)\d{8}_\d{6}\.(?:sql|zip)$/.test(file.filename)
+          return (file.type || (database ? 'database' : 'full')) === type
+        })
           .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.filename.localeCompare(a.filename))
         for (const file of group.slice(keep)) {
           try {

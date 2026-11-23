@@ -15,7 +15,7 @@ const CustomerPointsLedgerService = require('../src/services/customer-points-led
 const { ledgerExecutor } = require('./helpers/customer-points-ledger')
 const inventoryFixture = require('./helpers/accessory-inventory')
 const { normalizePointsConfig, quoteCustomerPoints } = require('../src/utils/customer-points-rules')
-const { normalizeDateTimeWithCurrentTime } = require('../src/utils/time')
+const { normalizeBusinessDateTime } = require('../src/utils/time')
 
 const actor = { id: 7, store_ids: [1, 2], name: '操作员' }
 const request = () => ({ request_key: 'a'.repeat(32), store_id: 1, operator_id: 8,
@@ -25,8 +25,8 @@ const request = () => ({ request_key: 'a'.repeat(32), store_id: 1, operator_id: 
     { key: 'gift', accessory_id: 5, quantity: 1, unit_price: 0, sale_type: 'gift', linked_phone_id: 13, serial_numbers: ['00aa'] }],
   payment_info: { payment_method: 'cash', payment_amount: 600 }, remarks: '整批一个备注' })
 
-function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneStore = 1, goodsStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule, transactionFailure, normalizeGoodsTime = value => `${String(value).slice(0, 10)} 10:20:30` } = {}) {
-  const state = { orders: [], items: [], payments: [], sales: [], accessorySales: [], stock: 4,
+function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneStore = 1, goodsStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule, transactionFailure, automaticFilms = [], normalizeBusinessTime = value => normalizeBusinessDateTime(value, () => '2026-11-20 10:20:30') } = {}) {
+  const state = { orders: [], items: [], payments: [], sales: [], accessorySales: [], filmServices: [], stock: 4,
     points: initialPoints, entries: trackedPoints ? [{ id: 1, customer_id: 9, entry_type: 'award', source_type: 'phone_sale', source_id: 999, points: trackedPoints }] : [], allocations: [], customerUpdates: [], sold: [], staged: [], serials: [{ id: 1, serial_number: '00AA', accessory_id: 5, store_id: goodsStore,
       status: 'in_stock', stock_in_id: 30, purchase_cost: '10.25' }], serialEvents: [] }
   let snapshot, failure = failAt, tail = Promise.resolve(), remainingDeadlocks = deadlocks, active = false
@@ -57,7 +57,7 @@ function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneS
     async customerByPhone(db) { check(db); return { id: 9, points: state.points } },
     async lockCustomer(db) { check(db); return { id: 9, points: state.points } },
     async awardPoints(db, id, points) { check(db); if (failure === 'points') return false; state.points += points; return true },
-    async phoneSnapshots(db, ids) { check(db); return ids.map(id => ({ id, is_new: state.staged.find(row => row.id === id)?.values[10] ?? (id === 12 ? 1 : 0), store_id: phoneStore, imei: `IMEI-${id}`, brand_name: '旧品牌' })) },
+    async phoneSnapshots(db, ids) { check(db); return ids.map(id => ({ id, model_id: 2, model_name: '手机型号', is_new: state.staged.find(row => row.id === id)?.values[10] ?? (id === 12 ? 1 : 0), store_id: phoneStore, imei: `IMEI-${id}`, brand_name: '旧品牌' })) },
     async createOrder(db, row) { check(db); const id = state.orders.length + 1; state.orders.push({ ...row, id }); return id },
     async sales(db, ids) { check(db); return state.sales.filter(row => ids.includes(row.id)).map(row => ({ id: row.id, phone_id: row.phoneId, sale_price: row.salePrice, purchase_cost: row.purchaseCost, invoice_number: row.invoiceNumber, points_awarded: row.points })) },
     async createItem(db, row) { check(db); if (failure === 'item' && row.type === 'accessory') throw new Error('item-failed'); const id = state.items.length + 1; state.items.push(structuredClone({ ...row, id })); return id },
@@ -97,14 +97,21 @@ function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneS
     async createSerialEvent(row, db) { check(db); if (failure === 'serial') throw new Error('serial-failed'); state.serialEvents.push(row) },
     async deductStock(id, store, quantity, db) { check(db); if (store !== goodsStore || state.stock < quantity) return false; state.stock -= quantity; return true }
   }, inventoryService: inventoryFixture(state, check) })
+  // 夹具连接不实现发票序列表，商品销售单号使用确定性桩隔离结算行为测试。
+  accessories.generateSaleNo = () => `PS-TEST-${state.accessorySales.length + 1}`
   const inventory = new InventoryService({ repository: {
     async validateQuickSaleReferences(db) { check(db); return validReferences },
     async validateQuickCheckoutSource(db) { check(db); return source },
     async hasCustomerPhoneDuplicate(db) { check(db); return duplicateCustomer },
     async createQuickSalePhone(db, values) { check(db); const id = 900 + state.staged.length; state.staged.push({ id, values }); return id }
   } })
-  const service = new SalesCheckoutService({ repository, phones, accessories, inventory, pointsLedger,
-    normalizeDateWithCurrentTime: normalizeGoodsTime,
+  const films = automaticFilms.length ? { async prepareAutomaticForSale() { return structuredClone(automaticFilms) }, async appendAutomatic(db, row) {
+    check(db)
+    if (failure === 'film-service') throw new Error('film-service-failed')
+    state.filmServices.push(structuredClone(row))
+  } } : null
+  const service = new SalesCheckoutService({ repository, phones, accessories, inventory, pointsLedger, autoFilm: automaticFilms.length > 0, films,
+    normalizeBusinessTime,
     creditPoints: async (db, id, points, { sources }) => {
       assert.deepEqual(sources, state.items.filter(row => row.type === 'accessory').map(row => ({ item_id: row.id, points: row.points_awarded })))
       assert.equal(sources.reduce((sum, row) => sum + row.points, 0), points)
@@ -195,6 +202,7 @@ test('快速设备价格精度、身份和不支持字段不能绕过共同结�
   }
   const valid = normalizeQuickCheckoutPhone({ ...quickRequest().quick_phone, purchase_cost: null, serial_number: 'noimei', imei: 'NOIMEI' })
   assert.equal(valid.purchase_cost, null)
+  assert.match(valid.inventory_time, /^\d{4}-\d{2}-\d{2} (?!00:00:00)\d{2}:\d{2}:\d{2}$/)
   assert.equal(valid.serial_number, 'NOIMEI')
   const f = fixture(), body = quickRequest()
   body.phones = [{ phone_id: 12, sale_price: 100 }]
@@ -228,6 +236,19 @@ test('混合批量结算复用真实手机/商品服务：独立销售、共用�
   f.product.name = '后续改名'
   assert.equal(f.state.items.find(row => row.type === 'accessory').snapshot.name, '原商品')
   assert.equal('purchase_cost' in result, false)
+})
+
+test('自动赠膜逐台追加贴膜历史；历史写入失败时共同销售与库存整体回滚', async () => {
+  const automaticFilms = [12, 13].map(phoneId => ({ key: `auto-film:${phoneId}`, accessory_id: 5, quantity: 1,
+    unit_price: 0, sale_type: 'gift', linked_phone_id: phoneId, auto_film: true }))
+  const body = request(); body.accessories = []; body.payment_info.payment_amount = 300
+  const f = fixture({ automaticFilms })
+  await f.service.checkout(body, actor)
+  assert.deepEqual(f.state.filmServices.map(row => [row.orderId, row.request.linked_phone_id, row.saleId]),
+    [[1, 12, 21], [1, 13, 22]])
+  const failed = fixture({ automaticFilms, failAt: 'film-service' })
+  await assert.rejects(failed.service.checkout(body, actor), /film-service-failed/)
+  assert.deepEqual(failed.state, failed.initial)
 })
 
 test('相同请求及并发模拟只落一单，不重复扣库存/积分；同键变更内容或操作者拒绝', async () => {
@@ -330,12 +351,13 @@ test('独立商品购买和赠送保留补单日期，时分秒及收款时间�
 })
 
 test('补单时间工具校验北京时间日期并保留重试幂等身份', async () => {
-  assert.equal(normalizeDateTimeWithCurrentTime('2026-11-18', () => '2026-11-20 09:08:07'), '2026-11-18 09:08:07')
-  assert.equal(normalizeDateTimeWithCurrentTime('2026-02-30', () => '2026-11-20 09:08:07'), null)
-  assert.equal(normalizeDateTimeWithCurrentTime('2026-11-18', () => 'not-a-time'), null)
+  assert.equal(normalizeBusinessDateTime('2026-11-18', () => '2026-11-20 09:08:07'), '2026-11-18 09:08:07')
+  assert.equal(normalizeBusinessDateTime('2026-02-30', () => '2026-11-20 09:08:07'), null)
+  assert.equal(normalizeBusinessDateTime('2026-11-18', () => 'not-a-time'), null)
+  assert.equal(normalizeBusinessDateTime('2026-11-18 14:30:22', () => '2026-11-20 09:08:07'), '2026-11-18 14:30:22')
 
   let currentTime = '2026-11-20 09:08:07'
-  const f = fixture({ normalizeGoodsTime: date => `${String(date).slice(0, 10)} ${currentTime.slice(11)}` })
+  const f = fixture({ normalizeBusinessTime: date => normalizeBusinessDateTime(date, () => currentTime) })
   const body = request()
   body.request_key = 'b'.repeat(32)
   body.phones = []
@@ -348,6 +370,17 @@ test('补单时间工具校验北京时间日期并保留重试幂等身份', as
   assert.deepEqual(retry, first)
   assert.equal(f.state.orders.length, 1)
   assert.equal(f.state.orders[0].time, '2026-11-18 09:08:07')
+})
+
+test('共同结算的日期-only输入保存为当前北京时间，完整时间输入保留时分秒', () => {
+  const f = fixture({ normalizeBusinessTime: value => normalizeBusinessDateTime(value, () => '2026-11-20 10:20:30') })
+  const dateOnly = request()
+  dateOnly.sale_time = '2026-11-18'
+  assert.equal(f.service.normalize(dateOnly, actor).time, '2026-11-18 10:20:30')
+
+  const fullDateTime = request()
+  fullDateTime.sale_time = '2026-11-18 14:35:42'
+  assert.equal(f.service.normalize(fullDateTime, actor).time, '2026-11-18 14:35:42')
 })
 
 test('商品数量行逐件积分和实付分组保存原单，改当前商品不改历史，重试不重建分组', async () => {

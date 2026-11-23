@@ -16,7 +16,8 @@ const migrations = Object.freeze([
   { name: 'film-services', dependencies: ['sales-checkout'] },
   { name: 'film-cancellations', dependencies: ['film-services', 'sales-aftersales'] },
   { name: 'accessory-template-colors', dependencies: [] },
-  { name: 'film-template-matching', dependencies: ['film-services', 'accessory-template-colors'] }
+  { name: 'film-template-matching', dependencies: ['film-services', 'accessory-template-colors'] },
+  { name: 'film-order-phone-index', dependencies: ['film-template-matching'] }
 ])
 
 const failed = message => Object.assign(new Error(message), { code: 'ACCESSORY_SCHEMA_CHECK_INVALID' })

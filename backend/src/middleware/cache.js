@@ -21,6 +21,15 @@ function cleanupExpiredCache() {
 const cleanupTimer = setInterval(cleanupExpiredCache, 60000)
 cleanupTimer.unref?.()
 
+function noStore(req, res, next) {
+  delete req.headers?.['if-none-match']
+  delete req.headers?.['if-modified-since']
+  res.set('Cache-Control', 'private, no-store')
+  res.set('Pragma', 'no-cache')
+  res.set('Expires', '0')
+  next()
+}
+
 // 如果缓存过大，删除最旧的条目
 function evictOldestEntries() {
   if (cache.size > defaultOptions.maxSize) {
@@ -39,11 +48,9 @@ function cacheMiddleware(options = {}) {
   return (req, res, next) => {
     // 认证响应必须每次执行门店及字段授权，禁止用整包缓存绕过控制器。
     if (opts.ttl <= 0 || req.user || req.headers?.authorization || req.headers?.cookie) {
-      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-      res.set('Pragma', 'no-cache')
-      res.set('Expires', '0')
       res.set('Surrogate-Control', 'no-store')
-      return next()
+      noStore(req, res, next)
+      return
     }
 
     // 只缓存GET请求
@@ -127,6 +134,7 @@ function getCacheStats() {
 
 module.exports = {
   cacheMiddleware,
+  noStore,
   clearCache,
   getCacheStats,
   cleanupExpiredCache

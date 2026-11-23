@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus, { ElCheckbox, ElForm, ElFormItem, ElInput, ElInputNumber, ElSelect } from 'element-plus'
+import ElementPlus, { ElCheckbox, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
 import Dialog from '@/views/query/page/GoodsReturnDialog.vue'
-import SalesGoodsLine from '@/views/sales/page/SalesGoodsLine.vue'
+import SalesAdditionalGoods from '@/views/sales/page/SalesAdditionalGoods.vue'
 import { isGoodsExchangeContext, isGoodsExchangeQuote, isGoodsExchangeResult } from '@/utils/sales-checkout'
 import { PaymentMethodSelect, PaymentChannelSelect } from '@/components/payment'
 import type { AccessorySaleRecord } from '@/types/accessory'
@@ -12,12 +12,14 @@ import type { GoodsReturnContext, GoodsReturnQuote, GoodsExchangeContext, GoodsE
 const mocks = vi.hoisted(() => ({ context: vi.fn(), quote: vi.fn(), submit: vi.fn(), exchangeContext: vi.fn(), exchangeQuote: vi.fn(), exchangeSubmit: vi.fn(),
   options: vi.fn(), operators: vi.fn(), stores: vi.fn(), warning: vi.fn(), success: vi.fn(), hidden: new Set<string>() }))
 const permission = ref(true), exchangePermission = ref(true), goodsWrite = ref(true), giftPermission = ref(true)
+const queryGoodsWrite = ref(true), queryGiftPermission = ref(true)
 vi.mock('@/api/sales-checkout', () => ({ getGoodsReturnContext: mocks.context, quoteGoodsReturn: mocks.quote, submitGoodsReturn: mocks.submit,
   getGoodsExchangeContext: mocks.exchangeContext, quoteGoodsExchange: mocks.exchangeQuote, submitGoodsExchange: mocks.exchangeSubmit, getCheckoutGoods: mocks.options }))
 vi.mock('@/services/reference-options', () => ({ getStores: mocks.stores, searchOperators: mocks.operators }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 7, name: '当前登录销售员', username: 'seller' } }) }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: (module: string) => ({ canView: computed(() => permission.value), canCreate: computed(() => goodsWrite.value),
-  hasPermission: (action: string) => permission.value && (module === 'query' && ['goods-sell', 'goods-gift'].includes(action) ? false : module === 'query' && action === 'exchange' ? exchangePermission.value : module === 'accessories' && action === 'gift' ? giftPermission.value : module === 'accessories' && action === 'sell' ? goodsWrite.value : true) }) }))
+  hasPermission: (action: string) => permission.value && (module === 'query' && action === 'goods-sell' ? queryGoodsWrite.value : module === 'query' && action === 'goods-gift' ? queryGiftPermission.value : module === 'query' && action === 'exchange' ? exchangePermission.value : module === 'accessories' && action === 'gift' ? giftPermission.value : module === 'accessories' && action === 'sell' ? goodsWrite.value : true) }) }))
 vi.mock('@/composables/useFieldPermissions', () => ({ fieldPermissions: { isFieldVisible: (_module: string, field: string) => !mocks.hidden.has(field) } }))
 vi.mock('@/composables/mobile', () => ({ useMobile: () => ({ isMobile: ref(false) }) }))
 
@@ -46,14 +48,15 @@ const complete = async (wrapper: Wrapper) => {
   wrapper.findAllComponents(ElCheckbox)[0].vm.$emit('update:modelValue', true)
   await flushPromises()
 }
-const calculate = async (wrapper: Wrapper) => { await complete(wrapper); await button(wrapper, '核对退款').trigger('click'); await flushPromises() }
+const calculate = async (wrapper: Wrapper) => { await complete(wrapper); await button(wrapper, '价格核算').trigger('click'); await flushPromises() }
 const pay = async (wrapper: Wrapper, method = 'cash') => {
   wrapper.findComponent(PaymentMethodSelect).vm.$emit('update:modelValue', method)
   wrapper.findAllComponents(ElCheckbox)[1].vm.$emit('update:modelValue', true)
   await flushPromises()
 }
 beforeEach(() => {
-  permission.value = exchangePermission.value = goodsWrite.value = giftPermission.value = true; mocks.hidden.clear()
+  permission.value = exchangePermission.value = goodsWrite.value = giftPermission.value = true
+  queryGoodsWrite.value = queryGiftPermission.value = true; mocks.hidden.clear()
   mocks.context.mockResolvedValue({ success: true, data: context() })
   mocks.stores.mockResolvedValue({ data: [{ id: 1, name: '一店' }, { id: 2, name: '二店' }] })
   mocks.quote.mockResolvedValue({ success: true, data: quote() })
@@ -72,12 +75,12 @@ it('按原明细读取可退量，核验实物后试算；原净额、积分追�
   expect(mocks.context).toHaveBeenCalledWith(10, 50, expect.any(AbortSignal))
   expect(mocks.stores).toHaveBeenCalledWith({ strictScope: true })
   expect(wrapper.text()).toContain('剩余可退')
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(mocks.quote).not.toHaveBeenCalled(); expect(mocks.warning).toHaveBeenCalledOnce()
   await calculate(wrapper)
   expect(mocks.quote).toHaveBeenCalledWith(10, 50, expect.objectContaining({ quantity: 1, store_id: 1, restock_confirmed: true,
     return_reason: '客户退货', request_key: expect.stringMatching(/^[a-f0-9]{32}$/) }), expect.any(AbortSignal))
-  expect(wrapper.text()).toContain('原实付应退'); expect(wrapper.text()).toContain('客户需补差价')
+  expect(wrapper.text()).toContain('原实付应退'); expect(wrapper.text()).toContain('最终应收/应退')
   expect(button(wrapper, '确认退货').attributes('disabled')).toBeDefined()
 })
 
@@ -116,9 +119,11 @@ it('赠品零资金退回不填支付，不重复发积分；修改数量废弃�
     refund_amount: 0, base_refund_amount: 0, points_delta: 0 }), aftersale_id: 1 } })
   const wrapper = await render(); await calculate(wrapper)
   expect(wrapper.findComponent(PaymentMethodSelect).exists()).toBe(false)
+  expect(wrapper.findAllComponents(ElFormItem).map(item => item.props('label'))).not.toContain('退货数量')
   wrapper.findComponent(ElInputNumber).vm.$emit('update:modelValue', 2); await flushPromises()
   expect(button(wrapper, '确认退货').attributes('disabled')).toBeDefined()
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
+  expect(mocks.quote.mock.calls.at(-1)?.[2].quantity).toBe(2)
   await button(wrapper, '确认退货').trigger('click'); await flushPromises()
   expect(mocks.submit.mock.calls[0]?.[2].settlement).toEqual({ refund_amount: 0, collection_amount: 0, method: null, channel: null, confirmed: true })
   expect(wrapper.emitted('success')).toHaveLength(1)
@@ -141,7 +146,7 @@ it('取消直接关闭不提交，旧试算晚到不能回填；重开清空草�
   const wrapper = await render(); await complete(wrapper)
   let resolve: ((value: unknown) => void) | undefined
   mocks.quote.mockImplementationOnce(() => new Promise(done => { resolve = done }))
-  await button(wrapper, '核对退款').trigger('click')
+  await button(wrapper, '价格核算').trigger('click')
   const signal = mocks.quote.mock.calls[0]?.[3] as AbortSignal
   await button(wrapper, '取消').trigger('click')
   expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
@@ -160,7 +165,7 @@ it('无权限或隐藏价格不发请求；读取失败、已全退都不能确�
   expect(denied.text()).toContain('缺少退货必要权限')
   permission.value = true; mocks.hidden.add('price_info.total_price'); await flushPromises()
   const hidden = await render(); expect(mocks.context).not.toHaveBeenCalled()
-  expect(button(hidden, '核对退款').attributes('disabled')).toBeDefined()
+  expect(button(hidden, '价格核算').attributes('disabled')).toBeDefined()
   mocks.hidden.clear(); mocks.context.mockRejectedValueOnce(new Error('migration not ready'))
   const failed = await render(); expect(failed.text()).toContain('退货资料读取失败')
   mocks.context.mockResolvedValueOnce({ success: true, data: context({ remaining_quantity: 0, returned_quantity: 3 }) })
@@ -173,7 +178,7 @@ it('修改内容使前次试算失效，备注保留文本域公共行为，日�
   wrapper.findAllComponents(ElInput).find(item => item.props('type') === 'textarea')?.vm.$emit('update:modelValue', '独立退货备注')
   await flushPromises()
   expect(button(wrapper, '确认退货').attributes('disabled')).toBeDefined()
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(mocks.quote.mock.calls.at(-1)?.[2].remarks).toBe('独立退货备注')
   expect(mocks.quote.mock.calls.at(-1)?.[2].reversal_date).toMatch(/^\d{4}-\d{2}-\d{2} /)
 })
@@ -206,8 +211,8 @@ const exchangeQuote = (extra: Partial<GoodsExchangeQuote> = {}): GoodsExchangeQu
   original_collection_amount: 0, points_used: 0, points_earned: 0, deduction_amount: 0, ...extra })
 const fillExchange = async (wrapper: Wrapper, draft = replacementDraft()) => {
   await complete(wrapper)
-  wrapper.findAllComponents(ElFormItem).find(item => item.props('label') === '新商品销售员')!.findComponent(ElSelect).vm.$emit('update:modelValue', 8)
-  wrapper.findComponent(SalesGoodsLine).vm.$emit('update:modelValue', draft)
+  wrapper.findAllComponents(ElFormItem).find(item => item.props('label') === '换货员')!.findComponent(ElSelect).vm.$emit('update:modelValue', 8)
+  wrapper.findComponent(SalesAdditionalGoods).vm.$emit('update:modelValue', [draft])
   await flushPromises()
 }
 
@@ -217,54 +222,133 @@ it('换货使用独立context/quote/submit，确认20换50只收30补款，新�
   expect(mocks.context).not.toHaveBeenCalled()
   expect(mocks.operators).toHaveBeenCalledWith({ keyword: undefined, page: 1, page_size: 20 })
   await fillExchange(wrapper)
-  await button(wrapper, '核对换货差价').trigger('click'); await flushPromises()
-  expect(mocks.exchangeQuote).toHaveBeenCalledWith(10, 50, expect.objectContaining({ quantity: 1, operator_id: 8, replacement: { accessory_id: 6, unit_price: 50 } }), expect.any(AbortSignal))
-  for (const text of ['新件净应付', '原件抵付新件', '新商品销售员', '¥30', '¥50']) expect(wrapper.text()).toContain(text)
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
+  expect(mocks.exchangeQuote).toHaveBeenCalledWith(10, 50, expect.objectContaining({ quantity: 1, operator_id: 8, replacement: { accessory_id: 6, quantity: 1, unit_price: 50 } }), expect.any(AbortSignal))
+  for (const text of ['新件净应付', '换货抵扣金额', '换货员', '¥30', '¥50']) expect(wrapper.text()).toContain(text)
   expect(button(wrapper, '确认换货').attributes('disabled')).toBeDefined()
   await pay(wrapper); await button(wrapper, '确认换货').trigger('click'); await flushPromises()
   expect(mocks.exchangeSubmit.mock.calls[0][2].settlement).toEqual({ refund_amount: 0, collection_amount: 30, method: 'cash', channel: null, confirmed: true })
   expect(mocks.submit).not.toHaveBeenCalled(); expect(wrapper.emitted('success')).toHaveLength(1)
 })
 
-it('换入选择复用库存检索，数量跟随退回数量且用途锁定，变更商品或门店清除旧试算', async () => {
+it('多个额外购买金额不混入换货抵扣展示，最终应收按净差价显示', async () => {
+  const wrapper = await render('exchange'); await fillExchange(wrapper, { ...replacementDraft(), unit_price: 20 })
+  const additions: CheckoutGoodsDraft[] = [
+    { key: 'additional_a', option: replacementOption, quantity: 2, unit_price: 10, sale_type: 'sale', linked_phone_id: null,
+      serial_mode: false, serial_numbers: [], gift_return_unit_price: null, redeem_points: 0 },
+    { key: 'additional_b', option: { ...replacementOption, id: 7, name: '数据线', quantity: 5 }, quantity: 1, unit_price: 15,
+      sale_type: 'sale', linked_phone_id: null, serial_mode: false, serial_numbers: [], gift_return_unit_price: null, redeem_points: 0 },
+    { key: 'additional_gift', option: { ...replacementOption, id: 8, name: '赠送保护套', quantity: 5 }, quantity: 1, unit_price: 0,
+      sale_type: 'gift', linked_phone_id: null, serial_mode: false, serial_numbers: [], gift_return_unit_price: 12, redeem_points: 0 }
+  ]
+  wrapper.findComponent(SalesAdditionalGoods).vm.$emit('update:modelValue', [{ ...replacementDraft(), unit_price: 20 }, ...additions])
+  await flushPromises()
+  const facts = exchangeQuote({ base_refund_amount: 24, collection_amount: 31, replacement_amount: 20, replacement_paid_amount: 0,
+    additional_amount: 35, additional_paid_amount: 31, additional_goods: [
+      { accessory_id: 6, quantity: 2, amount: 20, sale_type: 'sale', serial_numbers: [] },
+      { accessory_id: 7, quantity: 1, amount: 15, sale_type: 'sale', serial_numbers: [] },
+      { accessory_id: 8, quantity: 1, amount: 0, sale_type: 'gift', serial_numbers: [] }
+    ] })
+  mocks.exchangeQuote.mockResolvedValueOnce({ success: true, data: facts })
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
+  expect(mocks.exchangeQuote.mock.calls[0][2].additional_goods).toHaveLength(3)
+  expect(mocks.exchangeQuote.mock.calls[0][2].additional_goods[2]).toMatchObject({ sale_type: 'gift', unit_price: 0, gift_return_unit_price: 12 })
+  expect(isGoodsExchangeQuote(facts, exchangeContext(), mocks.exchangeQuote.mock.calls[0][2])).toBe(true)
+  expect(wrapper.text()).toContain('换货抵扣金额 ¥20')
+  expect(wrapper.text()).toContain('额外购买金额 ¥35')
+  expect(wrapper.text()).toContain('应收 ¥31')
+})
+
+it('换货默认当前登录销售员，并按综合查询权限显示中文出库方式', async () => {
+  goodsWrite.value = false
+  const wrapper = await render('exchange')
+  expect(wrapper.text()).not.toContain('缺少换货必要权限')
+  expect(wrapper.text()).toContain('剩余可换')
+  expect(wrapper.text()).not.toContain('本次退回')
+  expect(wrapper.findAllComponents(ElFormItem).map(item => item.props('label'))).toContain('换货时间')
+  expect(wrapper.findAllComponents(ElFormItem).map(item => item.props('label'))).not.toContain('退货时间')
+  const sellerSelect = wrapper.findAllComponents(ElFormItem).find(item => item.props('label') === '换货员')!.findComponent(ElSelect)
+  expect(sellerSelect.props('modelValue')).toBe(7)
+  expect(wrapper.findAllComponents(ElOption).find(option => option.props('value') === 7)?.props('label')).toBe('当前登录销售员')
+  const goods = wrapper.findComponent(SalesAdditionalGoods)
+  expect(goods.exists()).toBe(true)
+  expect(wrapper.findAllComponents(SalesAdditionalGoods)).toHaveLength(1)
+  expect(goods.findAllComponents(ElOption).map(option => option.props('label'))).toEqual(expect.arrayContaining(['换货', '购买', '赠送']))
+})
+
+it('换货SN区域使用换出文案，全部处理后显示已全部换货', async () => {
+  mocks.exchangeContext.mockResolvedValueOnce({ success: true, data: exchangeContext({
+    serial_tracking: true, serial_numbers: ['OLD1', 'OLD2', 'OLD3'], remaining_quantity: 3
+  }) })
+  const wrapper = await render('exchange')
+  expect(wrapper.findAllComponents(ElFormItem).map(item => item.props('label'))).toContain('本次换出SN')
+  expect(wrapper.text()).not.toContain('本次退回SN')
+
+  mocks.exchangeContext.mockResolvedValueOnce({ success: true, data: exchangeContext({
+    remaining_quantity: 0, returned_quantity: 3
+  }) })
+  await wrapper.setProps({ modelValue: false }); await wrapper.setProps({ modelValue: true }); await flushPromises()
+  expect(wrapper.text()).toContain('原单商品已全部换货')
+})
+
+it('换入数量决定本次换货并扣减剩余可换，数量上限跟随原单，变更门店清除旧试算', async () => {
   const wrapper = await render('exchange'); await complete(wrapper)
-  const line = wrapper.findComponent(SalesGoodsLine), selector = line.findAllComponents(ElSelect)[0]
+  const line = wrapper.findComponent(SalesAdditionalGoods), selector = line.findAllComponents(ElSelect)[0]
   selector.vm.$emit('visible-change', true); await flushPromises()
-  selector.vm.$emit('update:modelValue', 6); await flushPromises()
-  expect(line.props('modelValue')).toMatchObject({ option: { id: 6 }, quantity: 1, unit_price: 50 })
-  expect(line.findAllComponents(ElSelect)[1].props('disabled')).toBe(true)
-  expect(line.text()).not.toContain('移除此商品')
-  const originalQuantity = wrapper.findAllComponents(ElInputNumber)[0]
-  originalQuantity.vm.$emit('update:modelValue', 2); await flushPromises()
-  expect(line.props('exchangeQuantity')).toBe(2); expect(line.props('modelValue').quantity).toBe(2)
-  await fillExchange(wrapper, replacementDraft())
-  originalQuantity.vm.$emit('update:modelValue', 1); await flushPromises()
-  await button(wrapper, '核对换货差价').trigger('click'); await flushPromises(); await pay(wrapper)
+  selector.vm.$emit('update:modelValue', 'goods:6'); await flushPromises()
+  expect(mocks.options).toHaveBeenCalled()
+  expect(line.props('exchangeMaxQuantity')).toBe(3)
+  line.vm.$emit('update:modelValue', [replacementDraft()]); await flushPromises()
+  line.vm.$emit('update:modelValue', [{ ...replacementDraft(), quantity: 2 }]); await flushPromises()
+  expect(line.props('modelValue')[0].quantity).toBe(2)
+  expect(wrapper.text()).toContain('剩余可换1')
+  await fillExchange(wrapper, { ...replacementDraft(), quantity: 2 })
+  const facts = exchangeQuote({ quantity: 2, remaining_quantity: 1, base_refund_amount: 40,
+    collection_amount: 60, replacement_amount: 100, replacement_paid_amount: 60 })
+  mocks.exchangeQuote.mockResolvedValueOnce({ success: true, data: facts })
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises(); await pay(wrapper)
+  expect(mocks.exchangeQuote.mock.calls.at(-1)?.[2].quantity).toBe(2)
+  expect(wrapper.text()).toContain('剩余可换1')
   wrapper.findAllComponents(ElSelect)[0].vm.$emit('update:modelValue', 2); await flushPromises()
-  expect(line.props('modelValue').option).toBeNull()
+  expect(line.props('modelValue')).toEqual([])
   expect(button(wrapper, '确认换货').attributes('disabled')).toBeDefined()
+})
+
+it('换货商品可直接检索SN加入清单，不展示独立SN编辑项', async () => {
+  const serialOption = { ...replacementOption, serial_number: 'NEW01', quantity: 1, serial_quantity: 1 }
+  mocks.options.mockImplementation(async params => ({ success: true, data: { data: params.search_mode === 'serial' ? [serialOption] : [],
+    pagination: { total: params.search_mode === 'serial' ? 1 : 0 } } }))
+  const wrapper = await render('exchange'); await complete(wrapper)
+  const line = wrapper.findComponent(SalesAdditionalGoods), selector = line.findAllComponents(ElSelect)[0]
+  const search = selector.props('remoteMethod') as (keyword: string) => Promise<void>
+  await search('NEW01'); await flushPromises()
+  expect(mocks.options).toHaveBeenCalledWith(expect.objectContaining({ source: 'query', search: 'NEW01', search_mode: 'serial' }), expect.any(AbortSignal))
+  expect(line.findAllComponents(ElFormItem).map(item => item.props('label'))).not.toContain('SN')
+  selector.vm.$emit('update:modelValue', 'sn:NEW01'); await flushPromises()
+  await button(line, '确认').trigger('click'); await flushPromises()
+  expect(line.props('modelValue')[0]).toMatchObject({ serial_mode: true, serial_numbers: ['NEW01'], quantity: 1 })
 })
 
 it('换入SN数须与原件退回数一致，赠品用途和销售/赠送权限不能在页面转换', async () => {
   const wrapper = await render('exchange')
   await fillExchange(wrapper, { ...replacementDraft(), serial_mode: true, serial_numbers: ['NEW01', 'NEW02'] })
-  await button(wrapper, '核对换货差价').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(mocks.exchangeQuote).not.toHaveBeenCalled()
   expect(mocks.warning).toHaveBeenLastCalledWith(expect.stringContaining('换入件数'))
   await fillExchange(wrapper, { ...replacementDraft(), sale_type: 'gift', unit_price: 0 })
-  await button(wrapper, '核对换货差价').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(mocks.exchangeQuote).not.toHaveBeenCalled()
-  goodsWrite.value = false; await flushPromises()
-  expect(wrapper.findComponent(SalesGoodsLine).exists()).toBe(false)
+  queryGoodsWrite.value = false; await flushPromises()
+  expect(wrapper.findComponent(SalesAdditionalGoods).exists()).toBe(false)
 })
 
 it('换货提交断网冻结草稿，以同键同内容重试；坏回执不提示成功', async () => {
   const wrapper = await render('exchange'); await fillExchange(wrapper)
-  await button(wrapper, '核对换货差价').trigger('click'); await flushPromises(); await pay(wrapper)
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises(); await pay(wrapper)
   mocks.exchangeSubmit.mockRejectedValueOnce(new Error('offline'))
   await button(wrapper, '确认换货').trigger('click'); await flushPromises()
   expect(wrapper.findComponent(ElForm).props('disabled')).toBe(true)
-  expect(button(wrapper, '核对换货差价').attributes('disabled')).toBeDefined()
+  expect(button(wrapper, '价格核算').attributes('disabled')).toBeDefined()
   mocks.exchangeSubmit.mockResolvedValueOnce({ success: true, data: { ...exchangeQuote(), aftersale_id: 1 } })
   await button(wrapper, '确认换货').trigger('click'); await flushPromises()
   expect(mocks.exchangeSubmit.mock.calls[1][2]).toEqual(mocks.exchangeSubmit.mock.calls[0][2])
@@ -284,13 +368,13 @@ it('撤销换货或销售员字段权限不读取，切模式取消旧请求且�
   await wrapper.setProps({ mode: 'return' }); await flushPromises()
   expect(signal.aborted).toBe(true)
   resolve({ success: true, data: context({ name: '旧换货迟到' }) }); await flushPromises()
-  expect(wrapper.text()).not.toContain('旧换货迟到'); expect(wrapper.findComponent(SalesGoodsLine).exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('旧换货迟到'); expect(wrapper.findComponent(SalesAdditionalGoods).exists()).toBe(false)
 })
 
 it('换货资金守卫校验新旧SN/销售员、积分净价、实收分配及已确认的现金，不接受全价再收', () => {
   const payload: GoodsExchangeInput = { request_key: 'a'.repeat(32), store_id: 1, operator_id: 8, quantity: 1, serial_numbers: [],
     return_reason: '客户退货', reversal_date: '2026-11-13 10:00:00', remarks: '', restock_confirmed: true,
-    replacement: { accessory_id: 6, unit_price: 50 } }
+    replacement: { accessory_id: 6, quantity: 1, unit_price: 50 } }
   expect(isGoodsExchangeQuote(exchangeQuote(), exchangeContext(), payload)).toBe(true)
   for (const invalid of [exchangeQuote({ operator_id: 7 }), exchangeQuote({ collection_amount: 50 }), exchangeQuote({ replacement_paid_amount: 50 }),
     exchangeQuote({ original_collection_amount: 1 }), exchangeQuote({ replacement_serial_numbers: ['OTHER'] }), exchangeQuote({ deduction_amount: 1 }),
@@ -313,8 +397,8 @@ it('已扣款赠品按原实际12元抵付50元收费新件，展示38元补款�
     replacement_item_id: 51, root_order_id: 10, root_item_id: 50, exchange_credit_amount: 12 } })
   const wrapper = await render('exchange')
   expect(wrapper.text()).toContain('按原实际扣款抵付')
-  expect(wrapper.findComponent(SalesGoodsLine).props('modelValue').sale_type).toBe('sale')
-  await fillExchange(wrapper); await button(wrapper, '核对换货差价').trigger('click'); await flushPromises()
+  expect(wrapper.findComponent(SalesAdditionalGoods).props('exchangeSaleType')).toBe('sale')
+  await fillExchange(wrapper); await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('¥38'); expect(wrapper.text()).toContain('¥12')
   await pay(wrapper); await button(wrapper, '确认换货').trigger('click'); await flushPromises()
   expect(mocks.exchangeSubmit.mock.calls[0][2].settlement.collection_amount).toBe(38)
@@ -322,40 +406,50 @@ it('已扣款赠品按原实际12元抵付50元收费新件，展示38元补款�
 })
 
 it('换入用途按服务端核对结果授权，原赠品权限不能代替已扣款后的商品销售权限', async () => {
-  goodsWrite.value = false
+  queryGoodsWrite.value = false
   mocks.exchangeContext.mockResolvedValue({ success: true, data: exchangeContext({ sale_type: 'gift', gift_charge_settled: true }) })
   const wrapper = await render('exchange')
   expect(wrapper.text()).toContain('缺少换货必要权限')
-  expect(wrapper.findComponent(SalesGoodsLine).exists()).toBe(false)
-  expect(button(wrapper, '核对换货差价').attributes('disabled')).toBeDefined()
+  expect(wrapper.findComponent(SalesAdditionalGoods).exists()).toBe(false)
+  expect(button(wrapper, '价格核算').attributes('disabled')).toBeDefined()
   expect(mocks.exchangeQuote).not.toHaveBeenCalled()
 })
 
-it('缺失或互相矛盾的换货用途上下文拒绝办理，普通未扣款赠品保持赠送用途', async () => {
+it('缺失或互相矛盾的换货用途上下文拒绝办理，免费赠品换入按收费商品核算', async () => {
   for (const invalid of [context(), exchangeContext({ sale_type: 'sale', gift_charge_settled: true }),
-    exchangeContext({ sale_type: 'gift' }), exchangeContext({ sale_type: 'gift', replacement_sale_type: 'gift', gift_charge_settled: true })]) {
+    exchangeContext({ sale_type: 'gift', replacement_sale_type: 'gift' }), exchangeContext({ sale_type: 'gift', replacement_sale_type: 'gift', gift_charge_settled: true })]) {
     expect(isGoodsExchangeContext(invalid, 10, 50)).toBe(false)
   }
   mocks.exchangeContext.mockResolvedValueOnce({ success: true, data: context() })
   const invalid = await render('exchange')
   expect(invalid.text()).toContain('换货资料读取失败')
-  const gift = exchangeContext({ sale_type: 'gift', replacement_sale_type: 'gift' })
+  const gift = exchangeContext({ sale_type: 'gift', replacement_sale_type: 'sale' })
   expect(isGoodsExchangeContext(gift, 10, 50)).toBe(true)
-  goodsWrite.value = false
   mocks.exchangeContext.mockResolvedValueOnce({ success: true, data: gift })
   const wrapper = await render('exchange')
-  expect(wrapper.findComponent(SalesGoodsLine).props('modelValue')).toMatchObject({ sale_type: 'gift', unit_price: 0 })
-  expect(wrapper.text()).not.toContain('按原实际扣款抵付')
+  expect(wrapper.findComponent(SalesAdditionalGoods).props('exchangeSaleType')).toBe('sale')
+  expect(wrapper.text()).toContain('原单为赠送商品，换入商品按当前销售价收款')
+})
+
+it('原单赠品换货时清单按收费新件显示换货类型', async () => {
+  mocks.exchangeContext.mockResolvedValueOnce({ success: true, data: exchangeContext({ sale_type: 'gift', replacement_sale_type: 'sale' }) })
+  const wrapper = await render('exchange')
+  const line = wrapper.findComponent(SalesAdditionalGoods)
+  expect(line.props('exchangeSaleType')).toBe('sale')
+  await fillExchange(wrapper, { ...replacementDraft(), sale_type: 'sale', unit_price: 30 })
+  const typeLabel = (line.vm as unknown as { exchangeTypeLabel: (row: CheckoutGoodsDraft) => string }).exchangeTypeLabel
+  expect(typeLabel(line.props('modelValue')[0])).toBe('换货')
+  expect(line.props('modelValue')[0].sale_type).toBe('sale')
 })
 
 it('换入商品动作撤权立即废弃报价，不能沿用原确认金额提交', async () => {
   const wrapper = await render('exchange'); await fillExchange(wrapper)
-  await button(wrapper, '核对换货差价').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('新件净应付')
-  goodsWrite.value = false; await flushPromises()
+  queryGoodsWrite.value = false; await flushPromises()
   expect(button(wrapper, '确认换货').attributes('disabled')).toBeDefined()
   expect(wrapper.text()).toContain('缺少换货必要权限')
-  goodsWrite.value = true; await flushPromises()
+  queryGoodsWrite.value = true; await flushPromises()
   expect(wrapper.text()).not.toContain('新件净应付')
   expect(mocks.exchangeSubmit).not.toHaveBeenCalled()
 })
@@ -363,7 +457,7 @@ it('换入商品动作撤权立即废弃报价，不能沿用原确认金额提�
 it.each(['return', 'exchange'] as const)('%s报价明确变化后必须重新核对，保留录入及原请求键', async mode => {
   const wrapper = await render(mode)
   const submitLabel = mode === 'exchange' ? '确认换货' : '确认退货'
-  const quoteLabel = mode === 'exchange' ? '核对换货差价' : '核对退款'
+  const quoteLabel = '价格核算'
   const submitMock = mode === 'exchange' ? mocks.exchangeSubmit : mocks.submit
   if (mode === 'exchange') { await fillExchange(wrapper); await button(wrapper, quoteLabel).trigger('click'); await flushPromises() }
   else await calculate(wrapper)
@@ -385,7 +479,7 @@ it.each(['return', 'exchange'] as const)('%s先断网再收到报价变化，不
   const wrapper = await render(mode)
   const submitLabel = mode === 'exchange' ? '确认换货' : '确认退货'
   const submitMock = mode === 'exchange' ? mocks.exchangeSubmit : mocks.submit
-  if (mode === 'exchange') { await fillExchange(wrapper); await button(wrapper, '核对换货差价').trigger('click'); await flushPromises() }
+  if (mode === 'exchange') { await fillExchange(wrapper); await button(wrapper, '价格核算').trigger('click'); await flushPromises() }
   else await calculate(wrapper)
   await pay(wrapper)
   submitMock.mockRejectedValueOnce(new Error('network')).mockRejectedValueOnce({ response: { status: 409, data: { success: false, code: 'CHECKOUT_RETURN_QUOTE_CHANGED' } } })

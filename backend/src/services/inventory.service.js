@@ -9,7 +9,7 @@ const BaseService = require('../core/base/base.service')
 const InventoryRepository = require('../repositories/inventory.repository')
 const { getDatabase, isConnected } = require('../config/database')
 const { validateImei: defaultValidateImei } = require('../utils/imei')
-const { normalizeDateTime: defaultNormalizeDateTime } = require('../utils/time')
+const { normalizeDateTime: defaultNormalizeDateTime, normalizeBusinessDateTime: defaultNormalizeBusinessDateTime } = require('../utils/time')
 const { generateMemberNumber: defaultGenerateMemberNumber } = require('../utils/member-number')
 const {
   prepareInvoiceNumberTransaction: defaultPrepareInvoiceNumberTransaction,
@@ -55,6 +55,7 @@ class InventoryService extends BaseService {
     logger = log,
     validateImei = defaultValidateImei,
     normalizeDateTime = defaultNormalizeDateTime,
+    normalizeBusinessDateTime = defaultNormalizeBusinessDateTime,
     generateMemberNumber = defaultGenerateMemberNumber,
     prepareInvoiceNumberTransaction = defaultPrepareInvoiceNumberTransaction,
     generateInvoiceNumber = defaultGenerateInvoiceNumber,
@@ -70,6 +71,7 @@ class InventoryService extends BaseService {
     this.logger = logger
     this.validateImei = validateImei
     this.normalizeDateTime = normalizeDateTime
+    this.normalizeBusinessDateTime = normalizeBusinessDateTime
     this.generateMemberNumber = generateMemberNumber
     this.prepareInvoiceNumberTransaction = prepareInvoiceNumberTransaction
     this.generateInvoiceNumber = generateInvoiceNumber
@@ -232,13 +234,17 @@ class InventoryService extends BaseService {
         }
         const includeSupplier = !updateData.supplier_id || await this.repository.referenceExists(connection, 'suppliers', updateData.supplier_id)
         const includeStore = !updateData.store_id || await this.repository.referenceExists(connection, 'stores', updateData.store_id)
+        const inventoryTime = updateData.inventory_time === undefined
+          ? undefined
+          : this.normalizeBusinessDateTime(updateData.inventory_time)
+        if (updateData.inventory_time !== undefined && !inventoryTime) throw new InventoryError('入库时间格式无效', 400)
         const fields = {
           imei: updateData.imei,
           serial_number: updateData.serial_number,
           purchase_cost: updateData.purchase_cost,
           ...(includeSupplier && { supplier_id: updateData.supplier_id }),
           ...(includeStore && { store_id: updateData.store_id }),
-          inventory_time: updateData.inventory_time,
+          inventory_time: inventoryTime,
           is_new: updateData.condition === undefined ? undefined : updateData.condition === 'new' ? 1 : 0
         }
         const result = await this.repository.updatePhone(connection, id, fields)
@@ -326,8 +332,8 @@ class InventoryService extends BaseService {
         }
 
         const purchaseNumber = `QS${Date.now()}`
-        const inventoryTime = this.normalizeDateTime(inventory_time, false)
-        const saleTime = this.normalizeDateTime(sale_time, false)
+        const inventoryTime = this.normalizeBusinessDateTime(inventory_time)
+        const saleTime = this.normalizeBusinessDateTime(sale_time)
         if (!inventoryTime || !saleTime) throw new InventoryError('请选择有效的入库日期和销售日期', 400)
         const invoiceNumber = await this.generateInvoiceNumber(transactionConfig.invoiceType, connection, saleTime)
         const effectiveIsNew = is_new !== undefined ? is_new : 1

@@ -192,11 +192,17 @@ function normalizeDateTime(input, defaultToNow = true) {
   return defaultToNow ? getBeijingTimeString() : null
 }
 
-/** 保留业务日期，将时分秒替换为当前北京时间，用于可补单的商品销售。 */
-function normalizeDateTimeWithCurrentTime(input, now = getBeijingTimeString) {
+/**
+ * 归一化交易业务时间。日期-only输入使用所选日期和当前北京时间时分秒，
+ * 完整日期时间输入保留调用方提供的时分秒。
+ */
+function normalizeBusinessDateTime(input, now = getBeijingTimeString) {
   const normalized = normalizeDateTime(input, false)
+  if (!normalized || !isBeijingDateTime(normalized)) return null
+  const dateOnly = typeof input === 'string' && DATE_ONLY_RE.test(input.trim())
+  if (!dateOnly) return normalized
   const current = now()
-  if (!normalized || typeof current !== 'string' || !isBeijingDateTime(current)) return null
+  if (typeof current !== 'string' || !isBeijingDateTime(current)) return null
   const value = `${normalized.slice(0, 10)} ${current.slice(11)}`
   return isBeijingDateTime(value) ? value : null
 }
@@ -213,5 +219,5 @@ module.exports = {
   addDaysToDateKey,
   getMonthDateRange,
   getTimeMinutes,
-  normalizeDateTimeWithCurrentTime
+  normalizeBusinessDateTime
 }

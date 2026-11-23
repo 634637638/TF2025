@@ -309,7 +309,7 @@
                     全部 {{ historyCounts.all }}
                   </el-radio-button>
                   <el-radio-button value="free">
-                    免费 {{ historyCounts.free }}
+                    赠送 {{ historyCounts.free }}
                   </el-radio-button>
                   <el-radio-button value="paid">
                     收费 {{ historyCounts.paid }}
@@ -381,7 +381,7 @@
                       type="success"
                       effect="light"
                     >
-                      免费
+                      赠送
                     </el-tag>
                     <div
                       v-if="visible('sequence')"
@@ -437,9 +437,9 @@
                         effect="light"
                         size="small"
                       >
-                        {{ item.sale_type === 'gift' ? '免费' : item.sale_type === 'sale' ? '收费' : '未知' }}
+                        {{ item.sale_type === 'gift' ? '赠送' : item.sale_type === 'sale' ? '收费' : '未知' }}
                       </el-tag>
-                      <span v-if="visible('total_quantity')">本次消耗{{ item.quantity ?? '-' }} 张</span>
+                      <span v-if="visible('total_quantity')">本次消耗{{ item.quantity ?? '-' }}{{ item.unit ? ` ${item.unit}` : '' }}</span>
                       <strong
                         v-if="canViewMoney"
                         class="film-history-product__amount"

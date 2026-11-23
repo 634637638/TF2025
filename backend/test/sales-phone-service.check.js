@@ -10,7 +10,7 @@ const { requirePermission } = require('../src/middleware/unified-auth')
 
 function fixture({ failAt, cost = '80.00', sourceStores = {} } = {}) {
   const events = []
-  const initial = () => ({ sales: [], payments: [], points: [], sold: [], customers: [] })
+  const initial = () => ({ sales: [], payments: [], points: [], sold: [], customers: [], orders: [], items: [] })
   let state = initial(), snapshot, failure = failAt
   const connection = {
     async beginTransaction() { events.push('begin'); snapshot = structuredClone(state) },
@@ -32,11 +32,11 @@ function fixture({ failAt, cost = '80.00', sourceStores = {} } = {}) {
         purchase_cost: cost, is_new: id === 12 ? 1 : 0, is_preordered: 0, supplier_id: 4, remarks: 'existing' }))
     },
     async findDuplicateSales(executor) { check(executor); return [] },
-    async createSale(executor, values) { check(executor); state.sales.push(values); return 20 + state.sales.length },
+    async createSale(executor, values) { check(executor); const id = 20 + state.sales.length + 1; state.sales.push({ ...values, id }); return id },
     async createPayment(executor, values) {
       check(executor)
       if (failure === 'payment' && state.payments.length === 1) throw new Error('payment-failed')
-      state.payments.push(values); return 30 + state.payments.length
+      const id = 30 + state.payments.length + 1; state.payments.push({ ...values, id }); return id
     },
     async markPhoneSold(executor, values) {
       check(executor)
@@ -45,13 +45,39 @@ function fixture({ failAt, cost = '80.00', sourceStores = {} } = {}) {
       state.sold.push(values.phoneId); return { affectedRows: 1 }
     }
   }
+  const checkoutRepository = {
+    async phoneSnapshots(executor, ids) {
+      check(executor)
+      return ids.map(id => ({ id, store_id: sourceStores[id] || 1, imei: `IMEI-${id}`, serial_number: null,
+        brand_id: 1, model_id: 2, color_id: 3, memory_id: 4, supplier_id: 4, is_new: id === 12 ? 1 : 0,
+        brand_name: '品牌', model_name: '型号', color_name: '黑色', memory_name: '256GB' }))
+    },
+    async sales(executor, ids) {
+      check(executor)
+      return state.sales.filter(row => ids.includes(row.id)).map(row => ({ id: row.id, phone_id: row.phoneId,
+        sale_price: row.salePrice, purchase_cost: row.purchaseCost, invoice_number: row.invoiceNumber,
+        points_awarded: state.points.find(points => points.saleId === row.id)?.points || 0 }))
+    },
+    async createOrder(executor, row) { check(executor); const id = state.orders.length + 1; state.orders.push({ ...row, id }); return id },
+    async createItem(executor, row) { check(executor); state.items.push({ ...row, id: state.items.length + 1 }); return state.items.length },
+    async linkPayments(executor, ids, orderId) {
+      check(executor)
+      for (const row of state.payments) if (ids.includes(row.id)) row.sales_order_id = orderId
+    },
+    async completeOrder(executor, row) {
+      check(executor)
+      if (failure === 'order') throw new Error('order-failed')
+      Object.assign(state.orders.find(order => order.id === row.id), row, { order_status: 'completed' })
+    }
+  }
   const service = new SalesPhoneService({
     customerAccess: new CustomerMutationAccessService({ permissionCheck: async (user, permission) => {
       let allowed = false
       await requirePermission(permission)({ user }, { status() { return this }, json() { return this } }, () => { allowed = true })
       return allowed
     } }),
-    repository, normalizeDate: value => value === 'invalid' ? null : value || '2026-11-13 12:00:00',
+    repository, checkoutRepository, generateOrderNumber: async () => 'SO-TEST',
+    normalizeDate: value => value === 'invalid' ? null : value || '2026-11-13 12:00:00',
     prepareInvoiceTransaction: async executor => check(executor),
     generateInvoice: async (type, executor) => { check(executor); assert.equal(type, 'retail'); return `INV-${state.sales.length + 1}` },
     inspectColumn: async () => true, getPointsConfig: async executor => { check(executor); return {} },
@@ -109,6 +135,9 @@ test('单台销售同事务提交真实销售ID收款与积分，全程保持外
   assert.equal(result.body.data.points_earned, 2)
   assert.equal(f.state().points[0].description, '购买手机（自动生成）')
   assert.equal(f.state().payments[0].orderId, 21)
+  assert.equal(f.state().payments[0].sales_order_id, 1)
+  assert.equal(f.state().orders[0].order_status, 'completed')
+  assert.deepEqual(f.state().items.map(row => [row.type, row.sale_id ?? row.accessory_sale_id, row.linked_phone_sale_id ?? null]), [['phone', 21, null]])
   assert.deepEqual(f.state().customers, [])
   assert.deepEqual(f.events, ['begin', 'commit', 'release'])
 })
@@ -119,6 +148,8 @@ test('批量逐台记零售及收款关联，分金额守恒，数字字符串ID
   assert.equal(result.body.data.total_amount, 300.3)
   assert.deepEqual(result.body.data.payment_ids, [31, 32])
   assert.deepEqual(f.state().payments.map(row => [row.orderId, row.amount]), [[21, 100.1], [22, 200.2]])
+  assert.deepEqual(f.state().payments.map(row => row.sales_order_id), [1, 1])
+  assert.deepEqual(f.state().items.map(row => [row.type, row.sale_id]), [['phone', 21], ['phone', 22]])
   assert.equal(f.state().payments.reduce((sum, row) => sum + Math.round(row.amount * 100), 0), 30030)
   assert.ok(f.state().sales.every(row => row.saleType === 'retail'))
   assert.deepEqual(f.state().points.map(row => [row.saleId, row.saleType, row.isNew]), [[21, 'retail', 1], [22, 'retail', 0]])
@@ -127,7 +158,7 @@ test('批量逐台记零售及收款关联，分金额守恒，数字字符串ID
   assert.deepEqual(f.state(), before)
 })
 
-for (const failAt of ['payment', 'stock', 'points']) test(`批量第二条${failAt}失败时整单回滚，重试不留下重复单据`, async () => {
+for (const failAt of ['payment', 'stock', 'points', 'order']) test(`批量第二条${failAt}失败时整单回滚，重试不留下重复单据`, async () => {
   const f = fixture({ failAt })
   if (failAt === 'stock') assert.equal((await sell(f, batch)).status, 400)
   else await assert.rejects(sell(f, batch), new RegExp(`${failAt}-failed`))

@@ -76,11 +76,11 @@ test('详情限定授权范围及实际商品销售ID，保留未知成本和零
   await assert.rejects(f.service.detail(actor, '51 OR 1=1'), { statusCode: 400 })
 })
 
-test('隐藏客户、商品、SN不参与关键词匹配；隐藏字段在列表和嵌套批次中由后端遮蔽', async () => {
+test('隐藏客户、商品、SN仍参与关键词匹配；隐藏字段在列表和嵌套批次中由后端遮蔽', async () => {
   const f = fixture(['customer_info.customer_phone', 'basic_info.name', 'basic_info.serial_number', 'price_info.purchase_cost', 'basic_info.supplier_name'])
   const list = response()
   await f.controller.list({ user: actor, query: { keyword: '13900000001' } }, list)
-  for (const field of ['customer_phone', 'name', 'serial_number']) assert.equal(f.reads[0].fields.includes(field), false)
+  for (const field of ['customer_phone', 'name', 'serial_number']) assert.equal(f.reads[0].fields.includes(field), true)
   assert.equal(list.body.data.data[0].customer_phone, null)
   assert.equal(list.body.data.data[0].name, null)
   const detail = response()

@@ -60,7 +60,7 @@ const complete = async (wrapper: Wrapper) => {
   wrapper.findAllComponents(ElCheckbox).find(item => item.text().includes('已核对被退回'))!.vm.$emit('update:modelValue', true)
   await flushPromises()
 }
-const calculate = async (wrapper: Wrapper) => { await complete(wrapper); await button(wrapper, '核对退款').trigger('click'); await flushPromises() }
+const calculate = async (wrapper: Wrapper) => { await complete(wrapper); await button(wrapper, '价格核算').trigger('click'); await flushPromises() }
 const pay = async (wrapper: Wrapper, method = 'cash') => {
   wrapper.findComponent(PaymentMethodSelect).vm.$emit('update:modelValue', method)
   wrapper.findAllComponents(ElCheckbox).find(item => item.text().includes('确认已按') || item.text().includes('确认已收取'))!.vm.$emit('update:modelValue', true)
@@ -90,7 +90,7 @@ it('收费商品默认保留、赠品默认退回，仅按原可退SN选择；�
   expect(wrapper.text()).not.toContain('收费配件可保留或退回')
   expect(wrapper.findComponent(ElInputNumber).exists()).toBe(false)
   expect(wrapper.findAllComponents(ElSelect).some(item => String(item.props('ariaLabel')).includes('退回SN'))).toBe(false)
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(mocks.quote).not.toHaveBeenCalled()
   await calculate(wrapper)
   expect(mocks.quote).toHaveBeenCalledWith(10, 20, expect.objectContaining({ store_id: 1, restock_confirmed: true,
@@ -143,7 +143,7 @@ it('表单改动废弃旧试算、资金方式及确认；晚返回、撤权和�
   expect(wrapper.findComponent(PaymentMethodSelect).exists()).toBe(false)
   let resolve!: (value: unknown) => void
   mocks.quote.mockImplementationOnce(() => new Promise(done => { resolve = done }))
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   const input = mocks.quote.mock.calls.at(-1)![2], signal = mocks.quote.mock.calls.at(-1)![3] as AbortSignal
   await setAccessory(wrapper, 51, { quantity: 1 }); await flushPromises()
   expect(signal.aborted).toBe(true)
@@ -154,7 +154,7 @@ it('表单改动废弃旧试算、资金方式及确认；晚返回、撤权和�
   expect(wrapper.text()).not.toContain('确认退货')
   permissions.query = true; await flushPromises(); await complete(wrapper)
   mocks.quote.mockImplementationOnce(() => new Promise(done => { resolve = done }))
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   const pending = mocks.quote.mock.calls.at(-1)!, successes = wrapper.emitted('success')
   wrapper.unmount()
   expect((pending[3] as AbortSignal).aborted).toBe(true)
@@ -170,7 +170,7 @@ it('退款报价变化明确回滚后解除冻结，必须重新核对和确认�
   expect(button(wrapper, '确认退货').attributes('disabled')).toBeDefined()
   expect(wrapper.text()).not.toContain('提交结果未确认')
   expect(wrapper.emitted('success')).toBeUndefined()
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   expect(button(wrapper, '确认退货').attributes('disabled')).toBeDefined()
   await pay(wrapper); await button(wrapper, '确认退货').trigger('click'); await flushPromises()
   expect(mocks.submit.mock.calls[1][2]).toEqual(mocks.submit.mock.calls[0][2])
@@ -185,7 +185,7 @@ it.each(['network', 'invalid'])('手机退货结果未知（%s）冻结实物与
   const first = mocks.submit.mock.calls[0][2]
   expect(wrapper.findComponent(ElForm).props('disabled')).toBe(true)
   expect(wrapper.findAll('input, textarea').every(control => (control.element as HTMLInputElement).disabled)).toBe(true)
-  expect(button(wrapper, '核对退款').attributes('disabled')).toBeDefined()
+  expect(button(wrapper, '价格核算').attributes('disabled')).toBeDefined()
   expect(button(wrapper, '取消').attributes('disabled')).toBeUndefined()
   expect(button(wrapper, '确认退货').attributes('disabled')).toBeUndefined()
   await button(wrapper, '确认退货').trigger('click'); await flushPromises()
@@ -238,7 +238,7 @@ it('手机退货先断网再收到报价变化时，仍冻结原内容并允许�
   await button(wrapper, '确认退货').trigger('click'); await flushPromises()
   await button(wrapper, '确认退货').trigger('click'); await flushPromises()
   expect(wrapper.findComponent(ElForm).props('disabled')).toBe(true)
-  expect(button(wrapper, '核对退款').attributes('disabled')).toBeDefined()
+  expect(button(wrapper, '价格核算').attributes('disabled')).toBeDefined()
   await button(wrapper, '确认退货').trigger('click'); await flushPromises()
   expect(mocks.submit.mock.calls[1][2]).toEqual(mocks.submit.mock.calls[0][2])
   expect(mocks.submit.mock.calls[2][2]).toEqual(mocks.submit.mock.calls[0][2])
@@ -256,7 +256,7 @@ it('带商品手机退库保留退货类型及处理方式，变更意向须重�
   select('处理方式').vm.$emit('update:modelValue', '返厂维修')
   await flushPromises()
   expect(button(wrapper, '确认退货').attributes('disabled')).toBeDefined()
-  await button(wrapper, '核对退款').trigger('click'); await flushPromises()
+  await button(wrapper, '价格核算').trigger('click'); await flushPromises()
   await pay(wrapper)
   await button(wrapper, '确认退货').trigger('click'); await flushPromises()
   expect(mocks.submit.mock.calls[0][2]).toMatchObject({ return_type: '申请换货', handle_method: '返厂维修', restock_confirmed: true })

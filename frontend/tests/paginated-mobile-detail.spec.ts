@@ -86,3 +86,20 @@ it('混合长短字段按可见顺序补齐，长字段后的两项短字段保�
   expect(fields.map(field => field.classes().includes('tf-record-details__field--wide'))).toEqual([true, true, false, false])
   expect(wrapper.text()).not.toContain('不可见')
 })
+
+it('记录详情支持仅桌面使用的四列布局配置', async () => {
+  const wrapper = mount(RecordDetailDialog, { props: { modelValue: true, title: '详情', hasActions: false, record: { id: 1 }, desktopColumns: 4, tabletColumns: 3, fields: [
+    { key: 'first', label: '名称', value: '甲', visible: true },
+    { key: 'second', label: '类型', value: '配件', visible: true },
+    { key: 'third', label: '数量', value: 1, visible: true },
+    { key: 'fourth', label: '门店', value: '一店', visible: true },
+    { key: 'remark', label: '备注', value: '说明', visible: true, wide: true }
+  ] }, global: { stubs: { MobileDialog: dialog } } }); wrappers.push(wrapper)
+  expect(wrapper.find('.tf-record-details').classes()).toContain('tf-record-details--columns-4')
+  expect(wrapper.find('.tf-record-details').classes()).toContain('tf-record-details--tablet-columns-3')
+  expect(wrapper.findAll('.tf-record-details__field--wide')).toHaveLength(1)
+  await wrapper.setProps({ desktopColumns: 2 })
+  expect(wrapper.find('.tf-record-details').classes()).not.toContain('tf-record-details--columns-4')
+  await wrapper.setProps({ tabletColumns: 2 })
+  expect(wrapper.find('.tf-record-details').classes()).not.toContain('tf-record-details--tablet-columns-3')
+})

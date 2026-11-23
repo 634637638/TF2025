@@ -63,7 +63,7 @@
 
 > 2026-11-14 T22采购原资料：既有商品采购列表、登记/手机详情及退供核对按 `has_snapshot` 区分入库时资料和旧单当前档案，缺标记拒绝使用响应；无新增单元或计数变化。契约及迁移前置见[采购入库原资料留存](../backend/accessory-entry.md#采购入库原资料留存)，检查证据统一登记T22。
 
-> 2026-11-14 T22 客户贴膜历史：新增非路由单元 `views/customers/page/CustomerFilmHistory.vue`，客户详情点击后懒加载原 `FilmServiceDialog`，复用公共工具栏按钮、权限及子弹窗，不新增路由、表格或公共组件。父详情关闭、切客、身份字段或动作撤权卸载子窗，原弹窗任一配件字段变更清理旧历史后重读，失败清空。接口与边界见[贴膜入口正文](../backend/accessory-entry.md#手机详情办理与记录)，检查证据统一登记T22。
+> 2026-11-14 T22 客户贴膜历史：`views/customers/page/CustomerFilmHistory.vue` 提供“贴膜记录”入口，直接复用综合查询的 `FilmServiceDialog`，展示同一客户级全部、免费和收费记录、服务门店、时间及办理人；不复制第二套历史列表，不要求商品查看权限。父详情关闭、切客、身份字段或权限撤销时卸载并清空子窗。接口与边界见[贴膜入口正文](../backend/accessory-entry.md#手机详情办理与记录)，检查证据统一登记T22。
 
 > 2026-11-14 T22 采购入库异常恢复：原 `AccessoryStockInModal` 增加未确认采购提醒与“重试原入库”，复用原弹窗、footer、Loading、统一通知和字段权限；Pinia/会话存储恢复同一入库员原请求，确认前不另建采购，模板编辑独立。不新增路由、页面、表格或公共UI组件。契约见[采购入库防重](../backend/accessory-entry.md#采购入库防重与异常恢复)，验收证据统一登记T22。
 
@@ -150,7 +150,7 @@
 
 “实际叶子路由”与“页面源文件”不能相加作为页面总数：63 个叶子 URL 实际映射到 60 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与`OrderDetail.vue` 分别被两个 URL 复用。148 个 `views` 文件由 60 个叶子页面文件、3 个布局容器和 85 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
 
-客户商品历史补充（2026-11-14）：新增非路由单元 `views/customers/page/CustomerGoodsHistory.vue`，嵌入客户详情，与原手机购买记录分开；只读商品原成交/赠送、已退/未退及积分，复用 `RecordDescriptions`、公共分页/Loading/错误空态、北京时间、字段权限和最新请求，不新增表格、私有CSS或权限模块。手机/平板记录双击进入公共详情后，底部进入既有`CheckoutOrderDialog`；关闭记录详情即卸载，避免隐藏旧内容留在分页中，翻页/切客户/撤权清理查看。桌面保留原整单入口。接口按客户ID和授权原销售门店读取，不改变手机消费统计。正文见[客户商品历史](../backend/accessory-entry.md#客户商品购买及赠送历史)，验证证据见T22。含按钮文件计数按当前源码扫描为121。
+客户商品历史补充（2026-11-14）：新增非路由单元 `views/customers/page/CustomerGoodsHistory.vue`，嵌入客户详情，与原手机购买记录分开；只读商品原成交/赠送、已退/未退及积分，复用公共摘要表格、分页/Loading/错误空态、北京时间、字段权限和最新请求，不新增路由、私有权限模块或重复表格组件。列表统一按商品名称、类型、购买/赠送、数量、金额、门店和日期一行展示，数据列按表头及当前页内容复用公共最小宽度计算器自适应；点击“明细”进入公共 `RecordDetailDialog` 后查看完整时间，手机/平板仍保留公共双击详情入口；整单动作仅在详情底部进入既有 `CheckoutOrderDialog`。关闭记录详情、翻页、切客户或撤权时清理当前查看，避免旧内容残留。接口按客户ID和授权原销售门店读取，不改变手机消费统计。正文见[客户商品历史](../backend/accessory-entry.md#客户商品购买及赠送历史)，验证证据见T22。含按钮文件计数按当前源码扫描为121。
 
 ### 商品单卖与手机搭售（2026-11-13）
 
@@ -689,7 +689,7 @@
 - `views/customers/page/CustomerAddressFields.vue`（既有地区表单，见五级地区专题）
 - `views/customers/page/CustomerPointsSettings.vue`（既有积分设置，见积分专题）
 - `views/customers/page/CustomerGoodsHistory.vue`（既有商品历史，见客户商品历史补充）
-- `views/customers/page/CustomerFilmHistory.vue`（本批新增，复用原贴膜弹窗）
+- `views/customers/page/CustomerFilmHistory.vue`（本批新增，复用综合查询 `FilmServiceDialog` 展示客户贴膜服务历史）
 
 ### 3.6 H5 管理和手机端内部页面
 
@@ -712,7 +712,7 @@
 
 `/backup` 手动“清理旧备份”入口使用 `backup:delete` 公共指令与页面能力检查，移除少于 5 份就禁用的固定门槛；仅空列表、列表加载或清理中禁用。弹窗可设置保留数量，明确只清理服务器本地文件，成功刷新列表，失败通过公共通知提示并保留输入，提交中避免重复请求。自动清理的 SQL / ZIP 分类保留规则独立，详见[备份管理](../backend/backup-management.md#定时生成与本地保留规则)。
 
-`/backup` 增加云盘设置弹窗 `backup/CloudBackupSettingsDialog.vue`、文件浏览单元 `backup/CloudDriveBrowser.vue`、ZIP/SQL 云盘状态及手动上传入口。云端删除独立显示警告色“文件失效”和“该文件云端已删除，可重新上传！”，实际上传错误仍显示“上传失败”；云端外部恢复经后端按原 ID 和大小核验后，页面轮询自动更新为“已上传”，不重复上传。任务轮询复用 `useLatestRequest`，读取失败保留已有状态，权限撤销和页面卸载取消请求及定时器。支持以名称和 Token 新增或编辑多个云盘账户，储存账户下拉框驱动对应账户的目录预览，保存设置才切换上传目标；管理入口可独立选择浏览账户，凭据不回显。设置弹窗按账户、自动备份和目标目录分组，桌面账户下拉与操作同排，手机纵向；表单/账户编辑采用公共中号/小号档位，浏览保留宽工作区。新增独立的定时生成备份分组（间隔 1–720 小时、SQL/完整 ZIP、北京时间执行状态）和本地自动清理分组（SQL/ZIP 分别保留 1–1000 份，默认各 10 份、默认关闭），清理区域沿用 `backup:delete` 并只提交获权配置，云盘文件保留；新字段手机纵向、桌面双列，复用全局数字输入和下拉，运行状态保留服务端唯一契约。自动备份单独设置标题，当前目录按“当前备份目录：实际盘名/文件夹名称”单行展示，每次打开设置及切换账户按已保存 ID 自动读取云端最新名称，迟到响应不覆盖其他账户或未保存的目录选择；读取失败保留原名称并提示，可继续浏览重选；设置弹窗和回收站移除说明提示，移除底部关闭按钮，保留标题栏关闭，新增账户和文件编辑期间锁定必要操作。选择已保存账户后自动识别云盘，支持目录选择、文件及回收站分页浏览；首次浏览空根目录时检查其他云盘并提示切换，手动选择及刷新不自动换盘，空状态标明当前云盘和目录。独立“云盘管理”入口及目录/回收站浏览复用 `backup:view`；设置、新建文件夹和上传复用 `backup:create`；文件及文件夹重命名、回收站恢复复用 `backup:edit`；删除及回收站彻底删除复用 `backup:delete` 和统一确认框；文件列表按“打开、编辑、删除”显示，编辑用于修改名称；回收站按“删除、恢复”显示，删除确认框明确彻底删除且不可恢复；两处删除复用公共 `table-action--delete` 样式，成功后刷新列表，失败保留列表和提示，目录删除明确包含子项并保护当前备份目录及其父目录。新建/重命名使用公共 `MobileDialog` 小号表单，成功关闭输入框并通过全局通知提示，失败只提示一次并保留输入；操作中禁用导航和弹窗关闭，错误保留输入，同名拒绝覆盖。统一 API 为 `api/backup.ts`，共享契约为 `types/backup.ts`。设置弹窗使用公共 `MobileDialog`、表单、按钮及 Loading，浏览请求采用 `useLatestRequest`，手机和桌面沿用全局响应式规则。开启后由后端递归扫描 backups 内完成的普通文件并自动上传（含新增规则文件，排除内部状态、临时项及符号链接，普通文件确认稳定后入队，云端保留子目录层级），不新增自动压缩或业务上传目录同步；上传不创建公开下载链接，本地删除与云盘保留独立。接口及持久化边界见[备份管理](../backend/backup-management.md#阿里云盘自动上传)。
+`/backup` 增加云盘设置弹窗 `backup/CloudBackupSettingsDialog.vue`、文件浏览单元 `backup/CloudDriveBrowser.vue`、ZIP/SQL 云盘状态及手动上传入口。云端删除独立显示警告色“文件失效”和“该文件云端已删除，可重新上传！”，实际上传错误仍显示“上传失败”；云端外部恢复经后端按原 ID 和大小核验后，页面轮询自动更新为“已上传”，不重复上传。任务轮询复用 `useLatestRequest`，读取失败保留已有状态，权限撤销和页面卸载取消请求及定时器。支持以名称和 Token 新增或编辑多个云盘账户，储存账户下拉框驱动对应账户的目录预览，保存设置才切换上传目标；管理入口可独立选择浏览账户，凭据不回显。设置弹窗按账户、自动备份和目标目录分组，桌面账户下拉与操作同排，手机纵向；表单/账户编辑采用公共中号/小号档位，浏览保留宽工作区。自动备份计划配置间隔 1–720 小时、SQL/完整 ZIP 和北京时间执行状态，开启“自动备份并上传”后首次立即生成并上传，后续按间隔重复；本地自动清理分组按 SQL/ZIP 分别保留 1–1000 份，默认各 10 份、默认关闭，清理区域沿用 `backup:delete` 并只提交获权配置，云盘文件保留；新字段手机纵向、桌面双列，复用全局数字输入和下拉，运行状态保留服务端唯一契约。自动备份并上传单独设置标题，当前目录按“当前备份目录：实际盘名/文件夹名称”单行展示，每次打开设置及切换账户按已保存 ID 自动读取云端最新名称，迟到响应不覆盖其他账户或未保存的目录选择；读取失败保留原名称并提示，可继续浏览重选；设置弹窗和回收站移除说明提示，移除底部关闭按钮，保留标题栏关闭，新增账户和文件编辑期间锁定必要操作。选择已保存账户后自动识别云盘，支持目录选择、文件及回收站分页浏览；首次浏览空根目录时检查其他云盘并提示切换，手动选择及刷新不自动换盘，空状态标明当前云盘和目录。独立“云盘管理”入口及目录/回收站浏览复用 `backup:view`；设置、新建文件夹和上传复用 `backup:create`；文件及文件夹重命名、回收站恢复复用 `backup:edit`；删除及回收站彻底删除复用 `backup:delete` 和统一确认框；文件列表按“打开、编辑、删除”显示，编辑用于修改名称；回收站按“删除、恢复”显示，删除确认框明确彻底删除且不可恢复；两处删除复用公共 `table-action--delete` 样式，成功后刷新列表，失败保留列表和提示，目录删除明确包含子项并保护当前备份目录及其父目录。新建/重命名使用公共 `MobileDialog` 小号表单，成功关闭输入框并通过全局通知提示，失败只提示一次并保留输入；操作中禁用导航和弹窗关闭，错误保留输入，同名拒绝覆盖。统一 API 为 `api/backup.ts`，共享契约为 `types/backup.ts`。设置弹窗使用公共 `MobileDialog`、表单、按钮及 Loading，浏览请求采用 `useLatestRequest`，手机和桌面沿用全局响应式规则。开启后由后端先生成新备份，再递归扫描 backups 内完成的普通文件并自动上传（含新增规则文件，排除内部状态、临时项及符号链接，普通文件确认稳定后入队，云端保留子目录层级），不新增业务上传目录同步；上传不创建公开下载链接，本地删除与云盘保留独立。接口及持久化边界见[备份管理](../backend/backup-management.md#阿里云盘自动上传)。
 - 数据、权限与预定：`data-optimization/page/DataCheckTab.vue`、`data-optimization/page/DataImportTab.vue`、`menu/MenuManagementView.vue`、`permissions/page/LogsPage.vue`、`permissions/page/ModuleManagementView.vue`、`permissions/page/RolesPage.vue`、`permissions/page/StoreBindingsPage.vue`、`permissions/page/UserRolesPage.vue`、`preorders/PreordersView.vue`、`preorders/page/MatchPreorderModal.vue`
 - 库存、报价与综合查询：`inventory/InventoryView.vue`、`inventory/page/InventoryTable.vue`、`price-list/PriceListView.vue`、`price-list/page/PublicPriceQuery.vue`、`price-list/page/SalesPriceDisplay.vue`、`price-list/page/SyncLogView.vue`、`query/QueryView.vue`、`query/page/QueryGoodsPanel.vue`、`reminders/ReminderView.vue`、`rentals/RentalsView.vue`、`repairs/RepairsView.vue`
 - 工资、销售、分享与国补：`salary/page/SalaryAttendanceListDialog.vue`、`salary/page/SalaryEmployeeSalesDetailDialog.vue`、`salary/page/SalaryEmployeesTab.vue`、`salary/page/SalaryMyRecordsTab.vue`、`salary/page/SalaryPayoutTab.vue`、`salary/page/SalarySalesDetailDialog.vue`、`salary/page/SalaryTemplatesTab.vue`、`sales/page/SalesBatchForm.vue`、`sales/page/SalesInventoryDetailDialog.vue`、`sales/page/SalesSummaryView.vue`、`sales/page/SalesTableView.vue`、`shared/SharedView.vue`、`subsidy/components/SubsidyListSection.vue`
@@ -906,7 +906,7 @@
 
 ## T22 整单只读明细（2026-11-14）
 
-新增非路由公共单元 `components/query/CheckoutOrderDialog.vue`，手机设备销售详情和商品销售详情共用“整单明细”入口。一个公共 `MobileDialog`，以 `RecordDescriptions` 展示原客户、整批备注、手机与购买/赠送商品、原SN、原成交资金及赠品未退约定（不计实收），不新增表格、Tab、路由或权限模块。手机端长单号、SN及备注整行展示；原销售全退后保留原单入口。双模块查看权限、分别字段脱敏、公共Loading、无缓存最新请求、失败重试与撤权清理沿用公共入口。代码验证及云端/真机边界登记于T22，接口见[销售凭证](../business/sales-receipt-standard.md#整单明细)。
+新增非路由公共单元 `components/query/CheckoutOrderDialog.vue`，手机设备销售详情和商品销售详情共用“整单明细”入口。一个公共 `MobileDialog`，以 `RecordDescriptions` 展示原客户、整批备注、手机与购买/赠送商品、原SN、原成交资金及赠品未退约定（不计实收），不新增表格、Tab、路由或权限模块。摘要和商品分区使用同一套详情视觉，手机两列、平板三列、PC三列，长单号、SN及备注整行展示，金额/积分与购买/赠送使用语义色；移除重复说明文案，字段直接进入详情。原销售全退后保留原单入口。双模块查看权限、分别字段脱敏、公共Loading、无缓存最新请求、失败重试与撤权清理沿用公共入口。代码验证及云端/真机边界登记于T22，接口见[销售凭证](../business/sales-receipt-standard.md#整单明细)。
 
 ## 本轮客户地址职责单元（2026-11-13）
 

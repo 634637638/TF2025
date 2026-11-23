@@ -343,7 +343,7 @@
           class="backup-type-option"
         >
           <span class="backup-type-title">仅备份数据库</span>
-          <span class="backup-type-description">导出当前配置连接的 MySQL 数据库，生成 SQL 文件。</span>
+          <span class="backup-type-description">导出当前数据库并打包为 ZIP，支持设置压缩密码。</span>
         </el-radio>
         <el-radio
           value="full"
@@ -351,7 +351,7 @@
           class="backup-type-option"
         >
           <span class="backup-type-title">完整备份</span>
-          <span class="backup-type-description">包含数据库、后端代码和上传文件，生成 ZIP 压缩包。</span>
+          <span class="backup-type-description">包含数据库、后端代码和上传文件，支持设置压缩密码。</span>
         </el-radio>
       </el-radio-group>
       <template #footer>

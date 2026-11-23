@@ -8,7 +8,7 @@
         v-permission="{ permission: ['customers:view', 'query:view', 'query:film'], mode: 'all' }"
         @click.stop="open = true"
       >
-        查看贴膜记录
+        贴膜记录
       </el-button>
     </div>
     <FilmServiceDialog

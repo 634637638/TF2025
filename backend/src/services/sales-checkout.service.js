@@ -11,7 +11,7 @@ const { normalizeCheckoutGoods } = require('../utils/checkout-goods-input')
 const { normalizeQuickCheckoutPhone } = require('../utils/quick-checkout-phone')
 const { validId, moneyCents } = require('../utils/sale-input')
 const { validateSalePayment } = require('../utils/sale-payment')
-const { normalizeDateTime, normalizeDateTimeWithCurrentTime } = require('../utils/time')
+const { normalizeDateTime, normalizeBusinessDateTime } = require('../utils/time')
 const { prepareInvoiceNumberTransaction, generateDailyDocumentNumber } = require('../utils/invoice-number')
 const { getCustomerPointsConfig, creditCheckoutPoints } = require('./customer-points.service')
 const { quoteCheckoutPoints } = require('../utils/checkout-points')
@@ -49,10 +49,11 @@ class SalesCheckoutService {
   constructor({ repository = new SalesCheckoutRepository(), phones = new SalesPhoneService(),
     accessories = new AccessoryService(), inventory = new InventoryService(), pointsLedger = new CustomerPointsLedgerService(), permissionCheck = hasUnifiedPermission,
     prepareInvoice = prepareInvoiceNumberTransaction, getPointsConfig = getCustomerPointsConfig, creditPoints = creditCheckoutPoints,
-    normalizeDate = normalizeDateTime, normalizeDateWithCurrentTime = normalizeDateTimeWithCurrentTime,
+    normalizeDate = normalizeDateTime, normalizeBusinessTime = normalizeBusinessDateTime,
     createOrderNo = (connection, time) => generateDailyDocumentNumber('SO', connection, time, 8), films = null, autoFilm = false } = {}) {
     Object.assign(this, { repository, phones, accessories, inventory, pointsLedger, permissionCheck, prepareInvoice, getPointsConfig, creditPoints, normalizeDate, createOrderNo,
-      normalizeDateWithCurrentTime, films: films || (autoFilm ? new FilmService() : null), autoFilm })
+      normalizeBusinessTime,
+      films: films || (autoFilm ? new FilmService() : null), autoFilm })
   }
 
   normalize(body, actor) {
@@ -69,7 +70,7 @@ class SalesCheckoutService {
     if (customer.name.length < 2 || !filmService && !/^1[3-9]\d{9}$/.test(customer.phone)) reject('请填写客户姓名和有效手机号')
     if (body.customer_info.apple_id !== undefined) customer.apple_id = text(body.customer_info.apple_id, 100, 'Apple ID')
     const goodsOnly = !filmService && !body.quick_phone && (!body.phones || !body.phones.length) && Array.isArray(body.accessories) && body.accessories.length > 0
-    const time = filmService ? this.films.now() : goodsOnly ? this.normalizeDateWithCurrentTime(body.sale_time) : this.normalizeDate(body.sale_time, false)
+    const time = filmService ? this.films.now() : this.normalizeBusinessTime(body.sale_time)
     if (!filmService && (!body.sale_time || !time)) reject('销售时间格式无效')
     const quickPhone = body.quick_phone === undefined ? null : normalizeQuickCheckoutPhone(body.quick_phone)
     if (quickPhone && body.phones !== undefined && (!Array.isArray(body.phones) || body.phones.length)) reject('快速出库不能同时选择已有库存手机')
@@ -302,8 +303,10 @@ class SalesCheckoutService {
           points_used: quote.points_used, deduction_cents: quote.deduction_cents, gross_cents: quote.gross_cents,
           points_per_yuan: quote.points_used ? quote.config_snapshot.redemption.points_per_yuan : null,
           gift_return_unit_price: row.sale_type === 'gift' ? row.gift_return_unit_price ?? null : null,
-          remarks: input.remarks, ...(exchangeSource ? { exchange_source: exchangeSource } : {}) }, time: input.time })
-      items.push({ id: itemId, key: row.key, type: 'accessory', accessory_sale_id: issued.sale_id, linked_phone_sale_id: linkedPhoneSaleId || null })
+          remarks: input.remarks, ...(exchangeSource && row.key === 'replacement' ? { exchange_source: exchangeSource } : {}) }, time: input.time })
+      items.push({ id: itemId, key: row.key, type: 'accessory', accessory_sale_id: issued.sale_id,
+        linked_phone_sale_id: linkedPhoneSaleId || null, gross_cents: quote.gross_cents,
+        deduction_cents: quote.deduction_cents, payable_cents: quote.payable_cents })
       goodsPointSources.push({ item_id: itemId, points })
       if (quote.points_used) await this.pointsLedger.consume(connection, { customerId: Number(customerId),
         points: quote.points_used, amountCents: quote.deduction_cents,
@@ -400,6 +403,16 @@ class SalesCheckoutService {
       ...input.payment, amount: (input.goods_cents - deduction) / 100, time: input.payment.payment_time, remarks: input.remarks, actor_id: input.actor_id }))
     const result = { order_id: orderId, order_no: orderNo, items, payment_ids: paymentIds, total_amount: input.total_cents / 100,
       points_earned: earned + goodsPoints, points_used: used, deduction_amount: deduction / 100, paid_amount: payableCents / 100 }
+    for (const filmRow of input.accessories.filter(row => row.auto_film)) {
+      const phoneId = Number(filmRow.linked_phone_id), saleId = phoneSales.get(phoneId)
+      const phone = snapshots.find(row => Number(row.id) === phoneId)
+      if (!saleId || !phone) reject('自动赠膜关联手机不存在', 409, 'FILM_DEVICE_REQUIRED')
+      if (typeof this.films?.appendAutomatic !== 'function') reject('自动赠膜历史服务不可用', 409, 'FILM_SERVICE_NOT_READY')
+      await this.films.appendAutomatic(connection, {
+        orderId, customerId, storeId: input.store_id, operatorId: input.operator_id, createdBy: input.actor_id,
+        businessTime: input.time, request: filmRow, phone, saleId
+      })
+    }
     if (film) result.film_service_id = await this.films.append(connection, input, result, film)
     await repo.completeOrder(connection, { id: orderId, total_amount: result.total_amount, final_amount: result.paid_amount, total_cost: totalCost === null ? null : totalCost / 100,
       total_profit: totalCost === null ? null : (payableCents - totalCost) / 100, points_awarded: result.points_earned,

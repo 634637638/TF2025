@@ -39,10 +39,11 @@ function isolatedService(t, spawn) {
   return { service, root, remap }
 }
 
-test('数据库导出完成前只有临时文件，成功原子发布 SQL；失败不留下可上传文件', async t => {
+test('数据库导出完成后压缩为 ZIP 再原子发布；失败不留下可上传文件', async t => {
   const { service, root, remap } = isolatedService(t)
   service.getTimestamp = () => '20261110_120000'
-  const filename = 'sql-20261110_120000.sql'
+  const filename = 'sql-20261110_120000.zip'
+  const sqlName = 'sql-20261110_120000.sql'
   let release, started
   const ready = new Promise(resolve => { started = resolve })
   const wait = new Promise(resolve => { release = resolve })
@@ -54,13 +55,15 @@ test('数据库导出完成前只有临时文件，成功原子发布 SQL；失�
   const pending = service.createBackup('database')
   await ready
   assert.equal(fs.existsSync(path.join(root, filename)), false)
-  assert.equal(fs.existsSync(path.join(root, `${filename}.tmp`)), true)
+  assert.equal(fs.existsSync(path.join(root, 'sql-20261110_120000.sql.tmp')), true)
   await assert.rejects(() => service.createBackup('database'), error => error.statusCode === 409)
   release()
   const result = await pending
   assert.equal(result.filename, filename)
-  assert.match(fs.readFileSync(path.join(root, filename), 'utf8'), /-- TF2025 database backup complete\s*$/)
-  assert.equal(fs.existsSync(path.join(root, `${filename}.tmp`)), false)
+  const archive = fs.readFileSync(path.join(root, filename))
+  assert.deepEqual([...archive.subarray(0, 4)], [0x50, 0x4b, 0x03, 0x04])
+  assert.ok(archive.length > 100)
+  assert.equal(fs.existsSync(path.join(root, 'sql-20261110_120000.sql.tmp')), false)
   service.getTimestamp = () => '20261110_130000'
   service.backupDatabase = async output => { fs.writeFileSync(remap(output), 'unfinished'); throw new Error('模拟导出失败') }
   await assert.rejects(() => service.createBackup('database'), /模拟导出失败/)
@@ -68,7 +71,7 @@ test('数据库导出完成前只有临时文件，成功原子发布 SQL；失�
 
   const legacy = 'database_20261109_142759.sql'
   fs.writeFileSync(path.join(root, legacy), 'SELECT 1;\n')
-  fs.writeFileSync(path.join(root, `${filename}.tmp`), 'unfinished')
+  fs.writeFileSync(path.join(root, `${sqlName}.tmp`), 'unfinished')
   const listed = service.getBackupList().map(item => ({ filename: item.filename, type: item.type }))
   assert.deepEqual(listed.sort((a, b) => a.filename.localeCompare(b.filename)), [
     { filename: legacy, type: 'database' }, { filename, type: 'database' }

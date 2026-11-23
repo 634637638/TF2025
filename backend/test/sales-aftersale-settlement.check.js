@@ -36,6 +36,21 @@ test('换货第三版分开保存旧件可退与新件应付，只确认一次�
   assert.throws(() => allocate([{ ...line(1, 100), replacement_cents: 1 }]), { statusCode: 409 })
 })
 
+test('换货第四版额外购买金额独立守恒，多个商品合并入同一售后资金头', () => {
+  const result = allocate([{ ...line(50, 2000), gift_charge_cents: 0, replacement_cents: 5000, additional_cents: 3500 }], { version: 4 })
+  assert.equal(result.totals.refund_cents, 0)
+  assert.equal(result.totals.collection_cents, 6500)
+  assert.equal(result.totals.additional_cents, 3500)
+  const header = { id: 1, order_id: 10, operation_type: 'goods_exchange', ...result.totals }
+  const rows = [{ id: 1, aftersale_id: 1, original_item_id: 50, item_order_id: 10, item_type: 'accessory', quantity: 1,
+    fact_snapshot: { payable_cents: 2000, exchange: { replacement_cents: 5000, additional_cents: 3500, replacement_order_id: 11,
+      replacement_item_id: 51, root_order_id: 10, root_item_id: 50, quantity: 1 }, settlement: result.items[0].settlement } }]
+  assert.equal(read(header, rows)[0].settlement.additional_cents, 3500)
+  const changed = structuredClone({ header, rows })
+  changed.header.additional_cents++
+  assert.throws(() => read(changed.header, changed.rows), { code: 'CHECKOUT_RETURN_CONFLICT' })
+})
+
 test('第二版赠品扣款单独守恒，不混入积分追回；旧版不重解释、跨版本或篡改扣款均拒绝', () => {
   const result = allocate([{ ...line(1, 10000), gift_charge_cents: 0 }, { ...line(2, 0), gift_charge_cents: 1500 }], { version: 2 })
   assert.equal(result.totals.refund_cents, 8500); assert.equal(result.totals.recovery_cents, 0)

@@ -108,7 +108,7 @@ export async function verifyPhoneReturn(page, scenario, capture) {
   await capture?.()
   await input(page, '备注', '手机与关联配件退货')
   await check(page, '已核对被退回的手机及商品')
-  await clickButton(page, '核对退款')
+  await clickButton(page, '价格核算')
   await page.waitForFunction(() => document.body.textContent.includes('客户补差价'))
   const quotes = await page.evaluate(() => JSON.parse(JSON.stringify(window.fixture.posts)))
   assert.equal(quotes.length, 1)
@@ -130,7 +130,7 @@ export async function verifyPhoneReturn(page, scenario, capture) {
   await page.waitForFunction(() => document.body.textContent.includes('提交结果未确认'))
   assert.deepEqual(await page.$$eval('.el-form input, .el-form textarea', elements => elements.filter(element => !element.disabled)
     .map(element => element.closest('.el-form-item')?.textContent)), [], '结果未知应冻结实物、SN及资金确认')
-  assert.equal(await (await button(page, '核对退款')).evaluate(element => element.disabled), true)
+  assert.equal(await (await button(page, '价格核算')).evaluate(element => element.disabled), true)
   assert.equal(await (await button(page, '取消')).evaluate(element => element.disabled), false)
   await clickButton(page, '确认退货')
   await page.waitForFunction(() => window.fixture.success.length === 1 && !window.fixture.open)
@@ -197,20 +197,20 @@ app.directive('permission',{});app.mount('#app');
 export async function verifyGoodsExchange(page, scenario) {
   const down = scenario === 'exchange-down', gift = scenario === 'exchange-gift'
   const price = down ? 20 : 50, points = gift ? 10 : 0, cash = gift ? 37 : 30
-  await page.waitForFunction(() => document.body.textContent.includes('剩余可退') && !document.body.textContent.includes('正在核对原单'))
+  await page.waitForFunction(() => document.body.textContent.includes('剩余可换') && !document.body.textContent.includes('正在核对原单'))
   assert.equal(await page.evaluate(() => window.fixture.reads[0].useCache), false)
-  assert.equal(await page.$eval('input[aria-label="SN退货数量"]', element => element.value), '0')
   if (gift) assert.equal(await page.evaluate(() => document.body.textContent.includes('按原实际扣款抵付')), true)
   await select(page, '退回门店', '二店')
   await select(page, '退货原因', '客户退货')
   await select(page, '本次退回SN', 'OLD02')
-  await select(page, '新商品销售员', '样本销售员')
+  await select(page, '换货员', '样本销售员')
   await select(page, '商品名称', '原装充电器', 0, '000123')
   assert.equal(await page.evaluate(() => window.fixture.reads.some(row => row.search === '000123' && row.store_id === 2)), true)
   await input(page, '单价', String(price), 0)
   await input(page, '本条抵扣积分', String(points), 0)
   const quantity = await (await field(page, '数量', 0)).$('input')
-  assert.equal(await quantity.evaluate(element => element.disabled), true, '换入数量必须跟随原件')
+  assert.equal(await quantity.evaluate(element => element.disabled), false, '换入数量可按原单剩余可换数量调整')
+  await quantity.fill('1')
   const type = await (await field(page, '出库方式', 0)).$('input')
   assert.equal(await type.evaluate(element => element.disabled), true, '换入用途由服务端核对结果锁定')
   if (scenario === 'exchange-up') {
@@ -218,9 +218,9 @@ export async function verifyGoodsExchange(page, scenario) {
     await input(page, '实际出库SN（每行一件，支持扫码枪输入）', 'NEW01', 0)
     assert.equal(await (await field(page, 'SN数量', 0)).$eval('input', element => element.value), '1')
   }
-  await input(page, '备注', '原单换货并记录新销售员')
+  await input(page, '备注', '原单换货并记录换货员')
   await check(page, '已核验退回实物')
-  await clickButton(page, '核对换货差价')
+  await clickButton(page, '价格核算')
   await page.waitForFunction(() => document.body.textContent.includes('新件净应付'))
   assert.equal(await (await button(page, '确认换货')).evaluate(element => element.disabled), true)
   // 旧报价不应在修改新件售价后继续提交。
@@ -228,7 +228,7 @@ export async function verifyGoodsExchange(page, scenario) {
   await page.waitForFunction(() => !document.body.textContent.includes('新件净应付'))
   assert.equal(await (await button(page, '确认换货')).evaluate(element => element.disabled), true)
   await input(page, '单价', String(price), 0)
-  await clickButton(page, '核对换货差价')
+  await clickButton(page, '价格核算')
   await page.waitForFunction(() => document.body.textContent.includes('新件净应付'))
   await select(page, down ? '退款方式' : '补款方式', down ? '移动支付' : '现金')
   if (down) await select(page, '支付渠道', '微信')
@@ -242,7 +242,7 @@ export async function verifyGoodsExchange(page, scenario) {
   await page.waitForFunction(() => document.body.textContent.includes('提交结果未确认'))
   assert.deepEqual(await page.$$eval('.el-form input, .el-form textarea', elements => elements.filter(element => !element.disabled)
     .map(element => element.closest('.el-form-item')?.textContent)), [])
-  assert.equal(await (await button(page, '核对换货差价')).evaluate(element => element.disabled), true)
+  assert.equal(await (await button(page, '价格核算')).evaluate(element => element.disabled), true)
   assert.equal(await (await button(page, '取消')).evaluate(element => element.disabled), false)
   await clickButton(page, '确认换货')
   await page.waitForFunction(() => window.fixture.success.length === 1 && !window.fixture.open)
@@ -252,15 +252,16 @@ export async function verifyGoodsExchange(page, scenario) {
   assert.equal(posts[2].url, '/sales/checkout/10/items/50/exchange')
   assert.deepEqual(posts[2].data, {
     request_key: posts[2].data.request_key, store_id: 2, quantity: 1, serial_numbers: ['OLD02'], return_reason: '客户退货',
-    reversal_date: posts[2].data.reversal_date, remarks: '原单换货并记录新销售员', restock_confirmed: true, operator_id: 7,
-    replacement: { accessory_id: 56, unit_price: price, ...(scenario === 'exchange-up' ? { serial_numbers: ['NEW01'] } : {}), ...(points ? { redeem_points: points } : {}) },
+    reversal_date: posts[2].data.reversal_date, remarks: '原单换货并记录换货员', restock_confirmed: true, operator_id: 7,
+    replacement: { accessory_id: 56, quantity: 1, unit_price: price, ...(scenario === 'exchange-up' ? { serial_numbers: ['NEW01'] } : {}), ...(points ? { redeem_points: points } : {}) },
+    additional_goods: [],
     settlement: { refund_amount: down ? cash : 0, collection_amount: down ? 0 : cash,
       method: down ? 'mobile' : 'cash', channel: down ? 'wechat' : null, confirmed: true }
   })
   assert.match(posts[2].data.request_key, /^[a-f0-9]{32}$/)
   assert.match(posts[2].data.reversal_date, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
   await page.evaluate(() => window.reopen())
-  await page.waitForFunction(() => document.body.textContent.includes('剩余可退') && !document.body.textContent.includes('正在核对原单'))
+  await page.waitForFunction(() => document.body.textContent.includes('剩余可换') && !document.body.textContent.includes('正在核对原单'))
   await page.evaluate(() => window.fixture.denied.push('query:exchange'))
   await page.waitForFunction(() => document.body.textContent.includes('缺少换货必要权限'))
   assert.equal(await page.$('.el-form'), null, '撤权后不保留可操作草稿')

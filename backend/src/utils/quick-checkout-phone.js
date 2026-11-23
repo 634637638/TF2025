@@ -2,7 +2,7 @@
 
 const { validId, moneyCents } = require('./sale-input')
 const { validateImei } = require('./imei')
-const { normalizeDateTime } = require('./time')
+const { normalizeBusinessDateTime } = require('./time')
 
 /** 快速合单只接受采购设备事实，交易、门店、人员及客户统一取共同结算头。 */
 const normalizeQuickCheckoutPhone = value => {
@@ -18,7 +18,7 @@ const normalizeQuickCheckoutPhone = value => {
   const cost = value.purchase_cost === null ? null : moneyCents(value.purchase_cost)
   const price = moneyCents(value.sale_price)
   if (value.purchase_cost !== null && cost === null || price === null || !price) invalid('采购成本或销售价格无效')
-  const inventoryTime = value.inventory_time && normalizeDateTime(value.inventory_time, false)
+  const inventoryTime = value.inventory_time && normalizeBusinessDateTime(value.inventory_time)
   if (!inventoryTime) invalid('请选择有效的入库日期')
   return { ...Object.fromEntries(['brand_id', 'model_id', 'color_id', 'memory_id', 'supplier_id'].map(key => [key, Number(value[key])])),
     is_new: Number(value.is_new), imei: identifier.normalizedImei, serial_number: identifier.normalizedSerialNumber,

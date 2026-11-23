@@ -6,7 +6,7 @@ const log = require('../utils/log')
 
 const financialKeys = ['total_price', 'profit', 'points_awarded', 'points_used', 'deduction_amount',
   'base_refund_amount', 'points_recovery_amount', 'points_compensation_amount', 'gift_charge_amount', 'refund_amount', 'collection_amount', 'settlement_offset_amount',
-  'replacement_amount', 'exchange_credit_amount', 'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state',
+  'replacement_amount', 'additional_amount', 'exchange_credit_amount', 'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state',
   'points_delta', 'points_award_returned', 'points_redemption_returned', 'settlement_method', 'settlement_channel']
 const responseKeys = {
   'basic_info.sequence': ['sale_no', 'order_no', 'linked_phone_invoice'],
@@ -89,13 +89,12 @@ class QueryGoodsController {
       if (mode === 'list' && Object.entries(queryFields).some(([key, field]) => req.query[key] !== undefined && hidden.has(field))) {
         return res.status(403).json({ success: false, message: '不能使用已隐藏的筛选字段', code: 'FIELD_PERMISSION_DENIED' })
       }
-      const blocked = new Set([...hidden].flatMap(field => responseKeys[field] || []))
-      if (hidden.has('basic_info.serial_number')) blocked.add('serial_number')
       const result = mode === 'detail' ? await this.service.detail(req.user, req.params.id)
         : mode === 'phoneReceipt' ? await this.service.phoneReceipt(req.user, req.params.saleId)
           : mode === 'aftersales' ? await this.service.aftersales(req.user, req.params.id, req.query)
             : mode === 'customerHistory' ? await this.service.customerHistory(req.user, req.params.customerId, req.query)
-              : await this.service.list(req.user, req.query, searchKeys.filter(key => !blocked.has(key)))
+              // 关键词只用于定位记录，结果仍由统一字段脱敏处理，隐藏字段不能因此回显。
+              : await this.service.list(req.user, req.query, searchKeys)
       return res.json({ success: true, data: this.access.maskPayload(result, permissions) })
     } catch (error) {
       if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code })

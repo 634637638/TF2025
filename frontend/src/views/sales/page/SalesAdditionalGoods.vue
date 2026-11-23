@@ -325,6 +325,7 @@
             </el-form-item>
           </el-col>
           <el-col
+            v-if="!exchangeMode"
             :xs="standalone ? 16 : 12"
             :sm="standalone ? 16 : 5"
           >
@@ -338,6 +339,33 @@
               >
                 <el-option
                   v-if="canCreate"
+                  label="购买"
+                  value="sale"
+                />
+                <el-option
+                  v-if="canGift && !props.saleOnly"
+                  label="赠送"
+                  value="gift"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col
+            v-else
+            :xs="16"
+            :sm="5"
+          >
+            <el-form-item label="类型">
+              <el-select
+                v-model="exchangeType"
+                :disabled="disabled"
+                aria-label="换货商品类型"
+              >
+                <el-option
+                  label="换货"
+                  value="replacement"
+                />
+                <el-option
                   label="购买"
                   value="sale"
                 />
@@ -524,11 +552,46 @@
             </template>
           </el-table-column>
           <el-table-column
+            v-if="exchangeMode"
+            label="类型"
+            :width="roleWidth"
+          >
+            <template #default="{ row }">
+              <el-tag
+                :type="row.key === 'replacement' ? 'primary' : 'success'"
+                effect="light"
+              >
+                {{ exchangeTypeLabel(row) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="!exchangeMode"
             label="方式"
             :width="typeWidth"
           >
             <template #default="{ row }">
               {{ row.sale_type === 'gift' ? '赠送' : '购买' }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="exchangeMode && canViewQueryGoodsField('total_price')"
+            label="抵扣积分"
+            :width="pointsWidth"
+          >
+            <template #default="{ row }">
+              <el-input-number
+                v-if="row.key === 'replacement' && row.sale_type === 'sale'"
+                class="form-control"
+                :aria-label="`${row.option?.name || '换入商品'}抵扣积分`"
+                :model-value="row.redeem_points || 0"
+                :min="0"
+                :max="2147483647"
+                :precision="0"
+                :controls="false"
+                :disabled="disabled"
+                @update:model-value="updatePoints(row.key, $event)"
+              />
             </template>
           </el-table-column>
           <el-table-column
@@ -541,7 +604,7 @@
                 :aria-label="`${row.option?.name || '商品'}数量`"
                 :model-value="row.quantity || undefined"
                 :min="1"
-                :max="999999"
+                :max="exchangeMode && row.key === 'replacement' ? Math.max(1, props.exchangeMaxQuantity || 0) : 999999"
                 :precision="0"
                 :controls="false"
                 :disabled="disabled || row.serial_mode"
@@ -620,9 +683,13 @@ import { getActionColumnMinWidth, getTextColumnMinWidth } from '@/utils/table-la
 import type { CheckoutGoodsDraft, CheckoutGoodsOption, CheckoutPhone } from '@/types/sales-checkout'
 
 const OptimizedScanner = defineAsyncComponent(() => import('@/components/OptimizedScanner.vue'))
-const props = defineProps<{ fieldSource?: 'accessories' | 'query'; modelValue: CheckoutGoodsDraft[]; storeId: number | null; phones: CheckoutPhone[]; disabled: boolean; standalone?: boolean }>()
+const props = withDefaults(defineProps<{ fieldSource?: 'accessories' | 'query'; modelValue: CheckoutGoodsDraft[]; storeId: number | null; phones: CheckoutPhone[]; disabled: boolean; standalone?: boolean; saleOnly?: boolean; exchangeMaxQuantity?: number; exchangeSaleType?: 'sale' | 'gift' }>(), { fieldSource: undefined, exchangeMaxQuantity: undefined, exchangeSaleType: 'sale' })
 const standalone = computed(() => props.standalone === true)
+const exchangeMode = computed(() => props.exchangeMaxQuantity !== undefined)
+const exchangeType = ref<'replacement' | 'sale' | 'gift'>('replacement')
 const nameWidth = computed(() => getTextColumnMinWidth(['商品名称', ...props.modelValue.map(row => row.option?.name)], { minWidth: 144, maxWidth: 320 }))
+const roleWidth = getTextColumnMinWidth(['类型', '换货', '购买', '赠送'], { minWidth: 96 })
+const pointsWidth = getTextColumnMinWidth(['抵扣积分', '2147483647'], { minWidth: 112 })
 const typeWidth = getTextColumnMinWidth(['方式', '购买', '赠送'], { minWidth: 0 })
 const priceWidth = computed(() => getTextColumnMinWidth(['价格', ...props.modelValue.map(row => row.unit_price)], { minWidth: 120 }))
 const lineSubtotal = (row: CheckoutGoodsDraft): number | null => {
@@ -644,7 +711,7 @@ const emit = defineEmits<{ 'update:modelValue': [rows: CheckoutGoodsDraft[]]; bu
 const { canCreate, hasPermission, source } = useGoodsPermissions(props.fieldSource)
 const canGift = computed(() => hasPermission('gift'))
 const notices = useNotification(), requests = useLatestRequest()
-const saleType = ref<'sale' | 'gift'>(canCreate.value ? 'sale' : 'gift')
+const saleType = ref<'sale' | 'gift'>(props.saleOnly || canCreate.value ? 'sale' : 'gift')
 const selectedKey = ref<string>(), linkedPhoneId = ref<number | undefined>(props.phones.length === 1 ? props.phones[0].phone_id : undefined)
 const options = ref<CheckoutGoodsOption[]>([]), loading = ref(false), failed = ref(false), total = ref(0)
 let keyword = '', page = 0
@@ -681,6 +748,7 @@ const keyOf = (option: CheckoutGoodsOption) => option.serial_number ? `sn:${opti
 const labelOf = (option: CheckoutGoodsOption) => [option.serial_number || (visible('product_model') ? option.product_model : ''), option.name,
   visible('brand_name') ? option.brand_name : '', visible('sale_price') && option.sale_price !== null ? `零售价 ¥${formatAmount(option.sale_price)}` : ''].filter(Boolean).join(' · ')
 const productInfo = (row: CheckoutGoodsDraft) => [visible('brand_name') ? row.option?.brand_name : '', visible('product_model') ? row.option?.product_model : '', visible('serial_number') ? row.serial_numbers.join('、') : ''].filter(Boolean).join(' · ')
+const exchangeTypeLabel = (row: CheckoutGoodsDraft) => row.key === 'replacement' ? '换货' : row.sale_type === 'gift' ? '赠送' : '购买'
 const reset = () => { requests.cancelLatest(); options.value = []; selectedKey.value = undefined; page = total.value = 0; loading.value = failed.value = false }
 const load = async (append = false) => {
   if (!props.storeId || props.disabled || !hasPermission('view')) return
@@ -712,36 +780,65 @@ const handleCatalogScroll = (event: Event) => {
 const { selectRef: goodsSelectRef, onPopupScroll: handleGoodsScroll } = useSelectLoadMore(
   loadMore, () => loading.value || failed.value || options.value.length >= total.value
 )
-const confirm = () => { const option = selectedOption.value; if (option && addOption(option, saleType.value, linkedPhoneId.value ?? null) && !standalone.value) selectedKey.value = undefined }
+const confirm = () => {
+  const option = selectedOption.value
+  const type = exchangeMode.value ? exchangeType.value === 'replacement' ? props.exchangeSaleType : exchangeType.value : saleType.value
+  if (option && addOption(option, type, linkedPhoneId.value ?? null) && !standalone.value) selectedKey.value = undefined
+}
+watch(() => props.saleOnly, value => { if (value) saleType.value = 'sale' })
 const addOption = (option: CheckoutGoodsOption, type: 'sale' | 'gift', phoneId: number | null): boolean => {
+  const isReplacement = exchangeMode.value && exchangeType.value === 'replacement'
+  if (isReplacement) type = props.exchangeSaleType
+  else if (props.saleOnly) type = 'sale'
   if (props.disabled || !hasPermission('view') || !hasPermission(type === 'gift' ? 'gift' : 'create')) return false
   if (type === 'gift' && (option.sale_price === null || !Number.isFinite(Number(option.sale_price)))) { notices.error('无法读取赠品零售价，请联系管理员'); return false }
   if (props.phones.length && (!phoneId || !props.phones.some(phone => phone.phone_id === phoneId))) { notices.error('请选择关联手机'); return false }
-  const count = 1, serial = option.serial_number || null
+  const serial = option.serial_number || null
+  const currentReplacement = exchangeMode.value && exchangeType.value === 'replacement' ? props.modelValue.find(row => row.key === 'replacement') : undefined
+  if (currentReplacement && serial && currentReplacement.option?.id === option.id) {
+    const serials = [...currentReplacement.serial_numbers, normalizeAccessorySerial(serial)]
+    if (new Set(serials).size !== serials.length) { notices.error('该SN已加入换货清单'); return false }
+    if (serials.length > (props.exchangeMaxQuantity || 1)) { notices.error('换入SN数量不能超过原单剩余可换数量'); return false }
+    emit('update:modelValue', props.modelValue.map(row => row.key === 'replacement' ? { ...row, serial_mode: true, quantity: serials.length, serial_numbers: serials } : row))
+    return true
+  }
+  const count = 1
+  const available = availableQuantity(option) + (currentReplacement?.option?.id === option.id ? currentReplacement.quantity : 0)
   if (serial && (!visible('serial_number') || !isValidAccessorySerial(serial))) { notices.error('请选择有效在库SN'); return false }
-  if (serial && reservedStock.value.serials.has(normalizeAccessorySerial(serial))) { notices.error('该SN已加入清单'); return false }
-  if (availableQuantity(option) < count) { notices.error('商品数量超过当前门店可售库存'); return false }
+  if (serial && reservedStock.value.serials.has(normalizeAccessorySerial(serial)) && currentReplacement?.option?.serial_number !== serial) { notices.error('该SN已加入清单'); return false }
+  if (available < count) { notices.error('商品数量超过当前门店可售库存'); return false }
+  const candidates = isReplacement ? [] : exchangeMode.value ? props.modelValue.filter(row => row.key !== 'replacement') : props.modelValue
   const existing = !serial
-    ? props.modelValue.find(row => row.option?.id === option.id && !row.serial_mode && row.sale_type === type && row.linked_phone_id === phoneId)
+    ? candidates.find(row => row.option?.id === option.id && !row.serial_mode && row.sale_type === type && row.linked_phone_id === phoneId)
     : undefined
   if (!existing && props.modelValue.length + props.phones.length >= 1000) { notices.error('本单商品数量已达上限'); return false }
   if (existing) {
     emit('update:modelValue', props.modelValue.map(row => row.key === existing.key ? { ...row, quantity: row.quantity + count } : row))
     return true
   }
-  const row: CheckoutGoodsDraft = { key: createCheckoutKey(), option, quantity: count, unit_price: type === 'gift' ? 0 : option.sale_price === null ? null : Number(option.sale_price),
-    sale_type: type, linked_phone_id: phoneId ?? null, serial_mode: Boolean(serial), serial_numbers: serial ? [serial] : [],
+  const serialMode = Boolean(serial || isReplacement && Number(option.serial_quantity) > 0 && Number(option.serial_quantity) === Number(option.quantity) && visible('serial_number'))
+  const row: CheckoutGoodsDraft = { key: isReplacement ? 'replacement' : createCheckoutKey(), option, quantity: count, unit_price: type === 'gift' ? 0 : option.sale_price === null ? null : Number(option.sale_price),
+    sale_type: type, linked_phone_id: phoneId ?? null, serial_mode: serialMode, serial_numbers: serial ? [serial] : [],
     gift_return_unit_price: type === 'gift' ? option.sale_price === null ? null : Number(option.sale_price) : null }
-  emit('update:modelValue', [...props.modelValue, row])
+  const remaining = isReplacement ? props.modelValue.filter(item => item.key !== 'replacement') : props.modelValue
+  emit('update:modelValue', isReplacement ? [row, ...remaining] : [...remaining, row])
   return true
 }
 const remove = (key: string) => { if (!props.disabled) emit('update:modelValue', props.modelValue.filter(row => row.key !== key)) }
 const updatePrice = (key: string, value: number | null | undefined) => { if (!props.disabled) emit('update:modelValue', props.modelValue.map(row => row.key === key && row.sale_type !== 'gift' ? { ...row, unit_price: value } : row)) }
-
+const updatePoints = (key: string, value: number | null | undefined) => {
+  const points = value ?? 0
+  if (props.disabled || !Number.isSafeInteger(points) || points < 0 || points > 2147483647) return
+  emit('update:modelValue', props.modelValue.map(row => row.key === key && row.sale_type === 'sale' ? { ...row, redeem_points: points } : row))
+}
 const updateQuantity = (key: string, value: number | null | undefined) => {
   const row = props.modelValue.find(item => item.key === key)
   if (props.disabled || !row || row.serial_mode) return
   const count = value ?? 0
+  if (exchangeMode.value && row.key === 'replacement' && count > Number(props.exchangeMaxQuantity)) {
+    notices.error('换入数量不能超过原单剩余可换数量')
+    return
+  }
   const used = props.modelValue.filter(item => item.key !== key && item.option?.id === row.option?.id && !item.serial_mode).reduce((sum, item) => sum + item.quantity, 0)
   if (count + used > Number(row.option?.quantity)) { notices.error('商品数量超过当前门店可售库存'); return }
   emit('update:modelValue', props.modelValue.map(item => item.key === key ? { ...item, quantity: count } : item))
@@ -767,7 +864,7 @@ const cancelScans = () => {
 }
 const queueScan = (value: string) => {
   if (props.disabled || !props.storeId || !hasPermission('view') || !canScan.value) return
-  const code = value.trim(), type = saleType.value, phoneId = linkedPhoneId.value ?? null
+  const code = value.trim(), type = exchangeMode.value ? exchangeType.value === 'replacement' ? props.exchangeSaleType : exchangeType.value : saleType.value, phoneId = linkedPhoneId.value ?? null
   if (!isValidProductCode(code)) { notices.error('请输入有效的条形码或SN，最多100位'); return }
   if (!hasPermission(type === 'gift' ? 'gift' : 'create')) return
   if (props.phones.length && !props.phones.some(phone => phone.phone_id === phoneId)) { notices.error('请选择关联手机后扫码'); return }
