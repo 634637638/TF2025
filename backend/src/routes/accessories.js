@@ -24,10 +24,20 @@ const ACCESSORY_WRITE_FIELD_IDS = {
   distribution: 'stock_info.distribution', store_id: 'stock_info.distribution', remarks: 'other_info.remarks',
   description: 'other_info.description', image_url: 'basic_info.image_url', inventory_time: 'time_info.inventory_time'
 }
-const getAccessoryHiddenFields = async req => {
+const getAccessoryFieldPermissions = async req => {
   const permissions = req.fieldPermissions || await dataMaskingService.getUserFieldPermissions(req.user.id, ACCESSORY_FIELD_MODULE_KEY, { strict: true })
   req.fieldPermissions = permissions
-  return new Set(permissions.hiddenFields || [])
+  return permissions
+}
+const getAccessoryHiddenFields = async req => new Set((await getAccessoryFieldPermissions(req)).hiddenFields || [])
+
+const loadStockInReceiptPermissions = async (req, res, next) => {
+  try {
+    await getAccessoryFieldPermissions(req)
+    return next()
+  } catch (error) {
+    return next(error)
+  }
 }
 
 const rejectHiddenWrites = fields => async (req, res, next) => {
@@ -129,6 +139,9 @@ router.get('/', unifiedAuth, requirePermission('accessories:view'), accessoryCon
 router.get('/sale-options', unifiedAuth, requirePermission('accessories:view'), accessoryController.saleOptions.bind(accessoryController))
 router.get('/barcode/:barcode', unifiedAuth, requirePermission('accessories:view'), requireVisibleAccessoryField('basic_info.barcode'), accessoryController.getByBarcode.bind(accessoryController))
 router.get('/options', unifiedAuth, requirePermission('accessories:view'), accessoryController.entryOptions.bind(accessoryController))
+router.get('/stock-in/options', unifiedAuth, requirePermission('accessories:stock-in'), accessoryController.stockInEntryOptions.bind(accessoryController))
+router.get('/stock-in/templates', unifiedAuth, requirePermission('accessories:stock-in'), accessoryController.stockInTemplates.bind(accessoryController))
+router.get('/stock-in/templates/:id', unifiedAuth, requirePermission('accessories:stock-in'), accessoryController.stockInTemplateDetail.bind(accessoryController))
 router.get('/catalog', unifiedAuth, requirePermission('accessories-catalog:view'), accessoryController.productCatalog.bind(accessoryController))
 router.get('/settings', unifiedAuth, requirePermission('accessories-catalog:view'), requireVisibleAccessoryField('stock_info.distribution'), accessoryController.getSettings.bind(accessoryController))
 router.put('/settings', unifiedAuth, requirePermission('accessories-catalog:edit'), rejectHiddenWrites({ warehouse_store_id: 'stock_info.distribution' }), accessoryController.saveSettings.bind(accessoryController))
@@ -149,8 +162,9 @@ router.put('/catalog/:kind/:id', unifiedAuth, requirePermission('accessories-cat
 router.get('/:id', unifiedAuth, requirePermission('accessories:view'), accessoryController.getById.bind(accessoryController))
 router.post('/', unifiedAuth, requirePermission('accessories:create'), rejectHiddenAccessoryWrites, accessoryController.create.bind(accessoryController))
 router.put('/:id', unifiedAuth, requirePermission('accessories:edit'), rejectHiddenAccessoryWrites, accessoryController.update.bind(accessoryController))
+router.delete('/:id/unused-variant', unifiedAuth, requirePermission('accessories:delete'), accessoryController.removeUnusedBrandVariant.bind(accessoryController))
 router.delete('/:id', unifiedAuth, requirePermission('accessories:delete'), accessoryController.remove.bind(accessoryController))
-router.post('/stock-in', unifiedAuth, requirePermission('accessories:stock-in'), rejectHiddenAccessoryWrites, accessoryController.stockIn.bind(accessoryController))
+router.post('/stock-in', unifiedAuth, requirePermission('accessories:stock-in'), loadStockInReceiptPermissions, accessoryController.stockIn.bind(accessoryController))
 router.get('/stock-in/records', unifiedAuth, requirePermission('accessories:view'), rejectHiddenAccessoryQueries({
   accessory_id: 'basic_info.name', supplier_id: 'basic_info.supplier_name', store_id: 'stock_info.distribution',
   start_date: 'time_info.inventory_time', end_date: 'time_info.inventory_time'

@@ -47,6 +47,17 @@ const expectedInventoryCorrectionErrors = new Set([
   'INVENTORY_LEDGER_CONFLICT'
 ])
 
+const expectedAccessoryBusinessErrors = new Set([
+  'ACCESSORY_DELETE_HAS_HISTORY',
+  'ACCESSORY_DELETE_HAS_ACTIVITY',
+  'ACCESSORY_TEMPLATE_DELETE_BLOCKED',
+  'ACCESSORY_DELETE_STALE',
+  'ACCESSORY_DELETE_NOT_READY',
+  'PROFILE_CORRECTION_STALE',
+  'TEMPLATE_COLOR_IN_USE',
+  'DUPLICATE_BRAND_VARIANT'
+])
+
 /** 可预期的业务拒绝由页面提示并允许修正，不应升级为技术故障日志或错误上报。 */
 const isExpectedBusinessError = (error: AxiosError): boolean => {
   const status = error.response?.status
@@ -55,7 +66,8 @@ const isExpectedBusinessError = (error: AxiosError): boolean => {
   if (status === 400) return ['CHECKOUT_INVALID', 'CHECKOUT_RETURN_INVALID', 'POINTS_AVAILABLE_INSUFFICIENT'].includes(data.code)
   return status === 409 && (
     ['CHECKOUT_RETURN_QUOTE_CHANGED', 'CHECKOUT_RETURN_PAYMENT_REQUIRED'].includes(data.code) ||
-    expectedInventoryCorrectionErrors.has(data.code)
+    expectedInventoryCorrectionErrors.has(data.code) ||
+    expectedAccessoryBusinessErrors.has(data.code)
   )
 }
 

@@ -142,6 +142,18 @@ test('必要名称、门店或数量字段隐藏时禁止读取销售候选', as
   }
 })
 
+test('综合查询商品候选可使用请求门店，不因历史表格隐藏门店字段而阻断收银', async () => {
+  let called = false
+  const controller = new AccessoryController({
+    service: { async getSaleOptions() { called = true; return { data: [], pagination: { total: 0 } } } },
+    masking: { async getUserFieldPermissions() { return { hiddenFields: ['stock_info.distribution'] } }, filterSensitiveFields: rows => rows }
+  })
+  const res = { status(code) { this.code = code; return this }, json(body) { this.body = body; return this } }
+  await controller.querySaleOptions({ user: actor, query: { store_id: 1 } }, res)
+  assert.equal(called, true)
+  assert.equal(res.code, 200)
+})
+
 test('贴膜筛选不能用于反推已隐藏商品类型，普通候选仍沿用原字段边界', async () => {
   let called = false
   const controller = new AccessoryController({ service: { async getSaleOptions() { called = true; return { data: [], pagination: { total: 0 } } } },

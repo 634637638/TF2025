@@ -608,33 +608,30 @@ class AccessoryService extends BaseService {
           if (this.accessoryRepository.templateColors && (await this.accessoryRepository.templateColors.families([rootId], connection, { currentRead: true })).length) {
             throw this.createError('模板颜色关联已变化，请刷新后重新编辑', 409, 'PROFILE_CORRECTION_STALE')
           }
-          if (Number(id) !== rootId && !await this.accessoryRepository.lockAccessory(id, connection)) {
+          const source = Number(id) === rootId ? root : await this.accessoryRepository.lockAccessory(id, connection)
+          if (!source || Number(source.template_id || source.id) !== rootId) {
             throw this.createError('商品资料已变化，请刷新后重试', 409, 'PROFILE_CORRECTION_STALE')
           }
-          if (data.brand_id !== undefined && Number(data.brand_id || 0) !== Number(existing.brand_id || 0)) {
-            const duplicate = Number(root.brand_id || 0) === Number(data.brand_id || 0) ||
-              await this.accessoryRepository.getBrandVariant(rootId, data.brand_id, connection)
-            if (duplicate && Number(duplicate.id || duplicate) !== Number(id)) {
-              throw this.createError('该商品模板下已存在此配件品牌的商品，不能直接合并库存与历史记录', 409, 'DUPLICATE_BRAND_VARIANT')
-            }
-          }
+          const profileTargetId = data.brand_id === undefined ? Number(id)
+            : await this.accessoryRepository.resolveBrandProfileTarget(source, root, data.brand_id, connection)
           const childFields = ['brand_id', 'supplier_id', 'purchase_cost']
           const sharedFields = ['name', 'barcode', 'category', 'category_id', 'model_id', 'color_id', 'sale_price', 'unit', 'unit_id', 'description', 'image_url', 'min_stock', 'serial_tracking', 'product_model', 'status', 'remarks', 'free_film']
-          const childData = Object.fromEntries(childFields.filter(field => data[field] !== undefined).map(field => [field, data[field]]))
+          const childData = Object.fromEntries(childFields.filter(field => data[field] !== undefined && !(profileTargetId !== Number(id) && field === 'brand_id')).map(field => [field, data[field]]))
           const sharedData = Object.fromEntries(sharedFields.filter(field => data[field] !== undefined).map(field => [field, data[field]]))
           // 品牌库存商品继承模板共享资料；档案更正仅独立保留实际商品品牌及采购来源。
           const childSaved = existing.template_id
-            ? (!Object.keys(childData).length || await this.accessoryRepository.updateAccessory(id, childData, connection))
+            ? (!Object.keys(childData).length || await this.accessoryRepository.updateAccessory(profileTargetId, childData, connection))
             : true
           const sharedSaved = existing.template_id
             ? (!Object.keys(sharedData).length || await this.accessoryRepository.updateAccessory(rootId, sharedData, connection))
-            : await this.accessoryRepository.updateAccessory(id, { ...sharedData, ...childData }, connection)
+            : (!Object.keys({ ...sharedData, ...childData }).length ||
+              await this.accessoryRepository.updateAccessory(id, { ...sharedData, ...childData }, connection))
           const saved = childSaved && sharedSaved
           if (!saved) throw this.createError('商品资料保存失败，请刷新后重试', 500, 'UPDATE_FAILED')
           if (data.model_ids !== undefined) await this.accessoryRepository.replaceCompatibleModels(rootId, data.model_ids, connection)
-          const current = await this.accessoryRepository.getAccessoryById(id, connection)
+          const current = await this.accessoryRepository.getAccessoryById(profileTargetId, connection)
           if (!current) throw this.createError('商品资料更新后无法核对，请刷新重试', 409, 'PROFILE_CORRECTION_STALE')
-          await this.accessoryRepository.syncProductProfileSnapshots(id, rootId, connection)
+          await this.accessoryRepository.syncProductProfileSnapshots(profileTargetId, rootId, connection)
           await connection.commit()
           return current
         } catch (error) {
@@ -652,9 +649,12 @@ class AccessoryService extends BaseService {
       if (['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error.code)) {
         return { ...this.error('商品资料正在更新，请刷新后重新编辑', 'PROFILE_CORRECTION_STALE'), statusCode: 409 }
       }
-      if (error.code === 'ER_DUP_ENTRY') return this.error(data.color_variants === undefined && data.brand_id !== undefined
-        ? '该商品模板下已存在相同品牌的商品，不能直接合并库存与历史记录'
-        : '该条形码已存在，请使用其他条码', data.color_variants === undefined && data.brand_id !== undefined ? 'DUPLICATE_BRAND_VARIANT' : 'DUPLICATE_BARCODE')
+      if (error.code === 'ER_DUP_ENTRY') {
+        if (String(error.message).includes('uq_accessories_template_brand')) {
+          return { ...this.error('该颜色的品牌档案刚有变动，请刷新后重新编辑', 'DUPLICATE_BRAND_VARIANT'), statusCode: 409 }
+        }
+        return this.error('该条形码已存在，请使用其他条码', 'DUPLICATE_BARCODE')
+      }
       log.error('更新配件失败:', error)
       return this.error('更新配件失败', 'DATABASE_ERROR')
     }
@@ -683,6 +683,21 @@ class AccessoryService extends BaseService {
     } catch (error) {
       log.error('删除配件失败:', error)
       return this.error('删除配件失败', 'DATABASE_ERROR')
+    }
+  }
+
+  async deleteUnusedBrandVariant(id, actor) {
+    try {
+      this.getActorId(actor)
+      if (!validId(id)) return this.error('商品编号无效', 'VALIDATION_ERROR')
+      const deleted = await this.accessoryRepository.deleteUnusedBrandVariant(Number(id))
+      return deleted ? this.success('无库存、无销售、无划拨且无历史关联的品牌商品已删除')
+        : this.error('删除品牌商品失败', 'DELETE_FAILED')
+    } catch (error) {
+      if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
+      if (isDatabaseAvailabilityError(error)) throw error
+      log.error('删除无业务关联品牌商品失败:', error)
+      return this.error('删除品牌商品失败', 'DATABASE_ERROR')
     }
   }
 

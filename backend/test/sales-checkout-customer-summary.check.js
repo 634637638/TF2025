@@ -98,7 +98,7 @@ test('仓储摘要使用调用方连接及参数化SELECT，客户锁先于来�
   assert.deepEqual(calls[0].params, [query.phone])
 })
 
-test('查询商品专用结算始终使用商品子范围，旧接口不能绕过未开放商品管理的字段限制', async () => {
+test('查询商品专用结算使用商品子范围，隐藏客户手机号字段不阻止商品销售', async () => {
   const FieldAccess = require('../src/services/field-access.service')
   for (const operation of ['Summary', 'Quote', 'Checkout']) {
     for (const hasAccessoryPage of [false, true]) {
@@ -122,24 +122,16 @@ test('查询商品专用结算始终使用商品子范围，旧接口不能绕�
       const response = () => ({ status(code) { this.code = code; return this }, json(body) { this.body = body; return this } })
       let res = response()
       await controller[`queryGoods${operation}`](request(), res)
-      assert.equal(res.code, 403)
-      assert.equal(res.body.code, 'FIELD_PERMISSION_DENIED')
-      assert.equal(res.body.data, undefined)
-      assert.deepEqual(calls, [])
+      assert.equal(res.body.success, true)
+      assert.equal(calls.length, 1)
       assert.ok(reads.some(row => row.key === 'query_queryview' && row.scope === 'goods'))
       reads.length = 0
       res = response()
       const method = operation === 'Summary' ? 'customerSummary' : operation.toLowerCase()
       await controller[method](request(), res)
-      if (hasAccessoryPage) {
-        assert.equal(res.body.success, true)
-        assert.equal(calls.length, 1)
-        assert.ok(reads.some(row => row.key === 'accessories_accessoriesview'))
-      } else {
-        assert.equal(res.code, 403)
-        assert.deepEqual(calls, [])
-        assert.ok(reads.some(row => row.scope === 'goods'))
-      }
+      assert.equal(res.body.success, true)
+      assert.equal(calls.length, 2)
+      assert.ok(reads.some(row => row.key === (hasAccessoryPage ? 'accessories_accessoriesview' : 'query_queryview') && row.scope === (hasAccessoryPage ? undefined : 'goods')))
     }
   }
 })

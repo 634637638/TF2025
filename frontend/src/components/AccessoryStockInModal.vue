@@ -462,7 +462,7 @@
                       v-for="variant in existingAccessory.color_variants"
                       :key="variant.accessory_id"
                       :value="variant.accessory_id"
-                      :label="[variant.color_name, canViewAccessoryField('barcode') ? variant.barcode : ''].filter(Boolean).join(' · ')"
+                      :label="[variant.color_name, canUseEntryField('barcode') ? variant.barcode : ''].filter(Boolean).join(' · ')"
                     />
                   </el-select>
                   <el-select
@@ -632,7 +632,7 @@
                 :label="`${getColorName(variant.color_id)}条形码`"
               >
                 <el-input
-                  v-if="canViewAccessoryField('barcode')"
+                  v-if="canUseEntryField('barcode')"
                   v-model="variant.barcode"
                   :maxlength="100"
                   clearable
@@ -651,7 +651,7 @@
               />
             </div>
             <div
-              v-if="canViewAccessoryField('barcode') && !hasMultipleTemplateColors"
+              v-if="canUseEntryField('barcode') && !hasMultipleTemplateColors"
               class="scan-area"
             >
               <el-form-item label="条形码">
@@ -674,7 +674,7 @@
             </div>
 
             <div
-              v-if="canViewAccessoryField('image_url')"
+              v-if="canUseEntryField('image_url')"
               class="image-area"
             >
               <el-form-item
@@ -728,7 +728,7 @@
         </div>
 
         <div
-          v-if="isColorStockIn && canViewAccessoryField('total_quantity')"
+          v-if="isColorStockIn && canUseEntryField('total_quantity')"
           class="tf-query-modal-section"
           aria-label="按颜色填写入库数量"
         >
@@ -754,7 +754,7 @@
             >
               <strong>{{ row.color_name }}</strong>
               <span
-                v-if="canViewAccessoryField('barcode')"
+                v-if="canUseEntryField('barcode')"
                 class="text-secondary text-xs"
               >条码：{{ row.barcode || '未设置' }}</span>
               <el-form-item
@@ -770,7 +770,7 @@
                   :aria-label="`${row.color_name}入库数量`"
                 />
               </el-form-item>
-              <template v-else-if="canViewAccessoryField('serial_number')">
+              <template v-else-if="canUseEntryField('serial_number')">
                 <el-form-item :label="`${row.color_name}SN（${colorSerials(row).length}件）`">
                   <el-input
                     v-model="row.serialInput"
@@ -804,15 +804,15 @@
             class="text-primary font-semibold"
             aria-label="颜色入库合计"
           >
-            合计 {{ colorStockQuantity }}{{ canViewAccessoryField('unit') ? formData.unit : '件' }}
-            <template v-if="canViewAccessoryField('purchase_cost') && canViewAccessoryField('total_amount')">
+            合计 {{ colorStockQuantity }}{{ canUseEntryField('unit') ? formData.unit : '件' }}
+            <template v-if="canUseEntryField('purchase_cost') && canUseEntryField('total_amount')">
               · 采购金额 ¥{{ formatAmount(colorStockQuantity * formData.purchase_cost) }}
             </template>
           </p>
         </div>
 
         <div
-          v-if="isEntryMode && !isColorStockIn && formData.serial_tracking === 1 && canViewAccessoryField('serial_number') && canViewAccessoryField('distribution')"
+          v-if="isEntryMode && !isColorStockIn && formData.serial_tracking === 1 && canUseEntryField('serial_number') && canUseEntryField('distribution')"
           class="tf-query-modal-section"
         >
           <div
@@ -915,7 +915,7 @@
 
         <!-- 备注 -->
         <div
-          v-if="canViewAccessoryField('remarks')"
+          v-if="canUseEntryField('remarks')"
           class="tf-query-modal-section"
         >
           <div
@@ -1078,6 +1078,7 @@ const isEditMode = computed(() => !isCorrectionMode.value && Boolean(props.acces
 const isStockInMode = computed(() => !isCorrectionMode.value && !props.archiveOnly && !isEditMode.value)
 const isEntryMode = computed(() => isStockInMode.value || isCorrectionMode.value)
 const isFixedTemplate = computed(() => isStockInMode.value && props.stockInOnly && Boolean(props.accessory?.id))
+const canUseEntryField = (field: AccessoryFieldName) => isStockInMode.value || canViewAccessoryField(field)
 type AccessoryFormField = AccessoryFieldName | 'model_brand'
 
 const basicFields = computed(() => {
@@ -1087,7 +1088,7 @@ const basicFields = computed(() => {
       ? ['brand_name', 'name', 'category', 'model_brand', 'model_name', 'product_model', 'color_name', 'unit', 'sale_price', 'min_stock', 'status', 'serial_tracking', 'free_film']
       : ['name', 'category', 'model_brand', 'model_name', 'product_model', 'color_name', 'unit', 'sale_price', 'min_stock', 'status', 'serial_tracking', 'free_film']) as AccessoryFormField[]
   return order.filter(field => (field !== 'free_film' || filmReady.value) && !(isColorStockIn.value && ['color_name', 'barcode', 'total_quantity'].includes(field)) &&
-    !(isEntryMode.value && field === 'total_quantity' && formData.value.serial_tracking === 1) && canViewAccessoryField(
+    !(isEntryMode.value && field === 'total_quantity' && formData.value.serial_tracking === 1) && canUseEntryField(
     field === 'model_brand' ? 'model_name' : field
   ))
 })
@@ -1234,7 +1235,7 @@ const getTemplateCategory = (item: AccessoryRecord) => item.category ||
   categories.value.find(category => category.id === Number(item.category_id))?.name || '未设置类型'
 
 const templateGroups = computed(() => {
-  if (!canViewAccessoryField('name')) return []
+  if (!canUseEntryField('name')) return []
   const selected = existingAccessory.value
     ? { ...existingAccessory.value, id: existingAccessory.value.color_template_id || existingAccessory.value.id }
     : null
@@ -1243,7 +1244,7 @@ const templateGroups = computed(() => {
     : templateResults.value
   const groups = new Map<string, AccessoryRecord[]>()
   for (const item of items) {
-    const category = canViewAccessoryField('category') ? getTemplateCategory(item) : '商品'
+    const category = canUseEntryField('category') ? getTemplateCategory(item) : '商品'
     const group = groups.get(category) || []
     group.push(item)
     groups.set(category, group)
@@ -1251,25 +1252,25 @@ const templateGroups = computed(() => {
   return [...groups].map(([name, items]) => ({ name, items }))
 })
 
-const getTemplateLabel = (item: AccessoryRecord) => canViewAccessoryField('name') ? item.name : ''
+const getTemplateLabel = (item: AccessoryRecord) => canUseEntryField('name') ? item.name : ''
 
 const getTemplateDetails = (item: AccessoryRecord) => [
-  canViewAccessoryField('product_model') && item.product_model ? `型号 ${item.product_model}` : '',
-  canViewAccessoryField('color_name') ? item.color_variants?.map(row => row.color_name).filter(Boolean).join('、') || item.color_name || '' : '',
-  canViewAccessoryField('model_name') ? `适配 ${item.compatible_model_names || item.model_name || '通用'}` : '',
-  canViewAccessoryField('sale_price') && item.sale_price !== undefined && item.sale_price !== null
-    ? `零售 ¥${formatAmount(item.sale_price)}${canViewAccessoryField('unit') && item.unit ? `/${item.unit}` : ''}` : '',
-  canViewAccessoryField('serial_tracking') && Number(item.serial_tracking) === 1 ? '默认SN管理' : ''
+  canUseEntryField('product_model') && item.product_model ? `型号 ${item.product_model}` : '',
+  canUseEntryField('color_name') ? item.color_variants?.map(row => row.color_name).filter(Boolean).join('、') || item.color_name || '' : '',
+  canUseEntryField('model_name') ? `适配 ${item.compatible_model_names || item.model_name || '通用'}` : '',
+  canUseEntryField('sale_price') && item.sale_price !== undefined && item.sale_price !== null
+    ? `零售 ¥${formatAmount(item.sale_price)}${canUseEntryField('unit') && item.unit ? `/${item.unit}` : ''}` : '',
+  canUseEntryField('serial_tracking') && Number(item.serial_tracking) === 1 ? '默认SN管理' : ''
 ].filter(Boolean).join(' · ')
 
 const loadTemplates = async (append = false) => {
-  if (!visible.value || !isEntryMode.value || isFixedTemplate.value || !canViewAccessoryField('name')) return
+  if (!visible.value || !isEntryMode.value || isFixedTemplate.value || !canUseEntryField('name')) return
   const request = templateSearchRequest.nextRequest()
   const page = append ? templatePage.value + 1 : 1
   templatesLoading.value = true
   templateError.value = ''
   try {
-    const response = await unifiedApi.get<Pick<PaginatedResponse<AccessoryRecord>, 'data' | 'pagination'>>('/accessories', {
+    const response = await unifiedApi.get<Pick<PaginatedResponse<AccessoryRecord>, 'data' | 'pagination'>>('/accessories/stock-in/templates', {
       params: { mode: 'templates', page, page_size: templatePageSize, search: templateKeyword.value || undefined },
       signal: request.signal, useCache: false, showLoading: false, showError: false
     })
@@ -1380,7 +1381,7 @@ const selectedStockColor = computed(() => {
   return variants?.some(row => row.accessory_id === rootId) ? rootId
     : isStockInMode.value && variants?.length === 1 ? variants[0].accessory_id : undefined
 })
-const isColorStockIn = computed(() => isStockInMode.value && canViewAccessoryField('color_name') && (existingAccessory.value?.color_variants?.length || 0) > 1)
+const isColorStockIn = computed(() => isStockInMode.value && canUseEntryField('color_name') && (existingAccessory.value?.color_variants?.length || 0) > 1)
 interface ColorStockRow {
   accessory_id: number
   color_id: number
@@ -1393,7 +1394,7 @@ const colorStockRows = ref<ColorStockRow[]>([])
 const resetColorStockRows = (accessory?: AccessoryRecord) => {
   const rootId = Number(accessory?.template_id || accessory?.id)
   colorStockRows.value = (accessory?.color_variants || []).map(row => ({ ...row,
-    color_name: row.color_name || getColorName(row.color_id), barcode: canViewAccessoryField('barcode') ? row.barcode || '' : '',
+    color_name: row.color_name || getColorName(row.color_id), barcode: canUseEntryField('barcode') ? row.barcode || '' : '',
     quantity: rootId === row.accessory_id ? 1 : 0, serialInput: '' }))
 }
 const colorSerials = (row: ColorStockRow) => row.serialInput.split(/\r?\n/).map(normalizeAccessorySerial).filter(Boolean)
@@ -1414,7 +1415,7 @@ const colorStockError = computed(() => {
   return ''
 })
 const colorVariantError = computed(() => {
-  if (!hasColorVariantRows.value || !canViewAccessoryField('barcode')) return ''
+  if (!hasColorVariantRows.value || !canUseEntryField('barcode')) return ''
   const barcodes = formData.value.color_variants.map(row => row.barcode.trim().toLowerCase()).filter(Boolean)
   return new Set(barcodes).size !== barcodes.length ? '不同颜色不能使用相同条形码' : ''
 })
@@ -1428,13 +1429,13 @@ const templatePayloadSource = () => {
   }
   return { ...source, color_id: undefined, barcode: undefined,
     color_variants: variants.map(row => ({ color_id: row.color_id,
-      ...(canViewAccessoryField('barcode') ? { barcode: row.barcode } : {}) })) }
+      ...(canUseEntryField('barcode') ? { barcode: row.barcode } : {}) })) }
 }
 const stockTemplateColorsSummary = computed(() => {
   const variants = existingAccessory.value?.color_variants
-  if (!isEntryMode.value || !canViewAccessoryField('color_name') || !variants || variants.length <= 1) return ''
+  if (!isEntryMode.value || !canUseEntryField('color_name') || !variants || variants.length <= 1) return ''
   return `模板颜色：${variants.map(row => [row.color_name || '未命名颜色',
-    canViewAccessoryField('barcode') && row.barcode ? `条码 ${row.barcode}` : ''].filter(Boolean).join(' · ')).join('；')}`
+    canUseEntryField('barcode') && row.barcode ? `条码 ${row.barcode}` : ''].filter(Boolean).join(' · ')).join('；')}`
 })
 
 const isRestocking = computed(() => !isEditMode.value && !props.archiveOnly && Boolean(formData.value.accessory_id))
@@ -1590,20 +1591,20 @@ const canRetryStockIn = computed(() => {
   const input = pendingStockIn.value
   if (!input || recoveryError.value) return false
   const entries = 'entries' in input ? input.entries : [input]
-  return (!('entries' in input) || canViewAccessoryField('color_name')) && entries.every(entry => Object.keys(entry).every(key => key === 'request_key' ||
-    Boolean(accessoryPayloadFieldMap[key] && canViewAccessoryField(accessoryPayloadFieldMap[key]))))
+  return (!('entries' in input) || canUseEntryField('color_name')) && entries.every(entry => Object.keys(entry).every(key => key === 'request_key' ||
+    Boolean(accessoryPayloadFieldMap[key] && canUseEntryField(accessoryPayloadFieldMap[key]))))
 })
 
 // 计算属性
 const canSubmit = computed(() => {
   if (colorVariantError.value) return false
-  if (isStockInMode.value && existingAccessory.value?.color_variants?.length && !canViewAccessoryField('color_name')) return false
+  if (isStockInMode.value && existingAccessory.value?.color_variants?.length && !canUseEntryField('color_name')) return false
   if (isEntryMode.value && !isColorStockIn.value && existingAccessory.value?.color_variants?.length && !selectedStockColor.value) return false
   if (isColorStockIn.value && (colorStockError.value || !colorStockQuantity.value ||
-    formData.value.serial_tracking === 1 && !canViewAccessoryField('serial_number'))) return false
+    formData.value.serial_tracking === 1 && !canUseEntryField('serial_number'))) return false
   if (isCorrectionMode.value && (!canEditStock.value || !canView.value || !correctionContext.value || correctionLoading.value || correctionError.value)) return false
   if (isStockInMode.value && recoveryError.value) return false
-  if (isStockInMode.value && canViewAccessoryField('inventory_time') && (typeof formData.value.inventory_time !== 'string' ||
+  if (isStockInMode.value && canUseEntryField('inventory_time') && (typeof formData.value.inventory_time !== 'string' ||
     !TimeUtil.isValid(formData.value.inventory_time, TIME_FORMATS.DATETIME) ||
     TimeUtil.format(formData.value.inventory_time, TIME_FORMATS.DATETIME) !== formData.value.inventory_time)) return false
   if (searching.value || !optionsReady.value || optionsLoading.value || modelsLoading.value) return false
@@ -1614,13 +1615,13 @@ const canSubmit = computed(() => {
   if (props.archiveOnly) {
     return canViewAccessoryField('name') && Boolean(formData.value.name && formData.value.category_id && formData.value.unit_id)
   }
-  if (!isColorStockIn.value && formData.value.serial_tracking === 1 && (!canViewAccessoryField('serial_number') || serialEntries.value.length === 0 || serialEntries.value.length > 1000 || serialBatchInput.value.trim() || serialValidationError.value)) return false
-  if (!['name', 'supplier_name', 'purchase_cost', 'total_quantity', 'distribution', 'usage_type'].every(field => canViewAccessoryField(field as AccessoryFieldName))) return false
+  if (!isColorStockIn.value && formData.value.serial_tracking === 1 && (!canUseEntryField('serial_number') || serialEntries.value.length === 0 || serialEntries.value.length > 1000 || serialBatchInput.value.trim() || serialValidationError.value)) return false
+  if (!['name', 'supplier_name', 'purchase_cost', 'total_quantity', 'distribution', 'usage_type'].every(field => canUseEntryField(field as AccessoryFieldName))) return false
   return (
     formData.value.accessory_id &&
     formData.value.name &&
-    (!canViewAccessoryField('category') || formData.value.category_id) &&
-    (!canViewAccessoryField('unit') || formData.value.unit_id) &&
+    (!canUseEntryField('category') || formData.value.category_id) &&
+    (!canUseEntryField('unit') || formData.value.unit_id) &&
     formData.value.supplier_id &&
     typeof formData.value.purchase_cost === 'number' && Number.isFinite(formData.value.purchase_cost) && formData.value.purchase_cost >= 0 &&
     (isColorStockIn.value ? colorStockQuantity.value > 0 : formData.value.serial_tracking === 1 ? serialEntries.value.length > 0 : formData.value.total_quantity > 0) &&
@@ -1689,7 +1690,7 @@ const loadOptions = async () => {
   optionsLoading.value = true
   optionsReady.value = false
   try {
-    const response = await getAccessoryEntryOptions({ accessory_id: formData.value.accessory_id || undefined })
+    const response = await getAccessoryEntryOptions({ accessory_id: formData.value.accessory_id || undefined, stock_in: isStockInMode.value })
     if (requestId !== optionsRequestId || !visible.value || !response.data) return
     const options = response.data
     optionsReady.value = true
@@ -1722,7 +1723,7 @@ const loadOptions = async () => {
 const loadModels = async () => {
   const requestId = ++modelRequestId
   models.value = []
-  if (!canViewAccessoryField('model_name') || (!modelBrandId.value && !formData.value.model_ids.length)) {
+  if (!canUseEntryField('model_name') || (!modelBrandId.value && !formData.value.model_ids.length)) {
     modelsLoading.value = false
     return
   }
@@ -1731,7 +1732,8 @@ const loadModels = async () => {
     const response = await getAccessoryEntryOptions({
       brand_id: modelBrandId.value || undefined,
       accessory_id: formData.value.accessory_id || undefined,
-      model_ids: formData.value.model_ids
+      model_ids: formData.value.model_ids,
+      stock_in: isStockInMode.value
     })
     if (requestId !== modelRequestId || !visible.value) return
     models.value = (response.data?.models || []).map(normalizeAccessoryOption)
@@ -1747,11 +1749,11 @@ const loadModels = async () => {
 const applyAccessory = (accessory: AccessoryRecord) => {
   hydrating = true
   const stockColor = isStockInMode.value && accessory.color_variants?.length === 1 ? accessory.color_variants[0] : undefined
-  const value = <T,>(field: AccessoryFieldName, input: T, fallback: T): T => canViewAccessoryField(field) ? input : fallback
+  const value = <T,>(field: AccessoryFieldName, input: T, fallback: T): T => canUseEntryField(field) ? input : fallback
   Object.assign(formData.value, {
-    color_variants: canViewAccessoryField('color_name') ? (accessory.color_variants?.length ? accessory.color_variants
+    color_variants: canUseEntryField('color_name') ? (accessory.color_variants?.length ? accessory.color_variants
       : isEditMode.value && accessory.color_id ? [{ color_id: Number(accessory.color_id), barcode: accessory.barcode }] : []).map(row => ({ color_id: row.color_id,
-      barcode: canViewAccessoryField('barcode') ? row.barcode || '' : '' })) : [],
+      barcode: canUseEntryField('barcode') ? row.barcode || '' : '' })) : [],
     accessory_id: stockColor && !accessory.template_id ? stockColor.accessory_id : accessory.id, id: accessory.id,
     barcode: value('barcode', stockColor ? stockColor.barcode || '' : accessory.barcode || '', ''),
     name: value('name', accessory.name || '', ''),
@@ -1781,7 +1783,7 @@ const applyAccessory = (accessory: AccessoryRecord) => {
 }
 
 const fillStockInTemplate = async (accessory: AccessoryRecord, isLatest: () => boolean) => {
-  if (canViewAccessoryField('status') && accessory.status !== undefined && Number(accessory.status) !== 1) {
+  if (canUseEntryField('status') && accessory.status !== undefined && Number(accessory.status) !== 1) {
     globalNotifications.warning('该商品模板已停用，请选择启用的模板')
     return
   }
@@ -1811,7 +1813,7 @@ const selectTemplate = async (id: number) => {
   const request = accessorySelectionRequest.nextRequest()
   searching.value = true
   try {
-    const response = await unifiedApi.get<AccessoryRecord>(`/accessories/${id}`, {
+    const response = await unifiedApi.get<AccessoryRecord>(`/accessories/stock-in/templates/${id}`, {
       signal: request.signal, useCache: false
     })
     if (!request.isLatest() || !visible.value || !response.data) return
@@ -1860,9 +1862,10 @@ const handleSubmit = async () => {
       delete templatePayload.supplier_id
       if (!props.profileEditOnly && !props.accessory?.template_id) delete templatePayload.brand_id
       const updateData = pickVisibleAccessoryFields(templatePayload, accessoryPayloadFieldMap)
-      const response = await unifiedApi.put(`/accessories/${formData.value.id}`, updateData)
+      const response = await unifiedApi.put<AccessoryRecord>(`/accessories/${formData.value.id}`, updateData, { showError: false })
       if (!response.success) throw new Error(response.message || '更新模板失败')
-      globalNotifications.success('更新成功！')
+      globalNotifications.success(response.data?.id && Number(response.data.id) !== Number(formData.value.id)
+        ? '品牌已更正，原采购记录已归入正确品牌' : '更新成功！')
     } else if (props.archiveOnly) {
       const archivePayload = buildAccessoryUpdatePayload(templatePayloadSource())
       delete archivePayload.purchase_cost
@@ -1873,7 +1876,13 @@ const handleSubmit = async () => {
       if (!response.success) throw new Error(response.message || '创建模板失败')
       globalNotifications.success('商品模板创建成功！')
     } else {
-      const stockPayload = (source: Parameters<typeof buildAccessoryStockInPayload>[0]) => pickVisibleAccessoryFields(buildAccessoryStockInPayload(source), accessoryPayloadFieldMap)
+      const stockPayload = (source: Parameters<typeof buildAccessoryStockInPayload>[0]) => {
+        const payload = buildAccessoryStockInPayload(source)
+        return Object.fromEntries(Object.entries(payload).filter(([key]) => {
+          const field = accessoryPayloadFieldMap[key]
+          return key === 'request_key' || Boolean(field && canUseEntryField(field))
+        }))
+      }
       const data = isColorStockIn.value ? { entries: colorStockRows.value.filter(row => formData.value.serial_tracking === 1
         ? colorSerials(row).length > 0 : Number(row.quantity) > 0).map(row => stockPayload({
         ...formData.value, accessory_id: row.accessory_id, color_id: row.color_id, barcode: row.barcode,
@@ -1908,8 +1917,13 @@ const handleSubmit = async () => {
       try { purchaseStore.complete(actorId, purchaseInput.request_key) }
       catch (storageError) { logger.error('无法清理已拒绝入库的防重凭据，保留原请求供重试', storageError) }
     }
-    logger.error(isEditMode.value ? '更新失败' : '入库失败', err)
-    globalNotifications.error(getRequestErrorMessage(err, `${isEditMode.value ? '更新失败' : props.archiveOnly ? '创建档案失败' : '入库失败'}，请重试`))
+    const message = getRequestErrorMessage(err, `${isEditMode.value ? '更新失败' : props.archiveOnly ? '创建档案失败' : '入库失败'}，请重试`)
+    if (isEditMode.value && getRequestErrorStatus(err) === 409) {
+      globalNotifications.warning(message)
+    } else {
+      logger.error(isEditMode.value ? '更新失败' : '入库失败', err)
+      globalNotifications.error(message)
+    }
   } finally {
     submitting.value = false
     if (isPurchase) purchaseStore.submitting = false

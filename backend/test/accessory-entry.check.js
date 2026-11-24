@@ -57,9 +57,20 @@ const entry = () => ({
   operator_id: 999, operator_name: '伪造人员'
 })
 
+const sequenceExecutor = () => {
+  let sequence = 0
+  return async (sql, params = []) => {
+    if (sql.includes('SELECT current_sequence')) return [[{ current_sequence: sequence }]]
+    if (sql.includes('UPDATE invoice_sequences')) sequence = params[0]
+    else assert.match(sql, /(?:CREATE TABLE IF NOT EXISTS|INSERT IGNORE INTO) invoice_sequences/)
+    return [{ affectedRows: 1 }]
+  }
+}
+
 function fixture({ failStock = false, failBegin = false, existing = null } = {}) {
   const events = []
   const connection = {
+    execute: sequenceExecutor(),
     async query() { return [{ affectedRows: 0 }] },
     async beginTransaction() { events.push('begin'); if (failBegin) throw new Error('begin failed') },
     async commit() { events.push('commit') },
@@ -80,8 +91,12 @@ function fixture({ failStock = false, failBegin = false, existing = null } = {})
     },
     async getAccessoryById(id, executor) { if (executor !== undefined) assert.equal(executor, connection); return existing || created || null },
     async getAccessoryByBarcode() { return existing },
-    async lockAccessory(id, executor) { assert.equal(executor, connection); return existing },
+    async lockAccessory(id, executor) {
+      assert.equal(executor, connection)
+      return existing?.template_id === Number(id) ? { id: Number(id), status: 1 } : existing
+    },
     async getBrandVariant() { return null },
+    resolveBrandProfileTarget: AccessoryRepository.prototype.resolveBrandProfileTarget,
     async createAccessory(data, executor) {
       if (executor !== undefined) assert.equal(executor, connection)
       writes.push(['product', data])
@@ -250,8 +265,9 @@ test('更正已有业务商品品牌会同步旧采购/销售快照，保持交�
     withConnection: callback => withConnection({ getConnection: async () => connection }, callback),
     async getAccessoryById(id) { return Number(id) === 56 ? current : { id: 55, brand_id: 3, status: 1 } },
     async getCompatibleModelIds() { return [] },
-    async lockAccessory(id) { return { id: Number(id), brand_id: 3, status: 1 } },
+    async lockAccessory(id) { return Number(id) === 56 ? current : { id: 55, brand_id: 3, status: 1 } },
     async getBrandVariant() { return null },
+    resolveBrandProfileTarget: AccessoryRepository.prototype.resolveBrandProfileTarget,
     async getReference(id, field) { return { id: Number(id), name: '沃品', status: 1, business_scope: 'accessory', ...(field === 'model_id' ? { brand_business_scope: 'phone' } : {}) } },
     async updateAccessory(id, data) { writes.push({ id: Number(id), data }); current = { ...current, ...data, brand_id: 2, brand_name: '沃品' }; return true }
   }
@@ -325,12 +341,16 @@ for (const [sourceId, storedModelIds] of [55, 56].flatMap(id => [[20], '20', '20
   })
 }
 
-test('档案目标品牌已存在时拒绝合并；历史同步失败整单回滚', async () => {
+test('品牌合并遇到业务活动时拒绝；历史同步失败整单回滚', async () => {
   const context = fixture({ existing: { id: 56, template_id: 55, brand_id: 1, status: 1 } })
-  context.repository.lockAccessory = async id => ({ id: Number(id), brand_id: null, status: 1 })
+  context.repository.lockAccessory = async id => ({ id: Number(id), template_id: Number(id) === 56 ? 55 : null, brand_id: null, status: 1 })
   context.repository.getBrandVariant = async () => ({ id: 57 })
+  context.repository.checkUnusedBrandVariant = async () => ({ code: 'ACCESSORY_DELETE_HAS_HISTORY' })
+  context.repository.mergeUnusedBrandVariant = async () => {
+    throw Object.assign(new Error('该品牌商品关联了销售记录，不能合并'), { statusCode: 409, code: 'ACCESSORY_DELETE_HAS_ACTIVITY' })
+  }
   const blocked = await context.service.updateAccessory(56, { brand_id: 2 })
-  assert.equal(blocked.code, 'DUPLICATE_BRAND_VARIANT')
+  assert.equal(blocked.code, 'ACCESSORY_DELETE_HAS_ACTIVITY')
   assert.equal(blocked.statusCode, 409)
   assert.deepEqual(context.events, ['begin', 'rollback', 'release'])
   assert.deepEqual(context.writes, [])
@@ -342,6 +362,31 @@ test('档案目标品牌已存在时拒绝合并；历史同步失败整单回�
   assert.equal(failed.success, false)
   assert.equal(failed.code, 'DATABASE_ERROR')
   assert.deepEqual(context.events, ['begin', 'rollback', 'release'])
+})
+
+test('更正到已存在品牌时合并无业务活动商品，保留采购历史并返回目标商品', async () => {
+  const context = fixture({ existing: { id: 56, template_id: 55, brand_id: 1, status: 1 } })
+  const products = new Map([
+    [56, { id: 56, template_id: 55, brand_id: 1, status: 1 }],
+    [57, { id: 57, template_id: 55, brand_id: 2, brand_name: '沃品', status: 1 }]
+  ])
+  const merges = []
+  context.repository.getAccessoryById = async id => products.get(Number(id)) || null
+  context.repository.lockAccessory = async id => products.get(Number(id)) || { id: 55, brand_id: null, status: 1 }
+  context.repository.getBrandVariant = async () => products.get(57)
+  context.repository.checkUnusedBrandVariant = async () => ({ code: 'ACCESSORY_DELETE_HAS_HISTORY' })
+  context.repository.mergeUnusedBrandVariant = async (sourceId, targetId, rootId, connection) => {
+    merges.push([Number(sourceId), Number(targetId), Number(rootId)])
+    assert.ok(connection)
+    products.delete(Number(sourceId))
+    return Number(targetId)
+  }
+  const result = await context.service.updateAccessory(56, { brand_id: 2 })
+  assert.equal(result.success, true)
+  assert.equal(result.data.id, 57)
+  assert.deepEqual(merges, [[56, 57, 55]])
+  assert.equal(products.has(56), false)
+  assert.deepEqual(context.events, ['begin', 'commit', 'release'])
 })
 
 test('配件自身品牌与适配手机品牌按业务范围区分，旧关联仅保留回显', async () => {
@@ -562,10 +607,11 @@ test('同模板不同品牌独立商品及库存，同品牌换供应商补货�
   const entries = []
   let nextId = 56
   let pendingLock = Promise.resolve()
+  const execute = sequenceExecutor()
   const service = new AccessoryService({ inventoryService: inventoryFixture({}), repository: {
     async withConnection(callback) {
       let unlock
-      const connection = { async beginTransaction() {}, async commit() { unlock?.() }, async rollback() { unlock?.() } }
+      const connection = { execute, async beginTransaction() {}, async commit() { unlock?.() }, async rollback() { unlock?.() } }
       connection.acquire = async () => {
         const previous = pendingLock
         pendingLock = new Promise(resolve => { unlock = resolve })

@@ -166,7 +166,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(filmSwitch(wrapper, '免费专用').props('modelValue')).toBe(0)
     expect(filmSwitch(wrapper, '免费专用').props('disabled')).toBe(false)
     await saveButton(wrapper).trigger('click'); await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/100', expect.objectContaining({ free_film: 0 }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/100', expect.objectContaining({ free_film: 0 }), { showError: false })
     expect(mocks.put.mock.calls[0][1]).not.toHaveProperty('film_enabled')
   })
 
@@ -245,7 +245,7 @@ describe('配件公共资料与独立类型入库', () => {
     await saveButton(wrapper).trigger('click'); await flushPromises()
     expect(mocks.put).toHaveBeenCalledWith('/accessories/100', expect.objectContaining({
       color_id: undefined, barcode: undefined, color_variants: [{ color_id: 3, barcode: '001-WHITE-EDITED' }]
-    }))
+    }), { showError: false })
   })
 
   it('颜色条码忽略大小写和两端空格检查重复，修正后解除提交拦截', async () => {
@@ -269,7 +269,7 @@ describe('配件公共资料与独立类型入库', () => {
     await wrapper.get('input[aria-label="蓝色条形码"]').setValue('BLUE-1')
     await saveButton(wrapper).trigger('click'); await flushPromises()
     expect(mocks.put).toHaveBeenCalledWith('/accessories/100', expect.objectContaining({ color_variants: [
-      { color_id: 3, barcode: 'WHITE-1' }, { color_id: 4, barcode: 'BLACK-1' }, { color_id: 5, barcode: 'BLUE-1' }] }))
+      { color_id: 3, barcode: 'WHITE-1' }, { color_id: 4, barcode: 'BLACK-1' }, { color_id: 5, barcode: 'BLUE-1' }] }), { showError: false })
   })
 
   it.each(['模板编辑', '商品档案'])('旧单色%s也显示多选，追加颜色后提交完整颜色条码，保留原商品ID', async mode => {
@@ -285,7 +285,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(wrapper.text()).toContain('现有商品保留为白色')
     await saveButton(wrapper).trigger('click'); await flushPromises()
     expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ color_variants: [
-      { color_id: 3, barcode: 'WHITE-OLD' }, { color_id: 4, barcode: 'BLACK-NEW' }] }))
+      { color_id: 3, barcode: 'WHITE-OLD' }, { color_id: 4, barcode: 'BLACK-NEW' }] }), { showError: false })
     expect(mocks.put.mock.calls[0][1].color_id).toBeUndefined()
     expect(mocks.put.mock.calls[0][1].barcode).toBeUndefined()
   })
@@ -295,7 +295,7 @@ describe('配件公共资料与独立类型入库', () => {
     await flushPromises()
     await wrapper.get('input[aria-label="条形码"]').setValue('WHITE-UPDATED')
     await saveButton(wrapper).trigger('click'); await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ color_id: 3, barcode: 'WHITE-UPDATED' }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ color_id: 3, barcode: 'WHITE-UPDATED' }), { showError: false })
     expect(mocks.put.mock.calls[0][1].color_variants).toBeUndefined()
   })
 
@@ -310,7 +310,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(wrapper.find('[aria-label="商品档案修改前后对照"]').text()).toContain('白色、黑色、蓝色')
     await saveButton(wrapper).trigger('click'); await flushPromises()
     expect(mocks.put).toHaveBeenCalledWith(`/accessories/${id}`, expect.objectContaining({ brand_id: 1, color_variants: [
-      { color_id: 3, barcode: 'WHITE-1' }, { color_id: 4, barcode: 'BLACK-EDITED' }, { color_id: 5, barcode: 'BLUE-NEW' }] }))
+      { color_id: 3, barcode: 'WHITE-1' }, { color_id: 4, barcode: 'BLACK-EDITED' }, { color_id: 5, barcode: 'BLUE-NEW' }] }), { showError: false })
     expect(mocks.put.mock.calls[0][1].color_id).toBeUndefined()
     expect(mocks.put.mock.calls[0][1].barcode).toBeUndefined()
   })
@@ -410,7 +410,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(wrapper.emitted('success')).toHaveLength(1)
   })
 
-  it('0数量颜色不入库，隐藏条码不回传，各色全为0或清空数量时禁止提交', async () => {
+  it('0数量颜色不入库，入库表单保留隐藏条码录入，各色全为0或清空数量时禁止提交', async () => {
     mocks.hidden.add('basic_info.barcode')
     mocks.get.mockResolvedValue({ success: true, data: colorTemplate })
     const wrapper = render()
@@ -420,7 +420,7 @@ describe('配件公共资料与独立类型入库', () => {
     selectField(wrapper, '供应商').vm.$emit('update:modelValue', 4)
     await flushPromises()
     expect(saveButton(wrapper).attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).not.toContain('WHITE-1')
+    expect(wrapper.text()).toContain('WHITE-1')
     await wrapper.get('input[aria-label="黑色入库数量"]').setValue('')
     await flushPromises()
     expect(saveButton(wrapper).attributes('disabled')).toBeDefined()
@@ -429,7 +429,7 @@ describe('配件公共资料与独立类型入库', () => {
     await wrapper.get('input[aria-label="黑色入库数量"]').setValue('2')
     await saveButton(wrapper).trigger('click'); await flushPromises()
     expect(mocks.post.mock.calls[0][1].entries).toEqual([expect.objectContaining({ accessory_id: 102, total_quantity: 2 })])
-    expect(mocks.post.mock.calls[0][1].entries[0]).not.toHaveProperty('barcode')
+    expect(mocks.post.mock.calls[0][1].entries[0]).toHaveProperty('barcode', 'BLACK-1')
   })
 
   it('SN按颜色分别录入并自动计数，跨颜色重复SN拦截，不混入普通数量', async () => {
@@ -483,7 +483,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(mocks.post).toHaveBeenCalledWith('/accessories/stock-in/10/corrections', expect.objectContaining({ accessory_id: 55, total_quantity: 50 }), expect.any(Object))
   })
 
-  it('入库显示秒级北京时间默认值，可调整实际到货时间；隐藏时间时不回传', async () => {
+  it('入库显示秒级北京时间默认值，可调整实际到货时间；隐藏时间不影响入库录入', async () => {
     const wrapper = await purchaseForm()
     const picker = wrapper.findComponent(ElDatePicker)
     expect(picker.props('type')).toBe('datetime')
@@ -495,9 +495,9 @@ describe('配件公共资料与独立类型入库', () => {
     expect(wrapper.findComponent(ElDatePicker).props('format')).toBe(TIME_FORMATS.DATETIME)
     mocks.hidden.add('time_info.inventory_time'); mocks.post.mockClear()
     const hidden = await purchaseForm()
-    expect(hidden.findComponent(ElDatePicker).exists()).toBe(false)
+    expect(hidden.findComponent(ElDatePicker).exists()).toBe(true)
     await saveButton(hidden).trigger('click'); await flushPromises()
-    expect(mocks.post.mock.calls[0][1]).not.toHaveProperty('inventory_time')
+    expect(mocks.post.mock.calls[0][1]).toHaveProperty('inventory_time')
   }, 15_000)
 
   it.each(['', '2026-02-30 10:00:00', '2026-11-14 24:00:00', '2026-11-14'])('入库时间无效时不能提交：%s', async value => {
@@ -720,19 +720,19 @@ describe('配件公共资料与独立类型入库', () => {
     expect(wrapper.emitted('success')).toHaveLength(1)
   })
 
-  it('未确认采购撤回字段权限后禁止原载荷重试；模板编辑仍独立且不携带入库凭据', async () => {
+  it('字段隐藏不阻断采购原载荷重试；模板编辑仍独立且不携带入库凭据', async () => {
     mocks.post.mockRejectedValueOnce(new Error('Network Error'))
     const wrapper = await purchaseForm()
     await saveButton(wrapper).trigger('click'); await flushPromises()
     wrapper.unmount()
     mocks.hidden.add('price_info.purchase_cost')
     const restricted = await purchaseForm()
-    expect(saveButton(restricted).attributes('disabled')).toBeDefined()
+    expect(saveButton(restricted).attributes('disabled')).toBeUndefined()
     await saveButton(restricted).trigger('click')
-    expect(mocks.post).toHaveBeenCalledTimes(1)
+    expect(mocks.post).toHaveBeenCalledTimes(2)
     const editor = render({ id: 55, name: '原装充电头', category_id: 12, unit_id: 2 }, true)
     await flushPromises(); await saveButton(editor).trigger('click'); await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.not.objectContaining({ request_key: expect.anything() }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.not.objectContaining({ request_key: expect.anything() }), { showError: false })
   })
 
   it('请求处理中禁用连点及关闭，服务端原回执成功后才释放凭据并刷新', async () => {
@@ -772,7 +772,7 @@ describe('配件公共资料与独立类型入库', () => {
     await flushPromises()
     expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({
       category_id: 12, color_id: 3, unit_id: 2, model_id: 20, product_model: 'MWVW3CH'
-    }))
+    }), { showError: false })
   })
 
   it('商品档案更正显示原品牌对照并提交实际商品ID；隐藏售价不显示也不回传', async () => {
@@ -789,10 +789,29 @@ describe('配件公共资料与独立类型入库', () => {
     await wrapper.get<HTMLInputElement>('input[placeholder="请输入商品名称"]').setValue('更正充电头')
     await saveButton(wrapper).trigger('click')
     await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/56', expect.objectContaining({ name: '更正充电头', brand_id: 1 }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/56', expect.objectContaining({ name: '更正充电头', brand_id: 1 }), { showError: false })
     const payload = mocks.put.mock.calls[0][1]
     for (const field of ['purchase_cost', 'supplier_id', 'sale_price', 'total_quantity', 'serial_numbers']) expect(payload).not.toHaveProperty(field)
     expect(mocks.post).not.toHaveBeenCalled()
+    expect(wrapper.emitted('success')).toHaveLength(1)
+  })
+
+  it('同色品牌更正遇业务冲突时只显示提示，重试合并成功后刷新商品列表', async () => {
+    const wrapper = render({ id: 101, color_id: 3, name: '充电头', category_id: 12, unit_id: 2,
+      color_template_id: 100, color_variants: colorTemplate.color_variants })
+    await wrapper.setProps({ profileEditOnly: true })
+    await flushPromises()
+    selectField(wrapper, '配件品牌').vm.$emit('update:modelValue', 1)
+    const message = '该品牌商品关联了销售记录，不能合并'
+    mocks.put.mockRejectedValueOnce({ response: { status: 409, data: { code: 'ACCESSORY_DELETE_HAS_ACTIVITY', message } } })
+      .mockResolvedValueOnce({ success: true, data: { id: 103 } })
+    await saveButton(wrapper).trigger('click'); await flushPromises()
+    expect(mocks.warning).toHaveBeenCalledExactlyOnceWith(message)
+    expect(mocks.error).not.toHaveBeenCalled()
+    expect(wrapper.emitted('success')).toBeUndefined()
+    await saveButton(wrapper).trigger('click'); await flushPromises()
+    expect(mocks.put).toHaveBeenLastCalledWith('/accessories/101', expect.objectContaining({ brand_id: 1 }), { showError: false })
+    expect(mocks.success).toHaveBeenCalledWith('品牌已更正，原采购记录已归入正确品牌')
     expect(wrapper.emitted('success')).toHaveLength(1)
   })
 
@@ -852,20 +871,19 @@ describe('配件公共资料与独立类型入库', () => {
     expect(saveButton(wrapper).attributes('disabled')).toBeDefined()
   })
 
-  it('模板回填遵守字段权限，隐藏品牌、规格和颜色不进入表单', async () => {
+  it('入库模板回填允许使用列表隐藏的品牌、规格和颜色字段', async () => {
     mocks.hidden.add('basic_info.brand_name')
     mocks.hidden.add('basic_info.specifications')
     mocks.hidden.add('basic_info.color_name')
     mocks.hidden.add('status_info.status')
     mocks.get.mockResolvedValue({ data: { id: 55, name: '可见名称', barcode: 'VISIBLE', category_id: 11, unit_id: 1,
-      brand_id: 1, brand_name: '隐藏品牌', product_model: '隐藏规格', color_id: 3, color_name: '隐藏颜色', status: null } })
+      brand_id: 1, brand_name: '隐藏品牌', product_model: '隐藏规格', color_id: 3, color_name: '隐藏颜色', status: 1 } })
     const wrapper = render()
     await flushPromises()
     selectField(wrapper, '商品名称').vm.$emit('change', 55)
     await flushPromises()
     expect(selectField(wrapper, '商品名称').props('modelValue')).toBe(55)
-    expect(wrapper.text()).not.toMatch(/隐藏品牌|隐藏规格|隐藏颜色/)
-    expect(wrapper.findAll('.el-form-item__label').map(item => item.text())).not.toEqual(expect.arrayContaining(['配件品牌', '配件规格', '颜色']))
+    expect(wrapper.findAll('.el-form-item__label').map(item => item.text())).toEqual(expect.arrayContaining(['配件品牌', '配件型号', '颜色']))
     expect(mocks.warning).not.toHaveBeenCalled()
   })
 
@@ -909,7 +927,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(selectField(wrapper, '适配型号').props('disabled')).toBe(true)
     await saveButton(wrapper).trigger('click')
     await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ model_ids: [], model_id: null }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ model_ids: [], model_id: null }), { showError: false })
     expect(mocks.put.mock.calls[0][1]).not.toHaveProperty('brand_id')
   })
 
@@ -940,7 +958,8 @@ describe('配件公共资料与独立类型入库', () => {
     await saveButton(wrapper).trigger('click')
     await flushPromises()
     expect(mode === '编辑' ? mocks.put : mocks.post).toHaveBeenCalledWith(
-      mode === '编辑' ? '/accessories/55' : '/accessories', expect.objectContaining({ barcode: '0012345678901' }))
+      mode === '编辑' ? '/accessories/55' : '/accessories', expect.objectContaining({ barcode: '0012345678901' }),
+      ...(mode === '编辑' ? [{ showError: false }] : []))
   })
 
   it('同名候选展示型号、颜色、适配、零售价和SN默认值，隐藏字段不展示或泄露', async () => {
@@ -957,12 +976,12 @@ describe('配件公共资料与独立类型入库', () => {
     expect(options[0].text()).toContain('型号 USB-C 20W')
     expect(options[1].text()).toContain('型号 USB-C 35W')
     for (const text of ['白色', '适配 手机品牌 iPhone 17', '零售 ¥39/个', '默认SN管理']) expect(options[0].text()).toContain(text)
-    expect(mocks.get).toHaveBeenLastCalledWith('/accessories', expect.objectContaining({
+    expect(mocks.get).toHaveBeenLastCalledWith('/accessories/stock-in/templates', expect.objectContaining({
       params: expect.objectContaining({ search: '充电头 20w', page: 1 }), useCache: false, showError: false
     }))
     for (const field of ['basic_info.specifications', 'basic_info.color_name', 'basic_info.model_name', 'price_info.sale_price', 'basic_info.serial_tracking']) mocks.hidden.add(field)
     await flushPromises()
-    for (const text of ['USB-C', '白色', 'iPhone', '零售', '39', '默认SN管理']) expect(options[0].text()).not.toContain(text)
+    for (const text of ['USB-C', '白色', 'iPhone', '零售', '39', '默认SN管理']) expect(options[0].text()).toContain(text)
   })
 
   it('下拉在加载中或结果挂载后再次可见时不重复查询，也不清空关键词和已加载结果', async () => {
@@ -982,7 +1001,7 @@ describe('配件公共资料与独立类型入库', () => {
     selector.vm.$emit('visible-change', true)
     await flushPromises()
     expect(mocks.get).toHaveBeenCalledTimes(1)
-    expect(mocks.get).toHaveBeenLastCalledWith('/accessories', expect.objectContaining({ params: expect.objectContaining({ search: '充电头 20W' }) }))
+    expect(mocks.get).toHaveBeenLastCalledWith('/accessories/stock-in/templates', expect.objectContaining({ params: expect.objectContaining({ search: '充电头 20W' }) }))
     expect(selector.findAllComponents(ElOption).map(option => option.props('value'))).toEqual([55])
   })
 
@@ -1020,7 +1039,7 @@ describe('配件公共资料与独立类型入库', () => {
 
   it('新关键词只显示实际命中候选，不把已选旧商品混入搜索结果；字符串编号可正常选择', async () => {
     const current = { id: 55, name: '已选充电头', category: '充电头', category_id: 12, unit_id: 2, status: 1 }
-    mocks.get.mockImplementation(async (url: string) => url === '/accessories'
+    mocks.get.mockImplementation(async (url: string) => url === '/accessories/stock-in/templates'
       ? { success: true, data: { data: [{ id: '56', name: '新数据线', category: '数据线' }], pagination: { total: 1 } } }
       : { success: true, data: url.endsWith('/55') ? current : { ...current, id: 56, name: '新数据线' } })
     const wrapper = render()
@@ -1037,14 +1056,14 @@ describe('配件公共资料与独立类型入库', () => {
     selector.vm.$emit('change', options[0].props('value'))
     await flushPromises()
     expect(selector.props('modelValue')).toBe(56)
-    expect(mocks.get).toHaveBeenLastCalledWith('/accessories/56', expect.objectContaining({ useCache: false }))
+    expect(mocks.get).toHaveBeenLastCalledWith('/accessories/stock-in/templates/56', expect.objectContaining({ useCache: false }))
   })
 
   it('商品类型按组列出模板，选择后回填资料并保留本次供应商和进价', async () => {
     const template = { id: 55, name: '钢化膜4.7', barcode: '001234', category: '钢化膜', category_id: 11,
       unit_id: 1, product_model: 'FILM-47', sale_price: 20,
       brand_id: 99, model_brand_id: 2, model_ids: [20], supplier_id: 99, purchase_cost: 99, status: 1 }
-    mocks.get.mockImplementation(async (url: string) => ({ data: url === '/accessories'
+    mocks.get.mockImplementation(async (url: string) => ({ data: url === '/accessories/stock-in/templates'
       ? { data: [template, { ...template, id: 56, name: '钢化膜6.1' },
         { ...template, id: 57, name: '65W充电头', category: '充电头', category_id: 12 }], pagination: { total: 121 } }
       : template }))
@@ -1065,7 +1084,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(wrapper.text()).not.toContain('条记录')
     category.vm.$emit('change', 55)
     await flushPromises()
-    expect(mocks.get).toHaveBeenLastCalledWith('/accessories/55', expect.objectContaining({ useCache: false }))
+    expect(mocks.get).toHaveBeenLastCalledWith('/accessories/stock-in/templates/55', expect.objectContaining({ useCache: false }))
     expect(selectField(wrapper, '商品名称').props('modelValue')).toBe(55)
     expect(wrapper.get<HTMLInputElement>('input[placeholder="选择商品后自动填充"]').element.value).toBe('钢化膜')
     expect(wrapper.findAllComponents(ElOption).filter(option => [55, 56, 57].includes(Number(option.props('value')))).map(option => option.props('label'))).toEqual(['钢化膜4.7', '钢化膜6.1', '65W充电头'])
@@ -1111,27 +1130,27 @@ describe('配件公共资料与独立类型入库', () => {
     expect(selectField(wrapper, '入库用途').props('modelValue')).toBe('sale')
   })
 
-  it('隐藏入库用途时不提供隐式用途入库，模板仍可正常编辑', async () => {
+  it('隐藏入库用途不影响新采购录入，模板仍可正常编辑', async () => {
     mocks.hidden.add('basic_info.usage_type')
     const wrapper = render({ id: 55, name: '钢化膜', supplier_id: 4 }, false)
     await flushPromises()
     expect(wrapper.findAll('.el-form-item__label').map(item => item.text())).not.toContain('入库用途')
     // 编辑模式不是入库，不依赖本次采购用途。
     expect(saveButton(wrapper).attributes('disabled')).toBeUndefined()
-    const stockIn = render()
+    const stockIn = await purchaseForm()
+    expect(stockIn.findAll('.el-form-item__label').map(item => item.text())).toContain('入库用途')
+    quantityInput(stockIn)?.vm.$emit('update:modelValue', 1)
     await flushPromises()
-    expect(saveButton(stockIn).attributes('disabled')).toBeDefined()
-    await saveButton(stockIn).trigger('click')
-    expect(mocks.post).not.toHaveBeenCalled()
+    expect(saveButton(stockIn).attributes('disabled')).toBeUndefined()
   })
 
   it('商品类型搜索和选择忽略旧响应，关闭后不回填', async () => {
     let oldList: ((response: unknown) => void) | undefined
     let oldDetail: ((response: unknown) => void) | undefined
     mocks.get.mockImplementation((url: string, config?: { params?: { search?: string } }) => {
-      if (url === '/accessories' && config?.params?.search === '旧') return new Promise(resolve => { oldList = resolve })
-      if (url === '/accessories/55') return new Promise(resolve => { oldDetail = resolve })
-      if (url === '/accessories') return Promise.resolve({ data: { data: [{ id: 56, name: '新模板', category: '钢化膜' }], pagination: { total: 1 } } })
+      if (url === '/accessories/stock-in/templates' && config?.params?.search === '旧') return new Promise(resolve => { oldList = resolve })
+      if (url === '/accessories/stock-in/templates/55') return new Promise(resolve => { oldDetail = resolve })
+      if (url === '/accessories/stock-in/templates') return Promise.resolve({ data: { data: [{ id: 56, name: '新模板', category: '钢化膜' }], pagination: { total: 1 } } })
       return Promise.resolve({ data: { id: 56, name: '新模板', barcode: 'NEW', category_id: 11, unit_id: 1, status: 1 } })
     })
     const wrapper = render()
@@ -1177,7 +1196,7 @@ describe('配件公共资料与独立类型入库', () => {
     await barcode.setValue(' CORRECTED-55 ')
     await saveButton(wrapper).trigger('click')
     await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ model_ids: [20], product_model: 'MWVW3CH', sale_price: 35.5, barcode: 'CORRECTED-55', status: 1 }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ model_ids: [20], product_model: 'MWVW3CH', sale_price: 35.5, barcode: 'CORRECTED-55', status: 1 }), { showError: false })
     expect(mocks.put.mock.calls[0][1]).not.toHaveProperty('brand_id')
     expect(mocks.put.mock.calls[0][1]).not.toHaveProperty('specifications')
     expect(mocks.post).not.toHaveBeenCalled()
@@ -1286,7 +1305,7 @@ describe('配件公共资料与独立类型入库', () => {
     selectField(wrapper, '供应商').vm.$emit('update:modelValue', 4)
     selectField(wrapper, '商品名称').vm.$emit('change', 55)
     await flushPromises()
-    expect(mocks.get).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ useCache: false }))
+    expect(mocks.get).toHaveBeenCalledWith('/accessories/stock-in/templates/55', expect.objectContaining({ useCache: false }))
     const price = wrapper.get<HTMLInputElement>('input[aria-label="销售价"]')
     expect(price.element.readOnly).toBe(true)
     expect(price.element.value).toBe('20')
@@ -1313,7 +1332,7 @@ describe('配件公共资料与独立类型入库', () => {
     selectField(wrapper, '供应商').vm.$emit('update:modelValue', 4)
     selectField(wrapper, '商品名称').vm.$emit('change', 55)
     await flushPromises()
-    expect(wrapper.text()).not.toContain('销售价')
+    expect(wrapper.text()).toContain('销售价')
     await saveButton(wrapper).trigger('click')
     await flushPromises()
     expect(mocks.post.mock.calls[0][1]).not.toHaveProperty('sale_price')
@@ -1350,7 +1369,7 @@ describe('配件公共资料与独立类型入库', () => {
     await editor.get('input[placeholder="手动输入或扫描条形码"]').setValue('')
     await saveButton(editor).trigger('click')
     await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/56', expect.objectContaining({ barcode: null }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/56', expect.objectContaining({ barcode: null }), { showError: false })
   }, 15_000)
   it('模板保存SN默认开关，入库自动统计数量、统一大小写并阻止重复', async () => {
     const archive = render(undefined, true)
@@ -1495,7 +1514,7 @@ describe('配件公共资料与独立类型入库', () => {
     expect(warning.element.value).toBe('0')
     await saveButton(editor).trigger('click')
     await flushPromises()
-    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ min_stock: 0 }))
+    expect(mocks.put).toHaveBeenCalledWith('/accessories/55', expect.objectContaining({ min_stock: 0 }), { showError: false })
     const wrapper = mount(AccessoryStockInModal, { props: { modelValue: true, stockInOnly: true, accessory: { id: 55, name: '原装充电头', min_stock: 0, category_id: 12, unit_id: 2, status: 1 } }, global: { plugins: [ElementPlus], directives: { permission: {}, 'identifier-input': vIdentifierInput }, stubs: { MobileDialog: DialogStub, Image: true } } })
     wrappers.push(wrapper)
     await flushPromises()

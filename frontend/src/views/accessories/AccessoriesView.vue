@@ -527,9 +527,9 @@
                           <span>编辑档案</span>
                         </el-button>
                         <el-button
-                          v-if="canDelete && isAccessoryEnabled(row)"
+                          v-if="canDelete && (isTemplateMode ? isAccessoryEnabled(row) : canDeleteUnusedBrandVariant(row))"
                           class="table-action table-action--delete"
-                          title="删除（停用），保留历史记录"
+                          :title="isTemplateMode ? '删除商品模板（停用），保留历史记录' : (canDeleteUnusedBrandVariant(row) ? '删除无库存、无销售、无划拨且无历史关联的品牌商品' : '删除（停用），保留历史记录')"
                           @click.stop="deleteAccessory(row)"
                         >
                           <i class="fas fa-trash" />
@@ -562,7 +562,7 @@
       <AccessoryDetailsModal
         v-if="showDetailsModal && selectedAccessory"
         :accessory="selectedAccessory"
-        :has-actions="canEdit || (canStockIn && isAccessoryEnabled(selectedAccessory)) || (!isTemplateMode && canTransfer) || (canDelete && isAccessoryEnabled(selectedAccessory))"
+        :has-actions="canEdit || (canStockIn && isAccessoryEnabled(selectedAccessory)) || (!isTemplateMode && canTransfer) || (canDelete && (isTemplateMode ? isAccessoryEnabled(selectedAccessory) : canDeleteUnusedBrandVariant(selectedAccessory)))"
         @close="closeDetailsModal"
         @success="handleInventoryAdjusted"
       >
@@ -597,7 +597,7 @@
             <i class="fas fa-pen-to-square" /><span>编辑档案</span>
           </el-button>
           <el-button
-            v-if="canDelete && isAccessoryEnabled(selectedAccessory)"
+            v-if="canDelete && (isTemplateMode ? isAccessoryEnabled(selectedAccessory) : canDeleteUnusedBrandVariant(selectedAccessory))"
             type="danger"
             @click.stop="runAccessoryDetailAction(deleteAccessory)"
           >
@@ -644,7 +644,7 @@ import { PageHeader, PermissionGate } from '@/components/base'
 import Pagination from '@/components/Pagination.vue'
 import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
-import { getRequestErrorMessage } from '@/utils/api-response'
+import { getRequestErrorCode, getRequestErrorMessage, getRequestErrorStatus } from '@/utils/api-response'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { logger } from '@/utils/logger'
 import { getTextColumnMinWidth } from '@/utils/table-layout'
@@ -764,6 +764,11 @@ const isAccessoryEnabled = (accessory: AccessoryRecord) => (
   accessory.status === 1 || accessory.status === '1' || accessory.status === true
 )
 
+const canDeleteUnusedBrandVariant = (accessory: AccessoryRecord) => (
+  !isTemplateMode.value && Boolean(accessory.template_id) &&
+  getTotalStock(accessory) === 0 && Number(accessory.total_out ?? 0) === 0
+)
+
 const formatPrice = (price?: number | string) => {
   return formatAmount(price)
 }
@@ -879,17 +884,29 @@ const openStockInModal = () => {
 
 useRouteDialog({ path: '/accessories', flag: 'openStockIn', allowed: () => canView.value && canStockIn.value, open: openStockInModal })
 
-const stockInAccessory = (accessory: AccessoryRecord) => {
+const stockInAccessory = async (accessory: AccessoryRecord) => {
   if (!canStockIn.value) {
     handleNoPermission('stock-in')
     return
   }
-  selectedAccessory.value = accessory
-  stockEditOnlyModal.value = false
-  profileEditOnlyModal.value = false
-  archiveOnlyModal.value = false
-  stockInOnlyModal.value = true
-  showStockInModal.value = true
+  const request = templateEditRequest.nextRequest()
+  try {
+    const templateId = Number(accessory.id)
+    const template = (await api.get<AccessoryRecord>(`/accessories/stock-in/templates/${templateId}`, {
+      signal: request.signal, useCache: false
+    })).data
+    if (!request.isLatest() || !template?.id) return
+    selectedAccessory.value = template
+    stockEditOnlyModal.value = false
+    profileEditOnlyModal.value = false
+    archiveOnlyModal.value = false
+    stockInOnlyModal.value = true
+    showStockInModal.value = true
+  } catch (err) {
+    if (!request.isLatest() || templateEditRequest.isCanceledError(err)) return
+    logger.error('读取入库商品模板失败', err)
+    globalNotifications.error(getRequestErrorMessage(err, '读取入库商品失败，请重试'))
+  }
 }
 
 const openArchiveModal = () => {
@@ -972,7 +989,11 @@ const deleteAccessory = async (accessory: AccessoryRecord) => {
 
   try {
     const targetName = canViewAccessoryField('name') ? accessory.name || '该配件' : '该配件'
-    if (!await confirm(`确定删除 ${targetName} 吗？删除将停用此模板，保留库存和历史单据；可在商品模板中编辑恢复启用。`, '删除商品模板', {
+    const removeUnusedVariant = canDeleteUnusedBrandVariant(accessory)
+    const confirmMessage = removeUnusedVariant
+      ? `确定删除 ${targetName} 吗？仅当无库存、无销售、无划拨且无历史关联时才会物理删除。存在任何业务关联时将保留商品档案。`
+      : `确定删除 ${targetName} 吗？${isTemplateMode.value ? '删除将停用此模板，保留库存和历史单据；可在商品模板中编辑恢复启用。' : '该商品不满足空商品删除条件，将按停用处理并保留历史记录。'}`
+    if (!await confirm(confirmMessage, isTemplateMode.value ? '删除商品模板' : '删除品牌商品', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
@@ -982,15 +1003,27 @@ const deleteAccessory = async (accessory: AccessoryRecord) => {
   }
 
   try {
-    await api.delete(`/accessories/${accessory.template_id || accessory.id}`)
+    const removeUnusedVariant = canDeleteUnusedBrandVariant(accessory)
+    const endpoint = removeUnusedVariant
+      ? `/accessories/${accessory.id}/unused-variant`
+      : `/accessories/${accessory.template_id || accessory.id}`
+    await api.delete(endpoint, { showError: false })
     if (await loadAccessories(true, true) === false) {
-      globalNotifications.warning('商品模板已删除（停用），列表刷新失败，请点击刷新；请勿重复删除。')
+      globalNotifications.warning(`${removeUnusedVariant ? '空品牌商品已删除' : '商品模板已删除（停用）'}，列表刷新失败，请点击刷新；请勿重复操作。`)
     } else {
-      globalNotifications.success('商品模板已删除（停用），历史记录已保留')
+      globalNotifications.success(removeUnusedVariant ? '空品牌商品已删除' : '商品模板已删除（停用），历史记录已保留')
     }
   } catch (err) {
+    const message = getRequestErrorMessage(err, '删除失败，请重试')
+    if (getRequestErrorStatus(err) === 409) {
+      const warning = getRequestErrorCode(err) === 'ACCESSORY_DELETE_HAS_HISTORY'
+        ? `${message} 如果是品牌填写错误，请点击“编辑档案”改为正确品牌，系统会在无业务活动时合并重复品牌商品。`
+        : message
+      globalNotifications.warning(warning)
+      return
+    }
     logger.error('删除配件失败', err)
-    globalNotifications.error(getRequestErrorMessage(err, '删除失败，请重试'))
+    globalNotifications.error(message)
   }
 }
 

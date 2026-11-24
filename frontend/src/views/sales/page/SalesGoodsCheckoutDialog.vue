@@ -298,7 +298,7 @@
           :gutter="16"
         >
           <el-col
-            v-if="!filmCustomerId && canViewAccessoryField('customer_phone')"
+            v-if="!filmCustomerId && (effectiveFieldSource === 'query' || canViewAccessoryField('customer_phone'))"
             :xs="12"
             :sm="6"
           >
@@ -718,10 +718,11 @@ const hasRedemption = computed(() => {
   return goods.value.some(row => Number(row.redeem_points) > 0)
 })
 let requestKey = ''
-const requiredFields: AccessoryFieldName[] = ['name', 'distribution', 'total_quantity', 'unit_price', 'usage_type', 'customer_name', 'created_at', 'operator_name']
+const requiredFields: AccessoryFieldName[] = ['name', 'total_quantity', 'unit_price', 'usage_type']
 const filmAllowed = computed(() => !!props.filmCustomerId && queryPermissions.canView.value && queryPermissions.hasPermission('film'))
 const canViewCheckout = computed(() => props.filmCustomerId ? filmAllowed.value : permissions.canView.value)
-const fieldsAllowed = computed(() => canViewCheckout.value && props.phoneFieldsAllowed && requiredFields.every(canViewAccessoryField) &&
+const fieldsAllowed = computed(() => canViewCheckout.value && props.phoneFieldsAllowed &&
+  (effectiveFieldSource.value === 'query' || canViewAccessoryField('distribution')) && requiredFields.every(canViewAccessoryField) &&
   (!props.filmCustomerId || canViewAccessoryField('customer_name')) &&
   (!props.filmCustomerId || queryPermissions.canView.value && queryPermissions.hasPermission('film') &&
     !!props.filmPhoneId && !!props.filmModelId && props.initialCustomer?.id === props.filmCustomerId && !props.phones.length && !props.quickPhone && canViewAccessoryField('category') && canViewAccessoryField('total_price')))

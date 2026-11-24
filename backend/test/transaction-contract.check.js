@@ -522,7 +522,8 @@ test('accessory field controls cover reads, filters and writes', () => {
   assert.match(controller, /maskPayload\(/)
   assert.match(controller, /search_fields: searchFields/)
   assert.match(helper, /pickVisibleAccessoryFields/)
-  assert.match(form, /pickVisibleAccessoryFields\(buildAccessoryStockInPayload/)
+  assert.match(route, /router\.post\('\/stock-in', unifiedAuth, requirePermission\('accessories:stock-in'\)/)
+  assert.match(form, /pickVisibleAccessoryFields\(templatePayload/)
   assert.match(view, /canViewAccessoryField\('profit'\)/)
   assert.match(view, /canViewAccessoryField\('remaining_stock'\)/)
   for (const fieldId of ['price_info.profit', 'stock_info.remaining_stock', 'stock_info.distribution', 'system_info.operations']) {

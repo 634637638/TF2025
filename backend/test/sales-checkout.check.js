@@ -541,6 +541,46 @@ test('仅售商品时销售员、日期和出库方式字段隐藏同样拒绝�
   }
 })
 
+test('综合查询商品结算不因客户和销售记录字段隐藏而失败，商品交易字段仍受限制', async () => {
+  const hidden = new Set(['customer_info.customer_name', 'customer_info.customer_phone', 'stock_info.distribution',
+    'operator_info.operator_name', 'time_info.created_at'])
+  const queryAccess = {
+    async getPermissions() { return { hiddenFields: [...hidden] } },
+    async getDeniedWrite(_id, body, map) {
+      return Object.entries(map).find(([bodyField, fieldId]) => {
+        let value = body
+        for (const key of bodyField.split('.')) value = value?.[key]
+        return value !== undefined && hidden.has(fieldId)
+      })?.[1]
+    }
+  }
+  const controller = new Controller({ permissionCheck: async () => true, queryGoodsAccess: queryAccess,
+    service: { async checkout() { return { order_no: 'QUERY-ORDER' } } } })
+  const response = () => ({ status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } })
+  const body = { ...request(), phones: [] }
+  const allowed = response()
+  await controller.queryGoodsCheckout({ body, user: actor }, allowed)
+  assert.equal(allowed.body.success, true)
+
+  hidden.add('price_info.unit_price')
+  const denied = response()
+  await controller.queryGoodsCheckout({ body, user: actor }, denied)
+  assert.equal(denied.statusCode, 403)
+  assert.equal(denied.body.code, 'FIELD_PERMISSION_DENIED')
+  assert.equal(denied.body.field, 'price_info.unit_price')
+})
+
+test('综合查询商品会员摘要不因客户姓名或手机号表格字段隐藏而返回403', async () => {
+  const queryAccess = { async getPermissions() { return { hiddenFields: ['customer_info.customer_name', 'customer_info.customer_phone'] } } }
+  const controller = new Controller({ queryGoodsAccess: queryAccess,
+    customerAccess: { async getPermissions() { return { hiddenFields: [] } } },
+    service: { async customerSummary() { return { member_number: 'VIP001', points: 0, available_points: 0, balance: 0 } } } })
+  const res = { status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } }
+  await controller.queryGoodsSummary({ query: { context: 'goods', phone: '13800138000' }, user: actor }, res)
+  assert.equal(res.body.success, true)
+  assert.equal(res.body.data.member_number, 'VIP001')
+})
+
 test('快速共同结算的采购设备及客户字段均由后端拒绝隐藏字段写入', async () => {
   for (const field of ['brand_id', 'model_id', 'color_id', 'memory_id', 'supplier_id', 'imei', 'serial_number',
     'is_new', 'purchase_cost', 'inventory_time', 'sale_price', 'name', 'phone']) {

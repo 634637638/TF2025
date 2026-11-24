@@ -58,8 +58,9 @@ class SalesCheckoutController {
     try {
       goodsAccess ||= await this.resolveGoodsAccess(req)
       const [phone, goods, customer] = await Promise.all([req.query.context === 'goods' ? Promise.resolve({}) : this.phoneAccess.getPermissions(req.user.id), goodsAccess.getPermissions(req.user.id), this.customerAccess.getPermissions(req.user.id)])
+      const queryGoodsCheckout = goodsAccess === this.queryGoodsAccess
       if (['sale.customer_name', 'sale.customer_phone'].some(field => phone.hiddenFields?.includes(field)) ||
-        ['customer_info.customer_name', 'customer_info.customer_phone'].some(field => goods.hiddenFields?.includes(field))) {
+        (!queryGoodsCheckout && ['customer_info.customer_name', 'customer_info.customer_phone'].some(field => goods.hiddenFields?.includes(field)))) {
         return res.status(403).json({ success: false, message: '无权读取客户字段', code: 'FIELD_PERMISSION_DENIED' })
       }
       const data = await this.service.customerSummary(req.query, req.user)
@@ -77,6 +78,7 @@ class SalesCheckoutController {
   }
   async enforceFields(req, goodsAccess = this.goodsAccess) {
     const body = req.body || {}, id = req.user.id
+    const queryGoodsCheckout = goodsAccess === this.queryGoodsAccess
     if (body.film_service !== undefined) {
       const queryPermissions = await this.queryAccess.getPermissions(id)
       if (['basic_info.model', 'customer_info.customer_name'].some(field => queryPermissions.hiddenFields?.includes(field))) throw Object.assign(new Error('缺少当前手机型号或客户字段权限'), { statusCode: 403, code: 'FIELD_PERMISSION_DENIED' })
@@ -108,11 +110,15 @@ class SalesCheckoutController {
       })
     }
     if (Array.isArray(body.accessories) && body.accessories.length) {
-      await denied(goodsAccess, body, { store_id: 'stock_info.distribution', remarks: 'other_info.remarks',
-        operator_id: 'operator_info.operator_name', sale_time: 'time_info.created_at' })
-      await denied(goodsAccess, body.customer_info, body.film_service !== undefined
-        ? { name: 'customer_info.customer_name' }
-        : { name: 'customer_info.customer_name', phone: 'customer_info.customer_phone' })
+      await denied(goodsAccess, body, queryGoodsCheckout
+        ? { remarks: 'other_info.remarks' }
+        : { store_id: 'stock_info.distribution', remarks: 'other_info.remarks',
+          operator_id: 'operator_info.operator_name', sale_time: 'time_info.created_at' })
+      if (!queryGoodsCheckout || body.film_service !== undefined) {
+        await denied(goodsAccess, body.customer_info, body.film_service !== undefined
+          ? { name: 'customer_info.customer_name' }
+          : { name: 'customer_info.customer_name', phone: 'customer_info.customer_phone' })
+      }
       for (const row of body.accessories) await denied(goodsAccess, row, goodsMap)
     }
   }

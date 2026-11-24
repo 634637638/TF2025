@@ -506,6 +506,21 @@ describe('商品单卖与搭售结算弹窗', () => {
     await wrapper.setProps({ phoneFieldsAllowed: false }); await flushPromises()
     await submitCheckout(wrapper); expect(mocks.checkout).not.toHaveBeenCalled()
   })
+  it('综合查询表格隐藏客户姓名和手机号时仍可正常商品收银', async () => {
+    mocks.queryGoods = true
+    mocks.queryHidden.add('customer_info.customer_name')
+    mocks.queryHidden.add('customer_info.customer_phone')
+    mocks.queryHidden.add('stock_info.distribution')
+    const wrapper = await render([], { fieldSource: 'query' })
+    await populate(wrapper)
+    expect(wrapper.find('input[inputmode="tel"]').exists()).toBe(true)
+    await submitCheckout(wrapper)
+    expect(mocks.checkout).toHaveBeenCalledOnce()
+    expect(mocks.checkout).toHaveBeenCalledWith(expect.objectContaining({
+      customer_info: { name: form().customer_name, phone: form().customer_phone },
+      store_id: form().store_id
+    }), 'query')
+  })
   it('商品超过100条可继续滚动，切店清除旧商品和SN', async () => {
     // 大数据回归保留真实分页、清单和门店控件，只替换与行为无关的装饰标签。
     const wrapper = await render([], {}, { ElTag: true })

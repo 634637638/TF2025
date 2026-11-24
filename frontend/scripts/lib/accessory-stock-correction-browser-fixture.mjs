@@ -38,14 +38,15 @@ window.fixtureRead=async(url,options={})=>{
  if(url==='/accessories/catalog')return {success:true,data:{categories:[{id:1,name:'充电器',sort_order:0,status:1}],units:[{id:1,name:'个',sort_order:0,status:1}],film_ready:['template-colors','template-color-edit'].includes(window.fixtureScenario)}};
  if(url==='/accessories/settings')return {success:true,data:{warehouse_store_id:1,stores:[{id:1,name:'演示仓库',status:1}]}};
  if(['template-colors','template-color-edit'].includes(window.fixtureScenario)){
-  if(url==='/accessories'&&options.params?.mode==='templates')return {success:true,data:{data:[window.fixtureScenario==='template-color-edit'&&!window.fixtureProfile.color_template_id?currentProfile():structuredClone(window.fixtureColorTemplate)],pagination}};
-  if(['/accessories/'+window.fixtureColorTemplate.id,...window.fixtureColorTemplate.color_variants.map(row=>'/accessories/'+row.accessory_id)].includes(url)){
-   const template=structuredClone(window.fixtureColorTemplate), variant=template.color_variants.find(row=>url==='/accessories/'+row.accessory_id);
+  if(url==='/accessories/stock-in/templates'||url==='/accessories'&&options.params?.mode==='templates')return {success:true,data:{data:[window.fixtureScenario==='template-color-edit'&&!window.fixtureProfile.color_template_id?currentProfile():structuredClone(window.fixtureColorTemplate)],pagination}};
+  const templateDetail='/accessories/stock-in/templates/';
+  if([templateDetail+window.fixtureColorTemplate.id,...window.fixtureColorTemplate.color_variants.map(row=>templateDetail+row.accessory_id)].includes(url)){
+   const template=structuredClone(window.fixtureColorTemplate), variant=template.color_variants.find(row=>url===templateDetail+row.accessory_id);
    return {success:true,data:variant?{...template,id:variant.accessory_id,color_id:variant.color_id,color_name:variant.color_name,barcode:variant.barcode}:template};
   }
  }
  if(window.fixtureScenario==='template-search'){
-  if(url==='/accessories'&&options.params?.mode==='templates'){
+  if(url==='/accessories/stock-in/templates'){
    const {page=1,page_size=20,search=''}=options.params;
    window.fixtureTemplateReads.push({page,search});
    const normalized=value=>String(value??'').toLowerCase().replace(/[\\s-]/g,'');
@@ -54,11 +55,12 @@ window.fixtureRead=async(url,options={})=>{
     ['name','category','product_model','color_name','compatible_model_names'].some(key=>normalized(item[key]).includes(normalized(word)))));
    return {success:true,data:{data:structuredClone(rows.slice((page-1)*page_size,page*page_size)),pagination:{page,page_size,total:rows.length}}};
   }
-  const template=window.fixtureTemplates.find(item=>url==='/accessories/'+item.id);
+  const template=window.fixtureTemplates.find(item=>url==='/accessories/stock-in/templates/'+item.id);
   if(template)return {success:true,data:structuredClone(template)};
  }
  if(url==='/accessories')return {success:true,data:{data:[currentProfile()],pagination}};
  if(url==='/accessories/55')return {success:true,data:currentProfile()};
+ if(url==='/accessories/stock-in/templates/55')return {success:true,data:currentProfile()};
  if(url==='/accessories/55/stock-in-options')return {success:true,data:{data:[{purchase_id:10,batch_no:'IN-DEMO',
   supplier_name:'原供应商',store_name:'演示仓库',quantity:50,purchase_cost:currentProfile().purchase_cost}],pagination}};
  if(url==='/accessories/stock-in/10/edit'){

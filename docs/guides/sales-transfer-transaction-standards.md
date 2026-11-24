@@ -90,7 +90,7 @@ npm --prefix backend run migrate:sale-payment-methods -- --apply --backup-file=b
 
 快速出库窗口联动的隔离浏览器入口为 `node frontend/scripts/test-checkout-order.mjs --quick-sale-only`。复用真实 `QuickSaleModal` 与共同结算组件，通过原表单选择手机品牌/型号/颜色/内存、供应商、门店，填写SN/IMEI、成本、售价、客户及备注；核对客户资料继承且不重复录入、取消保留草稿、重新打开带入最新售价、购买及赠品关联临时手机，附加确认零提交且原出库窗口继续显示、最终修改售价/备注后才提交一次共同结算、原快速出库窗口关闭。最终载荷包含`quick_phone`、空`phones`及逐条`linked_phone_id=1`，由后端解析成真实手机及销售关系；不能将临时ID写成真实库存ID。该入口覆盖同样五个视口及明暗主题，仅挂载快速出库窗口，不代表综合查询整页入口、父页面刷新、云端创建设备、真实客户或后端事务验收。
 
-动作权限分别沿用 `sales:sell/inventory:sell`、收费商品 `accessories:sell` 或综合查询 `view/goods-view/goods-sell`、赠品 `accessories:gift` 或综合查询 `view/goods-view/goods-gift`；服务逐域重新校验，入口任一获权不能代替其他明细的权限。字段写入由公共 `FieldAccessService` 检查嵌套客户、价格、门店、时间、备注、SN及支付字段。响应仅含订单号、明细/销售关联、总额及积分，不返回内部采购成本或主档快照。
+动作权限分别沿用 `sales:sell/inventory:sell`、收费商品 `accessories:sell` 或综合查询 `view/goods-view/goods-sell`、赠品 `accessories:gift` 或综合查询 `view/goods-view/goods-gift`；服务逐域重新校验，入口任一获权不能代替其他明细的权限。字段写入由公共 `FieldAccessService` 检查商品价格、数量、用途、SN及支付字段。综合查询商品收银允许使用客户、销售门店、销售员和销售日期等交易元数据，即使这些字段在商品历史表格中隐藏，服务端仍按选定资料保存但不回传敏感快照。响应仅含订单号、明细/销售关联、总额及积分，不返回内部采购成本或主档快照。
 
 共同结算的手机/商品字段读取，以及商品退换货和手机联合售后的字段读取均显式使用严格模式。综合查询商品模式独立开单的会员摘要、试算和提交使用 `/query/goods/checkout` 系列接口，沿用同一结算服务与事务，但商品字段明确读取综合查询 `goods` 子范围；商品管理保留原配件字段来源，手机搭售按公共能力来源选择字段范围。原 `/sales/checkout` 入口对没有商品管理查看权限的用户同样采用商品子范围，不能借旧入口绕过限制。商品原单、凭证、退换货与关联商品核对使用商品子范围，手机字段不变；旧角色回退规则见[字段权限指南](../frontend/field-permission-guide.md#综合查询的手机与商品字段)。角色/字段查询失败或存储配置损坏时，在试算/交易执行前返回统一故障，不按没有隐藏字段继续；退货核对若在读取原单后无法核验商品字段，也不返回部分原单。完整失败边界及正式回归见[字段权限指南](../frontend/field-permission-guide.md#后端边界)。
 

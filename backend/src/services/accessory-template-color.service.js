@@ -98,7 +98,7 @@ class AccessoryTemplateColorService extends BaseService {
       family: [{ template_id: ownerId, accessory_id: rootId, color_id: originalColorId }], connection })
   }
 
-  /** 调用方提供原事务；只同步档案，不改库存、数量、成交金额或成本快照。 */
+  /** 在原事务内同步整组档案，并按当前颜色的采购根处理品牌更正。 */
   async update({ id, existing, data, input, family, connection }) {
     await this.colors.assertReady(connection)
     const ownerId = Number(family[0].template_id)
@@ -131,15 +131,14 @@ class AccessoryTemplateColorService extends BaseService {
       if (Object.keys(common).length) await this.repository.updateAccessory(rootId, common, connection)
       if (data.model_ids !== undefined) await this.repository.replaceCompatibleModels(rootId, modelIds, connection)
     }
+    let profileTargetId = Number(id)
     if (ownRoot !== ownerId) {
       const child = pick(data, ['brand_id', 'supplier_id', 'purchase_cost'])
-      if (data.brand_id !== undefined && Number(data.brand_id || 0) !== Number(current.brand_id || 0)) {
-        const colorRoot = colorRoots.get(ownRoot)
-        const duplicate = Number(colorRoot.brand_id || 0) === Number(data.brand_id || 0) ? colorRoot
-          : await this.repository.getBrandVariant(ownRoot, data.brand_id, connection)
-        if (duplicate && Number(duplicate.id) !== Number(id)) throw this.createError('此颜色下已存在该品牌的商品，不能合并库存', 409, 'DUPLICATE_BRAND_VARIANT')
+      if (data.brand_id !== undefined) {
+        profileTargetId = await this.repository.resolveBrandProfileTarget(current, colorRoots.get(ownRoot), data.brand_id, connection)
+        if (profileTargetId !== Number(id)) delete child.brand_id
       }
-      if (Object.keys(child).length) await this.repository.updateAccessory(id, child, connection)
+      if (Object.keys(child).length) await this.repository.updateAccessory(profileTargetId, child, connection)
     }
     if (!variants && ownRoot !== ownerId) {
       const own = family.find(row => Number(row.accessory_id) === ownRoot)
@@ -163,8 +162,10 @@ class AccessoryTemplateColorService extends BaseService {
         family.push({ accessory_id: colorId })
       }
     }
-    for (const rootId of [ownerId, ...family.map(row => Number(row.accessory_id))]) await this.repository.syncProductProfileSnapshots(id, rootId, connection)
-    return this.repository.getAccessoryById(id, connection, { currentRead: true })
+    for (const rootId of [ownerId, ...family.map(row => Number(row.accessory_id))]) await this.repository.syncProductProfileSnapshots(profileTargetId, rootId, connection)
+    const updated = await this.repository.getAccessoryById(profileTargetId, connection, { currentRead: true })
+    if (!updated) throw this.createError('商品资料更新后无法核对，请刷新重试', 409, 'PROFILE_CORRECTION_STALE')
+    return updated
   }
 }
 

@@ -54,6 +54,7 @@ function fixture({ ready = true, failLink = false } = {}) {
     async lockAccessory(id, conn) { assert.equal(conn, connection); return state.records.find(row => row.id === Number(id)) },
     async updateAccessory(id, data, conn) { assert.equal(conn, connection); Object.assign(state.records.find(row => row.id === Number(id)), data); return true },
     async getBrandVariant(rootId, brandId) { return state.records.find(row => row.template_id === rootId && row.brand_id === brandId) },
+    resolveBrandProfileTarget: AccessoryRepository.prototype.resolveBrandProfileTarget,
     async syncProductProfileSnapshots(id, rootId, conn) { assert.equal(conn, connection); state.syncs.push(rootId) }
   }
   return { service: new AccessoryService({ repository }), repository, events, state: () => state }
@@ -284,16 +285,53 @@ test('入库只使用具体颜色采购根，不同颜色同品牌独立建库�
   assert.throws(() => f.service.parseStockInInput({ color_variants: [{ color_id: 3 }] }, { id: 7 }), { code: 'COLOR_VARIANT_REQUIRED' })
 })
 
-test('具体颜色根可更正实际品牌且不影响其他颜色，遇同色已有品牌拒绝合并并回滚公共修改', async () => {
+test('同色旧品牌归入正确的库存商品，保留颜色根、其他颜色及原采购更正链', async () => {
+  const f = fixture(); await f.service.createAccessory(input())
+  await f.repository.withConnection(async connection => {
+    await f.repository.createAccessory({ template_id: 2, brand_id: 7 }, connection)
+    await f.repository.createAccessory({ template_id: 2, brand_id: 8 }, connection)
+    await f.repository.createAccessory({ template_id: 3, brand_id: 8 }, connection)
+  })
+  const purchases = [{ id: 10, accessory_id: 2, status: 'cancelled', replacement: 11 },
+    { id: 11, accessory_id: 4, status: 'cancelled', replacement: 12 },
+    { id: 12, accessory_id: 5, status: 'completed', quantity: 34 }]
+  const links = structuredClone(f.state().links)
+  f.repository.checkUnusedBrandVariant = async () => ({ code: 'ACCESSORY_DELETE_HAS_ACTIVITY' })
+  f.repository.mergeUnusedBrandVariant = async (source, target, root, connection) => {
+    assert.equal(root, 2)
+    assert.equal(target, 5)
+    assert.equal((await f.repository.lockAccessory(source, connection)).id, Number(source))
+    purchases.find(row => row.accessory_id === source).accessory_id = target
+    if (source !== root) f.state().records.splice(f.state().records.findIndex(row => row.id === source), 1)
+    return target
+  }
+  for (const id of [2, 4]) {
+    const result = await f.service.updateAccessory(id, { brand_id: 8, color_variants: input().color_variants })
+    assert.equal(result.success, true)
+    assert.equal(result.data.id, 5)
+    assert.deepEqual(f.events.slice(-3), ['begin', 'commit', 'release'])
+  }
+  assert.equal(f.state().records.find(row => row.id === 2).brand_id, null)
+  assert.equal(f.state().records.some(row => row.id === 4), false)
+  assert.equal(f.state().records.find(row => row.id === 6).template_id, 3)
+  assert.deepEqual(f.state().links, links)
+  assert.deepEqual(purchases, [{ id: 10, accessory_id: 5, status: 'cancelled', replacement: 11 },
+    { id: 11, accessory_id: 5, status: 'cancelled', replacement: 12 },
+    { id: 12, accessory_id: 5, status: 'completed', quantity: 34 }])
+})
+
+test('同色来源商品已有业务时拒绝合并并回滚公共修改', async () => {
   const f = fixture(); await f.service.createAccessory(input())
   await f.repository.withConnection(connection => f.repository.createAccessory({ template_id: 2, brand_id: 8 }, connection))
-  assert.equal((await f.service.updateAccessory(2, { brand_id: 9 })).success, true)
-  assert.equal(f.state().records[1].brand_id, 9); assert.equal(f.state().records[2].brand_id, null)
-  const before = structuredClone(f.state())
-  for (const [id, brand] of [[4, 9], [2, 8]]) {
-    const result = await f.service.updateAccessory(id, { brand_id: brand, name: '不能保存的名称' })
-    assert.equal(result.code, 'DUPLICATE_BRAND_VARIANT'); assert.deepEqual(f.state(), before)
+  f.repository.checkUnusedBrandVariant = async () => ({ code: 'ACCESSORY_DELETE_HAS_ACTIVITY' })
+  f.repository.mergeUnusedBrandVariant = async () => {
+    throw Object.assign(new Error('关联了销售记录'), { statusCode: 409, code: 'ACCESSORY_DELETE_HAS_ACTIVITY' })
   }
+  const before = structuredClone(f.state())
+  const result = await f.service.updateAccessory(2, { brand_id: 8, name: '不能保存的名称' })
+  assert.equal(result.code, 'ACCESSORY_DELETE_HAS_ACTIVITY')
+  assert.deepEqual(f.state(), before)
+  assert.deepEqual(f.events.slice(-3), ['begin', 'rollback', 'release'])
 })
 
 test('组更正只排他锁定颜色映射，回执用共享当前读，不排他锁定全局颜色引用', async () => {

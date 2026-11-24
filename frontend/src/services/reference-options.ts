@@ -111,9 +111,9 @@ export interface ProductNameOptionsParams {
 }
 
 /** 配件入库只读取公共主档；适配型号按手机品牌加载，不创建手机资料。 */
-export const getAccessoryEntryOptions = (params: { brand_id?: number; accessory_id?: number; model_ids?: number[] } = {}) =>
-  unifiedApi.get<AccessoryEntryOptions>('/accessories/options', {
-    params: { ...params, model_ids: params.model_ids?.join(',') },
+export const getAccessoryEntryOptions = (params: { brand_id?: number; accessory_id?: number; model_ids?: number[]; stock_in?: boolean } = {}) =>
+  unifiedApi.get<AccessoryEntryOptions>(params.stock_in ? '/accessories/stock-in/options' : '/accessories/options', {
+    params: { brand_id: params.brand_id, accessory_id: params.accessory_id, model_ids: params.model_ids?.join(',') },
     useCache: false
   })
 

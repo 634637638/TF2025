@@ -814,6 +814,91 @@ class AccessoryRepository extends BaseRepository {
     return rows[0] || null
   }
 
+  /** 根模板与来源商品已锁定。目标是空子档案时，保留待更正商品的采购身份。 */
+  async resolveBrandProfileTarget(source, root, brandId, connection) {
+    const sourceId = Number(source.id)
+    if (brandId === undefined || Number(brandId || 0) === Number(source.brand_id || 0)) return sourceId
+
+    const rootId = Number(root.id)
+    const duplicate = Number(root.brand_id || 0) === Number(brandId || 0) ? root
+      : await this.getBrandVariant(rootId, brandId, connection)
+    if (!duplicate || Number(duplicate.id) === sourceId) return sourceId
+
+    if (Number(duplicate.id) !== rootId && !await this.checkUnusedBrandVariant(duplicate.id, connection)) {
+      await this.deleteBrandVariantRows(duplicate.id, rootId, connection)
+      return sourceId
+    }
+    return this.mergeUnusedBrandVariant(sourceId, duplicate.id, rootId, connection)
+  }
+
+  async mergeUnusedBrandVariant(sourceId, targetId, templateId, executor) {
+    const ids = [Number(sourceId), Number(targetId)].sort((left, right) => left - right)
+    const [locked] = await executor.query(
+      'SELECT id, template_id FROM accessories WHERE id IN (?, ?) ORDER BY id FOR UPDATE', ids
+    )
+    const source = locked.find(row => Number(row.id) === Number(sourceId))
+    const target = locked.find(row => Number(row.id) === Number(targetId))
+    const sourceIsTemplate = Number(source?.id) === Number(templateId) && source.template_id === null
+    if (!source || !target || (!sourceIsTemplate && Number(source.template_id) !== Number(templateId)) ||
+        Number(target.template_id || target.id) !== Number(templateId)) {
+      throw Object.assign(new Error('品牌商品关系已变化，请刷新后重试'), { statusCode: 409, code: 'ACCESSORY_DELETE_STALE' })
+    }
+
+    const [stockRows] = await executor.query(
+      'SELECT quantity, total_out FROM accessory_stock WHERE accessory_id = ? ORDER BY store_id FOR UPDATE', [sourceId]
+    )
+    if (stockRows.some(row => Number(row.quantity) !== 0 || Number(row.total_out) !== 0)) {
+      throw Object.assign(new Error('该品牌商品仍有库存或销售出库数量，不能合并'), { statusCode: 409, code: 'ACCESSORY_DELETE_HAS_ACTIVITY' })
+    }
+
+    const requiredTables = ['accessories', 'accessory_stock', 'accessory_stock_in', 'accessory_sales', 'accessory_compatible_models']
+    const optionalTables = ['accessory_transfers', 'accessory_serials', 'accessory_serial_events', 'accessory_inventory_events', 'accessory_inventory_adjustments', 'sales_order_items']
+    const tableNames = [...requiredTables, ...optionalTables]
+    const [tables] = await executor.query(`SELECT TABLE_NAME FROM information_schema.TABLES
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (${tableNames.map(() => '?').join(', ')})`, tableNames)
+    const availableTables = new Set(tables.map(row => row.TABLE_NAME))
+    if (requiredTables.some(table => !availableTables.has(table))) {
+      throw Object.assign(new Error('品牌商品关联检查所需的数据结构未就绪，暂不能合并'), { statusCode: 409, code: 'ACCESSORY_DELETE_NOT_READY' })
+    }
+
+    const references = [
+      ['销售记录', 'accessory_sales', 'SELECT id FROM accessory_sales WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['划拨记录', 'accessory_transfers', 'SELECT id FROM accessory_transfers WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['SN商品记录', 'accessory_serials', 'SELECT id FROM accessory_serials WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['SN历史记录', 'accessory_serial_events', `SELECT event.id FROM accessory_serial_events event
+        JOIN accessory_serials serial ON serial.id = event.serial_id WHERE serial.accessory_id = ? LIMIT 1 FOR UPDATE`],
+      ['库存盘点', 'accessory_inventory_adjustments', 'SELECT id FROM accessory_inventory_adjustments WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['共同销售订单', 'sales_order_items', 'SELECT id FROM sales_order_items WHERE item_type = \'accessory\' AND accessory_id = ? LIMIT 1 FOR UPDATE']
+    ]
+    for (const [label, table, sql] of references) {
+      if (!availableTables.has(table) || table === 'accessory_serial_events' && !availableTables.has('accessory_serials')) continue
+      const [found] = await executor.query(sql, [sourceId])
+      if (found.length) {
+        throw Object.assign(new Error(`该品牌商品关联了${label}，不能合并`), { statusCode: 409, code: 'ACCESSORY_DELETE_HAS_ACTIVITY' })
+      }
+    }
+
+    await executor.query(`INSERT INTO accessory_stock (accessory_id, store_id, quantity, total_in, total_out, min_stock)
+      SELECT ?, source_stock.store_id, 0, source_stock.total_in, 0, source_stock.min_stock
+      FROM accessory_stock AS source_stock WHERE source_stock.accessory_id = ?
+      ON DUPLICATE KEY UPDATE total_in = accessory_stock.total_in + source_stock.total_in, updated_at = NOW()`, [targetId, sourceId])
+    await executor.query(`UPDATE accessory_stock_in SET accessory_id = ?,
+      product_snapshot = JSON_SET(product_snapshot, '$.accessory_id', CAST(? AS UNSIGNED)), updated_at = updated_at
+      WHERE accessory_id = ?`, [targetId, targetId, sourceId])
+    if (availableTables.has('accessory_inventory_events')) {
+      await executor.query('UPDATE accessory_inventory_events SET accessory_id = ? WHERE accessory_id = ?', [targetId, sourceId])
+    }
+    if (sourceIsTemplate) {
+      await executor.query('DELETE FROM accessory_stock WHERE accessory_id = ?', [sourceId])
+      await executor.query('UPDATE accessories SET brand_id = NULL, updated_at = NOW() WHERE id = ? AND template_id IS NULL', [sourceId])
+    } else {
+      await executor.query(`INSERT IGNORE INTO accessory_compatible_models (accessory_id, model_id)
+        SELECT ?, model_id FROM accessory_compatible_models WHERE accessory_id = ?`, [targetId, sourceId])
+      await this.deleteBrandVariantRows(sourceId, templateId, executor)
+    }
+    return Number(targetId)
+  }
+
   /**
    * 更新配件
    */
@@ -885,6 +970,93 @@ class AccessoryRepository extends BaseRepository {
       log.error('删除配件失败:', error)
       throw error
     }
+  }
+
+  /** 调用方先锁根模板及商品，关联校验使用当前读。 */
+  async checkUnusedBrandVariant(id, connection) {
+    const requiredTables = ['accessories', 'accessory_stock', 'accessory_stock_in', 'accessory_sales', 'accessory_compatible_models']
+    const optionalTables = [
+      'accessory_transfers', 'accessory_serials', 'accessory_serial_events', 'accessory_inventory_events',
+      'accessory_purchase_payments', 'accessory_stock_corrections', 'accessory_inventory_adjustments', 'sales_order_items'
+    ]
+    const [tables] = await connection.query(`SELECT TABLE_NAME FROM information_schema.TABLES
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (${[...requiredTables, ...optionalTables].map(() => '?').join(', ')})`, [...requiredTables, ...optionalTables])
+    const availableTables = new Set(tables.map(row => row.TABLE_NAME))
+    if (requiredTables.some(table => !availableTables.has(table))) {
+      throw Object.assign(new Error('商品关联检查所需的数据结构未就绪，暂不能删除'), { statusCode: 409, code: 'ACCESSORY_DELETE_NOT_READY' })
+    }
+
+    const [stockRows] = await connection.query(`SELECT quantity, total_out FROM accessory_stock
+      WHERE accessory_id = ? ORDER BY store_id FOR UPDATE`, [id])
+    if (stockRows.some(row => Number(row.quantity) !== 0 || Number(row.total_out) !== 0)) {
+      return { message: '该品牌商品仍有库存或销售出库数量，不能删除', code: 'ACCESSORY_DELETE_HAS_ACTIVITY' }
+    }
+
+    const references = [
+      ['采购入库', 'accessory_stock_in', 'SELECT id FROM accessory_stock_in WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['销售订单', 'accessory_sales', 'SELECT id FROM accessory_sales WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['库存划拨', 'accessory_transfers', 'SELECT id FROM accessory_transfers WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['SN商品记录', 'accessory_serials', 'SELECT id FROM accessory_serials WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['SN历史记录', 'accessory_serial_events', `SELECT event.id FROM accessory_serial_events event
+        JOIN accessory_serials serial ON serial.id = event.serial_id WHERE serial.accessory_id = ? LIMIT 1 FOR UPDATE`],
+      ['库存流水', 'accessory_inventory_events', 'SELECT id FROM accessory_inventory_events WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['采购付款', 'accessory_purchase_payments', `SELECT payment.id FROM accessory_purchase_payments payment
+        JOIN accessory_stock_in purchase ON purchase.id = payment.stock_in_id WHERE purchase.accessory_id = ? LIMIT 1 FOR UPDATE`],
+      ['采购更正', 'accessory_stock_corrections', `SELECT correction.id FROM accessory_stock_corrections correction
+        JOIN accessory_stock_in purchase ON purchase.id IN (correction.source_stock_in_id, correction.target_stock_in_id)
+        WHERE purchase.accessory_id = ? LIMIT 1 FOR UPDATE`],
+      ['库存盘点', 'accessory_inventory_adjustments', 'SELECT id FROM accessory_inventory_adjustments WHERE accessory_id = ? LIMIT 1 FOR UPDATE'],
+      ['共同销售订单', 'sales_order_items', 'SELECT id FROM sales_order_items WHERE item_type = \'accessory\' AND accessory_id = ? LIMIT 1 FOR UPDATE']
+    ]
+    for (const [label, table, sql] of references) {
+      if (table === 'accessory_serial_events' && !availableTables.has('accessory_serials')) continue
+      if (!availableTables.has(table)) continue
+      const [found] = await connection.query(sql, [id])
+      if (found.length) {
+        return { message: `该商品关联了${label}记录，保留商品档案以维护历史`, code: 'ACCESSORY_DELETE_HAS_HISTORY' }
+      }
+    }
+
+    return null
+  }
+
+  async deleteBrandVariantRows(id, templateId, connection) {
+    await connection.query('DELETE FROM accessory_compatible_models WHERE accessory_id = ?', [id])
+    await connection.query('DELETE FROM accessory_stock WHERE accessory_id = ?', [id])
+    const [result] = await connection.query('DELETE FROM accessories WHERE id = ? AND template_id = ?', [id, templateId])
+    if (result.affectedRows !== 1) {
+      throw Object.assign(new Error('商品资料已变化，请刷新后重试'), { statusCode: 409, code: 'ACCESSORY_DELETE_STALE' })
+    }
+  }
+
+  async deleteUnusedBrandVariant(id) {
+    return this.withConnection(async connection => {
+      await connection.beginTransaction()
+      try {
+        const [rows] = await connection.query('SELECT id, template_id FROM accessories WHERE id = ?', [id])
+        const accessory = rows[0]
+        if (!accessory) throw Object.assign(new Error('商品不存在或已删除'), { statusCode: 404, code: 'NOT_FOUND' })
+        if (!accessory.template_id) {
+          throw Object.assign(new Error('商品模板不能从库存行删除，请在商品模板中停用'), { statusCode: 409, code: 'ACCESSORY_TEMPLATE_DELETE_BLOCKED' })
+        }
+        if (!await this.lockAccessory(accessory.template_id, connection)) {
+          throw Object.assign(new Error('商品模板不存在，请刷新后重试'), { statusCode: 409, code: 'ACCESSORY_DELETE_STALE' })
+        }
+
+        const locked = await this.lockAccessory(id, connection)
+        if (!locked || Number(locked.template_id) !== Number(accessory.template_id)) {
+          throw Object.assign(new Error('商品资料已变化，请刷新后重试'), { statusCode: 409, code: 'ACCESSORY_DELETE_STALE' })
+        }
+        const blocked = await this.checkUnusedBrandVariant(id, connection)
+        if (blocked) throw Object.assign(new Error(blocked.message), { statusCode: 409, code: blocked.code })
+        await this.deleteBrandVariantRows(id, accessory.template_id, connection)
+        await connection.commit()
+        return true
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    })
   }
 
   /**

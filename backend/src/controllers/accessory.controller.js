@@ -178,10 +178,12 @@ class AccessoryController {
     try {
       const permissions = await fields.getPermissions(req.user.id)
       const hidden = new Set(permissions.hiddenFields || [])
+      const queryGoodsOptions = fields === this.queryGoodsFields
       if (req.query.search_mode === 'serial' && hidden.has('basic_info.serial_number')) {
         return res.status(403).json({ success: false, message: '无权检索商品SN', code: 'FIELD_PERMISSION_DENIED' })
       }
-      if (['basic_info.name', 'stock_info.distribution', 'stock_info.total_quantity'].some(field => hidden.has(field)) ||
+      if (['basic_info.name', 'stock_info.total_quantity'].some(field => hidden.has(field)) ||
+        !queryGoodsOptions && hidden.has('stock_info.distribution') ||
         (req.query.film_only === true || req.query.film_only === 'true') && hidden.has('basic_info.category') ||
         (req.query.film_free_only === true || req.query.film_free_only === 'true') && hidden.has('basic_info.usage_type') ||
         req.query.film_model_id !== undefined && hidden.has('basic_info.model_name')) {
@@ -255,6 +257,44 @@ class AccessoryController {
       if (error.statusCode) return this.response.error(res, error.message, error.statusCode)
       this.logger.error('获取配件入库选项失败:', error)
       return this.response.error(res, '获取配件入库选项失败', 500)
+    }
+  }
+
+  async stockInEntryOptions(req, res, next) {
+    try {
+      const options = await this.service.getEntryOptions(req.user, req.query)
+      return this.response.success(res, options)
+    } catch (error) {
+      if (isDatabaseAvailabilityError(error)) return next(error)
+      if (error.statusCode) return this.response.error(res, error.message, error.statusCode, error.code)
+      this.logger.error('获取入库选项失败:', error)
+      return this.response.error(res, '获取入库选项失败', 500)
+    }
+  }
+
+  async stockInTemplates(req, res, next) {
+    try {
+      const result = await this.service.getAccessories({ mode: 'templates', page: req.query.page,
+        page_size: req.query.page_size, search: req.query.search,
+        search_fields: ['name', 'barcode', 'category', 'brand_name', 'model_name', 'product_model', 'color_name'] }, req.user)
+      if (!result.success) return this.response.error(res, result.message, result.statusCode || 400, result.code)
+      return this.response.success(res, result.data)
+    } catch (error) {
+      if (isDatabaseAvailabilityError(error)) return next(error)
+      this.logger.error('读取入库商品模板失败:', error)
+      return this.response.error(res, '读取入库商品模板失败', error.statusCode || 500, error.code)
+    }
+  }
+
+  async stockInTemplateDetail(req, res, next) {
+    try {
+      const result = await this.service.getAccessoryDetail(req.params.id, req.user)
+      if (!result.success) return this.response.error(res, result.message, result.statusCode || 404, result.code)
+      return this.response.success(res, result.data)
+    } catch (error) {
+      if (isDatabaseAvailabilityError(error)) return next(error)
+      this.logger.error('读取入库商品模板详情失败:', error)
+      return this.response.error(res, '读取入库商品模板详情失败', error.statusCode || 500, error.code)
     }
   }
 
@@ -457,6 +497,18 @@ class AccessoryController {
     } catch (error) {
       this.logger.error('删除配件失败:', error)
       return this.response.error(res, '删除配件失败', 500)
+    }
+  }
+
+  async removeUnusedBrandVariant(req, res, next) {
+    try {
+      const result = await this.service.deleteUnusedBrandVariant(req.params.id, req.user)
+      if (!result.success) return this.response.error(res, result.message, result.statusCode || 400, result.code)
+      return this.response.success(res, null, result.message)
+    } catch (error) {
+      if (isDatabaseAvailabilityError(error)) return next(error)
+      this.logger.error('删除无业务关联品牌商品失败:', error)
+      return this.response.error(res, '删除品牌商品失败', error.statusCode || 500, error.code)
     }
   }
 

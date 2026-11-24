@@ -269,13 +269,15 @@ describe('配件库存与商品模板管理', () => {
 
   it('模板删除成功后刷新失败仍保留已有行，明确删除已成功且只发一次删除', async () => {
     const wrapper = await render()
+    await button(wrapper, '商品模板').trigger('click')
+    await flushPromises()
     const before = wrapper.get('.test-table').text()
     mocks.get.mockRejectedValueOnce({ response: { status: 503 } })
     await button(wrapper, '删除').trigger('click')
     await flushPromises()
     expect(mocks.delete).toHaveBeenCalledTimes(1)
     expect(wrapper.get('.test-table').text()).toBe(before)
-    expect(mocks.warning).toHaveBeenCalledExactlyOnceWith('商品模板已删除（停用），列表刷新失败，请点击刷新；请勿重复删除。')
+    expect(mocks.warning).toHaveBeenCalledExactlyOnceWith('商品模板已删除（停用），列表刷新失败，请点击刷新；请勿重复操作。')
     expect(mocks.success).not.toHaveBeenCalled()
   })
 
@@ -377,6 +379,7 @@ describe('配件库存与商品模板管理', () => {
     await button(wrapper, '商品模版').trigger('click')
     await flushPromises()
     expect(wrapper.findComponent(TemplateEditor).props('archiveOnly')).toBe(true)
+    mocks.get.mockResolvedValueOnce({ success: true, data: { ...rows[0], category_id: 12, unit_id: 2 } })
     await button(wrapper, '入库').trigger('click')
     await flushPromises()
     expect(wrapper.findComponent(TemplateEditor).props('stockInOnly')).toBe(true)
@@ -413,7 +416,7 @@ describe('配件库存与商品模板管理', () => {
     await deletes[0].trigger('click')
     await flushPromises()
     expect(mocks.confirm.mock.calls[0][0]).toContain('保留库存和历史单据')
-    expect(mocks.delete).toHaveBeenCalledWith('/accessories/1')
+    expect(mocks.delete).toHaveBeenCalledWith('/accessories/1', { showError: false })
     expect(mocks.get.mock.calls.length).toBe(calls + 1)
     const edits = wrapper.findAll('[data-column="操作"] button').filter(item => item.text() === '编辑')
     await edits[1].trigger('click')
@@ -421,8 +424,18 @@ describe('配件库存与商品模板管理', () => {
     expect(wrapper.findComponent(TemplateEditor).props('accessory')).toMatchObject({ id: 2, status: 0 })
   })
 
+  it('停用的零库存品牌商品仍可请求删除并由后端复核关联历史', async () => {
+    mocks.get.mockResolvedValue(response([{ id: 56, template_id: 55, name: '空品牌行', status: 0, total_stock: 0, total_out: 0 }]))
+    const wrapper = await render()
+    await button(wrapper, '删除').trigger('click')
+    await flushPromises()
+    expect(mocks.delete).toHaveBeenCalledWith('/accessories/56/unused-variant', { showError: false })
+  })
+
   it('商品库存编辑实际入库资料，模板编辑仍定位根模板；入库保留实际商品身份', async () => {
-    mocks.get.mockResolvedValue(response([{ id: 56, template_id: 55, brand_id: 3, name: '通用充电宝', status: 1 }]))
+    const variant = { id: 56, template_id: 55, brand_id: 3, name: '通用充电宝', status: 1 }
+    mocks.get.mockImplementation(async (url: string) => url.startsWith('/accessories/stock-in/templates/')
+      ? { success: true, data: variant } : response([variant]))
     const wrapper = await render()
     await button(wrapper, '入库').trigger('click')
     await flushPromises()
@@ -435,7 +448,7 @@ describe('配件库存与商品模板管理', () => {
     expect(wrapper.findComponent(TemplateEditor).props('accessory')).toMatchObject({ id: 56, template_id: 55 })
     await button(wrapper, '删除').trigger('click')
     await flushPromises()
-    expect(mocks.delete).toHaveBeenCalledWith('/accessories/55')
+    expect(mocks.delete).toHaveBeenCalledWith('/accessories/56/unused-variant', { showError: false })
     await button(wrapper, '商品模板').trigger('click'); await flushPromises()
     mocks.get.mockResolvedValueOnce({ data: { id: 55, template_id: null, product_model: 'MWVW3CH', name: '通用充电宝' } })
     await button(wrapper, '编辑').trigger('click'); await flushPromises()

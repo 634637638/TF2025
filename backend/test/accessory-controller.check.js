@@ -81,29 +81,23 @@ test('综合查询商品候选独立使用商品字段，配件管理候选保�
   assert.equal(res.body.data.data[0].barcode, '000BAR')
 })
 
-test('多颜色采购入口逐条检查隐藏字段，不能通过entries绕过数量、成本、颜色或SN权限', async () => {
+test('新商品入库字段隐藏不阻断输入，入库模板与选项使用独立入库动作权限', async () => {
   const router = require('../src/routes/accessories')
-  const handler = router.stack.find(layer => layer.route?.path === '/stock-in').route.stack[2].handle
-  const entry = { accessory_id: 5, color_id: 1, total_quantity: 2, purchase_cost: 10, supplier_id: 8, store_id: 1,
-    barcode: '00WHITE', serial_numbers: [{ serial_number: '00SN', store_id: 1 }], inventory_time: '2026-11-14 12:30:00' }
-  for (const field of ['basic_info.name', 'basic_info.color_name', 'stock_info.total_quantity', 'stock_info.distribution',
-    'price_info.purchase_cost', 'basic_info.supplier_name', 'basic_info.usage_type', 'basic_info.barcode', 'basic_info.serial_number', 'time_info.inventory_time']) {
-    const res = createResponse()
-    await handler({ user: { id: 7 }, fieldPermissions: { hiddenFields: [field] }, body: { entries: [entry] } }, res, () => assert.fail('隐藏字段不能通过'))
-    assert.equal(res.statusCode, 403)
-    assert.equal(res.body.field, field)
+  for (const path of ['/stock-in/options', '/stock-in/templates', '/stock-in/templates/:id']) {
+    const route = router.stack.find(layer => layer.route?.path === path).route
+    assert.ok(route.stack.length >= 3)
   }
-  for (const entries of [null, [], {}, Array(101).fill(entry)]) {
-    const res = createResponse()
-    await handler({ user: { id: 7 }, fieldPermissions: { hiddenFields: [] }, body: { entries } }, res, () => assert.fail('无效颜色列表不能通过'))
-    assert.equal(res.statusCode, 400)
-  }
-  let passed = false
-  const { barcode, serial_numbers, ...plain } = entry
-  await handler({ user: { id: 7 }, fieldPermissions: { hiddenFields: ['basic_info.barcode', 'basic_info.serial_number'] }, body: { entries: [plain] } }, createResponse(), error => {
-    assert.ifError(error); passed = true
+  let submitted
+  const controller = new AccessoryController({
+    service: { async stockIn(data) { submitted = data; return { success: true, data: { receipt: true } } } },
+    masking: { filterSensitiveFields: rows => rows.map(row => ({ ...row, purchase_cost: null })) },
+    response: createResponseHelper()
   })
-  assert.equal(passed, true)
+  const res = createResponse()
+  await controller.stockIn({ user: { id: 7, name: '入库员' }, fieldPermissions: { hiddenFields: ['price_info.purchase_cost'] },
+    body: { accessory_id: 5, purchase_cost: 10, request_key: 'e'.repeat(32) } }, res)
+  assert.equal(submitted.purchase_cost, 10)
+  assert.equal(res.body.success, true)
 })
 
 test('控制器保留整组防重请求，批次回执递归脱敏，使用当前已核验权限', async () => {
