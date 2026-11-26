@@ -13,6 +13,7 @@
       </h3>
       <div class="header-actions">
         <el-button
+          class="tf-button--refresh"
           type="info"
           :loading="loading"
           @click="refreshWarnings"

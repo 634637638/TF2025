@@ -6,8 +6,8 @@ const { clearCache } = require('../middleware/cache')
 const log = require('../utils/log')
 
 class ColorController {
-  constructor({ service, repository, isDatabaseConnected, invalidateCache = ColorController.clearRouteCache } = {}) {
-    this.service = service || new ReferenceManagementService({ domain: 'colors', repository, connected: isDatabaseConnected })
+  constructor({ service, repository, isDatabaseConnected, ordering, invalidateCache = ColorController.clearRouteCache } = {}) {
+    this.service = service || new ReferenceManagementService({ domain: 'colors', repository, connected: isDatabaseConnected, ordering })
     this.invalidateCache = invalidateCache
   }
 

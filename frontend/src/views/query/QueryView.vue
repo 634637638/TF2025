@@ -70,6 +70,7 @@
                 <span class="btn-text-mobile">销售</span>
               </el-button>
               <el-button
+                class="tf-button--refresh"
                 type="info"
                 :loading="refreshing"
                 :disabled="refreshing"
@@ -151,8 +152,6 @@
                   v-model="filters.search_term"
                   placeholder="搜索关键词"
                   clearable
-                  @input="debounceLoadQueryData"
-                  @keyup.enter="triggerLoadQueryData"
                   @click.stop
                 >
                   <template #prefix>
@@ -619,7 +618,7 @@
           <draggable
             v-model="productImages"
             :animation="200"
-            handle=".drag-handle"
+            handle=".tf-media-thumbnail-drag-handle"
             item-key="id"
             class="images-grid"
             @end="handleImageDragEnd"
@@ -627,38 +626,40 @@
             <template #item="{ element: image, index }">
               <div
                 class="image-item"
-                @click="previewImage(image)"
               >
-                <video
-                  v-if="isVideoMedia(image)"
-                  :src="getImageUrl(image.image_url)"
-                  class="media-thumbnail"
-                  muted
-                  playsinline
-                  preload="metadata"
-                />
-                <Image
-                  v-else
-                  :src="image.image_url"
-                  :alt="`图片 ${index + 1}`"
-                  mode="eager"
-                  :product-info="{
-                    brand: selectedPhoneInfo?.brand || '',
-                    model: selectedPhoneInfo?.model || '',
-                    color: selectedPhoneInfo?.color || '',
-                    memory: selectedPhoneInfo?.memory || ''
-                  }"
-                />
+                <el-button
+                  native-type="button"
+                  class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                  :aria-label="`查看商品素材 ${index + 1}`"
+                  @click="previewImage(image)"
+                >
+                  <video
+                    v-if="isVideoMedia(image)"
+                    :src="getImageUrl(image.image_url)"
+                    class="media-thumbnail"
+                    muted
+                    playsinline
+                    preload="metadata"
+                  />
+                  <Image
+                    v-else
+                    :src="image.image_url"
+                    :alt="`图片 ${index + 1}`"
+                    mode="eager"
+                    :product-info="{
+                      brand: selectedPhoneInfo?.brand || '',
+                      model: selectedPhoneInfo?.model || '',
+                      color: selectedPhoneInfo?.color || '',
+                      memory: selectedPhoneInfo?.memory || ''
+                    }"
+                  />
+                </el-button>
                 <div
                   v-if="isVideoMedia(image)"
                   class="media-type-badge"
                 >
                   <i class="fas fa-play" />
                   视频
-                </div>
-                <!-- 拖拽手柄 -->
-                <div class="drag-handle">
-                  <i class="fas fa-grip-vertical" />
                 </div>
                 <!-- 主图标记 -->
                 <div
@@ -668,26 +669,13 @@
                   <i class="fas fa-star" />
                   主图
                 </div>
-                <!-- 右上角删除按钮 -->
-                <el-button
-                  type="danger"
-                  circle
-                  class="image-delete-btn"
-                  @click.stop="deleteSingleImage(image)"
-                >
-                  <i class="fas fa-trash" />
-                </el-button>
-                <!-- 设置主图按钮 -->
-                <el-button
-                  v-if="!image.is_primary && !isVideoMedia(image)"
-                  native-type="button"
-                  class="set-primary-btn tf-button--overlay-tool"
-                  title="设为主图"
-                  aria-label="设为主图"
-                  @click="setPrimaryImage(image)"
-                >
-                  <i class="fas fa-star" />
-                </el-button>
+                <MediaThumbnailActions
+                  sortable
+                  removable
+                  :can-set-primary="!image.is_primary && !isVideoMedia(image)"
+                  @set-primary="setPrimaryImage(image)"
+                  @remove="deleteSingleImage(image)"
+                />
               </div>
             </template>
           </draggable>
@@ -737,7 +725,7 @@
 
 <script setup lang="ts">
 import { confirmAction, alertAction } from '@/utils/message-box'
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePageShortcuts, useRouteDialog } from '@/composables/useRouteDialog'
 
@@ -1316,16 +1304,6 @@ const refreshQueryAfterDelete = () => {
   }, 0)
 }
 
-// 防抖函数
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
-
-const clearDebounceTimer = () => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-    debounceTimer = null
-  }
-}
-
 // 新筛选条件必须从第一页开始，并同步请求参数与分页组件状态。
 const resetQueryPagination = (pageSize = paginationData.page_size.value) => {
   filters.page = 1
@@ -1338,18 +1316,7 @@ const resetQueryPagination = (pageSize = paginationData.page_size.value) => {
   }
 }
 
-const debounceLoadQueryData = () => {
-  resetQueryPagination()
-  clearDebounceTimer()
-
-  debounceTimer = setTimeout(() => {
-    debounceTimer = null
-    loadQueryData()
-  }, 500)
-}
-
 const triggerLoadQueryData = () => {
-  clearDebounceTimer()
   resetQueryPagination()
   // 手动点击搜索必须绕过缓存，确保每次点击都会重新请求。
   return loadQueryData(true)
@@ -2774,14 +2741,6 @@ watch(
     void refreshQueryAnimations()
   }
 )
-
-// 清理监听器
-onUnmounted(() => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
-  }
-
-})
 
 usePageShortcuts('/query', {
   'query-quick-sale': { open: openQuickSaleModal },

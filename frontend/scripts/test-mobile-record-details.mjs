@@ -17,6 +17,7 @@ const screenshotDirectory = process.env.MOBILE_DETAIL_SCREENSHOT_DIR
 let server, browser
 const returngoodsOnly = process.argv.includes('--returngoods-only')
 const attendanceOnly = process.argv.includes('--attendance-only')
+const homeSectionsOnly = process.argv.includes('--home-sections-only')
 const cases = [
   ...[1, 2].map(index => ({ file: 'views/system/page/Returngoods.vue', selector: `.el-table__body tr.el-table__row:nth-child(${index})`, receiptReadonly: true, text: index === 1 ? '整单退款' : '整单补款' })),
   { file: 'views/system/page/Returngoods.vue', selector: '.el-table__body tr.el-table__row:nth-child(3)', edit: '编辑' },
@@ -42,7 +43,38 @@ const cases = [
   { file: 'views/data-optimization/page/DataCheckTab.vue', selector: '.duplicate-item', setupButton: '综合检查', edit: '编辑' },
   ...['phones', 'accessories', 'purchases'].map(tab => ({ file: 'components/ComprehensiveWarnings.vue', selector: '.el-table__body tr.el-table__row', tab }))
 ]
-const activeCases = cases.filter(item => !returngoodsOnly || item.file.endsWith('/Returngoods.vue'))
+const activeCases = cases.filter(item => (
+  (!returngoodsOnly || item.file.endsWith('/Returngoods.vue'))
+  && (!homeSectionsOnly || item.parentAction && item.file.endsWith('/home-sections.vue'))
+))
+
+async function checkHomeProductThumbnails(page, height) {
+  const selector = '[data-section-product] .product-card-thumbnail img'
+  await page.waitForFunction(selector => {
+    const images = [...document.querySelectorAll(selector)]
+    return images.length === 2 && images.every(image => image.complete && image.naturalWidth > 0)
+  }, {}, selector)
+  const thumbnails = await page.$$eval(selector, images => images.map(image => {
+    const frame = image.parentElement.getBoundingClientRect()
+    const card = image.closest('[data-section-product]').getBoundingClientRect()
+    const box = image.getBoundingClientRect()
+    return {
+      sourceSize: [image.naturalWidth, image.naturalHeight],
+      frameHeight: image.parentElement.clientHeight,
+      fit: getComputedStyle(image).objectFit,
+      insideFrame: box.left >= frame.left - 1 && box.right <= frame.right + 1
+        && box.top >= frame.top - 1 && box.bottom <= frame.bottom + 1,
+      insideCard: frame.left >= card.left - 1 && frame.right <= card.right + 1
+        && frame.top >= card.top - 1 && frame.bottom <= card.bottom + 1,
+      draggable: image.draggable
+    }
+  }))
+  assert.deepEqual(thumbnails.map(item => item.sourceSize), [[1800, 2400], [3200, 1800]])
+  for (const { sourceSize, ...layout } of thumbnails) {
+    assert.deepEqual(layout, { frameHeight: height, fit: 'contain', insideFrame: true, insideCard: true, draggable: false }, `${height}px 缩略图容纳 ${sourceSize.join('×')} 原图`)
+  }
+}
+
 try {
   if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true })
   server = await createServer({ root, configFile: false, envFile: false, cacheDir: join(temporary, 'vite'),
@@ -155,6 +187,10 @@ try {
           await page.waitForFunction(text => [...document.querySelectorAll('.el-dialog__footer button')].some(el => el.textContent.trim() === text), {}, item.parentAction)
           await page.evaluate(text => [...document.querySelectorAll('.el-dialog__footer button')].find(el => el.textContent.trim() === text).click(), item.parentAction)
         }
+        if (homeSectionsOnly && item.selector === '[data-section-product]') {
+          await checkHomeProductThumbnails(page, 72)
+          assert.equal(await page.$('[data-section-product] .tf-media-thumbnail-drag-handle'), null)
+        }
         await page.waitForFunction(selector => [...document.querySelectorAll(selector)].some(element => element.getClientRects().length), {}, item.selector)
         const baseline = item.parentAction ? 1 : 0
         await page.waitForFunction(count => [...document.querySelectorAll('.el-dialog')].filter(el => el.getClientRects().length).length === count, {}, baseline)
@@ -229,6 +265,70 @@ try {
       } catch (error) { throw new Error(`${label}: ${error.message}; 页面异常 ${errors.join('; ')}`, { cause: error }) }
     }
     console.log(`手机详情及编辑浏览器通过：${width}px / ${theme}，${activeCases.length} 个页面或子列表`)
+  }
+  if (homeSectionsOnly) {
+    for (const width of [768, 1024, 1440]) for (const theme of ['light', 'dark']) {
+      await page.setViewport({ width, height: 932, isMobile: false, hasTouch: false })
+      await page.evaluate(async theme => {
+        document.documentElement.dataset.theme = theme
+        window.fixtureRenderPromise = window.renderMobileCase('views/H5-admin/page/home-sections.vue')
+        await window.fixtureRenderPromise
+      }, theme)
+      await page.waitForFunction(() => [...document.querySelectorAll('.section-card button')].some(button => button.textContent.trim() === '管理'))
+      await page.evaluate(() => [...document.querySelectorAll('.section-card button')].find(button => button.textContent.trim() === '管理').click())
+      const removeSelector = '[data-section-product] .tf-media-thumbnail-actions button[aria-label="移除商品"]'
+      await page.waitForSelector(removeSelector, { visible: true })
+      await page.waitForFunction(() => !document.querySelector('.dialog-fade-enter-active, .mobile-dialog-sheet-fade-enter-active'))
+      await checkHomeProductThumbnails(page, 80)
+      const metrics = await page.$eval(removeSelector, button => {
+        const row = button.parentElement
+        const photo = row.parentElement.getBoundingClientRect()
+        const handle = row.querySelector('.tf-media-thumbnail-drag-handle')
+        const grip = handle.getBoundingClientRect()
+        const action = button.getBoundingClientRect()
+        return {
+          width: action.width, height: action.height,
+          gripWidth: grip.width, gripHeight: grip.height,
+          aligned: Math.abs(grip.top - action.top) < 1 && grip.right < action.left,
+          topRight: Math.abs(action.top - photo.top - 4) < 1 && Math.abs(photo.right - action.right - 4) < 1,
+          icon: getComputedStyle(button.querySelector('.fa-trash-alt')).fontSize,
+          reachable: [button, handle].every(control => {
+            const box = control.getBoundingClientRect()
+            return control.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2))
+          })
+        }
+      })
+      const { width: buttonWidth, height, gripWidth, gripHeight, ...appearance } = metrics
+      const label = `${width}px/${theme} 推荐商品操作`
+      assert.ok([buttonWidth, height, gripWidth, gripHeight].every(value => Math.abs(value - 28) < 0.1), `${label} 两个操作均为 28px`)
+      assert.deepEqual(appearance, { aligned: true, topRight: true, icon: '13px', reachable: true }, label)
+      await page.click(removeSelector)
+      await page.waitForSelector('.el-message-box', { visible: true })
+      await page.evaluate(() => [...document.querySelectorAll('.el-message-box button')].find(button => button.textContent.trim() === '取消').click())
+      await page.waitForSelector('.el-message-box', { hidden: true })
+      assert.ok(await page.$(removeSelector), '取消后商品保留')
+      if (width === 1440 && theme === 'light') {
+        await page.evaluate(() => { window.fixtureProductSort = [] })
+        const cards = await page.$$('[data-section-product]')
+        const handle = await cards[1].$('.tf-media-thumbnail-drag-handle')
+        const start = await handle.clickablePoint()
+        const target = await cards[0].boundingBox()
+        await page.mouse.move(start.x, start.y)
+        await page.mouse.down()
+        await page.mouse.move(start.x - 8, start.y, { steps: 4 })
+        await page.waitForSelector('.sortable-ghost', { timeout: 5000 })
+        await page.mouse.move(target.x + target.width / 4, target.y + target.height / 2, { steps: 12 })
+        await page.mouse.up()
+        await page.waitForFunction(() => window.fixtureProductSort.length === 2, { timeout: 5000 })
+        assert.deepEqual(await page.evaluate(() => window.fixtureProductSort), [
+          ['/home/sections/1/products/2/sort', { sort_order: 0 }],
+          ['/home/sections/1/products/1/sort', { sort_order: 1 }]
+        ], '从拖动手柄开始排序，沿用原排序请求')
+      }
+      assert.deepEqual(await page.evaluate(() => window.fixtureWrites), [])
+      assert.deepEqual(errors, [])
+      results.push(`推荐商品 ${width}px/${theme}`)
+    }
   }
   console.log(`隔离浏览器验证完成：${results.length} 组；真实Vue/Element/公共CSS，未登录、未连接数据库、无业务写入。`)
 } finally {

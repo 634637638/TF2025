@@ -18,7 +18,6 @@
             v-model="keyword"
             placeholder="输入品牌、型号或颜色关键词"
             clearable
-            @keyup.enter="handleTemplateSearch"
             @click.stop
           >
             <template #prefix>
@@ -653,28 +652,34 @@
                     :list="currentChild.images"
                     item-key="id"
                     class="image-grid"
-                    handle=".image-drag-handle"
+                    handle=".tf-media-thumbnail-drag-handle"
                     :disabled="!canEdit"
                     @end="handleImageDragEnd(currentChild)"
                   >
                     <template #item="{ element: image, index }">
                       <div class="image-card">
-                        <div class="image-drag-handle">
-                          <i class="fas fa-grip-vertical" />
-                        </div>
-                        <img
-                          v-if="canViewField('template.images') && !isVideoMedia(image)"
-                          :src="getImageUrl(image.image_url)"
-                          :alt="`${currentChild.color_name}-${index}`"
-                        >
-                        <video
-                          v-else-if="canViewField('template.images')"
-                          :src="getImageUrl(image.image_url)"
-                          controls
-                          playsinline
-                          preload="metadata"
-                        />
-                        <div class="image-card-body">
+                        <div class="image-card-thumbnail">
+                          <el-button
+                            v-if="canViewField('template.images')"
+                            native-type="button"
+                            class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                            :disabled="false"
+                            :aria-label="`查看${currentChild.color_name}素材 ${index + 1}`"
+                            @click="openTemplateMedia(index)"
+                          >
+                            <video
+                              v-if="isVideoMedia(image)"
+                              :src="getImageUrl(image.image_url)"
+                              muted
+                              playsinline
+                              preload="metadata"
+                            />
+                            <img
+                              v-else
+                              :src="getImageUrl(image.image_url)"
+                              :alt="`${currentChild.color_name}-${index + 1}`"
+                            >
+                          </el-button>
                           <div class="image-card-meta">
                             <el-tag
                               v-if="image.is_primary && canViewField('template.images')"
@@ -691,36 +696,13 @@
                               视频
                             </el-tag>
                           </div>
-                          <div class="image-card-actions">
-                            <el-tooltip
-                              v-if="!isVideoMedia(image) && canEdit"
-                              content="设为主图"
-                              placement="top"
-                            >
-                              <el-button
-                                native-type="button"
-                                class="image-action-btn primary"
-                                :class="{ active: image.is_primary }"
-                                :disabled="image.is_primary"
-                                @click="handleSetPrimaryImage(currentChild, image)"
-                              >
-                                <i class="fas fa-star" />
-                              </el-button>
-                            </el-tooltip>
-                            <el-tooltip
-                              v-if="canDelete"
-                              content="删除图片"
-                              placement="top"
-                            >
-                              <el-button
-                                native-type="button"
-                                class="image-action-btn danger"
-                                @click="handleDeleteImage(currentChild, image)"
-                              >
-                                <i class="fas fa-trash" />
-                              </el-button>
-                            </el-tooltip>
-                          </div>
+                          <MediaThumbnailActions
+                            :sortable="canEdit"
+                            :can-set-primary="canEdit && !image.is_primary && !isVideoMedia(image)"
+                            :removable="canDelete"
+                            @set-primary="handleSetPrimaryImage(currentChild, image)"
+                            @remove="handleDeleteImage(currentChild, image)"
+                          />
                         </div>
                       </div>
                     </template>
@@ -764,6 +746,11 @@
           </div>
         </template>
       </MobileDialog>
+      <MediaPreviewViewer
+        v-model="templateMediaVisible"
+        :items="templateMediaItems"
+        :initial-index="templateMediaIndex"
+      />
       <RecordDetailDialog
         v-model="recordVisible"
         title="商品模板详情"
@@ -927,6 +914,22 @@ const availableColors = computed(() => {
 const currentChild = computed(() => {
   return childDrafts.value.find(item => item.localKey === selectedChildKey.value) || null
 })
+const templateMediaVisible = ref(false)
+const templateMediaIndex = ref(0)
+const templateMediaItems = computed(() => {
+  if (!showDialog.value || !canViewField('template.images')) return []
+  return (currentChild.value?.images ?? []).map((image, index) => ({
+    id: image.id,
+    url: image.image_url,
+    type: isVideoMedia(image) ? 'video' : 'image',
+    label: `${currentChild.value?.color_name ?? ''}素材 ${index + 1}`
+  }))
+})
+const openTemplateMedia = (index: number) => {
+  if (!templateMediaItems.value[index]) return
+  templateMediaIndex.value = index
+  templateMediaVisible.value = true
+}
 
 const dialogTitle = computed(() => {
   return isEditMode.value ? `编辑母模板 - ${currentBrandName.value} ${currentModelName.value}` : '新增母模板'

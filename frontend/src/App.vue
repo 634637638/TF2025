@@ -31,7 +31,7 @@ onMounted(async () => {
     if (requiresAuth && disconnectInfo.graceExceeded) {
       clearPersistedAuthData({ notifyOtherWindows: false })
       await router.replace({
-        path: currentRoute.path.startsWith('/m') ? '/m/login' : '/login',
+        path: '/login',
         query: { reason: 'backend_disconnected' }
       })
       return

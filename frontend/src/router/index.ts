@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { setupRouterGuards } from './guards'
 import { storage } from '@/services/storage'
+import { isH5ShopPath } from '@/constants/routePermissions'
 
 // 滚动位置存储键前缀
 const SCROLL_POSITION_PREFIX = 'scroll-pos_'
@@ -548,7 +549,7 @@ const router = createRouter({
     return new Promise((resolve) => {
       setTimeout(() => {
         // 移动端页面之间的导航，优先使用手动保存的滚动位置
-        if (to.path.startsWith('/m')) {
+        if (isH5ShopPath(to.path)) {
           const scrollKey = `${SCROLL_POSITION_PREFIX}${to.path}`
           const savedScrollY = storage.get<string>(scrollKey, 'session')
 
@@ -569,7 +570,7 @@ const router = createRouter({
           resolve(savedPosition)
         } else if (to.hash) {
           resolve({ el: to.hash, behavior: 'smooth' })
-        } else if (to.path.startsWith('/m')) {
+        } else if (isH5ShopPath(to.path)) {
           resolve(false) // 移动端保持当前位置
         } else {
           resolve({ top: 0 })
@@ -582,7 +583,7 @@ const router = createRouter({
 // 监听路由变化，在离开移动端页面前保存滚动位置到 sessionStorage
 router.beforeEach((_to, from, next) => {
   // 保存滚动位置到 sessionStorage（包括 0）
-  if (from.path.startsWith('/m')) {
+  if (isH5ShopPath(from.path)) {
     const scrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0
     const scrollKey = `${SCROLL_POSITION_PREFIX}${from.path}`
     storage.set(scrollKey, scrollY.toString(), 'session')

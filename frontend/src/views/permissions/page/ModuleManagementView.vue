@@ -25,7 +25,6 @@
                   v-model="searchText"
                   class="module-search-control"
                   placeholder="搜索模块名称或标识..."
-                  @input="handleSearch"
                 />
                 <el-button
                   v-if="searchText"

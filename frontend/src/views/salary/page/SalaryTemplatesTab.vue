@@ -25,26 +25,6 @@
           </template>
         </el-input>
       </template>
-      <template #actions="{ loading: searchLoading }">
-        <el-button
-          type="primary"
-          :loading="searchLoading"
-          :aria-busy="searchLoading"
-          @click="emit('search')"
-        >
-          <i class="fas fa-search" />
-          搜索
-        </el-button>
-        <el-button
-          type="default"
-          :disabled="searchLoading"
-          @click="emit('reset')"
-        >
-          <i class="fas fa-redo" />
-          重置
-        </el-button>
-      </template>
-
       <div
         v-if="canViewField('salary_salarytemplatesview', 'template_is_active')"
         class="form-group filter-item"

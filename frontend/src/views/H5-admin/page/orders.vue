@@ -132,7 +132,6 @@
             v-model="filters.order_number"
             placeholder="搜索订单号"
             clearable
-            @keyup.enter="handleFilterChange"
             @click.stop
           >
             <template #prefix>
@@ -191,7 +190,6 @@
             v-model="filters.customer_name"
             placeholder="输入客户姓名"
             clearable
-            @keyup.enter="handleFilterChange"
           />
         </div>
         <div
@@ -203,7 +201,6 @@
             v-model="filters.customer_phone"
             placeholder="输入电话"
             clearable
-            @keyup.enter="handleFilterChange"
           />
         </div>
         <div

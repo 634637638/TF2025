@@ -220,30 +220,8 @@
     border-radius: 13px;
   }
 
-  .image-card img,
-  .image-card video {
+  .image-card-thumbnail {
     height: 112px;
-  }
-
-  .image-drag-handle {
-    top: 8px;
-    right: 8px;
-    width: 26px;
-    height: 26px;
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .image-card-body {
-    padding: 8px;
-  }
-
-  .image-card-meta {
-    align-items: center;
-    font-size: var(--tf-type-scale-10);
-  }
-
-  .image-card-actions {
-    gap: 6px;
   }
 
   :deep(.template-dialog .el-form-item) {

@@ -20,7 +20,7 @@ test('自动贴膜按手机型号和销售门店匹配唯一免费膜，并忽�
     linked_phone_id: 20, serial_numbers: [], redeem_points: 0, gift_return_unit_price: null, auto_film: true }])
 })
 
-test('缺少唯一赠膜模板、可用商品或服务结构时拒绝自动贴膜', async () => {
+test('缺少唯一赠膜模板、可用商品或服务结构时跳过自动贴膜', async () => {
   const service = new FilmService({
     repository: {
       async matchingTemplates(_connection, modelId) { return modelId === 2 ? [{ id: 10 }] : [] },
@@ -32,34 +32,41 @@ test('缺少唯一赠膜模板、可用商品或服务结构时拒绝自动贴�
     tableExists: async () => true,
     columnExists: async () => true
   })
-  await assert.rejects(service.prepareAutomaticForSale({}, [{ id: 20, model_id: 3 }], 1), { code: 'FILM_TEMPLATE_REQUIRED' })
-  await assert.rejects(service.prepareAutomaticForSale({}, [{ id: 20, model_id: 2 }], 1), { code: 'FILM_STOCK_INSUFFICIENT' })
+  assert.deepEqual(await service.prepareAutomaticForSale({}, [{ id: 20, model_id: 3 }, { id: 21, model_id: null }], 1), [])
+  assert.deepEqual(await service.prepareAutomaticForSale({}, [{ id: 20, model_id: 2 }], 1), [])
 
   const ambiguous = new FilmService({
     repository: { async matchingTemplates() { return [{ id: 10 }, { id: 11 }] } },
     tableExists: async () => true,
     columnExists: async () => true
   })
-  await assert.rejects(ambiguous.prepareAutomaticForSale({}, [{ id: 20, model_id: 2 }], 1), { code: 'FILM_TEMPLATE_REQUIRED' })
+  assert.deepEqual(await ambiguous.prepareAutomaticForSale({}, [{ id: 20, model_id: 2 }], 1), [])
 
   const notReady = new FilmService({
     tableExists: async () => false,
     columnExists: async () => false
   })
-  await assert.rejects(notReady.prepareAutomaticForSale({}, [{ id: 20, model_id: 2 }], 1), { code: 'FILM_SERVICE_NOT_READY' })
+  assert.deepEqual(await notReady.prepareAutomaticForSale({}, [{ id: 20, model_id: 2 }], 1), [])
+  await assert.rejects(notReady.ready({}), { code: 'FILM_SERVICE_NOT_READY' })
 })
 
-test('批量销售按普通库存预留赠膜，库存不能覆盖整批时拒绝部分出库', async () => {
+test('批量赠膜用完普通库存后跳过，先满足同单手选的普通商品', async () => {
   const service = new FilmService({
     repository: {
       async matchingTemplates() { return [{ id: 10 }] },
-      async availableProducts() { return [{ id: 11, quantity: 1, serial_quantity: 0 }] }
+      async availableProducts() { return [{ id: 11, quantity: 2, serial_quantity: 1 }] }
     },
     tableExists: async () => true,
     columnExists: async () => true
   })
-  await assert.rejects(service.prepareAutomaticForSale({}, [{ id: 20, model_id: 2 }, { id: 21, model_id: 2 }], 1),
-    { code: 'FILM_STOCK_INSUFFICIENT' })
+  const phones = [{ id: 20, model_id: 2 }, { id: 21, model_id: 2 }]
+  const withSerial = await service.prepareAutomaticForSale({}, phones, 1, {
+    selectedGoods: [{ accessory_id: 11, quantity: 1, serial_numbers: ['SN001'] }]
+  })
+  assert.deepEqual(withSerial.map(row => row.linked_phone_id), [20])
+  assert.deepEqual(await service.prepareAutomaticForSale({}, phones, 1, {
+    selectedGoods: [{ accessory_id: 11, quantity: 1, serial_numbers: [] }]
+  }), [])
 })
 
 test('自动贴膜每台销售手机各消耗一张，并关联独立手机共同订单', async () => {
@@ -120,12 +127,17 @@ test('自动贴膜每台销售手机各消耗一张，并关联独立手机共�
   assert.equal(state.orders[0].order_status, 'completed')
 })
 
-test('自动赠膜无法准备时手机销售整体回滚，不保留手机及收款', async () => {
-  const state = { sales: 0, accessorySales: 0 }
-  const connection = { async beginTransaction() {}, async commit() {}, async rollback() { state.sales = 0 } }
+test('自动赠膜缺货时手机和收款仍提交，且没有膜出库或服务记录', async () => {
+  const state = { sales: 0, payments: 0, accessorySales: 0, committed: false }
+  const connection = { async beginTransaction() {}, async commit() { state.committed = true }, async rollback() { assert.fail('缺货不应回滚') } }
+  const films = new FilmService({ repository: {
+    async matchingTemplates() { return [{ id: 10 }] },
+    async availableProducts() { return [] },
+    async append() { assert.fail('没有实际扣膜不应记录服务') }
+  }, tableExists: async () => true, columnExists: async () => true })
   const service = new SalesPhoneService({
     autoFilm: true,
-    films: { async prepareAutomaticForSale() { throw Object.assign(new Error('自动赠膜库存不足'), { statusCode: 409, code: 'FILM_STOCK_INSUFFICIENT' }) } },
+    films,
     accessories: { async issueSale() { state.accessorySales++ } },
     checkoutRepository: {
       async phoneSnapshots() { return [{ id: 12, store_id: 1, imei: 'IMEI-12', serial_number: null,
@@ -137,15 +149,14 @@ test('自动赠膜无法准备时手机销售整体回滚，不保留手机及�
     repository: {
       async withConnection(run) { return run(connection) }, async findCustomerByPhone() { return { id: 9, name: '测试客户' } },
       async findPhonesForSale() { return [{ id: 12, store_id: 1, status: 'in_stock', purchase_cost: 80, is_new: 1, model_id: 2, is_preordered: 0 }] },
-      async findDuplicateSales() { return [] }, async createSale() { state.sales++; return 20 }, async createPayment() { return 30 },
+      async findDuplicateSales() { return [] }, async createSale() { state.sales++; return 20 }, async createPayment() { state.payments++; return 30 },
       async markPhoneSold() { return { affectedRows: 1 } }
     }, customerAccess: { async require() {} }, normalizeDate: value => value, prepareInvoiceTransaction: async () => {},
     generateInvoice: async () => 'INV-1', generateOrderNumber: async () => 'SO-TEST', inspectColumn: async () => true,
     getPointsConfig: async () => ({}), reconcilePoints: async () => ({ points: 0, eligibleAmount: 100 })
   })
-  await assert.rejects(service.sell({ body: { store_id: 1, phone_id: 12, sale_price: 100, sale_time: '2026-11-17 12:00:00',
-    customer_info: { name: '测试客户', phone: '13800138000' }, payment_info: { payment_method: 'cash' } }, userId: 7, actor: { id: 7, store_ids: [1] } }),
-    { code: 'FILM_STOCK_INSUFFICIENT' })
-  assert.equal(state.sales, 0)
-  assert.equal(state.accessorySales, 0)
+  const result = await service.sell({ body: { store_id: 1, phone_id: 12, sale_price: 100, sale_time: '2026-11-17 12:00:00',
+    customer_info: { name: '测试客户', phone: '13800138000' }, payment_info: { payment_method: 'cash' } }, userId: 7, actor: { id: 7, store_ids: [1] } })
+  assert.equal(result.status, 200)
+  assert.deepEqual(state, { sales: 1, payments: 1, accessorySales: 0, committed: true })
 })

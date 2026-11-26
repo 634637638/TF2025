@@ -194,7 +194,7 @@ class SalesCheckoutService {
         const ready = await this.pointsLedger.ready(connection)
         const snapshot = customer && ready ? await this.pointsLedger.snapshot(connection, Number(customer.id)) : null
         const balance = customer ? Number(customer.points) : 0
-        const phones = input.quick_phone ? [{ id: 1, store_id: input.store_id, is_new: input.quick_phone.is_new }]
+        const phones = input.quick_phone ? [{ id: 1, store_id: input.store_id, is_new: input.quick_phone.is_new, model_id: input.quick_phone.model_id }]
           : await this.repository.phoneSnapshots(connection, input.phones.map(row => row.phone_id))
         if (phones.length !== input.phones.length) reject('部分手机不存在', 404)
         const scope = resolveStoreScope(actor, null)
@@ -204,7 +204,10 @@ class SalesCheckoutService {
           return { key: `phone:${row.phone_id}`, source: Number(phone.is_new) === 1 ? 'new' : 'used',
             amount_cents: moneyCents(row.sale_price), is_gift: false }
         })
-        if (this.autoFilm && phones.length) input = { ...input, accessories: [...input.accessories, ...await this.films.prepareAutomaticForSale(connection, phones, input.store_id, { lock: false })] }
+        if (this.autoFilm && phones.length) {
+          const automaticFilms = await this.films.prepareAutomaticForSale(connection, phones, input.store_id, { lock: false, selectedGoods: input.accessories })
+          input = { ...input, accessories: [...input.accessories, ...automaticFilms] }
+        }
         for (const row of input.accessories) {
           const product = await this.accessories.lockSaleProduct(row.accessory_id, connection)
           items.push({ key: `goods:${row.key}`, source: 'accessory', amount_cents: moneyCents(row.unit_price),
@@ -347,7 +350,10 @@ class SalesCheckoutService {
     for (const phone of snapshots) {
       assertStoreInScope(scope, phone.store_id)
     }
-    if (this.autoFilm && snapshots.length) input = { ...input, accessories: [...input.accessories, ...await this.films.prepareAutomaticForSale(connection, snapshots, input.store_id)] }
+    if (this.autoFilm && snapshots.length) {
+      const automaticFilms = await this.films.prepareAutomaticForSale(connection, snapshots, input.store_id, { selectedGoods: input.accessories })
+      input = { ...input, accessories: [...input.accessories, ...automaticFilms] }
+    }
     if (input.phones.length) quoteCheckoutPoints({ config, availablePoints: 0, balance: hasRedemption ? 0 : Number(customer.points), items: input.phones.map(row => ({
       key: String(row.phone_id), source: Number(snapshots.find(phone => Number(phone.id) === row.phone_id).is_new) === 1 ? 'new' : 'used',
       amount_cents: moneyCents(row.sale_price), is_gift: false, redeem_points: 0

@@ -133,10 +133,7 @@ async function checkUserRoleStatus(): Promise<void> {
 
         // 延迟一下再跳转，确保用户能看到提示
         setTimeout(() => {
-          // 判断是否是 H5 路由，决定跳转目标
-          const isH5Route = window.location.pathname.startsWith('/m')
-          const loginPath = isH5Route ? '/m/login' : '/login'
-          window.location.href = loginPath
+          window.location.href = '/login'
         }, 1000)
 
         throw new Error('USER_ROLES_DISABLED')
@@ -203,14 +200,8 @@ export class RouteGuards {
       const startTime = Date.now()
 
       try {
-        // 0. 首先检查公开路由 - 无需任何认证检查
-        const publicRoutes = ['/login', '/404', '/forgot-password', '/register']
-        // 检查路径是否以 /m 开头（H5 移动端公开路由）
-        const isH5Route = to.path.startsWith('/m')
-        // 检查当前路由或任何父路由的 meta.requiresAuth
-        const requiresAuth = to.matched.some(record => record.meta?.requiresAuth === true)
-
-        if (publicRoutes.includes(to.path) || to.meta?.requiresAuth === false || isH5Route || !requiresAuth) {
+        // Vue Router 的合并 meta 包含父路由声明。
+        if (to.meta.requiresAuth !== true) {
           return next()
         }
 
@@ -236,8 +227,6 @@ export class RouteGuards {
               notifyOtherWindows: false
             })
 
-            const loginPath = to.path.startsWith('/m') ? '/m/login' : '/login'
-
             if (canRedirect()) {
               markRedirected()
               showElementNotification({
@@ -250,7 +239,7 @@ export class RouteGuards {
             }
 
             return next({
-              path: loginPath,
+              path: '/login',
               query: { reason: 'backend_disconnected' }
             })
           }
@@ -262,8 +251,11 @@ export class RouteGuards {
         const loadingStore = useLoadingStore()
 
         // 确保认证恢复完成，所有入口共享 auth store 内的同一个恢复任务。
-        if (!authStore.token || !authStore.user || authStore.isAuthenticating) {
+        if (!authStore.isAuthReady) {
           await authStore.loadPersistedAuthData()
+          if (authStore.isAuthReady && authStore.userRoles.length > 0) {
+            lastRoleStatusCheckAt = Date.now()
+          }
         }
 
         // 开发环境 dev-token 特权默认禁用，只有显式环境开关才允许本地启用
@@ -299,12 +291,8 @@ export class RouteGuards {
 
         // 2. 检查用户认证状态
         if (!authStore.isAuthenticated) {
-          // 判断是 H5 路由还是主站路由，决定重定向目标
-          const isH5Route = to.path.startsWith('/m')
-          const loginPath = isH5Route ? '/m/login' : '/login'
-
           // 重定向前保存目标路径
-          const redirect = to.fullPath !== '/' && to.fullPath !== loginPath ? to.fullPath : undefined
+          const redirect = to.fullPath !== '/' ? to.fullPath : undefined
 
           // 冷启动时应用尚未挂载，直接进入登录页即可。此时异步通知可能早于
           // Element Plus 样式加载，造成未样式化提示短暂出现在页面底部。
@@ -322,69 +310,25 @@ export class RouteGuards {
           }
 
           return next({
-            path: loginPath,
+            path: '/login',
             query: redirect ? { redirect } : undefined
           })
         }
 
-        // 3. 确保权限数据已加载完成
+        // 核验失败时保留地址，以便用户重试。
         const requiredPermissions = getRoutePermissions(to.path)
-        const hasNoLoadedPermissions = !Array.isArray(authStore.userPermissions) || authStore.userPermissions.length === 0
-
-        // 只对需要权限的路由等待一次权限刷新；普通路由不阻塞跳转
-        if (authStore.isAuthenticated && requiredPermissions?.length && hasNoLoadedPermissions) {
-          // ⚠️ 容错：检查 token 是否有效
-          const token = authStore.token || storage.getToken()
-          if (!token || token.length < 10) {
-            return next({
-              path: '/login',
-              query: { redirect: to.fullPath }
-            })
-          }
-
-          // 进入受限路由前先恢复权限，避免页面先进入再由组件层提示
-          const currentRole = authStore.user?.role
-          const currentRoles = authStore.roles
-
-          await authStore.fetchUserInfo().then(() => {
-            const refreshedUser = authStore.user
-            if (refreshedUser && !refreshedUser.role && currentRole) {
-              refreshedUser.role = currentRole
-              authStore.roles = currentRoles
-            }
-          }).catch((error: unknown) => {
-            const requestError = error as { response?: { status?: number } }
-            // 401 错误时，不强制退出，允许用户继续访问
-            if (requestError.response?.status === 401) {
-              // Token 可能已过期，但允许继续访问
-            }
-          })
+        if (!authStore.isAuthReady && requiredPermissions?.length) {
+          showElementWarning('权限核验暂时失败，请重试')
+          return next(false)
         }
 
         // 4. 检查用户角色状态（确保角色未被禁用）
         await checkUserRoleStatus()
 
         // 5. 权限检查
-        if (requiredPermissions && requiredPermissions.length > 0) {
-          if (!Array.isArray(authStore.userPermissions) || authStore.userPermissions.length === 0) {
-            showElementWarning('权限数据加载失败，无法访问此页面')
-
-            if (to.path === '/dashboard') {
-              return next()
-            }
-
-            return next('/dashboard')
-          }
-
-          if (!canAccessRoutePath(to.path, authStore)) {
-            showElementWarning('您没有访问此页面的权限')
-
-            if (to.path === '/dashboard') {
-              return next()
-            }
-
-            return next('/dashboard')
-          }
+        if (!canAccessRoutePath(to.path, authStore)) {
+          showElementWarning('您没有访问此页面的权限')
+          return to.path === '/dashboard' ? next() : next('/dashboard')
         }
 
         // 5. 检查页面访问频率限制（开发环境绕过）

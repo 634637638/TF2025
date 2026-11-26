@@ -3,10 +3,10 @@
     ref="panelRef"
     class="unified-search-panel"
     @click="handlePanelClick"
+    @input.capture="handleSearchInput"
     @click.capture="handleSearchInteraction"
-    @input.capture="handleSearchInteraction"
     @change.capture="handleSearchInteraction"
-    @keydown.enter.capture="handleSearchInteraction"
+    @keyup.enter.capture="handleEnterSearch"
   >
     <div
       class="unified-search-panel__form"
@@ -22,30 +22,28 @@
           class="unified-search-panel__actions"
           @click.stop
         >
-          <slot
-            name="actions"
+          <SearchActionButton
+            type="primary"
             :loading="loading"
-            :searching="loading"
+            :disabled="searchDisabled"
+            class="unified-search-panel__search-button"
+            @click="handleSearch"
           >
-            <el-button
-              type="primary"
-              class="unified-search-panel__search-button"
-              :loading="loading"
-              :aria-busy="loading"
-              @click="handleSearch"
-            >
-              <i class="fas fa-search" />
-              搜索
-            </el-button>
-            <el-button
-              type="default"
-              :disabled="loading"
-              @click="handleReset"
-            >
-              <i class="fas fa-redo" />
-              重置
-            </el-button>
-          </slot>
+            {{ searchLabel }}
+          </SearchActionButton>
+          <el-button
+            v-if="showReset"
+            type="default"
+            class="tf-button--reset"
+            :disabled="loading"
+            @click="handleReset"
+          >
+            <i
+              class="fas fa-redo"
+              aria-hidden="true"
+            />
+            重置
+          </el-button>
         </div>
       </div>
 
@@ -55,18 +53,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { requestPaginationReset } from '@/utils/search-pagination'
 
 interface Props {
   expanded?: boolean
   loading?: boolean
+  searchDisabled?: boolean
+  searchLabel?: string
+  showReset?: boolean
   autoResetPagination?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   expanded: false,
   loading: false,
+  searchDisabled: false,
+  searchLabel: '搜索',
+  showReset: true,
   autoResetPagination: true
 })
 
@@ -78,6 +82,21 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 const panelRef = ref<HTMLElement | null>(null)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+const cancelPendingSearch = () => {
+  if (searchTimer === null) return
+  clearTimeout(searchTimer)
+  searchTimer = null
+}
+
+const scheduleSearch = () => {
+  cancelPendingSearch()
+  searchTimer = setTimeout(() => {
+    searchTimer = null
+    if (!props.searchDisabled) handleSearch()
+  }, 350)
+}
 
 const resetPagination = () => {
   if (!props.autoResetPagination) return
@@ -85,13 +104,25 @@ const resetPagination = () => {
 }
 
 const handleSearch = () => {
+  if (props.searchDisabled) return
+  cancelPendingSearch()
   resetPagination()
   emit('search')
 }
 
 const handleReset = () => {
+  cancelPendingSearch()
   resetPagination()
   emit('reset')
+}
+
+const handleSearchInput = (event: Event) => {
+  const target = event.target
+  if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return
+  if (target.closest('.el-select, .el-date-editor, .el-cascader, .el-tree-select')) return
+  if (target.disabled || target.readOnly || (event as InputEvent).isComposing) return
+
+  scheduleSearch()
 }
 
 const handleSearchInteraction = (event: Event) => {
@@ -101,6 +132,32 @@ const handleSearchInteraction = (event: Event) => {
   if (target.closest('input, button, textarea, select, [role="button"], .el-select, .el-date-editor')) {
     resetPagination()
   }
+
+  const clearButton = target.closest('.el-input__clear')
+  const isTextInputClear = clearButton && !clearButton.closest('.el-select, .el-date-editor, .el-cascader, .el-tree-select')
+
+  if (target.closest('.filter-item') && !isTextInputClear) cancelPendingSearch()
+
+  if (
+    isTextInputClear
+  ) {
+    cancelPendingSearch()
+    searchTimer = setTimeout(() => {
+      searchTimer = null
+      scheduleSearch()
+    }, 0)
+  }
+
+}
+
+const handleEnterSearch = (event: KeyboardEvent) => {
+  if (event.isComposing) return
+  const target = event.target
+  if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return
+  if (target.closest('.el-select, .el-date-editor, .el-cascader, .el-tree-select')) return
+  event.stopPropagation()
+  if (props.searchDisabled) return
+  handleSearch()
 }
 
 const _openPanel = () => {
@@ -124,6 +181,8 @@ const handlePanelClick = (event: MouseEvent) => {
   }
   toggleExpanded()
 }
+
+onBeforeUnmount(cancelPendingSearch)
 </script>
 
 <style scoped lang="scss" src="./styles/unified-search-panel/desktop.scss"></style>

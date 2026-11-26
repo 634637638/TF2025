@@ -85,23 +85,31 @@
         >
           <div class="image-grid">
             <div
-              v-for="media in templatePreview.images"
+              v-for="(media, index) in templatePreview.images"
               :key="media.id"
               class="publish-to-h5-media-card"
             >
-              <video
-                v-if="isVideoMedia(media)"
-                class="publish-to-h5-media-thumb"
-                :src="formatImageUrl(media.image_url)"
-                controls
-                preload="metadata"
-              />
-              <Image
-                v-else
-                class="publish-to-h5-media-thumb"
-                :src="formatImageUrl(media.image_url)"
-                alt="模板商品图片"
-              />
+              <el-button
+                native-type="button"
+                class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                :aria-label="`查看模板素材 ${index + 1}`"
+                @click="openUploadedMediaPreview(media, templatePreview?.images)"
+              >
+                <video
+                  v-if="isVideoMedia(media)"
+                  class="publish-to-h5-media-thumb"
+                  :src="formatImageUrl(media.image_url)"
+                  muted
+                  playsinline
+                  preload="metadata"
+                />
+                <Image
+                  v-else
+                  class="publish-to-h5-media-thumb"
+                  :src="media.image_url"
+                  alt="模板商品图片"
+                />
+              </el-button>
             </div>
           </div>
         </div>
@@ -369,25 +377,31 @@
                 v-for="(file, index) in pendingFiles"
                 :key="index"
                 class="publish-to-h5-media-card is-pending"
-                @click="openPendingMediaPreview(index)"
               >
-                <!-- 视频预览 -->
-                <video
-                  v-if="isVideoMedia({ type: file.raw?.type, name: file.name, url: file.url })"
-                  :src="previewUrl(file)"
-                  class="publish-to-h5-media-thumb is-previewable"
-                  muted
-                  playsinline
-                  preload="metadata"
-                />
-                <!-- 图片预览 -->
-                <Image
-                  v-else
-                  :src="previewUrl(file)"
-                  alt="预览"
-                  mode="eager"
-                  class="publish-to-h5-media-thumb is-previewable"
-                />
+                <el-button
+                  native-type="button"
+                  class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                  :aria-label="`查看待上传素材 ${index + 1}`"
+                  @click="openPendingMediaPreview(index)"
+                >
+                  <!-- 视频预览 -->
+                  <video
+                    v-if="isVideoMedia({ type: file.raw?.type, name: file.name, url: file.url })"
+                    :src="previewUrl(file)"
+                    class="publish-to-h5-media-thumb is-previewable"
+                    muted
+                    playsinline
+                    preload="metadata"
+                  />
+                  <!-- 图片预览 -->
+                  <Image
+                    v-else
+                    :src="previewUrl(file)"
+                    alt="预览"
+                    mode="eager"
+                    class="publish-to-h5-media-thumb is-previewable"
+                  />
+                </el-button>
 
                 <!-- 文件类型标记 -->
                 <div class="image-badge">
@@ -395,41 +409,10 @@
                   {{ isVideoMedia({ type: file.raw?.type, name: file.name, url: file.url }) ? '视频' : '图片' }}
                 </div>
 
-                <!-- 移除按钮 -->
-                <el-button
-                  native-type="button"
-                  class="image-delete-btn tf-button--overlay-tool tf-button--overlay-danger"
-                  title="删除图片"
-                  aria-label="删除图片"
-                  @click.stop="removePendingFile(index)"
-                >
-                  <i class="fas fa-times text-white text-xs" />
-                </el-button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 已上传视频预览 -->
-          <div
-            v-if="productVideo"
-            class="mt-3"
-          >
-            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <video
-                :src="formatImageUrl(productVideo)"
-                class="video-thumbnail"
-                controls
-              />
-              <div class="flex-1">
-                <div class="text-xs text-gray-500">
-                  已上传视频
-                </div>
-                <el-button
-                  type="danger"
-                  @click="deleteVideo"
-                >
-                  <i class="fas fa-trash" /> 删除
-                </el-button>
+                <MediaThumbnailActions
+                  removable
+                  @remove="removePendingFile(index)"
+                />
               </div>
             </div>
           </div>
@@ -439,7 +422,7 @@
             v-if="images.length > 0"
             v-model="images"
             :animation="200"
-            handle=".drag-handle"
+            handle=".tf-media-thumbnail-drag-handle"
             item-key="id"
             class="image-grid mt-4"
             @end="handleImageDragEnd"
@@ -447,32 +430,33 @@
             <template #item="{ element: image }">
               <div
                 class="publish-to-h5-media-card"
-                @click="openUploadedMediaPreview(image)"
               >
-                <!-- 视频显示 -->
-                <video
-                  v-if="isVideoMedia(image)"
-                  :src="formatImageUrl(image.image_url)"
-                  class="publish-to-h5-media-thumb is-previewable"
-                  muted
-                  playsinline
-                  preload="metadata"
-                />
-                <!-- 图片显示 -->
-                <Image
-                  v-else
-                  :src="image.image_url"
-                  alt="商品图片"
-                  mode="eager"
-                  class="publish-to-h5-media-thumb is-previewable"
-                />
+                <el-button
+                  native-type="button"
+                  class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                  :aria-label="'查看商品素材'"
+                  @click="openUploadedMediaPreview(image)"
+                >
+                  <!-- 视频显示 -->
+                  <video
+                    v-if="isVideoMedia(image)"
+                    :src="formatImageUrl(image.image_url)"
+                    class="publish-to-h5-media-thumb is-previewable"
+                    muted
+                    playsinline
+                    preload="metadata"
+                  />
+                  <!-- 图片显示 -->
+                  <Image
+                    v-else
+                    :src="image.image_url"
+                    alt="商品图片"
+                    mode="eager"
+                    class="publish-to-h5-media-thumb is-previewable"
+                  />
+                </el-button>
 
-                <!-- 拖拽手柄 - 左上角 -->
-                <div class="drag-handle drag-handle-absolute">
-                  <i class="fas fa-grip-vertical text-white text-xs" />
-                </div>
-
-                <!-- 主图标记 - 左下角 -->
+                <!-- 主图标记 -->
                 <div
                   v-if="image.is_primary"
                   class="image-primary-tag"
@@ -480,30 +464,13 @@
                   主图
                 </div>
 
-                <!-- 删除按钮 - 始终显示在右上角 -->
-                <el-button
-                  native-type="button"
-                  class="image-delete-btn tf-button--overlay-tool tf-button--overlay-danger"
-                  title="删除图片"
-                  aria-label="删除图片"
-                  @click.stop="deleteImage(image)"
-                >
-                  <i class="fas fa-times text-white text-xs" />
-                </el-button>
-
-                <!-- 设置主图按钮 - 悬停时显示 -->
-                <div class="image-actions">
-                  <el-button
-                    v-if="!image.is_primary && !isVideoMedia(image)"
-                    native-type="button"
-                    class="image-set-primary-btn tf-button--overlay-tool"
-                    title="设为主图"
-                    aria-label="设为主图"
-                    @click.stop="setPrimaryImage(image)"
-                  >
-                    <i class="fas fa-star" />
-                  </el-button>
-                </div>
+                <MediaThumbnailActions
+                  sortable
+                  removable
+                  :can-set-primary="!image.is_primary && !isVideoMedia(image)"
+                  @set-primary="setPrimaryImage(image)"
+                  @remove="deleteImage(image)"
+                />
 
                 <!-- 视频标记 -->
                 <div
@@ -573,7 +540,6 @@ import {
   createDefaultPublishForm,
   ensurePublishPendingFileUrl,
   filterValidPublishFiles,
-  findUploadedVideoUrl,
   getPublishUploadEndpoint,
   getPublishUploadFieldName,
   getNewPublishFiles,
@@ -634,7 +600,6 @@ const previewMediaItems = ref<MediaPreviewItem[]>([])
 const previewMediaIndex = ref(0)
 
 // 视频相关
-const productVideo = ref('')
 
 // 待上传文件列表
 const pendingFiles = ref<PendingUploadFile[]>([])
@@ -696,7 +661,6 @@ const resetPublishState = () => {
   templatePreview.value = null
   loadError.value = false
   images.value = []
-  productVideo.value = ''
   showMediaPreview.value = false
   previewMediaItems.value = []
   previewMediaIndex.value = 0
@@ -743,7 +707,6 @@ const loadPhoneData = async () => {
       })
       if (!imagesRes.success || !Array.isArray(imagesRes.data)) throw new Error('无法读取商品素材')
       images.value = imagesRes.data
-      productVideo.value = findUploadedVideoUrl(images.value)
     }
   } catch (error) {
     loadError.value = true
@@ -989,8 +952,8 @@ const openPendingMediaPreview = (clickedIndex: number) => {
   showMediaPreview.value = items.length > 0
 }
 
-const openUploadedMediaPreview = (clickedMedia: UploadedMediaItem) => {
-  const items = images.value.map<MediaPreviewItem>(media => ({
+const openUploadedMediaPreview = (clickedMedia: UploadedMediaItem, mediaList = images.value) => {
+  const items = mediaList.map<MediaPreviewItem>(media => ({
     id: media.id,
     url: media.image_url,
     type: media.image_type,
@@ -1125,8 +1088,6 @@ const loadPhoneImages = async () => {
   try {
     const response = await api.get(`/phones/${props.phoneId}/images`)
     images.value = Array.isArray(response.data) ? response.data as UploadedMediaItem[] : []
-    // 同步更新视频预览
-    productVideo.value = findUploadedVideoUrl(images.value)
   } catch (error) {
     logger.error('加载图片失败:', error)
   }
@@ -1153,23 +1114,6 @@ const deleteImage = async (image: UploadedMediaItem) => {
     globalNotifications.success('删除成功')
   } catch (error) {
     logger.error('删除图片失败:', error)
-    globalNotifications.error('删除失败')
-  }
-}
-
-// 删除视频
-const deleteVideo = async () => {
-  try {
-    // 找到视频的ID
-    const video = images.value.find(isVideoMedia)
-    if (video) {
-      await api.delete(`/phones/${props.phoneId}/images/${video.id}`)
-      productVideo.value = ''
-      await loadPhoneImages()
-      globalNotifications.success('视频删除成功')
-    }
-  } catch (error) {
-    logger.error('删除视频失败:', error)
     globalNotifications.error('删除失败')
   }
 }
@@ -1394,23 +1338,6 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   height: 100%;
-}
-
-.image-actions {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: space-around;
-  padding: 8px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.image-actions:hover {
-  opacity: 1;
 }
 
 @media (max-width: 767px) {

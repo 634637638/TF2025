@@ -10,10 +10,11 @@
 | `--tf-motion-standard` | 一般交互过渡 |
 | `--tf-motion-enter` | Dialog、通知等进入/离开 |
 | `--tf-motion-slow` | 导航和较明显的布局过渡 |
+| `--tf-motion-loading` | 刷新按钮图标的加载旋转周期 |
 | `--tf-motion-ease-standard` | 默认缓动 |
 | `--tf-motion-ease-emphasized` | 强调型反馈缓动 |
 
-减少动态偏好下，时长令牌归零；不得为了装饰效果覆盖系统偏好。Loading 的旋转由 Loading 组件负责，状态变化优先使用 `transform` 和 `opacity`，避免对布局属性使用宽泛的 `transition: all`。
+减少动态偏好下，时长令牌归零；不得为了装饰效果覆盖系统偏好。刷新按钮在减少动态偏好下使用静态加载图标提供状态反馈。其他 Loading 的旋转由 Loading 组件负责，状态变化优先使用 `transform` 和 `opacity`，避免对布局属性使用宽泛的 `transition: all`。
 
 ## 使用规则
 

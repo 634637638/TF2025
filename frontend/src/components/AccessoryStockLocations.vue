@@ -10,6 +10,7 @@
       <div class="tf-dialog-toolbar">
         <el-button
           class="tf-button--refresh"
+          :loading="loading"
           :disabled="loading"
           @click="loadLocations"
         >

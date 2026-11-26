@@ -57,37 +57,42 @@
               label="店铺Logo"
             >
               <div class="image-upload-wrapper">
+                <div
+                  v-if="configs.shop_logo"
+                  class="config-image-thumbnail"
+                >
+                  <el-button
+                    native-type="button"
+                    class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                    :disabled="false"
+                    aria-label="查看店铺Logo"
+                    @click="openConfigImage('shop_logo', '店铺Logo')"
+                  >
+                    <img
+                      :src="getImagePreviewUrl(configs.shop_logo)"
+                      alt="店铺Logo"
+                    >
+                  </el-button>
+                  <MediaThumbnailActions
+                    :removable="canEdit"
+                    @remove="handleDeleteImage('shop_logo')"
+                  />
+                </div>
                 <el-upload
+                  v-if="canEdit"
                   :action="uploadAction"
                   :headers="uploadHeaders"
                   :data="{ module: 'h5_config' }"
                   :show-file-list="false"
                   :on-success="(res: unknown) => handleUploadSuccess(res, 'shop_logo')"
                   :before-upload="beforeUpload"
-                  :disabled="!canEdit"
                   name="files"
                   accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                  list-type="picture-card"
                 >
-                  <img
-                    v-if="configs.shop_logo"
-                    :src="getImagePreviewUrl(configs.shop_logo)"
-                    class="uploaded-image"
-                  >
-                  <i
-                    v-else
-                    class="fas fa-plus"
-                  />
+                  <el-button>
+                    {{ configs.shop_logo ? '更换图片' : '上传图片' }}
+                  </el-button>
                 </el-upload>
-                <el-button
-                  v-if="configs.shop_logo && canEdit"
-                  plain
-                  type="danger"
-                  class="delete-image-btn"
-                  @click="handleDeleteImage('shop_logo')"
-                >
-                  <i class="fas fa-trash mr-1" />删除
-                </el-button>
               </div>
             </el-form-item>
           </el-form>
@@ -471,36 +476,43 @@
                 class="tf-form-field--wide"
                 label="微信收款码"
               >
-                <div class="image-upload-wrapper payment-image-upload-wrapper">
+                <div class="image-upload-wrapper">
+                  <div
+                    v-if="configs.wechat_qrcode"
+                    class="config-image-thumbnail"
+                  >
+                    <el-button
+                      native-type="button"
+                      class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                      :disabled="false"
+                      aria-label="查看微信收款码"
+                      @click="openConfigImage('wechat_qrcode', '微信收款码')"
+                    >
+                      <img
+                        :src="getImagePreviewUrl(configs.wechat_qrcode)"
+                        alt="微信收款码"
+                      >
+                    </el-button>
+                    <MediaThumbnailActions
+                      :removable="canEdit"
+                      @remove="handleDeleteImage('wechat_qrcode')"
+                    />
+                  </div>
                   <el-upload
+                    v-if="canEdit"
                     :action="uploadAction"
                     :headers="uploadHeaders"
                     :data="{ module: 'h5_config' }"
                     :show-file-list="false"
                     :on-success="(res: unknown) => handleUploadSuccess(res, 'wechat_qrcode')"
                     :before-upload="beforeUpload"
-                    :disabled="!canEdit"
                     name="files"
                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                    list-type="picture-card"
                   >
-                    <img
-                      v-if="configs.wechat_qrcode"
-                      :src="getImagePreviewUrl(configs.wechat_qrcode)"
-                      class="uploaded-image"
-                    ><i
-                      v-else
-                      class="fas fa-plus"
-                    />
+                    <el-button>
+                      {{ configs.wechat_qrcode ? '更换图片' : '上传图片' }}
+                    </el-button>
                   </el-upload>
-                  <el-button
-                    v-if="configs.wechat_qrcode && canEdit"
-                    plain
-                    type="danger"
-                    @click="handleDeleteImage('wechat_qrcode')"
-                  >
-                    删除
-                  </el-button>
                 </div>
               </el-form-item>
               <el-form-item
@@ -515,36 +527,43 @@
                 class="tf-form-field--wide"
                 label="支付宝收款码"
               >
-                <div class="image-upload-wrapper payment-image-upload-wrapper">
+                <div class="image-upload-wrapper">
+                  <div
+                    v-if="configs.alipay_qrcode"
+                    class="config-image-thumbnail"
+                  >
+                    <el-button
+                      native-type="button"
+                      class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                      :disabled="false"
+                      aria-label="查看支付宝收款码"
+                      @click="openConfigImage('alipay_qrcode', '支付宝收款码')"
+                    >
+                      <img
+                        :src="getImagePreviewUrl(configs.alipay_qrcode)"
+                        alt="支付宝收款码"
+                      >
+                    </el-button>
+                    <MediaThumbnailActions
+                      :removable="canEdit"
+                      @remove="handleDeleteImage('alipay_qrcode')"
+                    />
+                  </div>
                   <el-upload
+                    v-if="canEdit"
                     :action="uploadAction"
                     :headers="uploadHeaders"
                     :data="{ module: 'h5_config' }"
                     :show-file-list="false"
                     :on-success="(res: unknown) => handleUploadSuccess(res, 'alipay_qrcode')"
                     :before-upload="beforeUpload"
-                    :disabled="!canEdit"
                     name="files"
                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                    list-type="picture-card"
                   >
-                    <img
-                      v-if="configs.alipay_qrcode"
-                      :src="getImagePreviewUrl(configs.alipay_qrcode)"
-                      class="uploaded-image"
-                    ><i
-                      v-else
-                      class="fas fa-plus"
-                    />
+                    <el-button>
+                      {{ configs.alipay_qrcode ? '更换图片' : '上传图片' }}
+                    </el-button>
                   </el-upload>
-                  <el-button
-                    v-if="configs.alipay_qrcode && canEdit"
-                    plain
-                    type="danger"
-                    @click="handleDeleteImage('alipay_qrcode')"
-                  >
-                    删除
-                  </el-button>
                 </div>
               </el-form-item>
               <el-form-item
@@ -567,36 +586,43 @@
                 class="tf-form-field--wide"
                 label="自定义二维码"
               >
-                <div class="image-upload-wrapper payment-image-upload-wrapper">
+                <div class="image-upload-wrapper">
+                  <div
+                    v-if="configs.other_qrcode"
+                    class="config-image-thumbnail"
+                  >
+                    <el-button
+                      native-type="button"
+                      class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                      :disabled="false"
+                      aria-label="查看自定义二维码"
+                      @click="openConfigImage('other_qrcode', '自定义二维码')"
+                    >
+                      <img
+                        :src="getImagePreviewUrl(configs.other_qrcode)"
+                        alt="自定义二维码"
+                      >
+                    </el-button>
+                    <MediaThumbnailActions
+                      :removable="canEdit"
+                      @remove="handleDeleteImage('other_qrcode')"
+                    />
+                  </div>
                   <el-upload
+                    v-if="canEdit"
                     :action="uploadAction"
                     :headers="uploadHeaders"
                     :data="{ module: 'h5_config' }"
                     :show-file-list="false"
                     :on-success="(res: unknown) => handleUploadSuccess(res, 'other_qrcode')"
                     :before-upload="beforeUpload"
-                    :disabled="!canEdit"
                     name="files"
                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                    list-type="picture-card"
                   >
-                    <img
-                      v-if="configs.other_qrcode"
-                      :src="getImagePreviewUrl(configs.other_qrcode)"
-                      class="uploaded-image"
-                    ><i
-                      v-else
-                      class="fas fa-plus"
-                    />
+                    <el-button>
+                      {{ configs.other_qrcode ? '更换图片' : '上传图片' }}
+                    </el-button>
                   </el-upload>
-                  <el-button
-                    v-if="configs.other_qrcode && canEdit"
-                    plain
-                    type="danger"
-                    @click="handleDeleteImage('other_qrcode')"
-                  >
-                    删除
-                  </el-button>
                 </div>
               </el-form-item>
               <el-form-item
@@ -914,6 +940,10 @@
           </div>
         </template>
       </MobileDialog>
+      <MediaPreviewViewer
+        v-model="configImageVisible"
+        :items="configImageItems"
+      />
     </div>
   </PermissionGate>
 </template>
@@ -932,6 +962,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { formatImageUrl } from '@/utils/format'
+import type { MediaPreviewItem } from '@/utils/media'
 import { unifiedApi } from '@/utils/unified-api'
 import { deleteTempFiles } from '@/utils/temp-file-cleaner'
 import { logger } from '@/utils/logger'
@@ -1134,6 +1165,14 @@ const uploadHeaders = computed(() => ({
 }))
 
 const getImagePreviewUrl = (url: string) => formatImageUrl(url)
+const configImageVisible = ref(false)
+const configImageItems = ref<MediaPreviewItem[]>([])
+const openConfigImage = (field: ImageField, label: string) => {
+  const url = configs.value[field]
+  if (!url) return
+  configImageItems.value = [{ url, label }]
+  configImageVisible.value = true
+}
 
 const isTempImage = (url: string) => uploadedTempImages.value.includes(url)
 

@@ -1,11 +1,34 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditButtonSizeDeclarations, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditAsyncSearchButtonUsage, auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditButtonSizeDeclarations, auditCommandButtonSizes, auditOverlayDangerUsage, auditRefreshButtonUsage, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 import { readFileSync } from 'node:fs'
 
 const classes = collectButtonClasses([
   '<template><div class="button-group"><el-button class="selected-action-btn"><i class="button-icon"/></el-button><el-button class="custom-command shared"/><div class="shared"/></div></template>'
 ])
+
+test('业务卡片不得通过静态或动态 class 复用危险覆盖工具，公共缩略图操作可用', () => {
+  const source = `<template>
+    <!-- <el-button class="tf-button--overlay-danger" /> -->
+    <el-button class="product-remove tf-button--overlay-tool tf-button--overlay-danger" />
+    <ElButton :class="['tf-button--overlay-danger']" />
+    <MediaThumbnailActions :removable="canEdit" @remove="removeProduct" />
+    <el-button type="danger">删除记录</el-button>
+  </template>`
+  assert.deepEqual(auditOverlayDangerUsage(source).map(finding => finding.line), [3, 4])
+})
+
+test('带加载状态的刷新按钮必须接入公共原图标旋转样式', () => {
+  assert.deepEqual(auditRefreshButtonUsage('<template><el-button :loading="loading">刷新</el-button></template>').map(finding => finding.line), [1])
+  assert.deepEqual(auditRefreshButtonUsage('<template><el-button class="tf-button--refresh" :loading="loading">刷新</el-button></template>'), [])
+  assert.deepEqual(auditRefreshButtonUsage('<template><el-button :loading="loading">保存</el-button></template>'), [])
+})
+
+test('异步检索按钮必须复用公共搜索动作组件', () => {
+  assert.deepEqual(auditAsyncSearchButtonUsage('<template><el-button :loading="loading">搜索</el-button></template>').map(finding => finding.line), [1])
+  assert.deepEqual(auditAsyncSearchButtonUsage('<template><el-button :disabled="searching">查询</el-button></template>').map(finding => finding.line), [1])
+  assert.deepEqual(auditAsyncSearchButtonUsage('<template><SearchActionButton :loading="loading">搜索</SearchActionButton></template>'), [])
+})
 
 test('业务按钮的静态和动态尺寸、旧尺寸类及操作组尺寸都必须回到公共默认', () => {
   const source = '<template><el-button size="small"/><el-button :size="mobile ? \'large\' : \'default\'"/><el-button v-bind:size="size"/><el-button-group size="small"/><el-button class="btn-sm"/><ElButton :class="[\'btn-lg\']"/><PublicPriceHeader action-size="small"/><ImportExportActions size="small"/><div class="batch-actions-buttons" :data-size="size"/></template>'

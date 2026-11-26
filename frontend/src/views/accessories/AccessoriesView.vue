@@ -106,8 +106,6 @@
                   aria-label="商品名称"
                   clearable
                   :maxlength="200"
-                  @keyup.enter="handleSearch"
-                  @clear="handleSearch"
                   @click.stop
                 >
                   <template #prefix>
@@ -170,8 +168,6 @@
                   aria-label="适配型号"
                   clearable
                   :maxlength="200"
-                  @keyup.enter="handleSearch"
-                  @clear="handleSearch"
                 />
               </div>
               <div

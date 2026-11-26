@@ -3,6 +3,7 @@
 ## 统一入口
 
 - 后台列表页统一使用 `frontend/src/components/search/UnifiedSearchPanel.vue`。
+- `UnifiedSearchPanel` 统一渲染搜索和重置按钮。页面只能传入字段、权限、查询事件及 `loading`，确有业务差异时使用 `search-label`、`search-disabled` 和 `show-reset` 参数。
 - 公开报价页统一使用 `frontend/src/components/search/PublicSearchBox.vue`。该组件只负责关键词输入、回车/搜索、清除和响应式外壳；报价查询、密码验证和数据加载仍由页面业务处理。
 - 日期范围统一使用 `frontend/src/components/DateRangePicker.vue`，开始和结束日期分别弹出单个面板，并从对应输入框下方展开。
 - 单日期、单月份等单值筛选可直接使用 Element Plus `el-date-picker`。
@@ -27,7 +28,7 @@
 - 后端默认排序：`sort_order ASC`，再按展示名称（或业务主标签）自然排序，最后按 `id ASC` 稳定排序。
 - 前端默认排序：统一调用 `frontend/src/utils/option-sort.ts` 的 `sortOptionsByOrder`，优先读取 `sort_order`，兼容历史字段 `sortOrder`、`order`。
 - 排序字段必须随接口响应返回；页面或公共转换层不得丢弃 `sort_order` 后再按名称排序。
-- `sort_order` 相同时才按名称自然排序；名称仍相同时按 `id` 稳定排序。
+- `sort_order` 相同时才按名称自然排序；名称仍相同时按 `id` 稳定排序。管理端新增或编辑显式提交排序值时，目标记录按输入值定位，之后的冲突记录由后端从完整排序范围顺延，目标之前的记录不因检索结果或本次编辑而批量重编号。
 - 没有业务排序字段的临时数据，才允许使用名称、时间或 ID 等业务专用排序，并必须在接口或页面代码中说明原因。
 - 禁止各页面复制自定义 `sort` 比较器，禁止用请求返回顺序代替明确排序契约。
 
@@ -35,11 +36,11 @@
 
 ### 基础资料排序编辑
 
-品牌、型号、颜色和内存管理页统一复用 `frontend/src/composables/useReferenceOrdering.ts`：
+品牌、型号、颜色、内存和门店管理页统一复用 `frontend/src/composables/useReferenceOrdering.ts`：
 
-- 手动修改排序按记录 `id` 提交单条 `{ id, sort_order }`，保留用户输入的整数值。不得将筛选或分页结果重新映射为 `0、1、2…` 后批量提交；未编辑记录的排序值和真实 ID 保持不变。
-- 排序值允许相同，相同时沿用公共名称、ID 稳定比较规则；“序号”只是分页中的连续显示编号，按 `(page - 1) * page_size + index + 1` 计算，不能使用 `sort_order + 1`。
-- 拖拽只交换起止行之间记录原有的排序值，保留区间外、其他分页和未命中记录的值；型号仅允许同一品牌内拖拽。区间内排序值重复时提示先手动调整，不能通过全量重编号消除重复。
+- 手动修改排序按记录 `id` 提交单条 `{ id, sort_order }`，保留用户输入的整数值。后端锁定完整排序范围，目标之前的数据保持原值，目标之后的冲突记录顺延；筛选或分页结果不会影响后端处理范围，也不会被前端重新映射为 `0、1、2…`。
+- 同一排序范围内的 `sort_order` 必须唯一，冲突时目标记录优先占用输入值，其他记录按名称和 ID 稳定顺序顺延；“序号”只是分页中的连续显示编号，按 `(page - 1) * page_size + index + 1` 计算，不能使用 `sort_order + 1`。
+- 拖拽只提交当前拖动记录范围的排序意图，后端按完整范围整理冲突值；型号仅允许同一品牌内拖拽。检索或分页不会限制后端冲突处理范围。
 - 保存期间禁用排序输入及拖拽，成功后保持当前筛选、页码并绕过缓存重读。失败恢复本次变更；如果列表已切换，不得使用旧快照覆盖新列表。
 
 行为回归入口：`npm --prefix frontend run test:unit -- tests/reference-ordering.spec.ts tests/reference-management-pages.spec.ts`。
@@ -89,7 +90,6 @@
       v-model="filters.keyword"
       clearable
       placeholder="请输入关键词"
-      @keyup.enter="handleSearch"
     />
   </template>
 
@@ -109,12 +109,15 @@
 </UnifiedSearchPanel>
 ```
 
+`UnifiedSearchPanel` 会统一处理主检索区和普通文本筛选框的输入事件。输入停止 350ms 后自动检索，回车会立即检索并取消待执行的防抖任务，清空文本也会沿用同一入口重新检索。页面不要再为检索字段添加 `@input` 防抖或 `@keyup.enter` 查询逻辑。下拉、级联和日期控件仍由页面按 `change` 或 `clear` 触发查询，公共面板负责重置页码并取消待执行的文本检索。
+
 日期范围父项必须声明 `filter-item--date-range`。该类由公共检索组件统一控制完整可读宽度：PC 保持单行自适应，iPad 和手机展开后自动换行，手机日期范围占整行。
 
 ## 行为要求
 
 - 输入框回车、点击搜索按钮、选择或清除筛选条件，都必须重置到第 1 页后查询。
 - 搜索按钮的加载状态统一由 `UnifiedSearchPanel` 的 `loading` 属性控制。
+- 弹窗或局部表单中的异步检索按钮统一使用 `SearchActionButton`，由公共入口提供搜索图标、加载旋转、禁用和 `aria-busy` 状态；业务只传入加载状态、权限和业务文案。
 - 自动检索后再次点击搜索按钮仍应重新发起查询。
 - 重置必须清空页面维护的所有筛选值、日期范围和级联选项，并回到第 1 页。
 - 请求较慢时使用页面现有的最新请求保护，避免旧请求覆盖新筛选结果。
@@ -133,6 +136,8 @@
 ## 禁止事项
 
 - 禁止新增或恢复 `GlobalSearch.vue`、`CustomSearch.vue`。
+- 禁止通过 `UnifiedSearchPanel` 的 `#actions` 插槽重写搜索或重置按钮；公共面板已经统一提供按钮、图标、加载旋转、禁用态和响应式尺寸。
+- 禁止在局部检索按钮中复制搜索图标、加载文案或私有 spinner，统一使用 `SearchActionButton`。
 - 禁止在页面内复制 `.unified-search-panel*` 样式。
 - 禁止在 `UnifiedSearchPanel` 内直接使用 `daterange`、`datetimerange`、`monthrange` 或 `dates` 类型的 `el-date-picker`。
 - 禁止仅靠页面私有宽度修复日期显示，应由 `filter-item--date-range` 和公共组件处理。
@@ -149,4 +154,4 @@ npm run check:reference-adoption
 
 审计会检查旧组件引用、日期范围组件接入、日期筛选宽度标记、页面是否覆盖公共结构，以及基础检索选项是否统一通过公共排序入口。
 
-最后更新：2026-11-11
+最后更新：2026-11-26

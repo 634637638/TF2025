@@ -35,82 +35,28 @@
   background: var(--color-bg-white);
 }
 
-.image-drag-handle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 2;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(17, 24, 39, 0.65);
-  color: var(--color-bg-white);
-  cursor: grab;
-}
-
-.image-drag-handle:active {
-  cursor: grabbing;
+.image-card-thumbnail {
+  position: relative;
+  height: 180px;
 }
 
 .image-card img,
 .image-card video {
   width: 100%;
-  height: 180px;
+  height: 100%;
   object-fit: cover;
   display: block;
   background: var(--tf-color-neutral-100);
 }
 
-.image-card-body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px;
-}
-
 .image-card-meta {
+  position: absolute;
+  bottom: var(--tf-space-1);
+  inset-inline-start: var(--tf-space-1);
   display: flex;
-  flex: 1;
-  justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-  margin: 0;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-neutral-500);
-}
-
-.image-card-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.image-action-btn {
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-}
-
-.image-action-btn:hover {
-  transform: translateY(-1px);
-}
-
-.image-action-btn.primary.active,
-.image-action-btn.primary:disabled {
-
-  cursor: default;
-  transform: none;
+  gap: var(--tf-space-1);
+  pointer-events: none;
 }
 
 :deep(.memory-select .el-select__wrapper) {

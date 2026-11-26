@@ -20,6 +20,7 @@ import type { CacheScope } from '@/composables/page-cache-store'
 import { useLoadingStore } from '@/stores/loading'
 import { extractBlobResponse, normalizeDownloadUrl } from './download-response'
 import { resolveRequestLoadingText } from './loading-text'
+import { isPublicSitePath } from '@/constants/routePermissions'
 
 // API基础配置
 const DEFAULT_READ_TIMEOUT = 30000
@@ -1062,17 +1063,12 @@ class UnifiedApiManager {
     const status = error.response?.status
     const showFeedback = (error.config as RequestConfig | undefined)?.showError !== false
 
-    // 检查是否已经在登录页面或H5页面，避免死循环
-    const isLoginPage = window.location.pathname === '/login' ||
-                        window.location.pathname.includes('/login')
-    const isH5Page = window.location.pathname.startsWith('/m')
-    // 公开路由列表（无需认证）
-    const publicRoutes = ['/price-query', '/sales-price-display', '/Marketing_Copy']
-    const isPublicRoute = publicRoutes.some(route => window.location.pathname.startsWith(route))
+    const pathname = window.location.pathname
+    const isPublicRoute = isPublicSitePath(pathname)
 
     // 网络错误或后端无法连接：保留本地登录态，只标记后端不可用
     if (!error.response || error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-      if (!isLoginPage && !isH5Page && !isPublicRoute) {
+      if (!isPublicRoute) {
         setBackendDisconnectedState(true)
       }
       return false
@@ -1114,7 +1110,7 @@ class UnifiedApiManager {
       }
 
       // 公开页面、H5页面和登录页不跳转
-      if (!isLoginPage && !isH5Page && !isPublicRoute && this.canRedirect()) {
+      if (!isPublicRoute && this.canRedirect()) {
         this.markRedirected()
 
         // 显示友好的通知
@@ -1141,7 +1137,7 @@ class UnifiedApiManager {
     case 403:
       return this.handlePermissionError(error)
     case 404:
-      if (!isLoginPage) {
+      if (pathname !== '/login' && pathname !== '/m/login') {
         showElementError('请求的资源不存在')
         return true
       }

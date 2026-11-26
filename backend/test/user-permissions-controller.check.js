@@ -5,6 +5,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const UserPermissionsController = require('../src/controllers/user-permissions.controller')
+const { getUserAccessProfile } = require('../src/services/access-control.service')
 
 const response = () => ({
   status(code) { this.statusCode = code; return this },
@@ -60,4 +61,11 @@ test('user permissions controller preserves the established error response', asy
     data: {}
   })
   assert.equal(errors.length, 1)
+})
+
+test('access profile database failures propagate instead of becoming an empty permission profile', async () => {
+  const failure = new Error('permission database unavailable')
+  const executor = { async execute() { throw failure } }
+
+  await assert.rejects(getUserAccessProfile(7, executor), error => error === failure)
 })

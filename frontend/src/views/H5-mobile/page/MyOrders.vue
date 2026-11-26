@@ -7,6 +7,10 @@
     <UnifiedSearchPanel
       :expanded="true"
       :loading="searching"
+      :search-disabled="!isValidIdentity"
+      search-label="查询订单"
+      :show-reset="false"
+      @search="searchOrders"
     >
       <template #primary>
         <div class="search-box">
@@ -31,18 +35,6 @@
             <i class="fas fa-times" />
           </el-button>
         </div>
-      </template>
-      <template #actions="{ loading: searchLoading }">
-        <el-button
-          type="primary"
-          class="search-btn"
-          :disabled="!isValidIdentity"
-          :loading="searchLoading"
-          :aria-busy="searchLoading"
-          @click="searchOrders"
-        >
-          查询订单
-        </el-button>
       </template>
     </UnifiedSearchPanel>
 

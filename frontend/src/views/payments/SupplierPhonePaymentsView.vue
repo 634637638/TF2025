@@ -22,6 +22,7 @@
               @export="exportPaymentPhones"
             />
             <el-button
+              class="tf-button--refresh"
               type="info"
               :loading="pageRefreshing"
               :disabled="pageRefreshing"
@@ -158,8 +159,6 @@
                   v-model="filters.keyword"
                   placeholder="搜索 IMEI、序列号、品牌、型号"
                   clearable
-                  @keyup.enter="handleFilterChange"
-                  @clear="clearKeyword"
                   @click.stop
                 >
                   <template #prefix>
@@ -2981,14 +2980,6 @@ const handleFilterChange = () => {
   loadSummaryStatistics()
   loadStatistics()
   loadPhones()
-}
-
-const clearKeyword = () => {
-  if (!showPaymentSearchKeyword.value) {
-    return
-  }
-  filters.keyword = ''
-  handleFilterChange()
 }
 
 // 清空所有选择

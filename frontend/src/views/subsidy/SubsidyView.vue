@@ -31,6 +31,7 @@
             <span>新增</span>
           </el-button>
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -315,8 +316,6 @@
               v-model="filters.search"
               :placeholder="searchPlaceholder"
               clearable
-              @input="debounceSearch"
-              @keyup.enter="handleSearch"
               @click.stop
             >
               <template #prefix>
@@ -692,7 +691,7 @@ import { sortOptionsByOrder } from '@/utils/option-sort'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { useLoadingState, useDebounce } from '@/composables'
+import { useLoadingState } from '@/composables'
 import { useCachedRequest } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import { getStores } from '@/services/reference-options'
@@ -1034,11 +1033,6 @@ const clearStatsRefreshTimer = () => {
     statsRefreshTimer = null
   }
 }
-
-// 防抖搜索 - 输入框输入时延迟搜索
-const { debouncedFn: debounceSearch } = useDebounce(() => {
-  handleSearch()
-}, 300) // 300ms 防抖
 
 // 处理行双击事件
 const handleRowDoubleClick = (item: NationalSubsidyRecord) => {

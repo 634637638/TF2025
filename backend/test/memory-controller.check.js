@@ -226,7 +226,11 @@ test('内存批量排序按原事务提交，失败回滚且始终释放连接',
   const calls = []
   const connection = {
     async beginTransaction() { calls.push('begin') },
-    async execute(sql, params) { calls.push({ sql, params }) },
+    async execute(sql, params) {
+      calls.push({ sql, params })
+      if (sql.startsWith('SELECT')) return [[{ id: 1, size: '64GB', sort_order: 0 }], []]
+      return [{ affectedRows: 1 }, []]
+    },
     async commit() { calls.push('commit') },
     async rollback() { calls.push('rollback') },
     release() { calls.push('release') }
@@ -237,7 +241,7 @@ test('内存批量排序按原事务提交，失败回滚且始终释放连接',
   })
   const success = createResponse()
   await controller.reorder({ body: { items: [{ id: 1, sort_order: 3 }] } }, success)
-  assert.deepEqual(calls.map(call => typeof call === 'string' ? call : call.params), ['begin', [3, 1], 'commit', 'release'])
+  assert.deepEqual(calls.map(call => typeof call === 'string' ? call : call.params), ['begin', undefined, [3, 1], 'commit', 'release'])
   assert.equal(success.body.message, '排序更新成功')
 
   calls.length = 0

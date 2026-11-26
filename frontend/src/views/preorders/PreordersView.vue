@@ -121,8 +121,6 @@
             v-model="searchKeyword"
             placeholder="搜索预定单号、客户、型号、IMEI、序列号"
             clearable
-            @input="schedulePreorderSearch"
-            @keyup.enter="handlePreorderSearch"
             @click.stop
           >
             <template #prefix>
@@ -1299,7 +1297,6 @@ const searchOptions = ref<PreorderOptions>({
   colors: [],
   memories: []
 })
-let searchTimer: ReturnType<typeof setTimeout> | null = null
 const searchModels = computed(() => (
   normalizeSearchId(searchBrandId.value) === undefined
     ? searchOptions.value.models
@@ -1355,7 +1352,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
-  if (searchTimer) clearTimeout(searchTimer)
 })
 
 // 统计数据
@@ -1479,19 +1475,8 @@ const loadActivePreorders = async (showLoadingState = true) => {
 }
 
 const handlePreorderSearch = async () => {
-  if (searchTimer) {
-    clearTimeout(searchTimer)
-    searchTimer = null
-  }
   pagination.page = 1
   await loadActivePreorders()
-}
-
-const schedulePreorderSearch = () => {
-  if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {
-    void handlePreorderSearch()
-  }, 350)
 }
 
 const handleBrandSearchChange = () => {

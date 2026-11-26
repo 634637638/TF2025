@@ -10,6 +10,7 @@ import { extractResponseData, getRequestErrorCode, getRequestErrorStatus } from 
 import { clearPersistedAuthData, setBackendDisconnectedState } from '@/utils/auth-session'
 import { storage } from '@/services/storage'
 import { AUTH_STORAGE_KEYS, SESSION_STORAGE_KEYS } from '@/constants/storage'
+import { isPublicSitePath } from '@/constants/routePermissions'
 import { PermissionMapper, PermissionUtils } from '@/utils/permissionMapper'
 import type { User, LoginCredentials } from '@/types'
 import { showElementWarning } from '@/utils/element-feedback'
@@ -35,14 +36,7 @@ type UnknownRecord = Record<string, unknown>
 interface AuthUserApiPayload extends Omit<User, 'role' | 'roles'> {
   role?: unknown
   roles?: unknown
-}
-
-interface PermissionApiPayload {
-  roles?: unknown
-  userPermissions?: unknown
-  permissionVisibility?: unknown
-  summary?: unknown
-  [key: string]: unknown
+  access_profile?: unknown
 }
 
 const asRecord = (value: unknown): UnknownRecord | null => (
@@ -854,14 +848,18 @@ export const useAuthStore = defineStore('auth', () => {
         const userResponse = await api.get<AuthUserApiPayload>('/auth/user', {
           showLoading: false, showError: false, useCache: false
         })
-        const permissionsResponse = await api.get<PermissionApiPayload>('/permissions/user-permissions', {
-          showLoading: false, showError: false, useCache: false
-        })
         if (token.value !== requestToken || generation !== sessionGeneration || logoutInProgress) return
-        if (!userResponse?.success || !permissionsResponse?.success || !userResponse.data?.id || !permissionsResponse.data) {
+        const permissionPayload = asRecord(userResponse.data?.access_profile)
+        if (
+          !userResponse?.success ||
+          !userResponse.data?.id ||
+          !permissionPayload ||
+          !Array.isArray(permissionPayload.userPermissions) ||
+          !Array.isArray(permissionPayload.roles)
+        ) {
           throw new Error('身份或权限核验失败')
         }
-        const finalRoles = normalizeRolesPayload(userResponse.data.roles ?? permissionsResponse.data.roles)
+        const finalRoles = normalizeRolesPayload(userResponse.data.roles ?? permissionPayload.roles)
         roles.value = finalRoles
         user.value = {
           ...userResponse.data,
@@ -869,8 +867,8 @@ export const useAuthStore = defineStore('auth', () => {
           role: typeof userResponse.data.role === 'string' ? userResponse.data.role : finalRoles[0] ?? null,
           status: userResponse.data.status ?? 'inactive'
         }
-        permissions.value = normalizePermissionsPayload(permissionsResponse.data)
-        const visibility = asRecord(permissionsResponse.data.permissionVisibility)
+        permissions.value = normalizePermissionsPayload(permissionPayload)
+        const visibility = asRecord(permissionPayload.permissionVisibility)
         permissionVisibility.value = visibility ? Object.fromEntries(
           Object.entries(visibility).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')
         ) : {}
@@ -924,10 +922,7 @@ export const useAuthStore = defineStore('auth', () => {
         stopSessionMonitor()
 
         // 如果当前在需要认证的页面，跳转到登录页
-        const currentPath = window.location.pathname
-        const isPublicRoute = ['/login', '/404', '/forgot-password', '/register', '/price-query', '/sales-price-display', '/Marketing_Copy', '/m'].some(path => currentPath.startsWith(path))
-
-        if (!isPublicRoute) {
+        if (!isPublicSitePath(window.location.pathname)) {
           window.location.href = '/login'
         }
       }
@@ -995,24 +990,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 初始缓存不构成已核验身份。
   authVerified.value = false
-
-  // 检查当前路由是否为公开路由（不需要认证）
-  // 公开路由列表：price-query, sales-price-display, Marketing_Copy, login, 404, H5商城(m) 等
-  const isPublicRoute = () => {
-    if (typeof window === 'undefined') return false
-    const path = window.location.pathname
-    const publicRoutes = ['/price-query', '/sales-price-display', '/Marketing_Copy', '/login', '/404', '/forgot-password', '/register', '/m']
-    return publicRoutes.some(route => path.startsWith(route))
-  }
-
-  // 只有在非公开路由时才自动加载认证数据
-  // 这样可以防止公开页面（如 price-query）触发认证逻辑，影响其他已登录窗口
-  if (!isPublicRoute()) {
-    // 异步刷新最新的认证数据（不阻塞初始化）
-    loadPersistedAuthData().catch((_error) => {
-      // 异步刷新认证数据失败，忽略
-    })
-  }
 
   // 监听权限数据变化，自动持久化
   watch(

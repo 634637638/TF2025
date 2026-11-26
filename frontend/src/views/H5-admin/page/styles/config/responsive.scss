@@ -72,25 +72,6 @@
     line-height: 1.45;
   }
 
-  .config-section .image-upload-wrapper {
-    align-items: flex-start;
-    gap: 10px;
-    width: 100%;
-  }
-
-  .config-section .image-upload-wrapper :deep(.el-upload),
-  .config-section :deep(.el-upload) {
-    width: 82px;
-    height: 82px;
-    line-height: 82px;
-    border-radius: 14px;
-  }
-
-  .config-section .image-upload-wrapper :deep(.el-upload i),
-  .config-section :deep(.el-upload i) {
-    font-size: var(--tf-type-scale-22);
-  }
-
   .map-location-row {
     flex-direction: column;
     gap: 10px;
@@ -150,15 +131,6 @@
 @media (max-width: 479px) {
   .config-section {
     padding: 12px;
-  }
-
-  .config-section .image-upload-wrapper {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .config-section .delete-image-btn {
-    width: 100%;
   }
 
   .map-picker-container .map-frame {

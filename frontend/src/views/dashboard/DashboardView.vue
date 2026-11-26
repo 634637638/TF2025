@@ -12,6 +12,7 @@
           <template #actions>
             <el-button
               v-if="shouldShowActionColumn(canViewField('system_info.operations'), [canView])"
+              class="tf-button--refresh"
               type="info"
               :loading="isRefreshing"
               :disabled="isRefreshing"

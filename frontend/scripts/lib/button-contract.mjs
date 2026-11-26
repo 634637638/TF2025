@@ -62,6 +62,68 @@ function classNames(node) {
       : []).flatMap(value => value.split(/\s+/)).filter(Boolean)
 }
 
+/** 全屏查看器和扫码器的危险工具样式不进入业务卡片。 */
+export function auditOverlayDangerUsage(source) {
+  const { descriptor } = parse(source)
+  const findings = []
+  const visit = node => {
+    if (node.type === 1 && classNames(node).includes('tf-button--overlay-danger')) {
+      findings.push({ line: node.loc.start.line, message: '危险覆盖工具样式仅用于公共查看器及扫码器，图片卡片操作请接入 MediaThumbnailActions' })
+    }
+    for (const child of node.children ?? []) visit(child)
+  }
+  if (descriptor.template?.ast) visit(descriptor.template.ast)
+  return findings
+}
+
+/** 带加载状态的刷新命令必须采用公共刷新按钮样式。 */
+export function auditRefreshButtonUsage(source) {
+  const { descriptor, errors } = parse(source)
+  if (errors.length) throw new Error(`无法解析 Vue 模板：${errors[0]}`)
+  const findings = []
+  const textContent = node => (node.children ?? []).map(child => child.type === 2
+    ? child.content
+    : child.type === 1 ? textContent(child) : '').join(' ')
+  const visit = node => {
+    if (node.type === 1 && ['el-button', 'ElButton'].includes(node.tag)) {
+      const loading = node.props.some(prop => prop.type === 7 && prop.name === 'bind' && prop.arg?.content === 'loading')
+      const refresh = /刷新/.test(textContent(node))
+      if (loading && refresh && !classNames(node).includes('tf-button--refresh')) {
+        findings.push({ line: node.loc.start.line, message: '带加载状态的刷新按钮必须接入 tf-button--refresh 公共样式' })
+      }
+    }
+    for (const child of node.children ?? []) visit(child)
+  }
+  if (descriptor.template?.ast) visit(descriptor.template.ast)
+  return findings
+}
+
+/** 异步检索动作统一复用公共搜索按钮，不能只在页面添加按钮类名。 */
+export function auditAsyncSearchButtonUsage(source) {
+  const { descriptor, errors } = parse(source)
+  if (errors.length) throw new Error(`无法解析 Vue 模板：${errors[0]}`)
+  const findings = []
+  const textContent = node => (node.children ?? []).map(child => child.type === 2
+    ? child.content
+    : child.type === 1 ? textContent(child) : '').join(' ')
+  const visit = node => {
+    if (node.type === 1 && ['el-button', 'ElButton'].includes(node.tag)) {
+      const search = /搜索|查询|检索/.test(textContent(node))
+      const asyncState = node.props.some(prop => {
+        if (prop.type !== 7 || prop.name !== 'bind') return false
+        if (prop.arg?.content === 'loading') return true
+        return prop.arg?.content === 'disabled' && /loading|searching|verifying/i.test(prop.exp?.content ?? '')
+      })
+      if (search && asyncState) {
+        findings.push({ line: node.loc.start.line, message: '异步检索按钮必须复用 SearchActionButton 公共组件' })
+      }
+    }
+    for (const child of node.children ?? []) visit(child)
+  }
+  if (descriptor.template?.ast) visit(descriptor.template.ast)
+  return findings
+}
+
 /** 业务按钮跟随公共默认，仅标杆页的尺寸演示可显式声明。 */
 export function auditButtonSizeDeclarations(source, { allowPreview = false } = {}) {
   const { descriptor, errors } = parse(source)

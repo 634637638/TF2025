@@ -19,6 +19,7 @@
         <el-button
           v-permission="'accessories:view'"
           class="tf-button--refresh"
+          :loading="loading"
           :disabled="loading"
           @click="load"
         >

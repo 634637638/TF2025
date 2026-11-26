@@ -19,6 +19,7 @@
           </template>
         </el-input>
         <el-button
+          class="tf-button--refresh"
           type="primary"
           :loading="loading"
           @click="loadSoldProducts"
@@ -213,28 +214,34 @@
               :key="image.id"
               class="image-item"
             >
-              <video
-                v-if="(canViewField('images.image_url') || canDelete) && isVideoMedia(image)"
-                :src="getImageUrl(image.image_url)"
-                class="media-thumbnail"
-                muted
-                playsinline
-                preload="metadata"
+              <el-button
+                v-if="canViewImages"
+                native-type="button"
+                class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                :aria-label="`查看商品素材 ${index + 1}`"
                 @click="previewImage(image)"
-              />
-              <Image
-                v-else-if="canViewField('images.image_url') || canDelete"
-                :src="image.image_url"
-                :alt="`图片 ${index + 1}`"
-                mode="eager"
-                :product-info="{
-                  brand: selectedProduct?.brand || '',
-                  model: selectedProduct?.model || '',
-                  color: selectedProduct?.color || '',
-                  memory: selectedProduct?.memory || ''
-                }"
-                @click="previewImage(image)"
-              />
+              >
+                <video
+                  v-if="isVideoMedia(image)"
+                  :src="getImageUrl(image.image_url)"
+                  class="media-thumbnail"
+                  muted
+                  playsinline
+                  preload="metadata"
+                />
+                <Image
+                  v-else
+                  :src="image.image_url"
+                  :alt="`图片 ${index + 1}`"
+                  mode="eager"
+                  :product-info="{
+                    brand: selectedProduct?.brand || '',
+                    model: selectedProduct?.model || '',
+                    color: selectedProduct?.color || '',
+                    memory: selectedProduct?.memory || ''
+                  }"
+                />
+              </el-button>
               <div
                 v-if="isVideoMedia(image)"
                 class="media-type-badge"
@@ -249,17 +256,10 @@
                 <i class="fas fa-star" />
                 主图
               </div>
-              <!-- 右上角删除按钮 -->
-              <el-button
-                v-if="canDelete"
-                plain
-                type="danger"
-                circle
-                class="image-delete-btn"
-                @click.stop="deleteSingleImage(image)"
-              >
-                <i class="fas fa-trash" />
-              </el-button>
+              <MediaThumbnailActions
+                :removable="canDelete"
+                @remove="deleteSingleImage(image)"
+              />
             </div>
           </div>
         </div>

@@ -6,8 +6,8 @@ const { clearCache } = require('../middleware/cache')
 const log = require('../utils/log')
 
 class MemoryController {
-  constructor({ service, repository, databaseConnected, invalidateCache = MemoryController.clearRouteCache } = {}) {
-    this.service = service || new ReferenceManagementService({ domain: 'memories', repository, connected: databaseConnected })
+  constructor({ service, repository, databaseConnected, ordering, invalidateCache = MemoryController.clearRouteCache } = {}) {
+    this.service = service || new ReferenceManagementService({ domain: 'memories', repository, connected: databaseConnected, ordering })
     this.invalidateCache = invalidateCache
   }
 

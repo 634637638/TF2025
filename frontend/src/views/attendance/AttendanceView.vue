@@ -21,6 +21,7 @@
               <span>新增</span>
             </el-button>
             <el-button
+              class="tf-button--refresh"
               type="info"
               :loading="refreshing"
               :disabled="refreshing"

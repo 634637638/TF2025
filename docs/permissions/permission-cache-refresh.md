@@ -22,7 +22,7 @@
 
 权限管理保存后沿用 `PermissionsView.vue` 的公共权限刷新流程；其他用户已打开的页面可能暂留旧按钮，刷新页面或重新登录会重新加载。组件通过 `useAuthStore`、`usePagePermissions` 和 `v-permission` 消费同一结果，不另建权限缓存或请求实例。路由与指令统一调用 `authStore.hasPermission`，不能直接使用原始权限数组补救认证失败。
 
-本地缓存仅恢复登录上下文；有无 session token、缓存角色是否完整都必须重新核验身份与权限。核验中拒绝授权；任一响应无效或服务不可用时清空授权结果、保持未就绪，可重试获取；401 或令牌撤销/过期清除登录，不恢复旧缓存。登录和刷新响应中的状态 0 保持停用；明确的空权限列表不得回退到旧摘要，服务端空角色列表不得恢复缓存角色。登录及令牌刷新仅在有效成功响应后恢复授权。正式前端回归为 `frontend/tests/auth-permission-state.spec.ts`、`route-permissions.spec.ts`、`permission-directive.spec.ts`。
+本地缓存仅恢复登录上下文。带会话打开后台页面时，路由守卫等待认证 Store 完成核验，Store 从 `GET /auth/user` 的同一响应读取用户身份和 `access_profile`。核验中拒绝授权；响应无效或服务不可用时清空授权结果、保持未就绪，可重试获取；401 或令牌撤销/过期清除登录，不恢复旧缓存。登录和刷新响应中的状态 0 保持停用；明确的空权限列表不得回退到旧摘要，服务端空角色列表不得恢复缓存角色。登录及令牌刷新仅在有效成功响应后恢复授权。正式前端回归为 `frontend/tests/auth-permission-state.spec.ts`、`route-permissions.spec.ts`、`permission-directive.spec.ts`。
 
 主动退出先通过统一 API 调用 `/auth/logout`，待在途刷新完成后注销最新会话，再清理本地状态；退出期间的身份或刷新响应不得恢复旧权限。注销失败时仍清除本地身份并提示服务器注销未确认，不能声称 HttpOnly Cookie 已删除。
 

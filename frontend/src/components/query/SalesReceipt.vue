@@ -21,15 +21,14 @@
             @keyup.enter="handleSearchAndAdd"
             @clear="handleSearchClear"
           />
-          <el-button
+          <SearchActionButton
             class="search-add-button"
             :loading="isSearching"
             :disabled="isDownloading"
             @click="handleSearchAndAdd"
           >
-            <i class="fas fa-search" />
             搜索添加
-          </el-button>
+          </SearchActionButton>
         </div>
 
         <div

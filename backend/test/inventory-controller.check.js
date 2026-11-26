@@ -41,10 +41,33 @@ test('库存列表、统计路由保留统一认证和 inventory:view 权限并�
   assert.doesNotMatch(route.slice(0, route.indexOf("router.get('/:id'")), /async\s*\(/)
 })
 
-test('快速出库成功时沿用单号、收款、积分和同一事务提交', async () => {
+async function runQuickRetail({ filmAvailable = false, failHistory = false } = {}) {
   const events = []
   const calls = []
+  const film = { accessory_id: 5, quantity: 1, unit_price: 0, linked_phone_id: 81, auto_film: true }
   const controller = new InventoryController({ access,
+    phoneSales: {
+      async prepareAutomaticFilms(_connection, phones, storeId) {
+        assert.deepEqual(phones, [{ id: 81, model_id: 2 }])
+        assert.equal(storeId, 9)
+        assert.equal(events.at(-1), 'begin')
+        return filmAvailable ? [film] : []
+      },
+      async issueAutomaticFilms(_connection, films, context) {
+        assert.deepEqual(films, [film])
+        assert.equal(context.customerId, 25)
+        assert.equal(context.operatorId, 10)
+        events.push('film-issue')
+        return [{ request: film, issued: { sale_id: 121 } }]
+      },
+      async createStandaloneOrder({ paymentIds, createdSales, issuedFilms }) {
+        assert.deepEqual(paymentIds, [101])
+        assert.deepEqual(createdSales, [{ saleId: 91, phone: { phone_id: 81, sale_price: 200 } }])
+        assert.deepEqual(issuedFilms, [{ request: film, issued: { sale_id: 121 } }])
+        events.push('film-history')
+        if (failHistory) throw Object.assign(new Error('history-failed'), { code: 'ER_TEST_FAILURE' })
+      }
+    },
     database: () => ({
       async getConnection() {
         return {
@@ -101,7 +124,11 @@ test('快速出库成功时沿用单号、收款、积分和同一事务提交',
       sale_operator_id: 10, payment_method: 'mobile', payment_channel: 'wechat', status: 'sold'
     }
   }, response)
+  return { response, events, calls }
+}
 
+test('快速出库无可赠膜时仍沿用单号、收款、积分和同一事务提交', async () => {
+  const { response, events, calls } = await runQuickRetail()
   assert.equal(response.statusCode, 200, JSON.stringify(response.body))
   assert.equal(response.body.data.phone_id, 81)
   assert.equal(response.body.data.sale_id, 91)
@@ -111,6 +138,15 @@ test('快速出库成功时沿用单号、收款、积分和同一事务提交',
   assert.ok(calls.some(({ sql, params }) => sql.includes('INSERT INTO phones') && params[1] === 7))
   assert.ok(calls.some(({ sql, params }) => sql.includes('INSERT INTO payment_records') && params[0] === 91))
   assert.deepEqual(events, ['prepare', 'begin', 'commit', 'release'])
+})
+
+test('快速零售命中赠膜时关联同一笔手机和收款，保存失败一起回滚', async () => {
+  const matched = await runQuickRetail({ filmAvailable: true })
+  assert.equal(matched.response.statusCode, 200, JSON.stringify(matched.response.body))
+  assert.deepEqual(matched.events, ['prepare', 'begin', 'film-issue', 'film-history', 'commit', 'release'])
+  const failed = await runQuickRetail({ filmAvailable: true, failHistory: true })
+  assert.equal(failed.response.statusCode, 500)
+  assert.deepEqual(failed.events, ['prepare', 'begin', 'film-issue', 'film-history', 'rollback', 'release'])
 })
 
 test('快速出库输入拒绝和数据库失败都会回滚并释放连接', async () => {

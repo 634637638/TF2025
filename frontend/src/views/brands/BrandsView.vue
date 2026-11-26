@@ -22,6 +22,7 @@
             <span>新增</span>
           </el-button>
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -117,7 +118,6 @@
               v-model="searchForm.name"
               placeholder="搜索品牌名称"
               clearable
-              @keyup.enter="searchBrands"
               @click.stop
             >
               <template #prefix>

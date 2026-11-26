@@ -103,8 +103,6 @@
           v-model="keyword"
           placeholder="搜索商品名称、采购批次"
           clearable
-          @keyup.enter="search"
-          @clear="search"
         />
       </template>
       <div
@@ -120,7 +118,6 @@
           default-first-option
           :reserve-keyword="false"
           @focus="loadOptions"
-          @keyup.enter="search"
           @clear="search"
         >
           <el-option
@@ -144,7 +141,6 @@
           default-first-option
           :reserve-keyword="false"
           @focus="loadOptions"
-          @keyup.enter="search"
           @clear="search"
         >
           <el-option
@@ -168,7 +164,6 @@
           default-first-option
           :reserve-keyword="false"
           @focus="loadOptions"
-          @keyup.enter="search"
           @clear="search"
         >
           <el-option
@@ -192,7 +187,6 @@
           default-first-option
           :reserve-keyword="false"
           @focus="loadOptions"
-          @keyup.enter="search"
           @clear="search"
         >
           <el-option

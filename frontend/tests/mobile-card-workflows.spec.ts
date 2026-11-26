@@ -6,6 +6,7 @@ import HomeSections from '@/views/H5-admin/page/home-sections.vue'
 import SalesGrid from '@/views/sales/page/SalesGridView.vue'
 import DataCheck from '@/views/data-optimization/page/DataCheckTab.vue'
 import RecordDetailDialog from '@/components/RecordDetailDialog.vue'
+import MediaThumbnailActions from '@/components/MediaThumbnailActions.vue'
 import { vTableDoubleTap } from '@/directives/table-double-tap'
 import type { Phone } from '@/types'
 import type { HomeSectionProduct, SearchProduct } from '@/api/home-sections'
@@ -40,7 +41,7 @@ const slot = { template: '<div><slot /><slot name="primary" /></div>' }
 const dialog = { props: ['modelValue', 'title'], template: '<section v-if="modelValue" :data-title="title"><slot /><footer v-if="$slots.footer"><slot name="footer" /></footer></section>' }
 const button = { props: { disabled: Boolean }, template: '<button :disabled="disabled"><slot /></button>' }
 const draggable = { name: 'draggable', props: ['modelValue', 'disabled'], template: '<div><slot v-for="element in modelValue" name="item" :element="element" /></div>' }
-const globals = () => ({ plugins: [ElementPlus], components: { RecordDetailDialog }, directives: { 'table-double-tap': vTableDoubleTap, 'tf-loading': {}, permission: {} },
+const globals = () => ({ plugins: [ElementPlus], components: { RecordDetailDialog, MediaThumbnailActions }, directives: { 'table-double-tap': vTableDoubleTap, 'tf-loading': {}, permission: {} },
   provide: { registerHeaderActions: () => {}, clearHeaderActions: () => {} },
   stubs: { RecordDetailDialog: false, MobileDialog: dialog, ElButton: button, PermissionGate: slot,
     UnifiedSearchPanel: slot, ElForm: slot, ElFormItem: slot, ElSelect: slot, ElOptionGroup: slot,
@@ -70,10 +71,33 @@ afterEach(() => wrappers.splice(0).forEach(wrapper => wrapper.unmount()))
 const home = async () => {
   const wrapper = shallowMount(HomeSections, { global: globals(), attachTo: document.body }); wrappers.push(wrapper)
   await flushPromises()
-  await wrapper.find('.section-card').trigger('dblclick'); await flushPromises()
-  await findButton(wrapper, '管理商品').trigger('click'); await flushPromises()
+  if (mocks.mobile) {
+    await wrapper.find('.section-card').trigger('dblclick'); await flushPromises()
+  }
+  await findButton(wrapper, mocks.mobile ? '管理商品' : '管理').trigger('click'); await flushPromises()
   return wrapper
 }
+
+it('桌面推荐商品无图时仍可移除，取消后不写入，确认后移除当前区域的商品', async () => {
+  mocks.mobile = false
+  const wrapper = await home()
+  const card = wrapper.get('[data-section-product]')
+  expect(card.find('img').exists()).toBe(false)
+  const actions = card.getComponent({ name: 'MediaThumbnailActions' })
+  expect(actions.props('removable')).toBe(true)
+  expect(actions.props('sortable')).toBe(true)
+  expect(actions.props('removeLabel')).toBe('移除商品')
+
+  mocks.confirm.mockRejectedValueOnce('cancel')
+  actions.vm.$emit('remove')
+  await flushPromises()
+  expect(mocks.remove).not.toHaveBeenCalled()
+
+  actions.vm.$emit('remove')
+  await flushPromises()
+  expect(mocks.remove).toHaveBeenCalledExactlyOnceWith(5, 7)
+  expect(wrapper.find('[data-section-product]').exists()).toBe(false)
+})
 
 it('推荐商品手机单击不提交、禁拖动；双击后从底部添加并先关闭详情', async () => {
   const wrapper = await home()

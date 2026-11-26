@@ -82,7 +82,6 @@
               class="photo-grid-item"
               :class="{ selected: selectedPhotos.includes(index) }"
               :data-index="index"
-              @click="openPhotoViewer(index)"
               @mouseenter="onPhotoHover(index)"
             >
               <div
@@ -92,34 +91,24 @@
                 <el-checkbox :model-value="selectedPhotos.includes(index)" />
               </div>
 
-              <AsyncImage
-                :src="resolvePhotoUrl(photo)"
-                alt="国补照片"
-                mode="lazy"
-                class="photo-image"
-              />
+              <el-button
+                native-type="button"
+                class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                :aria-label="`查看照片 ${index + 1}`"
+                @click="openPhotoViewer(index)"
+              >
+                <AsyncImage
+                  :src="resolvePhotoUrl(photo)"
+                  alt="国补照片"
+                  mode="lazy"
+                  class="photo-image"
+                />
+              </el-button>
 
-              <div class="photo-actions">
-                <el-button
-                  type="primary"
-                  title="查看照片"
-                  aria-label="查看照片"
-                  circle
-                  @click.stop="openPhotoViewer(index)"
-                >
-                  <i class="fas fa-search-plus" />
-                </el-button>
-                <el-button
-                  v-if="canUpload"
-                  type="danger"
-                  title="删除照片"
-                  aria-label="删除照片"
-                  circle
-                  @click.stop="removePhotoFromPreview(index)"
-                >
-                  <i class="fas fa-trash-alt" />
-                </el-button>
-              </div>
+              <MediaThumbnailActions
+                :removable="canUpload"
+                @remove="removePhotoFromPreview(index)"
+              />
 
               <div
                 v-if="selectedPhotos.includes(index)"
@@ -505,7 +494,7 @@ const togglePhotoSelection = (index: number) => {
 
 const startDragSelect = (e: MouseEvent) => {
   const target = e.target as HTMLElement
-  if (target.closest('.photo-actions') || target.closest('.photo-checkbox')) return
+  if (target.closest('.tf-media-thumbnail-actions, .photo-checkbox')) return
 
   isDragging.value = true
   const photoItem = target.closest('.photo-grid-item') as HTMLElement | null
@@ -807,15 +796,6 @@ const savePhotoChanges = async () => {
   padding: 4px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.92);
-}
-
-.photo-actions {
-  position: absolute;
-  left: 50%;
-  bottom: 10px;
-  display: flex;
-  gap: 8px;
-  transform: translateX(-50%);
 }
 
 .selected-overlay {

@@ -26,9 +26,6 @@ export const revokePendingFileUrls = (files: PendingUploadFile[]) => {
   })
 }
 
-export const findUploadedVideoUrl = (mediaItems: UploadedMediaItem[]) =>
-  mediaItems.find(isVideoMedia)?.image_url || ''
-
 export const buildPublishInspectionForm = (
   inspectionData: PublishInspectionResponse | null | undefined
 ): {

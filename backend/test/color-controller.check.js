@@ -127,6 +127,7 @@ test('颜色更新、删除与状态切换保留校验、字段绑定和缓存�
   const controller = new ColorController({
     repository: Object.assign(new ColorRepository(), repository),
     isDatabaseConnected: () => true,
+    ordering: { async reorder() {} },
     invalidateCache: () => { cacheClears += 1 }
   })
 
@@ -176,7 +177,11 @@ test('颜色批量排序事务成功时逐项更新并提交、失效缓存、�
   const events = []
   const connection = {
     async beginTransaction() { events.push('begin') },
-    async execute(sql, values) { events.push(['execute', sql, values]) },
+    async execute(sql, values) {
+      events.push(['execute', sql, values])
+      if (sql.startsWith('SELECT')) return [[{ id: 2, name: 'Black', sort_order: 0 }], []]
+      return [{ affectedRows: 1 }, []]
+    },
     async commit() { events.push('commit') },
     async rollback() { events.push('rollback') },
     release() { events.push('release') }
@@ -194,6 +199,7 @@ test('颜色批量排序事务成功时逐项更新并提交、失效缓存、�
 
   assert.deepEqual(events, [
     'begin',
+    ['execute', 'SELECT id, name, sort_order FROM colors ORDER BY sort_order ASC, name ASC, id ASC FOR UPDATE', undefined],
     ['execute', 'UPDATE colors SET sort_order = ? WHERE id = ?', [1, 2]],
     'commit',
     'release',

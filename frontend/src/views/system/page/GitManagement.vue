@@ -32,6 +32,7 @@
                 {{ restoringMain ? '恢复中...' : '恢复到 main' }}
               </el-button>
               <el-button
+                class="tf-button--refresh"
                 type="default"
                 :loading="loading"
                 :disabled="loading"

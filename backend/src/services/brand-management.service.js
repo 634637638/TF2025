@@ -3,6 +3,7 @@
 const { isConnected } = require('../config/database')
 const { PAGINATION } = require('../config/constants')
 const BrandRepository = require('../repositories/brand.repository')
+const ReferenceOrderingService = require('./reference-ordering.service')
 const { parseReferenceInput, parseReferenceId, parseReferenceOrder } = require('../utils/reference-options')
 
 const normalizeScope = (value, fallback) => {
@@ -16,9 +17,10 @@ const normalizeScope = (value, fallback) => {
 }
 
 class BrandManagementService {
-  constructor({ repository = new BrandRepository(), connected = isConnected } = {}) {
+  constructor({ repository = new BrandRepository(), connected = isConnected, ordering } = {}) {
     this.repository = repository
     this.connected = connected
+    this.ordering = ordering || new ReferenceOrderingService({ repository, domain: 'brands' })
   }
 
   ensureConnected() {
@@ -104,6 +106,7 @@ class BrandManagementService {
       businessScope
     })
     if (result.type === 'duplicate') return result
+    if (body.sort_order !== undefined) await this.ordering.reorder([{ id: result.id, sort_order: sortOrder }])
     return {
       type: 'created',
       data: { id: result.id, name, status, sort_order: sortOrder, business_scope: businessScope }
@@ -128,6 +131,7 @@ class BrandManagementService {
     }
     const result = await this.repository.updateManagementBrand(update)
     if (result.type !== 'updated') return result
+    if (body.sort_order !== undefined) await this.ordering.reorder([{ id, sort_order: update.sortOrder }])
     return { ...result, data: { id: parseInt(id), name, status: update.status, sort_order: update.sortOrder, ...(businessScope === undefined ? {} : { business_scope: businessScope }) } }
   }
 
@@ -136,7 +140,7 @@ class BrandManagementService {
     if (unavailable) return unavailable
     if (!Array.isArray(items) || items.length === 0) return { type: 'invalid-items' }
     items = parseReferenceOrder(items)
-    await this.repository.reorderManagementBrands(items)
+    await this.ordering.reorder(items)
     return { type: 'success' }
   }
 

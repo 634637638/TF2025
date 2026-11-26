@@ -26,6 +26,7 @@
             @export="handleExport"
           />
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -121,7 +122,6 @@
               v-model="searchQuery"
               placeholder="搜索关键词"
               clearable
-              @keyup.enter="handleSearch"
               @click.stop
             >
               <template #prefix>

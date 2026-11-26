@@ -17,12 +17,13 @@
           <template #actions>
             <el-button
               v-if="shouldShowActionColumn(canViewAnalyticsField('system_info.operations'), [])"
+              class="tf-button--refresh"
               type="info"
-              :icon="Refresh"
               :loading="refreshing"
               :disabled="refreshing"
               @click="refreshData"
             >
+              <el-icon><Refresh /></el-icon>
               刷新
             </el-button>
             <el-button
@@ -40,6 +41,9 @@
         <UnifiedSearchPanel
           v-model:expanded="searchExpanded"
           :loading="loading"
+          search-label="查询"
+          @search="handleSearch"
+          @reset="handleReset"
         >
           <template #primary>
             <el-input
@@ -51,24 +55,6 @@
                 <i class="fas fa-filter" />
               </template>
             </el-input>
-          </template>
-
-          <template #actions="{ loading: searchLoading }">
-            <el-button
-              type="primary"
-              :loading="searchLoading"
-              :aria-busy="searchLoading"
-              @click="handleSearch"
-            >
-              查询
-            </el-button>
-            <el-button
-              type="default"
-              :disabled="searchLoading"
-              @click="handleReset"
-            >
-              重置
-            </el-button>
           </template>
 
           <!-- 日期范围 -->

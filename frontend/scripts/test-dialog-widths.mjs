@@ -83,6 +83,7 @@ import WholesaleHeader from '/__quote-header-wholesale.js';
 import SalesHeader from '/__quote-header-sales.js';
 import MobileDialog from '/src/components/MobileDialog.vue';
 import MediaPreviewViewer from '/src/components/MediaPreviewViewer.vue';
+import MediaThumbnailActions from '/src/components/MediaThumbnailActions.vue';
 import QueryDetailContent from '/src/components/query/QueryDetailContent.vue';
 import WholesaleSaveDialog from '/__quote-save-wholesale.js';
 import SalesSaveDialog from '/__quote-save-sales.js';
@@ -92,6 +93,34 @@ import '/src/styles/components/_dialog.scss';
 import '/src/styles/components/_dialog-actions.scss';
 import '/__dialog-business-styles.js';
 let app, state, stackState, mediaState, videoUrl;
+window.renderThumbnailActions = async () => {
+  app?.unmount();
+  window.thumbnailEvents = [];
+  const tile = (width, props) => h('div', {
+    class: 'thumbnail-test-tile',
+    style: { position: 'relative', width, height: '80px', overflow: 'hidden' }
+  }, [
+    h(ElButton, {
+      class: 'tf-button--content tf-button--media-tile tf-button--media-tile-cover',
+      'aria-label': '查看照片',
+      onClick: () => window.thumbnailEvents.push('preview')
+    }, () => h('img', { src: mediaItems[0].url, alt: '照片' })),
+    h(MediaThumbnailActions, props)
+  ]);
+  app = createApp({ render: () => [
+    tile('76px', { removable: true }),
+    tile('100px', {
+      canSetPrimary: true, removable: true, sortable: true,
+      onSetPrimary: () => window.thumbnailEvents.push('primary'),
+      onRemove: () => window.thumbnailEvents.push('remove')
+    }),
+    tile('76px', { canSetPrimary: true }),
+    tile('76px', {})
+  ] });
+  app.component('ElButton', ElButton);
+  app.mount('#app');
+  await nextTick();
+};
 const mediaItems = [[160,320],[320,160]].map(([width,height],index) => ({
   url:'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><rect width="100%" height="100%" fill="'+(index?'purple':'orange')+'"/></svg>'),
   label:'测试长文件名'.repeat(20) + index
@@ -501,7 +530,7 @@ try {
             headerChecks++
           }
           if (kind === 'wholesale') {
-            await evaluate("window.updatePriceHeader({ passwordVerified:true, showInStockOnly:true, showUsedPhonesOnly:true, isGenerating:false, usedModelsLoading:false })")
+            await evaluate('window.updatePriceHeader({ passwordVerified:true, showInStockOnly:true, showUsedPhonesOnly:true, isGenerating:false, usedModelsLoading:false })')
             await evaluate("document.querySelectorAll('.price-header-action--inventory')[0].click()")
             await delay(30)
             assert.deepEqual(await evaluate('window.priceHeaderState()'),{ showInStockOnly:false,showUsedPhonesOnly:true },`${viewport}/${theme}/切换范围保持二手机模式`)
@@ -633,10 +662,61 @@ try {
       assert.equal(metrics.find(button => button.id === 'command-disabled').disabled, true)
       assert.equal(metrics.find(button => button.id === 'command-loading').loading, true)
       assert.notEqual(metrics.find(button => button.id === 'command-primary').background, metrics.find(button => button.id === 'command-default').background, '主按钮保留语义颜色')
+      await evaluate('window.renderThumbnailActions()')
+      const tiles = await evaluate(`[...document.querySelectorAll('.thumbnail-test-tile')].map(tile => {
+        const rect = tile.getBoundingClientRect();
+        const preview = tile.querySelector('.tf-button--media-tile-cover');
+        const previewBox = preview.getBoundingClientRect();
+        const buttons = [...tile.querySelectorAll('.tf-media-thumbnail-actions > *')].map(button => {
+          const box = button.getBoundingClientRect();
+          const css = getComputedStyle(button);
+          return {
+            left: box.left, right: box.right, width: box.width, height: box.height,
+            top: box.top - rect.top, iconSize: getComputedStyle(button.querySelector('i')).fontSize,
+            action: button.title,
+            background: css.backgroundColor, radius: parseFloat(css.borderRadius),
+            x: box.left + box.width / 2, y: box.top + box.height / 2
+          };
+        });
+        return {
+          left: rect.left, right: rect.right, buttons,
+          preview: { x: previewBox.left + previewBox.width / 2, y: previewBox.bottom - 12 },
+          previewCount: tile.querySelectorAll('button[aria-label^="查看"]').length
+        };
+      })`)
+      assert.deepEqual(tiles.map(tile => tile.buttons.length), [1, 3, 1, 0])
+      assert.ok(tiles.every(tile => tile.previewCount === 1), '每张缩略图只保留图片本身的查看入口')
+      for (const { buttons, left, right } of tiles.filter(tile => tile.buttons.length)) {
+        assert.equal(right - buttons[0].right, 4, '首个缩略图操作贴右上角')
+        for (const [index, button] of buttons.entries()) {
+          assert.equal(button.width, 28)
+          assert.equal(button.height, 28)
+          assert.equal(button.top, 4)
+          assert.equal(button.iconSize, '13px')
+          assert.ok(button.radius >= 14)
+          assert.ok(button.left >= left && button.right <= right)
+          if (index) assert.equal(buttons[index - 1].left - button.right, 4)
+        }
+      }
+      assert.deepEqual(tiles[1].buttons.map(button => button.action), ['删除素材', '设为主图', '拖动排序'])
+      assert.equal(new Set(tiles[1].buttons.map(button => button.background)).size, 3)
+      for (const { x, y } of [tiles[1].preview, ...tiles[1].buttons.slice(0, 2)]) {
+        await send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 })
+        await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 })
+      }
+      assert.deepEqual(await evaluate('window.thumbnailEvents'), ['preview', 'remove', 'primary'], '点击缩略图按钮只触发指定动作')
+      assert.ok(await evaluate(`(() => {
+        const button = document.querySelector('.thumbnail-test-tile:last-child .tf-button--media-tile-cover');
+        button.focus();
+        return document.activeElement === button;
+      })()`), '只读缩略图可以获得键盘焦点')
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', text: '\r', windowsVirtualKeyCode: 13 })
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+      assert.deepEqual(await evaluate('window.thumbnailEvents'), ['preview', 'remove', 'primary', 'preview'], '只读缩略图仍可用键盘查看')
       commandChecks++
     }
   }
-  if (commandChecks) console.log(`全局默认紧凑按钮浏览器回归通过：${commandChecks} 组，默认不声明尺寸、显式尺寸、圆形、语义颜色、页头、禁用与 Loading，电脑/手机及明暗主题。`)
+  if (commandChecks) console.log(`全局默认紧凑按钮浏览器回归通过：${commandChecks} 组，含缩略图操作的尺寸、右上角排列、权限显隐和点击隔离，覆盖电脑/平板/手机及明暗主题。`)
 
   let actionChecks = 0
   for (const viewport of focusedRun && !buttonsOnly ? [] : [360, 375, 390, 430, 767, 768, 1024, 1440]) {

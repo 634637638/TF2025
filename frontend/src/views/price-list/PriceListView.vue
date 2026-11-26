@@ -146,8 +146,6 @@
               v-model="searchForm.search"
               placeholder="搜索关键词"
               clearable
-              @input="debounceSearch"
-              @keyup.enter="handleSearch"
               @click.stop
             />
           </template>
@@ -1852,7 +1850,7 @@ import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { TIME_FORMATS, TimeUtil } from '@/utils/time'
 import { logger } from '@/utils/logger'
-import { useLoadingState, useDebounce } from '@/composables'
+import { useLoadingState } from '@/composables'
 import { getAdaptiveActionColumnWidth, getTextColumnMinWidth } from '@/utils/table-layout'
 import { isCurrentMobileViewport } from '@/utils/device-detection'
 import { sortOptionsByOrder } from '@/utils/option-sort'
@@ -2363,11 +2361,6 @@ const handlePriceListImportChange = async (event: Event) => {
     input.value = ''
   }
 }
-
-// 防抖搜索
-const { debouncedFn: debounceSearch } = useDebounce(() => {
-  handleSearch()
-}, 300)
 
 // 搜索
 const handleSearch = () => {

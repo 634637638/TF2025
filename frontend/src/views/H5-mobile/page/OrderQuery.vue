@@ -63,14 +63,14 @@
           </el-form-item>
 
           <el-form-item>
-            <el-button
+            <SearchActionButton
               type="primary"
               :loading="verifying"
               class="w-full"
               @click="handleVerify"
             >
               查询订单
-            </el-button>
+            </SearchActionButton>
           </el-form-item>
         </el-form>
 

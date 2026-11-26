@@ -7,7 +7,7 @@ vi.mock('@/utils/unified-api', () => ({ default: { put: mocks.put } }))
 vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }))
 vi.mock('@/utils/apiPermissionError', () => ({ handleApiErrorWithPermission: mocks.failure }))
 
-const create = (endpoint: '/brands' | '/models' | '/colors' | '/memories' = '/brands') => {
+const create = (endpoint: '/brands' | '/models' | '/colors' | '/memories' | '/stores' = '/brands') => {
   const rows = ref([
     { id: 45, name: '甲', sort_order: 45, brand_id: 1 },
     { id: 60, name: '乙', sort_order: 60, brand_id: 1 },
@@ -29,7 +29,7 @@ beforeEach(() => {
 })
 
 describe('基础资料排序保持用户设置的实际值', () => {
-  it.each(['/brands', '/models', '/colors', '/memories'] as const)('%s 筛选结果按 ID 只保存一条，不重编号其他记录', async endpoint => {
+  it.each(['/brands', '/models', '/colors', '/memories', '/stores'] as const)('%s 筛选结果按 ID 只保存一条，不重编号其他记录', async endpoint => {
     const state = create(endpoint)
     const original = structuredClone(state.rows.value.map(row => ({ ...row })))
     expect(await state.handleSortOrderChange(45, 72)).toBe(true)
@@ -42,7 +42,7 @@ describe('基础资料排序保持用户设置的实际值', () => {
     expect(mocks.success).toHaveBeenCalledWith('排序已保存')
   })
 
-  it('相同排序值仍允许单条保存，其他记录的值和 ID 保持不变', async () => {
+  it('相同排序值允许提交目标记录，由后端顺延冲突记录', async () => {
     const state = create()
     await state.handleSortOrderChange(45, 60)
     expect(state.rows.value.map(row => [row.id, row.sort_order])).toEqual([[45, 60], [60, 60], [90, 90], [120, 120]])
@@ -121,12 +121,12 @@ describe('基础资料排序保持用户设置的实际值', () => {
     expect(state.rows.value.map(row => [row.id, row.sort_order])).toEqual([[60, 45], [90, 60], [45, 90], [120, 120]])
   })
 
-  it('跨品牌或区间有重复排序值时拒绝拖拽，不自动修改其他值', async () => {
+  it('跨品牌禁止拖拽；同品牌已有重复排序值仍提交目标意图由后端整理', async () => {
     const state = create('/models')
     expect(await state.handleRowMove(0, 3)).toBe(false)
     state.rows.value[1].sort_order = 45
-    expect(await state.handleRowMove(0, 1)).toBe(false)
-    expect(mocks.put).not.toHaveBeenCalled()
-    expect(mocks.warning).toHaveBeenCalledTimes(2)
+    expect(await state.handleRowMove(0, 1)).toBe(true)
+    expect(mocks.put).toHaveBeenCalledOnce()
+    expect(mocks.warning).toHaveBeenCalledOnce()
   })
 })

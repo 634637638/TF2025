@@ -60,8 +60,9 @@
 
 .photo-thumbnail {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: calc(var(--tf-space-8) + var(--tf-space-7));
+  aspect-ratio: 1;
+  flex: none;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
@@ -74,46 +75,9 @@
   }
 }
 
-.photo-preview-mask {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  background: rgba(15, 23, 42, 0.34);
-  color: var(--color-bg-white);
-  font-size: var(--tf-type-scale-10);
-  font-weight: 600;
-  opacity: 0;
-  transition: opacity 0.18s ease;
-  pointer-events: none;
-}
-
-.photo-thumbnail:hover .photo-preview-mask {
-  opacity: 1;
-}
-
-.remove-photo {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(220, 53, 69, 0.9);
-  color: var(--color-bg-white);
-  font-size: var(--tf-type-scale-10);
-}
-
-.photo-action-hint {
-  margin-top: 8px;
-  font-size: var(--tf-type-scale-12);
-  color: var(--tf-color-slate-500);
+.photo-thumbnail-image {
+  width: 100%;
+  height: 100%;
 }
 
 .discount-amount {
@@ -238,15 +202,6 @@
 
   .photo-upload-btn span {
     white-space: nowrap;
-  }
-
-  .photo-preview-mask {
-    opacity: 1;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, rgba(15, 23, 42, 0.42) 100%);
-    align-items: flex-start;
-    justify-content: flex-end;
-    padding: 6px;
-    font-size: var(--tf-type-scale-9);
   }
 
 }

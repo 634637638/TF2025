@@ -180,8 +180,8 @@
 
     .media-type-badge {
       position: absolute;
-      left: 8px;
-      bottom: 8px;
+      inset-inline-start: var(--tf-space-2);
+      bottom: var(--tf-space-2);
       display: inline-flex;
       align-items: center;
       gap: 5px;
@@ -195,35 +195,19 @@
 
     .primary-badge {
       position: absolute;
-      top: 8px;
-      left: 8px;
+      bottom: var(--tf-space-2);
+      inset-inline-end: var(--tf-space-2);
       background: var(--tf-color-accent-orange);
       color: var(--color-bg-white);
       padding: 4px 8px;
       border-radius: 4px;
       font-size: var(--tf-type-scale-12);
+      pointer-events: none;
 
       i {
         margin-right: 4px;
       }
     }
 
-    /* 右上角删除按钮 */
-    .image-delete-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-
-      opacity: 0;
-      transition: opacity 0.3s;
-
-      i {
-        font-size: var(--tf-type-scale-12);
-      }
-    }
-
-    &:hover .image-delete-btn {
-      opacity: 1;
-    }
   }
 }

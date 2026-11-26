@@ -19,7 +19,7 @@ function fixture(t) {
     CREATE TABLE accessory_compatible_models (accessory_id, model_id);
     CREATE TABLE accessory_template_colors (template_id, accessory_id);
     CREATE TABLE accessory_stock (accessory_id, store_id, quantity);
-    CREATE TABLE accessory_serials (accessory_id, store_id, status);
+    CREATE TABLE accessory_serials (id INTEGER PRIMARY KEY, accessory_id, store_id, status);
     CREATE TABLE customers (id INTEGER PRIMARY KEY);
     CREATE TABLE phones (id INTEGER PRIMARY KEY, model_id);
     CREATE TABLE models (id INTEGER PRIMARY KEY, name);
@@ -127,10 +127,19 @@ test('多颜色同属一个模板不算重复配置，但多种实物并存不�
   const f = fixture(t); f.template(1, [13]); f.template(2, [13]); f.template(3, [13])
   f.db.exec('INSERT INTO accessory_template_colors VALUES(1,2),(1,3); INSERT INTO accessory_stock VALUES(2,2,2),(3,2,2)')
   assert.deepEqual(await f.repository.matchingTemplates(f.connection, 13), [{ id: 1 }])
+  const auto = () => f.service.prepareAutomaticForSale(f.connection, [{ id: 11, model_id: 13 }], 2)
+  assert.deepEqual(await auto(), [])
   await assert.rejects(f.service.prepare(f.connection, f.input, 9), { code: 'FILM_STOCK_AMBIGUOUS' })
-  f.db.exec("INSERT INTO accessory_serials VALUES(3,2,'in_stock'),(3,2,'in_stock')")
+  f.db.exec("INSERT INTO accessory_serials(accessory_id,store_id,status) VALUES(3,2,'in_stock'),(3,2,'in_stock')")
   assert.equal((await f.service.prepare(f.connection, f.input, 9)).accessories[0].accessory_id, 2)
-  f.db.exec("INSERT INTO accessory_serials VALUES(2,2,'in_stock'),(2,2,'in_stock')")
+  assert.deepEqual((await auto()).map(row => row.accessory_id), [2])
+  f.db.exec('UPDATE accessories SET free_film=0 WHERE id=1')
+  assert.deepEqual(await auto(), [])
+  f.db.exec('UPDATE accessories SET free_film=1 WHERE id=1')
+  f.db.exec('UPDATE accessories SET status=0 WHERE id=2')
+  assert.deepEqual(await auto(), [])
+  f.db.exec('UPDATE accessories SET status=1 WHERE id=2')
+  f.db.exec("INSERT INTO accessory_serials(accessory_id,store_id,status) VALUES(2,2,'in_stock'),(2,2,'in_stock')")
   await assert.rejects(f.service.prepare(f.connection, f.input, 9), { code: 'FILM_STOCK_INSUFFICIENT' })
 })
 

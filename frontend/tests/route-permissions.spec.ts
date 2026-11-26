@@ -35,6 +35,16 @@ describe('路由权限映射', () => {
       hasPermission: permission => PermissionUtils.hasPermission(['accessories_accessorycatalogview:view'], permission)
     })).toBe(true)
   })
+
+  it('型号页接受数据库模块权限，并拒绝其他基础资料权限替代', () => {
+    expect(getRoutePermissions('/models')).toEqual(['models:view'])
+    expect(canAccessRoutePath('/models', {
+      hasPermission: permission => PermissionUtils.hasPermission(['models_modelsview:view'], permission)
+    })).toBe(true)
+    expect(canAccessRoutePath('/models', {
+      hasPermission: permission => PermissionUtils.hasPermission(['brands_brandsview:view'], permission)
+    })).toBe(false)
+  })
 })
 
 it('统一认证拒绝后，原始权限数组和通配缓存不能绕过路由', () => {

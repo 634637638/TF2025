@@ -565,6 +565,7 @@
               v-model="sectionProducts"
               v-table-double-tap="productDetailTapOptions"
               item-key="id"
+              handle=".tf-media-thumbnail-drag-handle"
               :disabled="isMobile || !canEdit"
               class="products-grid"
               :animation="200"
@@ -577,20 +578,29 @@
                   data-section-product
                   @dblclick="productDetailDoubleClick(product, null, $event)"
                 >
-                  <el-button
-                    v-if="!isMobile && canEdit"
-                    class="product-remove tf-button--overlay-tool tf-button--overlay-danger"
-                    title="移除商品"
-                    aria-label="移除商品"
-                    @click="removeProduct(product)"
+                  <div
+                    v-if="(product.main_image && canViewField('products.product_info')) || (!isMobile && canEdit)"
+                    class="product-card-thumbnail"
                   >
-                    <i class="fas fa-times" />
-                  </el-button>
-                  <img
-                    v-if="product.main_image && canViewField('products.product_info')"
-                    :src="getImageUrl(product.main_image)"
-                    :alt="product.brand_name"
-                  >
+                    <Image
+                      v-if="product.main_image && canViewField('products.product_info')"
+                      :src="product.main_image"
+                      :alt="product.brand_name"
+                      class="product-card-image"
+                      mode="eager"
+                      fit="contain"
+                      width="100%"
+                      height="100%"
+                      draggable="false"
+                    />
+                    <MediaThumbnailActions
+                      v-if="!isMobile && canEdit"
+                      sortable
+                      removable
+                      remove-label="移除商品"
+                      @remove="removeProduct(product)"
+                    />
+                  </div>
                   <div
                     v-if="canViewField('products.product_info')"
                     class="product-details"
@@ -601,12 +611,6 @@
                     <p class="product-price">
                       ¥{{ formatAmount(product.min_price || product.sale_price) }}
                     </p>
-                  </div>
-                  <div
-                    v-if="!isMobile"
-                    class="drag-handle"
-                  >
-                    <i class="fas fa-grip-vertical" />
                   </div>
                 </div>
               </template>
@@ -1140,36 +1144,40 @@ const handleProductSelect = async (item: unknown) => {
 }
 
 // 移除商品
-const removeProduct = (product: HomeSectionProduct) => {
+const removeProduct = async (product: HomeSectionProduct) => {
   if (!canEdit.value) {
     handleNoPermission('edit')
     return
   }
 
-  confirmAction(
-    '确定要移除该商品吗？',
-    '移除确认',
-    {
+  const section = currentSection.value
+  if (!section) {
+    globalNotifications.warning('推荐区域信息已失效，请重新打开')
+    return
+  }
+
+  try {
+    await confirmAction('确定要移除该商品吗？', '移除确认', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
-    }
-  ).then(async () => {
-    const section = currentSection.value
-    if (!section) {
-      globalNotifications.warning('推荐区域信息已失效，请重新打开')
-      return
-    }
+    })
+  } catch {
+    return
+  }
 
-    try {
-      await removeProductFromSection(section.id, product.id)
+  if (!canEdit.value || currentSection.value?.id !== section.id) return
+
+  try {
+    await removeProductFromSection(section.id, product.id)
+    if (currentSection.value?.id === section.id) {
       sectionProducts.value = sectionProducts.value.filter(p => p.id !== product.id)
-      globalNotifications.success('移除成功')
-    } catch (error) {
-      logger.error('移除商品失败:', error)
-      globalNotifications.error('移除失败')
     }
-  })
+    globalNotifications.success('移除成功')
+  } catch (error) {
+    logger.error('移除商品失败:', error)
+    globalNotifications.error('移除失败')
+  }
 }
 
 // 清空所有商品

@@ -9,12 +9,12 @@ const ReferenceOrderingService = require('./reference-ordering.service')
 const { parseReferenceInput, parseReferenceId } = require('../utils/reference-options')
 
 class ModelManagementService extends BaseService {
-  constructor({ repository = new ModelRepository(), databaseConnected = isConnected, modelsByBrand = listModelsByBrand } = {}) {
+  constructor({ repository = new ModelRepository(), databaseConnected = isConnected, modelsByBrand = listModelsByBrand, ordering } = {}) {
     super()
     this.repository = repository
     this.connected = databaseConnected
     this.modelsByBrand = modelsByBrand
-    this.ordering = new ReferenceOrderingService({ repository, domain: 'models' })
+    this.ordering = ordering || new ReferenceOrderingService({ repository, domain: 'models' })
   }
 
   ensureConnected() {
@@ -84,6 +84,7 @@ class ModelManagementService extends BaseService {
     if (!brand_id || !name) throw this.createError('品牌ID和型号名称不能为空', 400, 'INVALID_INPUT')
     if (await this.repository.hasManagementDuplicate(name, brand_id)) throw this.createError('该品牌下已存在相同型号名称', 400, 'DUPLICATE')
     const id = await this.repository.insertManagementModel([brand_id, name.trim(), status ?? 1, sort_order ?? 0])
+    if (body.sort_order !== undefined) await this.ordering.reorder([{ id, sort_order: sort_order ?? 0 }])
     return this.format(await this.repository.getManagementRecord(id))
   }
 
@@ -106,6 +107,7 @@ class ModelManagementService extends BaseService {
     }
     if (Object.keys(changes).length === 0) throw this.createError('没有要更新的字段', 400, 'EMPTY_UPDATE')
     await this.repository.updateManagementModel(parsedId, changes)
+    if (body.sort_order !== undefined) await this.ordering.reorder([{ id: parsedId, sort_order: changes.sort_order }])
     return this.format(await this.repository.getManagementRecord(parsedId))
   }
 

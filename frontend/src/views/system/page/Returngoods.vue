@@ -59,7 +59,6 @@
           v-model="searchForm.keyword"
           placeholder="搜索IMEI、型号、客户、备注"
           clearable
-          @keyup.enter="handleSearch"
           @click.stop
         >
           <template #prefix>

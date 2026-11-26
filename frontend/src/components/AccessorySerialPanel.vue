@@ -19,15 +19,14 @@
         />
       </el-form-item>
       <el-form-item class="tf-dialog-toolbar">
-        <el-button
+        <SearchActionButton
           type="primary"
           native-type="submit"
-          :disabled="loading"
-        >
-          搜索
-        </el-button>
+          :loading="loading"
+        />
         <el-button
           class="tf-button--refresh"
+          :loading="loading"
           :disabled="loading"
           @click="loadSerials"
         >

@@ -198,7 +198,11 @@ test('型号排序事务提交或回滚后均释放连接', async () => {
   const events = []
   const connection = {
     async beginTransaction() { events.push('begin') },
-    async execute(sql, params) { events.push(['execute', sql, params]) },
+    async execute(sql, params) {
+      events.push(['execute', sql, params])
+      if (sql.startsWith('SELECT')) return [[{ id: 2, brand_id: 6, name: 'Model', sort_order: 0 }], []]
+      return [{ affectedRows: 1 }, []]
+    },
     async commit() { events.push('commit') },
     async rollback() { events.push('rollback') },
     release() { events.push('release') }
@@ -210,7 +214,7 @@ test('型号排序事务提交或回滚后均释放连接', async () => {
   })
   const success = createResponse()
   await controller.reorder({ body: { items: [{ id: 2, sort_order: 4 }] } }, success)
-  assert.deepEqual(events.map(event => Array.isArray(event) ? event[2] : event), ['begin', [4, 2], 'commit', 'release', 'invalidate'])
+  assert.deepEqual(events.map(event => Array.isArray(event) ? event[2] : event), ['begin', undefined, [4, 2], 'commit', 'release', 'invalidate'])
   assert.equal(success.body.message, '排序更新成功')
 
   events.length = 0

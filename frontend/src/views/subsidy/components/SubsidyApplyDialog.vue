@@ -401,30 +401,25 @@
                       v-for="(photo, index) in applyForm.subsidy_photos"
                       :key="photo"
                       class="photo-thumbnail"
-                      @click="openPhotoViewer(index)"
                     >
-                      <AsyncImage
-                        :src="photo"
-                        alt="国补照片"
-                        mode="eager"
-                        class="photo-thumbnail"
-                      />
-                      <div class="photo-preview-mask">
-                        <i class="fas fa-search-plus" />
-                        <span>预览</span>
-                      </div>
-                      <i
-                        v-if="canUpload"
-                        class="fas fa-times remove-photo"
-                        @click.stop="removePhoto(index)"
+                      <el-button
+                        native-type="button"
+                        class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                        :aria-label="`查看照片 ${index + 1}`"
+                        @click="openPhotoViewer(index)"
+                      >
+                        <AsyncImage
+                          :src="photo"
+                          alt="国补照片"
+                          mode="eager"
+                          class="photo-thumbnail-image"
+                        />
+                      </el-button>
+                      <MediaThumbnailActions
+                        :removable="canUpload"
+                        @remove="removePhoto(index)"
                       />
                     </div>
-                  </div>
-                  <div
-                    v-if="(canViewField('subsidy_photos') || canUpload) && applyForm.subsidy_photos.length > 0"
-                    class="photo-action-hint"
-                  >
-                    点击图片可预览，发现问题可删除后重新上传
                   </div>
                 </div>
               </div>
@@ -474,20 +469,14 @@
           >
             取消
           </el-button>
-          <el-button
+          <SearchActionButton
             type="primary"
-            :disabled="!searchIdentifier || searching"
+            :disabled="!searchIdentifier"
             :loading="searching"
             @click="searchPhones"
           >
-            <template v-if="searching">
-              搜索中...
-            </template>
-            <template v-else>
-              <i class="fas fa-search" />
-              <span>搜索</span>
-            </template>
-          </el-button>
+            搜索
+          </SearchActionButton>
           <el-button
             v-if="selectedDevice"
             type="success"

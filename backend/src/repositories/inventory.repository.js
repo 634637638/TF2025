@@ -398,13 +398,14 @@ class InventoryRepository {
     return connection.execute('UPDATE phones SET sale_id = ?, wholesale_date = ?, wholesale_price = ? WHERE id = ?', values)
   }
 
-  createQuickSalePayment(connection, values) {
-    return connection.execute(`
+  async createQuickSalePayment(connection, values) {
+    const [result] = await connection.execute(`
       INSERT INTO payment_records (
         order_id, customer_id, payment_method, payment_channel,
         amount, payment_status, payment_time, remarks
       ) VALUES (?, ?, ?, ?, ?, 'success', ?, ?)
     `, values)
+    return result.insertId
   }
 }
 

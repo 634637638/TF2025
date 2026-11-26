@@ -220,6 +220,7 @@ for (const requiredFile of ['components/PaginatedTable.vue', 'components/MobileT
 
 const publicLoadingStyles = new Set([
   'styles.scss',
+  'styles/components/_buttons.scss',
   'components/GlobalLoading.vue',
   'components/InlineLoading.vue',
   'components/SectionLoading.vue'

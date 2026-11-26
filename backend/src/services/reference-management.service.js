@@ -12,7 +12,7 @@ const { parseReferenceInput, parseReferenceId } = require('../utils/reference-op
 const MEMORY_FORMAT_ERROR = '内存规格格式不正确！\n正确格式示例：\n• 纯存储：64GB、128GB、256GB、512GB\n• 组合格式：6+128GB、8+256GB、12+512GB\n• 不能包含中文或特殊字符（除+号外）'
 
 class ReferenceManagementService extends BaseService {
-  constructor({ domain, repository, connected = isConnected }) {
+  constructor({ domain, repository, connected = isConnected, ordering }) {
     super()
     if (!['colors', 'memories'].includes(domain)) throw new TypeError('不支持的基础资料类型')
     this.domain = domain
@@ -20,7 +20,7 @@ class ReferenceManagementService extends BaseService {
     this.label = domain === 'colors' ? '颜色' : '内存规格'
     this.repository = repository || (domain === 'colors' ? new ColorRepository() : new MemoryRepository())
     this.connected = connected
-    this.ordering = new ReferenceOrderingService({ repository: this.repository, domain })
+    this.ordering = ordering || new ReferenceOrderingService({ repository: this.repository, domain })
   }
 
   ensureConnected() {
@@ -96,6 +96,7 @@ class ReferenceManagementService extends BaseService {
     const id = await this.repository.insertManagementRecord({
       label, status: body.status ?? 1, sortOrder: body.sort_order ?? 0
     })
+    if (body.sort_order !== undefined) await this.ordering.reorder([{ id, sort_order: body.sort_order }])
     return this.format(await this.repository.getManagementRecord(id))
   }
 
@@ -123,6 +124,7 @@ class ReferenceManagementService extends BaseService {
     }
     if (Object.keys(changes).length === 0) throw this.createError('没有提供要更新的字段', 400, 'EMPTY_UPDATE')
     await this.repository.updateManagementRecord(id, changes)
+    if (body.sort_order !== undefined) await this.ordering.reorder([{ id, sort_order: changes.sort_order }])
     return this.format(await this.repository.getManagementRecord(id))
   }
 

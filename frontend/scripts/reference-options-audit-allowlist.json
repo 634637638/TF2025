@@ -14,7 +14,6 @@
     {"file": "frontend/src/views/colors/ColorsView.vue", "label": "固定 page_size", "text": "page_size: 100", "reason": "颜色列表请求失败时的分页状态初始化，不是查询截断。"},
     {"file": "frontend/src/views/colors/ColorsView.vue", "label": "固定 page_size", "text": "page_size: 100", "reason": "颜色列表请求异常时的分页状态初始化，不是查询截断。"},
     {"file": "frontend/src/views/memories/MemoriesView.vue", "label": "固定 page_size", "text": "page_size: 100", "reason": "内存规格列表请求异常时的分页状态初始化，不是查询截断。"},
-    {"file": "frontend/src/views/models/ModelsView.vue", "label": "固定 page_size", "text": "page_size: 100", "reason": "型号管理业务列表的单页默认值，业务列表支持分页。"},
     {"file": "frontend/src/views/payments/SupplierPhonePaymentsView.vue", "label": "固定 page_size", "text": "page_size: 50", "reason": "供应商付款业务列表的单页默认值，属于业务记录分页。"},
     {"file": "frontend/src/views/query/QueryView.vue", "label": "固定 page_size", "text": "page_size: 100", "reason": "综合查询业务记录的单页默认值，接口返回完整分页信息；不是员工或其他参考选项截断。"},
     {"file": "frontend/src/views/query/QueryView.vue", "label": "固定 page_size", "text": "page_size: 100", "reason": "综合查询重置后的业务记录单页默认值，接口返回完整分页信息；不是员工或其他参考选项截断。"},

@@ -26,7 +26,8 @@ class InventoryController {
     generateMemberNumber = defaultGenerateMemberNumber,
     prepareInvoiceNumberTransaction = defaultPrepareInvoiceNumberTransaction,
     generateInvoiceNumber = defaultGenerateInvoiceNumber,
-    reconcileCustomerPointsForSale = defaultReconcileCustomerPointsForSale
+    reconcileCustomerPointsForSale = defaultReconcileCustomerPointsForSale,
+    phoneSales
   } = {}) {
     this.logger = logger
     this.service = service || new InventoryService({
@@ -40,7 +41,8 @@ class InventoryController {
       generateMemberNumber,
       prepareInvoiceNumberTransaction,
       generateInvoiceNumber,
-      reconcileCustomerPointsForSale
+      reconcileCustomerPointsForSale,
+      phoneSales
     })
   }
 

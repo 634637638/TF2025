@@ -35,7 +35,7 @@
             <i class="fas fa-cog" /> 设置
           </el-button>
           <el-button
-            class="tf-button--view"
+            class="tf-button--view tf-button--refresh"
             :loading="loading"
             @click="loadData"
           >

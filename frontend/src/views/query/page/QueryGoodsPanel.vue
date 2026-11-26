@@ -12,8 +12,6 @@
           placeholder="搜索商品、单号、SN或客户"
           clearable
           aria-label="商品销售关键词"
-          @keyup.enter="search"
-          @clear="search"
         />
       </template>
       <div

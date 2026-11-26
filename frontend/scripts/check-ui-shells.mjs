@@ -120,6 +120,10 @@ for (const file of walk(sourceRoot)) {
     const panelSource = panel[1]
     const panelStart = panel.index + panel[0].indexOf(panelSource)
 
+    if (/<template\s+#actions\b/i.test(panelSource)) {
+      findings.push(`${relativeFile}:${lineNumber(source, panelStart)} UnifiedSearchPanel 不得重写检索 actions，搜索/重置按钮必须由公共面板统一渲染`)
+    }
+
     for (const rangePicker of panelSource.matchAll(/<DateRangePicker\b/gi)) {
       const beforePicker = panelSource.slice(0, rangePicker.index)
       const parentStart = beforePicker.lastIndexOf('<div')

@@ -128,7 +128,7 @@ test('品牌 repository parameterizes management queries and keeps one connectio
   const created = await repository.createManagementBrand({ name: '品牌', status: 1, sortOrder: 2 })
   assert.deepEqual(created, { type: 'duplicate' })
   await repository.reorderManagementBrands([{ id: 2, sort_order: 1 }])
-  assert.deepEqual(statements.slice(-4).map(statement => statement[0]), ['begin', 'UPDATE brands SET sort_order = ? WHERE id = ?', 'commit', 'release'])
+  assert.deepEqual(statements.slice(-5).map(statement => statement[0]), ['begin', 'SELECT id, name, sort_order FROM brands ORDER BY sort_order ASC, name ASC, id ASC FOR UPDATE', 'UPDATE brands SET sort_order = ? WHERE id = ?', 'commit', 'release'])
   assert.deepEqual(statements.at(-3)[1], [1, 2])
 })
 

@@ -6,6 +6,7 @@ const SalesCheckoutService = require('../src/services/sales-checkout.service')
 const SalesPhoneService = require('../src/services/sales-phone.service')
 const AccessoryService = require('../src/services/accessory.service')
 const InventoryService = require('../src/services/inventory.service')
+const FilmService = require('../src/services/film-service.service')
 const { normalizeQuickCheckoutPhone } = require('../src/utils/quick-checkout-phone')
 const { normalizeCheckoutGoods } = require('../src/utils/checkout-goods-input')
 const Controller = require('../src/controllers/sales-checkout.controller')
@@ -25,7 +26,7 @@ const request = () => ({ request_key: 'a'.repeat(32), store_id: 1, operator_id: 
     { key: 'gift', accessory_id: 5, quantity: 1, unit_price: 0, sale_type: 'gift', linked_phone_id: 13, serial_numbers: ['00aa'] }],
   payment_info: { payment_method: 'cash', payment_amount: 600 }, remarks: '整批一个备注' })
 
-function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneStore = 1, goodsStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule, transactionFailure, automaticFilms = [], normalizeBusinessTime = value => normalizeBusinessDateTime(value, () => '2026-11-20 10:20:30') } = {}) {
+function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneStore = 1, goodsStore = 1, deadlocks = 0, source = { validSupplier: true, inStock: false }, validReferences = true, duplicateCustomer = false, pointsConfig, trackedPoints = 0, ledgerInstalled = true, goodsCommissionRule, transactionFailure, automaticFilms = [], filmStock = false, normalizeBusinessTime = value => normalizeBusinessDateTime(value, () => '2026-11-20 10:20:30') } = {}) {
   const state = { orders: [], items: [], payments: [], sales: [], accessorySales: [], filmServices: [], stock: 4,
     points: initialPoints, entries: trackedPoints ? [{ id: 1, customer_id: 9, entry_type: 'award', source_type: 'phone_sale', source_id: 999, points: trackedPoints }] : [], allocations: [], customerUpdates: [], sold: [], staged: [], serials: [{ id: 1, serial_number: '00AA', accessory_id: 5, store_id: goodsStore,
       status: 'in_stock', stock_in_id: 30, purchase_cost: '10.25' }], serialEvents: [] }
@@ -105,12 +106,22 @@ function fixture({ failAt, denied = [], granted = [], initialPoints = 10, phoneS
     async hasCustomerPhoneDuplicate(db) { check(db); return duplicateCustomer },
     async createQuickSalePhone(db, values) { check(db); const id = 900 + state.staged.length; state.staged.push({ id, values }); return id }
   } })
-  const films = automaticFilms.length ? { async prepareAutomaticForSale() { return structuredClone(automaticFilms) }, async appendAutomatic(db, row) {
+  const appendAutomatic = async (db, row) => {
     check(db)
     if (failure === 'film-service') throw new Error('film-service-failed')
     state.filmServices.push(structuredClone(row))
-  } } : null
-  const service = new SalesCheckoutService({ repository, phones, accessories, inventory, pointsLedger, autoFilm: automaticFilms.length > 0, films,
+  }
+  const films = filmStock ? Object.assign(new FilmService({
+    tableExists: async () => true, columnExists: async () => true,
+    repository: {
+      async matchingTemplates(db, modelId) { check(db); assert.equal(modelId, 2); return [{ id: 5 }] },
+      async availableProducts(db) {
+        check(db)
+        return [{ id: 5, quantity: state.stock, serial_quantity: state.serials.filter(row => row.status === 'in_stock').length }]
+      }
+    }
+  }), { appendAutomatic }) : automaticFilms.length ? { async prepareAutomaticForSale() { return structuredClone(automaticFilms) }, appendAutomatic } : null
+  const service = new SalesCheckoutService({ repository, phones, accessories, inventory, pointsLedger, autoFilm: Boolean(films), films,
     normalizeBusinessTime,
     creditPoints: async (db, id, points, { sources }) => {
       assert.deepEqual(sources, state.items.filter(row => row.type === 'accessory').map(row => ({ item_id: row.id, points: row.points_awarded })))
@@ -249,6 +260,21 @@ test('自动赠膜逐台追加贴膜历史；历史写入失败时共同销售�
   const failed = fixture({ automaticFilms, failAt: 'film-service' })
   await assert.rejects(failed.service.checkout(body, actor), /film-service-failed/)
   assert.deepEqual(failed.state, failed.initial)
+})
+
+test('共同结算先满足手选库存，剩余一张膜时只赠一台且整单照常结算', async () => {
+  const f = fixture({ filmStock: true }), body = request()
+  const quote = await f.service.quote(body, actor)
+  assert.equal(quote.payable_cents, 60000)
+  assert.equal(f.state.stock, 4)
+  const result = await f.service.checkout(body, actor)
+  assert.equal(result.paid_amount, 600)
+  assert.deepEqual(f.state.sold, [12, 13])
+  assert.equal(f.state.stock, 0)
+  assert.deepEqual(f.state.filmServices.map(row => row.saleId), [21])
+  assert.deepEqual(f.state.items.filter(row => row.type === 'accessory').map(row => row.key), ['goods:buy', 'goods:gift', 'goods:auto-film:12'])
+  assert.deepEqual(await f.service.checkout(body, actor), result)
+  assert.equal(f.state.filmServices.length, 1)
 })
 
 test('相同请求及并发模拟只落一单，不重复扣库存/积分；同键变更内容或操作者拒绝', async () => {

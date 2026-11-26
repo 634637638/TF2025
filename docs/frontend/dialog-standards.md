@@ -112,7 +112,7 @@
 
 2026-11-11 已将原 6 文件 / 12 处直接 `el-dialog` 迁入 `MobileDialog`，既有例外已全部删除。`check:dialogs` 对业务直接 Dialog、直接图片查看器、浏览器原生输入与私有外壳覆盖执行零容忍检查；不得新增白名单恢复旧入口。
 
-国补申请和照片管理中的图片查看统一使用 `MediaPreviewViewer`，不得恢复独立的照片查看 Dialog、翻页按钮或预览工具尺寸。照片管理主工作台使用 `MobileDialog`；其缩略图查看/删除使用公共小号圆形按钮，删除入口继续受原上传权限控制。全屏预览工具使用 `tf-button--overlay-tool`，删除附加 `tf-button--overlay-danger`；下载通过 `downloadable` 和 `download` 事件交回业务下载入口处理，公共查看器不直接发起下载请求。
+国补申请和照片管理点击缩略图打开 `MediaPreviewViewer`。照片管理主工作台使用 `MobileDialog`，删除入口继续受上传权限控制，按钮样式遵循[公共缩略图操作](button-standards.md)。全屏预览工具使用 `tf-button--overlay-tool`，删除附加 `tf-button--overlay-danger`；下载通过 `downloadable` 和 `download` 事件交回业务下载入口处理，公共查看器不直接发起下载请求。
 
 预览中触发的删除确认必须显示在查看器上方。`_variables.scss` 将 `--tf-z-message-box` 定义为查看器层级加一，`_dialog.scss` 同时控制 MessageBox 根遮罩和内容层；禁止业务页单独提高层级。确认框处理键盘事件时，查看器不同时响应关闭或翻页。
 

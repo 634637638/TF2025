@@ -26,7 +26,8 @@ const category={id:2,parent_id:null,name:'测试分类',description:'分类说�
 const post={id:4,title:'隔离经验',content:'<p>经验正文</p>',category:'未分类',visibility:'public',is_pinned:false,author_id:1,author:'演示操作员',created_at:date,updated_at:date,attachments:[]};
 const serial={id:1,serial_number:'00SN-1234567890',status:'in_stock',store_name:'演示仓库',batch_no:'IN-20261113',supplier_name:'演示供应商',purchase_cost:12.5,inventory_time:date,inventory_operator_name:'演示操作员',sale_no:'SO-20261113',customer_name:'演示客户',customer_phone:'13900000000',operator_name:'演示操作员',sale_time:date};
 const transfer={id:1,from_store_name:'演示仓库',to_store_name:'演示门店',quantity:2,serial_numbers:['00SN-1234567890'],operator_name:'演示操作员',created_at:date,remarks:'长备注'.repeat(30)};
-const product={id:1,template_id:1,brand_id:1,brand_name:'演示品牌',model_id:1,model_name:'演示型号',color_id:1,color_name:'黑色',min_price:1999,sale_price:1999,price:1999,is_new:1,product_type:'new',sort_order:0,display_text:'演示商品'};
+const product={id:1,template_id:1,brand_id:1,brand_name:'演示品牌',model_id:1,model_name:'演示型号',color_id:1,color_name:'黑色',min_price:1999,sale_price:1999,price:1999,is_new:1,product_type:'new',sort_order:0,display_text:'演示商品',main_image:image};
+const largeProductImage=(width,height)=>'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><rect width="100%" height="100%" fill="orange"/></svg>');
 const phone={id:1,is_new:true,status:'in_stock',brand:'演示品牌',model:'演示型号',color:'黑色',memory:'128G',imei:'012345678901234',inventory_time:date,purchase_cost:1999};
 const duplicateCheck={total:2,duplicate_groups:1,duplicates:[{key:'演示品牌',primary:{id:1,name:'演示品牌',sort_order:1},duplicates:[{id:2,name:'演示品牌',sort_order:2}],count:2}]};
 const datasets={
@@ -37,7 +38,10 @@ const datasets={
  '/users/operators':[],
  '/shop/banners':[{id:1,title:'隔离轮播',image_url:image,images:[image],link_type:'none',sort_order:1,status:'active',interval:3000}],
  '/home/sections':[{id:1,section_key:'test',section_name:'测试区域',section_type:'products',is_enabled:true,sort_order:1,product_limit:10,product_count:0}],
- '/home/sections/1/products':[product],'/home/products/search':[product],
+ '/home/sections/1/products':[
+  {...product,main_image:largeProductImage(1800,2400)},
+  {...product,id:2,template_id:2,sort_order:1,main_image:largeProductImage(3200,1800)}
+ ],'/home/products/search':[product],
  '/shop/templates':[{id:1,brand_id:1,model_id:1,color_id:1,memory_ids:[1],template_name:'隔离模板',brand_name:'演示品牌',model_name:'演示型号',color_name:'黑色',price_markup:0,price_markup_type:'fixed',is_active:true,is_published:true,sort_order:1,images:[],stock_count:2}],
  '/shop/sold-products':[{id:1,brand:'演示品牌',model:'演示型号',color:'黑色',memory:'128G',imei:'012345678901234',sale_time:date,image_count:1}],
  '/guide':{settings:{site_title:'导航测试',site_eyebrow:'TEST',footer_text:'TEST'},announcements:[announcement],categories:[category]},
@@ -56,7 +60,7 @@ const datasets={
 window.fixtureRead=async url=>{if(Object.hasOwn(datasets,url))return {success:true,data:structuredClone(datasets[url]),pagination:{total:1}};window.fixtureUnknown.push(url);throw Error('未声明的隔离读取 '+url)};
 window.fixtureWrite=(...args)=>{window.fixtureWrites.push(args);throw Error('本测试禁止业务写入')};
 const imports=import.meta.glob('/src/**/*.vue');let app;
-const globals=['MobileDialog','RecordDetailDialog','RecordDescriptions','DataEmptyState','TableLoadingRow','SectionLoading','Pagination','AmountInput','DateRangePicker','MediaPreviewViewer','IconRenderer','PageHeader'];
+const globals=['MobileDialog','RecordDetailDialog','RecordDescriptions','DataEmptyState','TableLoadingRow','SectionLoading','Pagination','AmountInput','DateRangePicker','MediaPreviewViewer','MediaThumbnailActions','Image','IconRenderer','PageHeader'];
 window.renderMobileCase=async(file,readonly=false)=>{
  app?.unmount();await nextTick();window.fixtureAccess.readonly=readonly;window.fixtureNotices=[];window.fixtureUnknown=[];
  const component=(await imports['/src/'+file]()).default;
@@ -74,7 +78,24 @@ window.fixtureReady=true;
 export function mobileDetailMocks(root) {
   const module = relative => `${root}/src/${relative}`
   return new Map([
-    [module('utils/unified-api.ts'), 'export const unifiedApi={get:(...args)=>window.fixtureRead(...args),post:(...args)=>window.fixtureWrite(...args),put:(...args)=>window.fixtureWrite(...args),delete:(...args)=>window.fixtureWrite(...args),upload:(...args)=>window.fixtureWrite(...args)};export {unifiedApi as api};export default unifiedApi;export {extractBlobResponse} from \'/src/utils/download-response.ts\';'],
+    [module('utils/unified-api.ts'), `
+      export const unifiedApi = {
+        get: (...args) => window.fixtureRead(...args),
+        post: (...args) => window.fixtureWrite(...args),
+        put: async (...args) => {
+          if (window.fixtureProductSort && ['/home/sections/1/products/1/sort', '/home/sections/1/products/2/sort'].includes(args[0])) {
+            window.fixtureProductSort.push(args);
+            return { success: true };
+          }
+          return window.fixtureWrite(...args);
+        },
+        delete: (...args) => window.fixtureWrite(...args),
+        upload: (...args) => window.fixtureWrite(...args)
+      };
+      export { unifiedApi as api };
+      export default unifiedApi;
+      export { extractBlobResponse } from '/src/utils/download-response.ts';
+    `],
     [module('stores/auth.ts'), 'const allowed=permission=>permission.endsWith(\':view\')||!window.fixtureAccess.readonly;export const useAuthStore=()=>({get userPermissions(){return window.fixtureAccess.readonly?[\'system:view\',\'guide:view\',\'shared:view\',\'h5-banners:view\',\'home-sections:view\',\'h5-templates:view\',\'h5-sold-products:view\',\'git-management:view\']:[\'*\']},hasPermission:allowed,hasAnyPermission:permissions=>permissions.some(allowed),hasAllPermissions:permissions=>permissions.every(allowed),get isSuperAdmin(){return !window.fixtureAccess.readonly},isAuthenticated:true,isActive:true,user:{id:1,name:\'演示操作员\'}});'],
     [module('composables/useFieldPermissions.ts'), 'export const shouldShowActionColumn=(visible,actions)=>visible||actions.some(Boolean);export const fieldPermissions={isFieldVisible:()=>true,isFieldEditable:()=>!window.fixtureAccess.readonly,init:async()=>{}};export const useFieldPermissions=()=>fieldPermissions;'],
     [module('composables/index.ts'), 'export {useLoadingState} from \'/src/composables/useLoading.ts\';export {ValidationRules,useForm} from \'/src/composables/forms/useForm.ts\';'],

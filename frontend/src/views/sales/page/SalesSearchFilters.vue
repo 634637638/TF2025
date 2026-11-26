@@ -11,8 +11,6 @@
         v-model="filters.search"
         placeholder="搜索关键词"
         clearable
-        @input="emit('debounced-search')"
-        @keyup.enter="emit('search')"
         @click.stop
       >
         <template #prefix>
@@ -249,7 +247,6 @@ const emit = defineEmits<{
   'update:expanded': [value: boolean]
   search: []
   reset: []
-  'debounced-search': []
   'brand-change': []
   'operator-search': [value: string]
 }>()

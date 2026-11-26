@@ -10,25 +10,9 @@ const log = require('../utils/log')
 const authSessionController = new AuthSessionController()
 const authController = new AuthController({ buildUserPayload: buildAuthenticatedUserPayload })
 
-const EMPTY_ACCESS_PROFILE = Object.freeze({
-  summary: {},
-  userPermissions: [],
-  rolePermissions: {},
-  roles: [],
-  menuVisibility: {}
-})
-
-const cloneEmptyAccessProfile = () => ({
-  summary: {},
-  userPermissions: [],
-  rolePermissions: {},
-  roles: [],
-  menuVisibility: {}
-})
-
 const normalizeAccessProfile = (accessProfile = null) => {
   if (!accessProfile || typeof accessProfile !== 'object') {
-    return cloneEmptyAccessProfile()
+    throw new Error('用户权限核验失败')
   }
 
   return {
@@ -81,18 +65,9 @@ async function getUserStoreBindings(database, userId) {
 }
 
 async function buildAuthenticatedUserPayload(database, user) {
-  let accessProfile = EMPTY_ACCESS_PROFILE
-
-  try {
-    // 并行获取权限和门店信息，减少等待时间
-    const [accessProfileResult] = await Promise.all([
-      getUserAccessProfile(user.id, database)
-    ])
-    accessProfile = normalizeAccessProfile(accessProfileResult)
-  } catch (error) {
-    log.warn('⚠️ 获取用户权限汇总失败，使用空权限:', error)
-    accessProfile = cloneEmptyAccessProfile()
-  }
+  // 登录和令牌刷新必须拿到当前有效权限，读取失败时交由认证接口返回错误，
+  // 不能签发一个被误认为“已核验但没有权限”的会话。
+  const accessProfile = normalizeAccessProfile(await getUserAccessProfile(user.id, database))
 
   const { stores, primaryStoreId, storeIds } = await getUserStoreBindings(database, user.id)
   const roleNames = accessProfile.roles.map(role => role.roleName).filter(Boolean)

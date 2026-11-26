@@ -28,8 +28,10 @@
             <i class="fas fa-plus" /><span>新建待办</span>
           </el-button>
           <el-button
+            class="tf-button--refresh"
             type="info"
             plain
+            :loading="loading"
             :disabled="loading"
             @click="loadReminders"
           >
@@ -118,7 +120,6 @@
               v-model="filters.keyword"
               clearable
               placeholder="搜索标题或内容"
-              @keyup.enter="handleSearch"
             >
               <template #prefix>
                 <i class="fas fa-search" />

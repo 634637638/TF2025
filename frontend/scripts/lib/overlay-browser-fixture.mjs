@@ -82,7 +82,7 @@ const checkLoadingLayout=(region,singleLine)=>{
   const host=boundary(region,'加载区域'),box=spinner.getBoundingClientRect(),label=text.getBoundingClientRect(),ring=icon.getBoundingClientRect();
   const availableWidth=region.clientWidth,availableLeft=host.left+region.clientLeft,availableHeight=region.clientHeight,availableTop=host.top+region.clientTop;
   check(Math.abs(box.width-availableWidth)<1&&Math.abs(box.left-availableLeft)<1&&Math.abs(box.height-availableHeight)<1&&Math.abs(box.top-availableTop)<1,'区域加载提示未铺满当前宽高 '+JSON.stringify({region:region.className,host:{width:availableWidth,height:availableHeight},box:{width:box.width,height:box.height}}));
-  check(Math.abs((label.top+label.bottom)/2-(box.top+box.bottom)/2)<1,'区域加载提示未垂直居中');
+  check(Math.abs((label.top+label.bottom)/2-innerHeight/2)<1,'区域加载提示未在当前视口垂直居中');
   const overlay=region.querySelector('.tf2025-loading-overlay').getBoundingClientRect();
   check(Math.abs(overlay.width-box.width)<1&&Math.abs(overlay.height-box.height)<1,'背景遮罩与反馈区域边界不一致');
   check(label.left>=box.left&&label.right<=box.right+1,'加载文字撑破提示框');

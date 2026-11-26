@@ -23,6 +23,7 @@
           </el-button>
           <el-button
             v-if="showOperations"
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -730,18 +731,23 @@
                           v-if="screenLockSettings.imageUrl"
                           class="image-preview"
                         >
-                          <Image
-                            :src="screenLockSettings.imageUrl"
-                            alt="背景图片"
-                            mode="eager"
-                          />
                           <el-button
-                            type="danger"
-                            style="position: absolute; top: 8px; right: 8px"
-                            @click="screenLockSettings.imageUrl = ''"
+                            native-type="button"
+                            class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                            :disabled="false"
+                            aria-label="查看背景图片"
+                            @click="openScreenLockMedia('image')"
                           >
-                            <i class="fas fa-times" />
+                            <Image
+                              :src="screenLockSettings.imageUrl"
+                              alt="背景图片"
+                              mode="eager"
+                            />
                           </el-button>
+                          <MediaThumbnailActions
+                            :removable="canUpdateSettings"
+                            @remove="screenLockSettings.imageUrl = ''"
+                          />
                         </div>
                         <div
                           v-else
@@ -771,18 +777,24 @@
                           v-if="screenLockSettings.videoUrl"
                           class="video-preview"
                         >
-                          <video
-                            :src="screenLockSettings.videoUrl"
-                            muted
-                            loop
-                          />
                           <el-button
-                            type="danger"
-                            style="position: absolute; top: 8px; right: 8px"
-                            @click="screenLockSettings.videoUrl = ''"
+                            native-type="button"
+                            class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                            :disabled="false"
+                            aria-label="查看背景视频"
+                            @click="openScreenLockMedia('video')"
                           >
-                            <i class="fas fa-times" />
+                            <video
+                              :src="screenLockSettings.videoUrl"
+                              muted
+                              playsinline
+                              preload="metadata"
+                            />
                           </el-button>
+                          <MediaThumbnailActions
+                            :removable="canUpdateSettings"
+                            @remove="screenLockSettings.videoUrl = ''"
+                          />
                         </div>
                         <div
                           v-else
@@ -977,6 +989,10 @@
           </div>
         </template>
       </MobileDialog>
+      <MediaPreviewViewer
+        v-model="screenLockMediaVisible"
+        :items="screenLockMediaItems"
+      />
     </PermissionGate>
   </div>
   <RecordDetailDialog
@@ -1059,6 +1075,7 @@ import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
 import { confirmAction } from '@/utils/message-box'
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import type { MediaPreviewItem } from '@/utils/media'
 import { useRoute } from 'vue-router'
 import { Setting, Lock, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { unifiedApi } from '@/utils/unified-api'
@@ -1455,6 +1472,14 @@ const movePriceContact = async (index: number, offset: number) => {
 
 // 锁屏设置
 const screenLockSettings = reactive<ScreenLockSettings>({ ...DEFAULT_SCREEN_LOCK_SETTINGS })
+const screenLockMediaVisible = ref(false)
+const screenLockMediaItems = ref<MediaPreviewItem[]>([])
+const openScreenLockMedia = (type: 'image' | 'video') => {
+  const url = type === 'image' ? screenLockSettings.imageUrl : screenLockSettings.videoUrl
+  if (!url) return
+  screenLockMediaItems.value = [{ url, type, label: type === 'image' ? '背景图片' : '背景视频' }]
+  screenLockMediaVisible.value = true
+}
 
 // 在库查询密码管理
 interface InventoryPasswordRecord {

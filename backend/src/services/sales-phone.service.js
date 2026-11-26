@@ -71,7 +71,7 @@ class SalesPhoneService {
       order_no: orderNo, request_key: crypto.randomUUID(), request_hash: requestHash,
       customer_id: customerId, customer_name: customer.name, customer_phone: customer.phone,
       store_id: salesStoreId, operator_id: operatorId || userId, created_by: userId,
-      time: saleTime, remarks, config: pointsConfig
+      time: saleTime, remarks, config: pointsConfig ?? await this.getPointsConfig(connection)
     })
     await repository.linkPayments(connection, paymentIds, orderId)
     let pointsAwarded = 0
@@ -134,6 +134,21 @@ class SalesPhoneService {
       result: { order_id: orderId, order_no: orderNo, total_amount: totalAmount, paid_amount: totalAmount }
     })
     return { order_id: orderId, order_no: orderNo }
+  }
+
+  async prepareAutomaticFilms(connection, phones, storeId) {
+    return this.autoFilm ? this.films.prepareAutomaticForSale(connection, phones, storeId) : []
+  }
+
+  async issueAutomaticFilms(connection, films, { actor, customer, customerId, storeId, operatorId, saleTime, remarks }) {
+    const issuedFilms = []
+    for (const film of films) {
+      const issued = await this.accessories.issueSale({ ...film, store_id: storeId, customer_id: customerId,
+        customer_name: customer.name, customer_phone: customer.phone, remarks }, actor, connection,
+      { time: saleTime, sellerId: operatorId, sellerName: actor.name || actor.username || '' })
+      issuedFilms.push({ request: film, issued })
+    }
+    return issuedFilms
   }
 
   /** 由调用方的销售事务管理客户资料，手机与商品结算复用同一入口。 */
@@ -299,9 +314,8 @@ class SalesPhoneService {
               : (currentPhone.remarks || null)
           }
         })
-        const automaticFilms = this.autoFilm
-          ? await this.films.prepareAutomaticForSale(connection, finalizedPhones.map(phone => currentPhones.get(phone.phone_id)), salesStoreId)
-          : []
+        const automaticFilms = await this.prepareAutomaticFilms(connection,
+          finalizedPhones.map(phone => currentPhones.get(phone.phone_id)), salesStoreId)
         const totalAmount = totalCents / 100
         let saleId = null
         const createdSales = []
@@ -364,13 +378,10 @@ class SalesPhoneService {
           if (result.affectedRows !== 1) throw abort(400, '部分设备状态更新失败')
         }
 
-        const issuedFilms = []
-        for (const film of automaticFilms) {
-          const issued = await this.accessories.issueSale({ ...film, store_id: salesStoreId, customer_id: customerId,
-            customer_name: customerInfo.name, customer_phone: customerInfo.phone, remarks: requestedRemarks }, actor, connection,
-          { time: saleTimeValue, sellerId: operatorId || userId, sellerName: actor.name || actor.username || '' })
-          issuedFilms.push({ request: film, issued })
-        }
+        const issuedFilms = await this.issueAutomaticFilms(connection, automaticFilms, {
+          actor, customer: customerInfo, customerId, storeId: salesStoreId, operatorId: operatorId || userId,
+          saleTime: saleTimeValue, remarks: requestedRemarks
+        })
 
         if (preorderId) {
           const deliveredPhone = finalizedPhones[0]

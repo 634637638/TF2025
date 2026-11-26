@@ -24,6 +24,7 @@ interface DirectiveElement extends HTMLElement {
   _tfLoadingRegistered?: boolean
   _tfLoadingInitialPending?: boolean
   _tfLoadingInitialised?: boolean
+  _tfLoadingPositionHandler?: () => void
 }
 
 // 加载指令
@@ -383,6 +384,7 @@ function showLoading(el: HTMLElement, text: string) {
   if (existingText) {
     existingText.textContent = text
     existingText.setAttribute('title', text)
+    updateLoadingContentPosition(el)
     return
   }
 
@@ -402,15 +404,24 @@ function showLoading(el: HTMLElement, text: string) {
 
   const loading = document.createElement('div')
   loading.className = 'tf2025-loading-spinner'
+  const content = document.createElement('div')
+  content.className = 'tf2025-loading-spinner__content'
   const icon = document.createElement('div')
   icon.className = 'tf2025-loading-spinner__icon'
   const message = document.createElement('span')
   message.textContent = text
   message.title = text
-  loading.append(icon, message)
+  content.append(icon, message)
+  loading.append(content)
 
   el.appendChild(overlay)
   el.appendChild(loading)
+
+  const updatePosition = () => updateLoadingContentPosition(el)
+  loadingElement._tfLoadingPositionHandler = updatePosition
+  window.addEventListener('resize', updatePosition)
+  window.addEventListener('scroll', updatePosition, true)
+  updatePosition()
 }
 
 function hideLoading(el: HTMLElement) {
@@ -421,6 +432,11 @@ function hideLoading(el: HTMLElement) {
     useLoadingStore().stopLocalLoading()
     loadingElement._tfLoadingRegistered = false
   }
+  if (loadingElement._tfLoadingPositionHandler) {
+    window.removeEventListener('resize', loadingElement._tfLoadingPositionHandler)
+    window.removeEventListener('scroll', loadingElement._tfLoadingPositionHandler, true)
+    loadingElement._tfLoadingPositionHandler = undefined
+  }
   const overlay = el.querySelector('.tf2025-loading-overlay')
   if (overlay) {
     overlay.remove()
@@ -429,6 +445,15 @@ function hideLoading(el: HTMLElement) {
   if (spinner) {
     spinner.remove()
   }
+}
+
+function updateLoadingContentPosition(el: HTMLElement) {
+  const content = el.querySelector('.tf2025-loading-spinner__content') as HTMLElement | null
+  if (!content) return
+
+  const bounds = el.getBoundingClientRect()
+  content.style.setProperty('--tf-loading-content-width', `${el.clientWidth}px`)
+  content.style.left = `${bounds.left + bounds.width / 2}px`
 }
 
 function showCopySuccess(el: HTMLElement) {

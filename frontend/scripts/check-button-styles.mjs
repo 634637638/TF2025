@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
 import { parse } from '@vue/compiler-sfc'
-import { auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditButtonSizeDeclarations, auditCommandButtonSizes, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
+import { auditAsyncSearchButtonUsage, auditBatchButtonSizes, auditButtonContract, auditButtonInlineStyles, auditButtonSizeDeclarations, auditCommandButtonSizes, auditOverlayDangerUsage, auditRefreshButtonUsage, auditTableButtonUsage, collectButtonClasses } from './lib/button-contract.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -222,6 +222,46 @@ function auditFile(file) {
 const sourceFiles = walk(sourceRoot)
 const buttonClasses = collectButtonClasses(sourceFiles.filter(file => file.endsWith('.vue')).map(file => readFileSync(file, 'utf8')))
 const findings = sourceFiles.flatMap(auditFile)
+for (const file of sourceFiles.filter(path => path.endsWith('.vue'))) {
+  const path = relative(sourceRoot, file)
+  for (const { line, message } of auditRefreshButtonUsage(readFileSync(file, 'utf8'))) {
+    findings.push(`src/${path}:${line} ${message}`)
+  }
+  if (path !== 'components/search/SearchActionButton.vue') {
+    for (const { line, message } of auditAsyncSearchButtonUsage(readFileSync(file, 'utf8'))) {
+      findings.push(`src/${path}:${line} ${message}`)
+    }
+  }
+}
+for (const path of [
+  'components/PublishToH5Modal.vue',
+  'views/H5-admin/page/banners.vue',
+  'views/H5-admin/page/config.vue',
+  'views/H5-admin/page/home-sections.vue',
+  'views/H5-admin/page/templates.vue',
+  'views/H5-admin/page/SoldProductsView.vue',
+  'views/query/QueryView.vue',
+  'views/repairs/RepairsView.vue',
+  'views/subsidy/components/SubsidyApplyDialog.vue',
+  'views/subsidy/components/SubsidyPhotoManageDialog.vue',
+  'views/system/SystemView.vue'
+]) {
+  const { descriptor } = parse(readFileSync(join(sourceRoot, path), 'utf8'))
+  if (!/<MediaThumbnailActions\b/.test(descriptor.template?.content ?? '')) {
+    findings.push(`src/${path} 的缩略图操作必须接入 MediaThumbnailActions`)
+  }
+}
+for (const file of sourceFiles.filter(path => path.endsWith('.vue'))) {
+  const path = relative(sourceRoot, file)
+  if (['components/MediaPreviewViewer.vue', 'components/ProfessionalScanner.vue'].includes(path)) continue
+  for (const { line, message } of auditOverlayDangerUsage(readFileSync(file, 'utf8'))) {
+    findings.push(`src/${path}:${line} ${message}`)
+  }
+}
+const thumbnailActionSource = readFileSync(join(sourceRoot, 'components/MediaThumbnailActions.vue'), 'utf8')
+if (/fa-(?:search-plus|magnifying-glass-plus)\b|\bpreviewable\b/.test(thumbnailActionSource)) {
+  findings.push('缩略图查看入口由图片本身提供，公共操作组件不得重复显示放大镜')
+}
 findings.push(...auditCommandButtonSizes(buttonStyleSource).map(message => `src/styles/components/_buttons.scss ${message}`))
 
 // :not() 会累加选择器优先级，基线筛选条件必须放入 :where()，避免盖住语义按钮。
@@ -255,6 +295,10 @@ if (!/\.el-button\.tf-button--pill-filter\.is-active/.test(buttonStyleSource)) {
 }
 if (!/\.el-button\.tf-button--content\.tf-button--media-tile\s*\{[^}]*aspect-ratio:\s*1\s*;[^}]*padding:\s*0\s*;/.test(buttonStyleSource)) {
   findings.push('src/styles/components/_buttons.scss 媒体缩略图的方形比例和内边距必须在公共入口维护')
+}
+if (!/--tf-button-overlay-icon-size:\s*var\(--tf-type-scale-16\)/.test(buttonStyleSource)
+  || !/\.el-button\.el-button\.tf-button--overlay-tool i\s*\{[^}]*font-size:\s*var\(--tf-button-overlay-icon-size\)/.test(buttonStyleSource)) {
+  findings.push('src/styles/components/_buttons.scss 媒体覆盖工具图标字号必须通过公共 --tf-button-overlay-icon-size 统一维护')
 }
 if (!buttonStyleSource.includes("tf-button--scanner-control[aria-pressed='true']")) {
   findings.push('src/styles/components/_buttons.scss 扫码器选中反馈必须由公共入口维护')

@@ -11,8 +11,6 @@
         v-model="filters.search"
         placeholder="搜索关键词"
         clearable
-        @input="emit('search-input')"
-        @keyup.enter="emit('search')"
         @click.stop
       >
         <template #prefix>
@@ -273,7 +271,6 @@ const emit = defineEmits<{
   'filter-change': []
   reset: []
   search: []
-  'search-input': []
   'operator-search': [value: string]
   'update:expanded': [value: boolean]
 }>()

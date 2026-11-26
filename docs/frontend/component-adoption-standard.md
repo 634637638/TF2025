@@ -7,6 +7,7 @@
 | 场景 | 公共入口 |
 | --- | --- |
 | 列表搜索与筛选 | `UnifiedSearchPanel` |
+| 弹窗或局部异步检索按钮 | `SearchActionButton` |
 | 分页 | `Pagination` |
 | 弹窗 | `MobileDialog`（业务唯一入口） |
 | 图片/视频查看 | `MediaPreviewViewer`；下载和删除通过事件调用业务权限及文件服务 |

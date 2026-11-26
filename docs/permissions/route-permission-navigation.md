@@ -48,10 +48,13 @@ canAccessRoutePath(path, authStore)
 
 - 点击菜单或顶部标签时：只弹顶部提示 `您没有访问此页面的权限`，不跳转，不新增标签
 - 直接输入受限 URL 时：路由守卫或 `PermissionGate` 兜底提示，并返回 `/dashboard`
+- 身份或权限核验请求失败时：不判定为撤权，不跳转到 `/dashboard`，保留当前地址并提示稍后重试
 - 页面内不展示“访问受限 / 权限代码 / 联系开通”等详细卡片
 
 ## 未登录导航行为
 
+- 公开或后台路由由 Vue Router 合并后的 `meta.requiresAuth` 确定。浏览器路径场景共用 `isPublicSitePath`，商城边界为 `/m` 及 `/m/` 下的路径。
+- 后台首次导航由公共守卫等待认证 Store 核验，随后通过路由权限表决定是否进入页面。`/models`、`/memories` 和 `/menu` 的硬刷走同一流程。正式回归见 `frontend/tests/auth-permission-state.spec.ts`。
 - 首次打开站点根地址或直接访问受保护地址时，静默跳转到 `/login`，并通过 `redirect` 参数保留原目标地址。
 - 冷启动阶段不弹“需要登录”通知，避免通知早于应用和 Element Plus 样式挂载而出现未样式化内容。
 - 路由跳转必须始终执行；跳转冷却只允许限制重复通知，不能通过 `next(false)` 阻止进入登录页。

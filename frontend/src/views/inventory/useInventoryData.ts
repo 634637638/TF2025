@@ -247,14 +247,6 @@ export const useInventoryData = ({
     }
   }
 
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined
-  const debounceLoadInventory = () => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(() => {
-      void loadInventoryData({}, { showLoadingState: false })
-    }, 500)
-  }
-
   const loadInventory = async () => {
     pagination.page = 1
     await loadInventoryData()
@@ -262,7 +254,6 @@ export const useInventoryData = ({
 
   return {
     clearStats,
-    debounceLoadInventory,
     loadInventory,
     loadInventoryData,
     tableLoading,

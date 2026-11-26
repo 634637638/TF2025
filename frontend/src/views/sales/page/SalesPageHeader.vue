@@ -31,6 +31,7 @@
         @export="emit('export')"
       />
       <el-button
+        class="tf-button--refresh"
         type="info"
         :loading="refreshing"
         :disabled="refreshing"

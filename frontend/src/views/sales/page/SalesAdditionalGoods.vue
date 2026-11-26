@@ -19,12 +19,13 @@
             @keydown.enter.prevent="catalogSearchEnter"
             @clear="search('')"
           />
-          <el-button
+          <SearchActionButton
+            :loading="loading"
             :disabled="disabled || !storeId"
             @click="search(catalogKeyword)"
           >
             检索
-          </el-button>
+          </SearchActionButton>
           <el-button
             v-if="canScan"
             :disabled="disabled || !storeId"
@@ -156,13 +157,14 @@
           </div>
         </div>
         <div class="tf-dialog-toolbar">
-          <el-button
+          <SearchActionButton
             v-if="failed"
+            :loading="loading"
             :disabled="disabled"
             @click="load()"
           >
             重新检索
-          </el-button>
+          </SearchActionButton>
           <el-button
             v-else-if="options.length < total"
             :loading="loading"

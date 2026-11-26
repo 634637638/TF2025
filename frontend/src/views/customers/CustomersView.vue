@@ -41,6 +41,7 @@
               @export="handleExport"
             />
             <el-button
+              class="tf-button--refresh"
               type="info"
               :disabled="isLoading || refreshing"
               :loading="refreshing"
@@ -137,8 +138,6 @@
                 v-model="searchKeyword"
                 placeholder="搜索姓名、手机号、邮箱、会员号、公司、地址..."
                 clearable
-                @input="debounceSearch"
-                @keyup.enter="handleSearch"
                 @click.stop
               >
                 <template #prefix>
@@ -1685,7 +1684,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
-import { useLoadingState, useDebounce } from '@/composables'
+import { useLoadingState } from '@/composables'
 import { useImportExport } from '@/composables/useImportExport'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useSearchHighlight } from '@/composables/useSearchHighlight'
@@ -2378,12 +2377,6 @@ const _performSearch = (_keyword: string) => {
   pagination.page = 1
   loadCustomers()
 }
-
-// 防抖搜索 - 输入框输入时延迟搜索
-const { debouncedFn: debounceSearch } = useDebounce(() => {
-  pagination.page = 1
-  loadCustomers()
-}, 500) // 500ms 防抖
 
 const handleSearch = () => {
   // 重置到第一页

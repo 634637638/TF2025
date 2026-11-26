@@ -4,6 +4,7 @@ const crypto = require('node:crypto')
 const CustomerMutationAccessService = require('./customer-mutation-access.service')
 const PhoneMutationAccessService = require('./phone-mutation-access.service')
 const FieldAccessService = require('./field-access.service')
+const SalesPhoneService = require('./sales-phone.service')
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
 const BaseService = require('../core/base/base.service')
 const InventoryRepository = require('../repositories/inventory.repository')
@@ -59,7 +60,8 @@ class InventoryService extends BaseService {
     generateMemberNumber = defaultGenerateMemberNumber,
     prepareInvoiceNumberTransaction = defaultPrepareInvoiceNumberTransaction,
     generateInvoiceNumber = defaultGenerateInvoiceNumber,
-    reconcileCustomerPointsForSale = defaultReconcileCustomerPointsForSale
+    reconcileCustomerPointsForSale = defaultReconcileCustomerPointsForSale,
+    phoneSales = new SalesPhoneService({ autoFilm: true })
   } = {}) {
     super()
     this.customerAccess = customerAccess
@@ -76,6 +78,7 @@ class InventoryService extends BaseService {
     this.prepareInvoiceNumberTransaction = prepareInvoiceNumberTransaction
     this.generateInvoiceNumber = generateInvoiceNumber
     this.reconcileCustomerPointsForSale = reconcileCustomerPointsForSale
+    this.phoneSales = phoneSales
   }
 
   async list(query = {}, actor) {
@@ -352,8 +355,9 @@ class InventoryService extends BaseService {
           saleId, status === 'peer_transfer' ? saleTime : null,
           status === 'peer_transfer' ? salePrice : 0, phoneId
         ])
+        let paymentId
         if (status === 'sold') {
-          await this.repository.createQuickSalePayment(connection, [
+          paymentId = await this.repository.createQuickSalePayment(connection, [
             saleId, customerId, payment_method, normalizedPaymentChannel,
             salePrice, saleTime, '快速出库销售收款'
           ])
@@ -362,6 +366,21 @@ class InventoryService extends BaseService {
           executor: connection, saleId, customerId,
           saleType: transactionConfig.saleType, salePrice, isNew: effectiveIsNew, initialize: true
         })
+        if (status === 'sold') {
+          const customer = { name: customer_name || existingCustomer?.name, phone: customer_phone }
+          const automaticFilms = await this.phoneSales.prepareAutomaticFilms(
+            connection, [{ id: phoneId, model_id }], store_id
+          )
+          if (automaticFilms.length) {
+            const issuedFilms = await this.phoneSales.issueAutomaticFilms(connection, automaticFilms, {
+              actor, customer, customerId, storeId: store_id, operatorId: saleOperatorId, saleTime, remarks: remarks || ''
+            })
+            await this.phoneSales.createStandaloneOrder({ connection, customer, customerId,
+              salesStoreId: store_id, operatorId: saleOperatorId, userId: inventoryOperatorId, saleTime, remarks: remarks || null,
+              payment: { payment_method, payment_channel: normalizedPaymentChannel }, paymentIds: [paymentId],
+              createdSales: [{ saleId, phone: { phone_id: phoneId, sale_price: salePrice } }], issuedFilms })
+          }
+        }
         await connection.commit()
         return {
           phone_id: phoneId, sale_id: saleId, imei: normalizedImei, customer_name,

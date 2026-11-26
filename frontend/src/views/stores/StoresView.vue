@@ -32,6 +32,7 @@
               @export="handleExport"
             />
             <el-button
+              class="tf-button--refresh"
               type="info"
               :loading="refreshing"
               :disabled="refreshing"
@@ -127,8 +128,6 @@
               v-model="searchForm.name"
               placeholder="搜索店铺名称"
               clearable
-              @input="debounceSearch"
-              @keyup.enter="loadStores"
               @click.stop
             >
               <template #prefix>
@@ -222,15 +221,15 @@
                 width="70"
                 align="center"
               >
-                <template #default="{ row, $index }">
+                <template #default="{ row }">
                   <el-input-number
-                    v-model="row.sort_order"
+                    :model-value="row.sort_order"
                     class="sort-order-control"
                     :disabled="!canEdit"
                     :min="0"
                     :max="9999"
                     :controls="false"
-                    @change="handleSortOrderChange($index, row.sort_order || 0)"
+                    @change="handleSortOrderChange(row.id, row.sort_order || 0)"
                   />
                 </template>
               </el-table-column>
@@ -671,7 +670,6 @@ import { useImportExport } from '@/composables/useImportExport'
 import { useNotification } from '@/composables/useNotification'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
-import { useDebounce } from '@/composables/useDebounce'
 import { fieldPermissions, shouldShowActionColumn } from '@/composables/useFieldPermissions'
 import { useAuthStore } from '@/stores/auth'
 import { usePageState } from '@/composables/usePageState'
@@ -686,6 +684,7 @@ import type { Store, StoreFormData } from '@/types/system'
 import type { QueryParams, User } from '@/types'
 import { logger } from '@/utils/logger'
 import { useElementTableSortable } from '@/composables/useElementTableSortable'
+import { useReferenceOrdering } from '@/composables/useReferenceOrdering'
 
 // 类型别名 - 兼容原有代码
 
@@ -771,7 +770,6 @@ const stores = ref<Store[]>([])
 const users = ref<User[]>([])
 const managerOptionsLoading = ref(false)
 const saving = ref(false)
-const savingOrder = ref(false)
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showViewModal = ref(false)
@@ -862,12 +860,6 @@ const isEditMode = computed(() => showEditModal.value && currentEditingId.value 
 
 // 搜索相关状态
 const searchExpanded = ref(false)
-
-// 防抖搜索 - 输入框输入时延迟搜索
-const { debouncedFn: debounceSearch } = useDebounce(() => {
-  pagination.page = 1
-  loadStores()
-}, 500) // 500ms 防抖
 
 const searchForm = reactive<SearchForm>({
   name: '',
@@ -1348,52 +1340,13 @@ const handleExport = async () => {
   })
 }
 
-// 保存排序到服务器
-const saveSortOrder = async () => {
-  if (savingOrder.value) return
-  if (!canEdit.value) {
-    showEditDenied('店铺管理', 'stores:edit')
-    return
-  }
-
-  savingOrder.value = true
-  try {
-    const items = stores.value.map((item, index) => ({
-      id: item.id,
-      sort_order: index
-    }))
-
-    const response = await unifiedApi.put('/stores/batch/reorder', { items }, { showError: false })
-    if (response.success) {
-      showSuccess('排序已保存')
-    }
-  } catch (err: unknown) {
-    // 使用统一的权限错误处理
-    handleApiErrorWithPermission(err, '保存排序失败', '店铺管理', 'edit')
-  } finally {
-    savingOrder.value = false
-  }
-}
-
-// 手动修改排序值
-const handleSortOrderChange = async (index: number, value: number) => {
-  stores.value[index].sort_order = value
-  // 按新的 sort_order 重新排序
-  stores.value.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  await saveSortOrder()
-}
-
-const handleStoreRowMove = async (oldIndex: number, newIndex: number) => {
-  if (!canEdit.value || oldIndex === newIndex) return false
-  const reordered = [...stores.value]
-  const [movedItem] = reordered.splice(oldIndex, 1)
-  reordered.splice(newIndex, 0, movedItem)
-  reordered.forEach((item, index) => { item.sort_order = index })
-  stores.value = reordered
-  await saveSortOrder()
-  await loadStoresSilent()
-  return true
-}
+const { handleSortOrderChange, handleRowMove: handleStoreRowMove } = useReferenceOrdering({
+  rows: stores,
+  endpoint: '/stores',
+  moduleName: '店铺管理',
+  canEdit,
+  reload: loadStoresSilent
+})
 
 useElementTableSortable({
   tableRef: storesTableRef,

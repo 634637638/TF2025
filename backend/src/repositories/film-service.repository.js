@@ -1,10 +1,14 @@
 'use strict'
 
 const BaseRepository = require('./base.repository')
+const AccessoryRepository = require('./accessory.repository')
 
 /** 贴膜只追加服务事实；库存、积分及收款仍由共同结算仓储负责。 */
 class FilmServiceRepository extends BaseRepository {
-  constructor() { super('customer_film_services') }
+  constructor({ accessories = new AccessoryRepository() } = {}) {
+    super('customer_film_services')
+    this.accessories = accessories
+  }
 
   async customer(connection, id) {
     const [rows] = await connection.execute('SELECT id FROM customers WHERE id = ?', [id])
@@ -41,12 +45,21 @@ class FilmServiceRepository extends BaseRepository {
   }
 
   async availableProducts(connection, templateId, storeId, { lock = false } = {}) {
-    const [rows] = await connection.execute(`SELECT a.id, st.quantity,
-      (SELECT COUNT(*) FROM accessory_serials sn WHERE sn.accessory_id = a.id AND sn.store_id = st.store_id AND sn.status = 'in_stock') AS serial_quantity
+    const serialQuantity = lock ? '' : `,
+      (SELECT COUNT(*) FROM accessory_serials sn WHERE sn.accessory_id = a.id AND sn.store_id = st.store_id AND sn.status = 'in_stock') AS serial_quantity`
+    const [rows] = await connection.execute(`SELECT a.id, st.quantity${serialQuantity}
       FROM accessories a JOIN accessory_stock st ON st.accessory_id = a.id AND st.store_id = ?
-      WHERE st.quantity > 0 AND (COALESCE(a.template_id, a.id) = ? OR COALESCE(a.template_id, a.id) IN
+      JOIN accessories root ON root.id = COALESCE(a.template_id, a.id) AND root.status = 1
+      WHERE st.quantity > 0
+      AND (COALESCE(a.template_id, a.id) = ? OR COALESCE(a.template_id, a.id) IN
         (SELECT colors.accessory_id FROM accessory_template_colors colors WHERE colors.template_id = ?))
       ORDER BY a.id${lock ? ' FOR UPDATE' : ''}`, [storeId, templateId, templateId])
+    if (lock) {
+      // 与已锁定的库存汇总使用同一次当前读，避免混入事务早期的 SN 快照。
+      for (const row of rows) {
+        row.serial_quantity = await this.accessories.countStockSerials(row.id, storeId, connection)
+      }
+    }
     return rows
   }
 

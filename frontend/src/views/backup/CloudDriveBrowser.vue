@@ -59,6 +59,7 @@
         :disabled="busy"
         @click="load()"
       >
+        <i class="fas fa-sync-alt" />
         刷新
       </el-button>
       <el-button

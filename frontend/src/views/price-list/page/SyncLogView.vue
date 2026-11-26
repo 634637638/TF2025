@@ -19,7 +19,10 @@
             清空日志
           </el-button>
           <el-button
+            class="tf-button--refresh"
             type="primary"
+            :loading="loading"
+            :disabled="loading"
             @click="fetchLogs"
           >
             <i class="fas fa-refresh" />

@@ -136,9 +136,11 @@ describe.each([
     await keyword.setValue('记录')
     await wrapper.find('.search').trigger('click')
     await flushPromises()
-    wrapper.findComponent(Pagination).vm.$emit('change', 2, 100)
+    const pageSize = domain === 'models' ? 20 : 100
+    const expectedRowNumbers = [1, 2, 3].map(index => String(pageSize + index))
+    wrapper.findComponent(Pagination).vm.$emit('change', 2, pageSize)
     await flushPromises()
-    expect(wrapper.findAll('.table-number-badge').map(item => item.text())).toEqual(['101', '102', '103'])
+    expect(wrapper.findAll('.table-number-badge').map(item => item.text())).toEqual(expectedRowNumbers)
     await wrapper.find('[data-column="排序"] input').setValue('72')
     await flushPromises()
     expect(mocks.put).toHaveBeenCalledExactlyOnceWith(`/${domain}/batch/reorder`, { items: [{ id: 45, sort_order: 72 }] }, { showError: false })
@@ -147,7 +149,7 @@ describe.each([
     expect(mocks.get).toHaveBeenLastCalledWith(domain === 'models' ? '/models/stats/overview' : `/${domain}`, expect.any(Object))
     const lastListCall = mocks.get.mock.calls.filter(call => call[0] === `/${domain}`).at(-1)!
     expect(lastListCall[1]).toMatchObject({ useCache: false, params: { page: 2, [domain === 'memories' ? 'size' : 'name']: '记录' } })
-    expect(wrapper.findAll('.table-number-badge').map(item => item.text())).toEqual(['101', '102', '103'])
+    expect(wrapper.findAll('.table-number-badge').map(item => item.text())).toEqual(expectedRowNumbers)
     expect((keyword.element as HTMLInputElement).value).toBe('记录')
     expect(mocks.success).toHaveBeenCalledWith('排序已保存')
   })
@@ -210,6 +212,20 @@ it('新增型号弹窗使用“型号”标签和输入提示', async () => {
   expect(wrapper.find('.dialog').text()).not.toContain('型号名称')
   expect(wrapper.find('.dialog input[placeholder="请输入型号"]').exists()).toBe(true)
   expect(wrapper.findAll('.dialog label').some(item => item.text() === '型号')).toBe(true)
+})
+
+it('型号首屏读取 20 条，统计响应未返回时列表仍可查看', async () => {
+  const get = mocks.get.getMockImplementation()!
+  mocks.get.mockImplementation((url, config) => url === '/models/stats/overview'
+    ? new Promise(() => undefined)
+    : get(url, config))
+
+  const wrapper = await render(ModelsView)
+  expect(mocks.get).toHaveBeenCalledWith('/models', expect.objectContaining({
+    params: expect.objectContaining({ page: 1, page_size: 20 })
+  }))
+  expect(wrapper.find('.record-count').text()).toBe('共 300 条记录')
+  expect(wrapper.findAll('.table-number-badge').map(item => item.text())).toEqual(['1', '2', '3'])
 })
 
 it('品牌管理查询全部业务，新增可设置配件范围，取消编辑范围直接关闭且不保存', async () => {

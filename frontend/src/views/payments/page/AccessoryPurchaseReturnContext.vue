@@ -221,12 +221,12 @@
             @clear="searchSerials"
           >
             <template #append>
-              <el-button
-                :disabled="loading"
+              <SearchActionButton
+                :loading="loading"
                 @click="searchSerials"
               >
                 搜索SN
-              </el-button>
+              </SearchActionButton>
             </template>
           </el-input>
         </div>

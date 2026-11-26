@@ -30,6 +30,7 @@
   --tf-button-fab-size: 56px;
   --tf-button-fab-mini-size: 40px;
   --tf-button-overlay-size: 42px;
+  --tf-button-overlay-icon-size: var(--tf-type-scale-16);
   --tf-button-overlay-reset-size: 56px;
   --tf-button-dismiss-size: 28px;
   --tf-button-tab-size: 28px;
@@ -439,6 +440,62 @@ body .el-button.el-button.tf-button--topbar .el-icon {
   );
 }
 
+/* 刷新按钮复用原图标表达等待，避免内置 spinner 与刷新图标并排出现。 */
+.el-button.tf-button--refresh.is-loading > .el-icon.is-loading {
+  display: none;
+}
+
+.el-button.tf-button--search.is-loading > .el-icon.is-loading {
+  display: inline-flex;
+  animation: tf-button-refresh-spin var(--tf-motion-loading) linear infinite;
+}
+
+.el-button.tf-button--refresh.is-loading .el-button__text > .el-icon:not(.is-loading),
+.el-button.tf-button--refresh.is-loading .el-button__text > i[class*='fa-'],
+.el-button.tf-button--refresh.is-loading > span > .el-icon:not(.is-loading),
+.el-button.tf-button--refresh.is-loading > span > i[class*='fa-'],
+.el-button.tf-button--refresh.is-loading > .el-icon:not(.is-loading),
+.el-button.tf-button--refresh.is-loading > i[class*='fa-'] {
+  display: inline-block;
+  transform-origin: center;
+  animation: tf-button-refresh-spin var(--tf-motion-loading) linear infinite;
+}
+
+.el-button.tf-button--search.is-loading .el-button__text > .el-icon:not(.is-loading),
+.el-button.tf-button--search.is-loading .el-button__text > i[class*='fa-'],
+.el-button.tf-button--search.is-loading > span > .el-icon:not(.is-loading),
+.el-button.tf-button--search.is-loading > span > i[class*='fa-'],
+.el-button.tf-button--search.is-loading > .el-icon:not(.is-loading),
+.el-button.tf-button--search.is-loading > i[class*='fa-'] {
+  display: none;
+}
+
+@keyframes tf-button-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .el-button:is(.tf-button--refresh, .tf-button--search).is-loading > .el-icon.is-loading {
+    display: inline-flex;
+    animation: none;
+  }
+
+  .el-button.tf-button--refresh.is-loading .el-button__text > .el-icon:not(.is-loading),
+  .el-button.tf-button--refresh.is-loading .el-button__text > i[class*='fa-'],
+  .el-button.tf-button--refresh.is-loading > span > .el-icon:not(.is-loading),
+  .el-button.tf-button--refresh.is-loading > span > i[class*='fa-'],
+  .el-button.tf-button--refresh.is-loading > .el-icon:not(.is-loading),
+  .el-button.tf-button--refresh.is-loading > i[class*='fa-'],
+  .el-button.tf-button--search.is-loading .el-button__text > .el-icon:not(.is-loading),
+  .el-button.tf-button--search.is-loading .el-button__text > i[class*='fa-'],
+  .el-button.tf-button--search.is-loading > span > .el-icon:not(.is-loading),
+  .el-button.tf-button--search.is-loading > span > i[class*='fa-'],
+  .el-button.tf-button--search.is-loading > .el-icon:not(.is-loading),
+  .el-button.tf-button--search.is-loading > i[class*='fa-'] {
+    display: none;
+  }
+}
+
 /* 轻量快捷入口与实心主命令共用主色语义，表面读取现有浅色令牌。 */
 .el-button.tf-button--soft-primary {
   @include tf-filled-button(
@@ -515,6 +572,68 @@ body .el-button.el-button.tf-button--topbar .el-icon {
   display: block;
   height: 100%;
   line-height: 0;
+}
+
+.el-button.tf-button--media-tile.tf-button--media-tile-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  cursor: zoom-in;
+}
+
+.el-button.tf-button--media-tile.tf-button--media-tile-cover:focus-visible {
+  outline: 2px solid var(--tf-button-primary-bg);
+  outline-offset: -2px;
+}
+
+/* 覆盖操作之间的空隙保留图片本身的点击区域。 */
+.tf-media-thumbnail-actions {
+  --tf-media-thumbnail-action-size: 28px;
+  position: absolute;
+  inset-inline: var(--tf-space-1);
+  top: var(--tf-space-1);
+  z-index: var(--tf-z-media-thumbnail-actions);
+  display: flex;
+  flex-flow: row-reverse wrap;
+  gap: var(--tf-space-1);
+  pointer-events: none;
+}
+
+.tf-media-thumbnail-actions > .el-button {
+  --tf-button-height: var(--tf-media-thumbnail-action-size);
+  --tf-button-font-size: var(--tf-type-scale-13);
+  pointer-events: auto;
+}
+
+.tf-media-thumbnail-actions > .el-button + .el-button {
+  margin-inline-start: 0;
+}
+
+.tf-media-thumbnail-actions > .el-button i {
+  font-size: var(--tf-button-font-size);
+  line-height: 1;
+}
+
+.tf-media-thumbnail-drag-handle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--tf-media-thumbnail-action-size);
+  height: var(--tf-media-thumbnail-action-size);
+  border-radius: var(--tf-radius-full);
+  background: var(--tf-button-neutral-bg);
+  color: var(--tf-button-neutral-color);
+  font-size: var(--tf-type-scale-13);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.tf-media-thumbnail-drag-handle:active {
+  cursor: grabbing;
 }
 
 /* Contact cards grow with their content instead of inheriting toolbar button height. */
@@ -836,6 +955,21 @@ body .el-button.el-button.tf-button--overlay-tool {
   border-radius: var(--tf-radius-full) !important;
   background: var(--tf-button-overlay-bg) !important;
   color: var(--tf-button-on-color) !important;
+}
+
+body .el-button.el-button.tf-button--overlay-tool > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body .el-button.el-button.tf-button--overlay-tool i {
+  font-size: var(--tf-button-overlay-icon-size);
+}
+
+body .el-button.el-button.tf-button--overlay-tool svg {
+  width: var(--tf-button-overlay-icon-size);
+  height: var(--tf-button-overlay-icon-size);
 }
 
 body .el-button.el-button.tf-button--overlay-tool:hover,

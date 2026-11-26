@@ -47,6 +47,7 @@
                 <span>设置</span>
               </el-button>
               <el-button
+                class="tf-button--refresh"
                 type="info"
                 plain
                 :loading="refreshing"
@@ -149,7 +150,6 @@
               v-model="searchForm.name"
               placeholder="搜索菜单名称"
               clearable
-              @keyup.enter="searchMenus"
               @click.stop
             >
               <template #prefix>

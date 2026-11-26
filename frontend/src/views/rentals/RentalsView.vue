@@ -18,6 +18,7 @@
             <i class="fas fa-plus" /><span>新增</span>
           </el-button>
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="loading"
             @click="loadRentals"
@@ -83,7 +84,6 @@
                 v-model="filters.keyword"
                 placeholder="合同、客户、手机号、IMEI"
                 clearable
-                @keyup.enter="handleSearch"
               >
                 <template #prefix>
                   <i class="fas fa-search" />

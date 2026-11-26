@@ -22,6 +22,7 @@
             <span>新增</span>
           </el-button>
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -117,7 +118,6 @@
               v-model="searchForm.name"
               placeholder="搜索关键词"
               clearable
-              @keyup.enter="searchModels"
               @click.stop
             >
               <template #prefix>
@@ -517,10 +517,11 @@ const _router = useRouter()
 const { success, error, info: _info, handleApiError: _handleApiError, confirm } = useNotification()
 const { canView, canCreate, canEdit, canDelete } = usePagePermissions('models')
 const { showViewDenied, showEditDenied, showDeleteDenied, showCreateDenied } = usePermissionToast()
-const { refreshing, refresh } = useRefreshData()
+const { refreshing, refreshData } = useRefreshData()
 const { isMobile } = useMobile()
 const { init: initFieldPermissions } = fieldPermissions
 const modelListRequest = useLatestRequest()
+const modelStatsRequest = useLatestRequest()
 
 const modelFieldMap: Record<string, string> = {
   stats_total_models: 'stats.total_models',
@@ -603,7 +604,7 @@ const formData = ref({
 // 分页数据
 const pagination = ref({
   page: 1,
-  page_size: 100,
+  page_size: 20,
   total: 0,
   total_pages: 0,
   has_next: false,
@@ -611,13 +612,20 @@ const pagination = ref({
 })
 
 const loadModelStats = async () => {
+  const request = modelStatsRequest.nextRequest()
   try {
     const params: Record<string, string | number> = {}
     const name = searchForm.value.name.trim()
     if (name) params.name = name
     if (searchForm.value.brand_id !== null) params.brand_id = searchForm.value.brand_id
     if (searchForm.value.status !== '') params.status = searchForm.value.status
-    const response = await unifiedApi.get('/models/stats/overview', { params })
+    // 统计卡片属于辅助信息，不阻塞型号列表的首屏展示。
+    const response = await unifiedApi.get('/models/stats/overview', {
+      params,
+      signal: request.signal,
+      showLoading: false
+    })
+    if (!request.isLatest()) return
     if (response.success) {
       const data = response.data || {}
       modelStats.value = {
@@ -628,6 +636,8 @@ const loadModelStats = async () => {
       }
     }
   } catch (err) {
+    if (modelStatsRequest.isCanceledError(err)) return
+    if (!request.isLatest()) return
     logger.error('获取型号统计失败:', err)
     modelStats.value = { total: 0, active: 0, inactive: 0, related_brands: 0 }
   }
@@ -689,52 +699,41 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
     }
     models.value = []
     tableLoading.value = false
-    return
+    return false
   }
 
-  if (_showLoadingState) {
-    tableLoading.value = true
+  const params: QueryParams = {
+    page: pagination.value.page,
+    page_size: pagination.value.page_size,
+    // 全部型号按品牌分组，选择品牌后按该品牌的顺序展示。
+    sort_by: searchForm.value.brand_id === null ? 'brand_id' : 'sort_order',
+    sort_order: 'asc'
+  }
+  const normalizedName = searchForm.value.name.trim()
+  if (normalizedName) params.name = normalizedName
+  if (searchForm.value.brand_id !== null) params.brand_id = searchForm.value.brand_id
+  if (searchForm.value.status !== '') params.status = searchForm.value.status
+
+  const queryKey = JSON.stringify(params)
+  if (!_bustCache && queryKey === lastLoadedQueryKey && !tableLoading.value && !refreshing.value) {
+    return true
   }
 
+  const request = modelListRequest.nextRequest()
+  tableLoading.value = _showLoadingState
   try {
-    const params: QueryParams = {
-      page: pagination.value.page,
-      page_size: pagination.value.page_size,
-      // sort_order 只在品牌范围内有意义；全部型号仅按品牌分组展示，不参与品牌内排序操作。
-      sort_by: searchForm.value.brand_id === null ? 'brand_id' : 'sort_order',
-      sort_order: 'asc'
-    }
-
-    const queryKey = JSON.stringify({
-      page: params.page,
-      page_size: params.page_size,
-      name: searchForm.value.name.trim(),
-      brand_id: searchForm.value.brand_id,
-      status: searchForm.value.status
-    })
-
-    // 搜索条件没有变化时直接复用当前结果，避免重复点击造成远程请求等待。
-    if (!_bustCache && queryKey === lastLoadedQueryKey) {
-      return
-    }
-
-    // 添加搜索参数
-    const normalizedName = searchForm.value.name.trim()
-    if (normalizedName) params.name = normalizedName
-    if (searchForm.value.brand_id !== null && searchForm.value.brand_id !== undefined) {
-      params.brand_id = searchForm.value.brand_id
-    }
-    if (searchForm.value.status !== '') params.status = searchForm.value.status
-
-    const request = modelListRequest.nextRequest()
-    const response = await unifiedApi.get('/models', {
+    const responsePromise = unifiedApi.get('/models', {
       params,
       useCache: !_bustCache,
+      showLoading: false,
+      showError: false,
       signal: request.signal
     })
+    void loadModelStats()
+    const response = await responsePromise
 
     if (!request.isLatest()) {
-      return
+      return false
     }
 
     if (response.success) {
@@ -757,28 +756,23 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
         has_next: Boolean(paginationData.has_next),
         has_prev: Boolean(paginationData.has_prev)
       }
-      await loadModelStats()
-
+      return true
     } else {
       logger.error('API返回失败:', response.message)
-      models.value = []
-      pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
       if (!silentError) {
         error(response.message || '获取型号列表失败')
       }
+      return false
     }
   } catch (err: unknown) {
-    if (modelListRequest.isCanceledError(err)) {
-      return
+    if (!request.isLatest() || modelListRequest.isCanceledError(err)) {
+      return false
     }
 
     logger.error('获取型号列表失败:', err)
-    models.value = []
-    pagination.value = { page: 1, page_size: 10, total: 0, total_pages: 0, has_next: false, has_prev: false }
-
     // 静默模式不显示错误提示
     if (silentError) {
-      return
+      return false
     }
 
     // 处理权限错误
@@ -796,8 +790,9 @@ const loadModels = async (_bustCache = false, silentError = false, _showLoadingS
         error('获取型号列表失败：请检查网络连接或联系管理员')
       }
     }
+    return false
   } finally {
-    if (_showLoadingState) {
+    if (request.isLatest()) {
       tableLoading.value = false
     }
   }
@@ -833,10 +828,9 @@ const handlePaginationChange = (page: number, pageSize: number): void => {
 // 刷新数据 - 使用统一的 composable
 const handleRefresh = async () => {
   pagination.value.page = 1
-  await refresh(async () => {
-    await loadModels(false, false, false)
-  })
-  success('数据刷新成功')
+  await refreshData(async () => {
+    if (!await loadModels(true, true, false)) throw new Error('获取型号列表失败')
+  }, { successMessage: '数据刷新成功', errorMessage: '刷新失败，请重试' })
 }
 
 const editModel = async (model: Model) => {
@@ -1073,7 +1067,7 @@ const { savingOrder, handleSortOrderChange, handleRowMove: handleModelRowMove } 
   moduleName: '型号管理',
   canEdit,
   scopeKey: model => model.brand_id,
-  reload: () => loadModels(true, false, false)
+  reload: async () => { await loadModels(true, false, false) }
 })
 
 useElementTableSortable({

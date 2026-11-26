@@ -6,8 +6,8 @@ const { clearCache } = require('../middleware/cache')
 const log = require('../utils/log')
 
 class StoreController {
-  constructor({ service, repository, databaseConnected, superAdminCheck, invalidateCache = () => clearCache('/stores') } = {}) {
-    this.service = service || new StoreManagementService({ repository, databaseConnected, superAdminCheck })
+  constructor({ service, repository, databaseConnected, superAdminCheck, ordering, invalidateCache = () => clearCache('/stores') } = {}) {
+    this.service = service || new StoreManagementService({ repository, databaseConnected, superAdminCheck, ordering })
     this.invalidateCache = invalidateCache
   }
 

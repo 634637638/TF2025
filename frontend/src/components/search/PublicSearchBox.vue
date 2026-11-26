@@ -33,17 +33,16 @@
         <Close />
       </el-icon>
     </el-button>
-    <el-button
+    <SearchActionButton
       type="primary"
       native-type="button"
       class="public-search-box__submit"
       :disabled="disabled"
       :loading="loading"
-      :aria-busy="loading"
       @click="emit('search')"
     >
       搜索
-    </el-button>
+    </SearchActionButton>
   </div>
 </template>
 

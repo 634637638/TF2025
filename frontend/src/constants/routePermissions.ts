@@ -56,6 +56,23 @@ export function normalizeRoutePath(path: string): string {
   return pathWithoutHash || '/'
 }
 
+const H5_SHOP_PATH = '/m'
+
+export function isH5ShopPath(path: string): boolean {
+  const normalizedPath = normalizeRoutePath(path).toLowerCase()
+  return normalizedPath === H5_SHOP_PATH || normalizedPath.startsWith(`${H5_SHOP_PATH}/`)
+}
+
+const PUBLIC_STANDALONE_PATHS = new Set([
+  '/login', '/404', '/forgot-password', '/register', '/price-query', '/sales-price-display', '/marketing_copy', '/dh'
+])
+
+// 浏览器尚未解析路由时供认证恢复和请求错误处理使用。
+export function isPublicSitePath(path: string): boolean {
+  const normalizedPath = normalizeRoutePath(path).replace(/\/+$/, '').toLowerCase()
+  return PUBLIC_STANDALONE_PATHS.has(normalizedPath) || isH5ShopPath(normalizedPath)
+}
+
 function findBestMatch(path: string, permissionMap: Record<string, string[]>): string[] | null {
   if (permissionMap[path]) {
     return permissionMap[path]

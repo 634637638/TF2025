@@ -16,7 +16,6 @@
           v-model="ctx.roleSearchForm.name"
           placeholder="搜索角色名称 / 编码 / 描述"
           clearable
-          @keyup.enter="ctx.searchRoles"
           @click.stop
         >
           <template #prefix>
@@ -50,7 +49,6 @@
           v-model="ctx.userSearchForm.username"
           placeholder="搜索用户名/姓名"
           clearable
-          @keyup.enter="ctx.searchUsers"
           @click.stop
         >
           <template #prefix>
@@ -94,7 +92,6 @@
           v-model="ctx.storeBindingSearchForm.user_name"
           placeholder="搜索员工姓名"
           clearable
-          @keyup.enter="ctx.searchStoreBindings"
           @click.stop
         >
           <template #prefix>
@@ -168,7 +165,6 @@
           v-model="ctx.logSearchForm.username"
           placeholder="搜索操作用户"
           clearable
-          @keyup.enter="ctx.searchLogs"
           @click.stop
         >
           <template #prefix>

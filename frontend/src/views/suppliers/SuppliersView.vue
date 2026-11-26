@@ -30,6 +30,7 @@
             @export="handleExport"
           />
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             plain
@@ -128,7 +129,6 @@
               v-model="searchForm.name"
               placeholder="搜索供应商名称"
               clearable
-              @keyup.enter="searchSuppliers"
               @click.stop
             >
               <template #prefix>

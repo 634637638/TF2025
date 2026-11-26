@@ -15,9 +15,7 @@ class ReferenceOrderingService {
     return this.repository.withConnection(async connection => {
       try {
         await connection.beginTransaction()
-        for (const item of items) {
-          await this.orderingRepository.update(connection, this.domain, item)
-        }
+        await this.orderingRepository.reorder(connection, this.domain, items)
         await connection.commit()
       } catch (error) {
         await connection.rollback()

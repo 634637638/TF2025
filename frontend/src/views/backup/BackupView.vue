@@ -41,8 +41,10 @@
           </el-button>
           <el-button
             v-if="showActionColumn"
+            class="tf-button--refresh"
             type="info"
             plain
+            :loading="isLoading"
             @click="loadBackupList"
           >
             <i class="fas fa-sync-alt" />

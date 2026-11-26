@@ -4,6 +4,7 @@
  */
 const { _executeQuery } = require('../config/database')
 const BaseRepository = require('./base.repository')
+const ReferenceOrderingRepository = require('./reference-ordering.repository')
 const { withConnection } = require('../core/db/connection')
 
 class BrandRepository extends BaseRepository {
@@ -112,14 +113,11 @@ class BrandRepository extends BaseRepository {
   }
 
   async reorderManagementBrands(items) {
+    const orderingRepository = new ReferenceOrderingRepository()
     return this.withConnection(async connection => {
       try {
         await connection.beginTransaction()
-        for (const item of items) {
-          if (item.id !== undefined && item.sort_order !== undefined) {
-            await connection.execute('UPDATE brands SET sort_order = ? WHERE id = ?', [item.sort_order, item.id])
-          }
-        }
+        await orderingRepository.reorder(connection, 'brands', items)
         await connection.commit()
       } catch (error) {
         await connection.rollback()

@@ -208,11 +208,18 @@
             :key="`${currentDetail.id}-photo-${index}`"
             class="detail-photo-item"
           >
-            <img
-              :src="resolvePhotoUrl(photo)"
-              alt="国补照片"
-              class="detail-photo-image"
+            <el-button
+              native-type="button"
+              class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+              :aria-label="`查看国补照片 ${index + 1}`"
+              @click="openPhotoPreview(index)"
             >
+              <img
+                :src="resolvePhotoUrl(photo)"
+                alt="国补照片"
+                class="detail-photo-image"
+              >
+            </el-button>
           </div>
         </div>
       </div>
@@ -236,6 +243,11 @@
       </div>
     </template>
   </MobileDialog>
+  <MediaPreviewViewer
+    v-model="photoPreviewVisible"
+    :items="photoPreviewItems"
+    :initial-index="photoPreviewIndex"
+  />
 </template>
 
 <script setup lang="ts">
@@ -346,6 +358,19 @@ const toggleCustomerInfo = () => {
 }
 
 const resolvePhotoUrl = (photo?: string) => formatImageUrl(photo || '')
+const photoPreviewVisible = ref(false)
+const photoPreviewIndex = ref(0)
+const photoPreviewItems = computed(() => {
+  if (!props.modelValue || !fieldVisibility.value.subsidy_photos) return []
+  return (currentDetail.value?.subsidy_photos ?? []).map((url, index) => ({
+    url,
+    label: `国补照片 ${index + 1}`
+  }))
+})
+const openPhotoPreview = (index: number) => {
+  photoPreviewIndex.value = index
+  photoPreviewVisible.value = true
+}
 
 const loadDetail = async (item: NationalSubsidyRecord) => {
   const requestSeq = ++detailRequestSeq
@@ -482,6 +507,7 @@ watch(
 }
 
 .detail-photo-item {
+  position: relative;
   width: 88px;
   height: 88px;
   overflow: hidden;

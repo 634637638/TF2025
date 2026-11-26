@@ -462,13 +462,9 @@ async function getUserAccessProfile(userId, executor = null) {
     }
   } catch (error) {
     log.error('❌ 获取用户权限配置失败:', error)
-    return {
-      summary: {},
-      userPermissions: [],
-      rolePermissions: {},
-      roles: [],
-      menuVisibility: {}
-    }
+    // 权限读取失败不能伪装成空权限。调用方需要区分“明确没有权限”和
+    // “服务端暂时无法核验”，否则前端刷新时会误跳转到仪表盘。
+    throw error
   }
 }
 

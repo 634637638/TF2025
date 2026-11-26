@@ -6,7 +6,7 @@ const sourceRoot = path.join(frontendRoot, 'src')
 const variablesPath = path.join(sourceRoot, 'styles/_variables.scss')
 const baselinePath = path.join(import.meta.dirname, 'motion-adoption-baseline.json')
 const requiredTokens = [
-  '--tf-motion-fast', '--tf-motion-standard', '--tf-motion-enter', '--tf-motion-slow',
+  '--tf-motion-fast', '--tf-motion-standard', '--tf-motion-enter', '--tf-motion-slow', '--tf-motion-loading',
   '--tf-motion-ease-standard', '--tf-motion-ease-emphasized'
 ]
 const requiredReferences = [

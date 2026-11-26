@@ -49,7 +49,14 @@ afterEach(() => {
 describe('库存商城配置：同一弹窗管理上下架', () => {
   it('全新机只展示模板预览，不提供独立售价、验机或上传；取消不保存上下架', async () => {
     mocks.get.mockResolvedValue({ success: true, data: {
-      ...mocks.phone, template: { id: 8, template_name: '统一新机模板', description: '模板介绍', is_published: 0, images: [] }
+      ...mocks.phone,
+      template: {
+        id: 8, template_name: '统一新机模板', description: '模板介绍', is_published: 0,
+        images: [
+          { id: 1, image_url: '/synthetic/front.jpg', image_type: 'main' },
+          { id: 2, image_url: '/synthetic/detail.mp4', image_type: 'video' }
+        ]
+      }
     } })
     const wrapper = render()
     await flushPromises()
@@ -62,6 +69,16 @@ describe('库存商城配置：同一弹窗管理上下架', () => {
     expect(statusSwitch.props('modelValue')).toBe(1)
     expect(wrapper.findComponent(ElInput).exists()).toBe(false)
     expect(wrapper.find('input[type="file"]').exists()).toBe(false)
+    expect(wrapper.findAll('button[aria-label^="查看模板素材"]')).toHaveLength(2)
+    expect(wrapper.find('.fa-search-plus').exists()).toBe(false)
+    await wrapper.get('button[aria-label="查看模板素材 2"]').trigger('click')
+    const viewer = wrapper.getComponent({ name: 'MediaPreviewViewer' })
+    expect(viewer.props('modelValue')).toBe(true)
+    expect(viewer.props('initialIndex')).toBe(1)
+    expect(viewer.props('items')).toEqual([
+      expect.objectContaining({ url: '/synthetic/front.jpg' }),
+      expect.objectContaining({ url: '/synthetic/detail.mp4', type: 'video' })
+    ])
     wrapper.findComponent(ElSwitch).vm.$emit('update:modelValue', 0)
     await flushPromises()
     expect(mocks.put).not.toHaveBeenCalled()

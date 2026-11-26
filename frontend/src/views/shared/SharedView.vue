@@ -26,6 +26,7 @@
             <i class="fas fa-tags" />分类管理
           </el-button>
           <el-button
+            class="tf-button--refresh"
             :loading="loading"
             @click="loadPosts"
           >
@@ -47,8 +48,6 @@
               v-model="keyword"
               clearable
               placeholder="搜索标题或内容"
-              @keyup.enter="search"
-              @clear="search"
               @click.stop
             >
               <template #prefix>

@@ -285,7 +285,10 @@
             </el-select>
 
             <el-button
+              class="tf-button--refresh"
               type="primary"
+              :loading="loading"
+              :disabled="loading"
               @click="refreshLogs"
             >
               <el-icon><Refresh /></el-icon>

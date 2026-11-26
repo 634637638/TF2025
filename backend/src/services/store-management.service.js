@@ -20,12 +20,12 @@ const parseStoreInput = body => {
 }
 
 class StoreManagementService extends BaseService {
-  constructor({ repository = new StoreRepository(), databaseConnected = isConnected, superAdminCheck = isSuperAdmin } = {}) {
+  constructor({ repository = new StoreRepository(), databaseConnected = isConnected, superAdminCheck = isSuperAdmin, ordering } = {}) {
     super()
     this.repository = repository
     this.connected = databaseConnected
     this.superAdminCheck = superAdminCheck
-    this.ordering = new ReferenceOrderingService({ repository, domain: 'stores' })
+    this.ordering = ordering || new ReferenceOrderingService({ repository, domain: 'stores' })
   }
 
   ensureConnected() { if (!this.connected()) throw this.createError('数据库未连接', 500, 'DATABASE_UNAVAILABLE') }
@@ -100,6 +100,7 @@ class StoreManagementService extends BaseService {
     if (await this.repository.hasManagementDuplicate(name.trim())) throw this.createError(`店铺名称"${name}"已存在，请使用其他名称`, 409, 'DUPLICATE')
     const id = await this.repository.createManagementStore([name.trim(), address || '', manager.phone, manager.manager_id, status, sort_order])
     if (!id) throw this.createError('店铺创建失败', 500, 'CREATE_FAILED')
+    if (body.sort_order !== undefined) await this.ordering.reorder([{ id, sort_order }])
     return this.selectStoreById(id)
   }
 
@@ -117,6 +118,7 @@ class StoreManagementService extends BaseService {
     }
     const affected = await this.repository.updateManagementStore([name.trim(), address || '', manager.phone, manager.manager_id, status ?? 1, sort_order ?? 0, parsedId])
     if (!affected) throw this.createError('店铺不存在', 404, 'NOT_FOUND')
+    if (sort_order !== undefined) await this.ordering.reorder([{ id: parsedId, sort_order }])
     return this.selectStoreById(parsedId)
   }
 

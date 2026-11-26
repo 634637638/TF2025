@@ -141,11 +141,11 @@
 | 叶子路由唯一视图文件 | 63 个叶子 URL 对应的唯一 `views` 文件；两个文件各被两个 URL 复用，另有 1 个 URL 使用公共组件 | 60 |
 | 布局容器视图文件 | 后台、H5 管理和 H5 手机端布局 | 3 |
 | 非路由功能单元 | 未被路由直接加载的 Tab、弹窗、页面内部单元或复用单元 | 85 |
-| 公共组件源文件 | `frontend/src/components/**/*.vue` | 85 |
+| 公共组件源文件 | `frontend/src/components/**/*.vue` | 87 |
 | 涉及表格的页面源文件 | 页面中出现 Element/原生表格或公共表格入口 | 62 |
 | 涉及表格的公共组件 | 公共组件中出现表格或表格封装 | 11 |
-| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 123 |
-| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 53 |
+| 含按钮的页面/功能单元源文件 | `frontend/src/views/**/*.vue` 中出现 `el-button` | 124 |
+| 含按钮的公共组件源文件 | `frontend/src/components/**/*.vue` 中出现 `el-button` | 56 |
 | 原生按钮 | 所有 Vue 页面和公共组件中的 `<button>` | 0 |
 
 “实际叶子路由”与“页面源文件”不能相加作为页面总数：63 个叶子 URL 实际映射到 60 个唯一 `views` 文件和 1 个公共组件；`AggregatedProductDetail.vue` 与`OrderDetail.vue` 分别被两个 URL 复用。148 个 `views` 文件由 60 个叶子页面文件、3 个布局容器和 85 个非路由功能单元组成。没有独立 URL 的 Tab、弹窗和组件仍然属于后续统一审计范围。
@@ -277,7 +277,8 @@
 | 含弹窗/查看器引用的 Vue 文件 | 93 | 按源码文件去重，含非路由单元 |
 | MobileDialog | 140 | 业务模板引用数，PC 与手机共享组件 |
 | 直接业务 el-dialog | 0 | 原 6 文件 / 12 处全部迁入 MobileDialog，例外清零；不含公共组件内部实现 |
-| 公共 MediaPreviewViewer | 9 | 模板引用数，不与业务 Dialog 混算 |
+| 公共 MediaPreviewViewer | 14 | 模板引用数，含国补详情、轮播图、商城模板、商城配置及锁屏背景 |
+| 公共 MediaThumbnailActions | 17 | 素材卡片的删除和设主图入口，以及商城首页推荐商品的桌面移除入口 |
 | 直接 el-image-viewer | 0 | 含 el-image 内置预览入口；经验分享、商城订单凭证均已迁公共查看器 |
 | 公共确认/输入/提示服务调用点 | 129 | 全部 src 脚本 AST 识别公共绑定：confirmAction 96、alertAction 2、confirm 25、prompt 6（含公共姓名输入）；不是运行时弹窗次数 |
 | 浏览器原生输入框 | 0 | 原 4 处中 1 处无调用函数删除，其他入口复用 useCustomerNamePrompt |

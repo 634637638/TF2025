@@ -18,7 +18,6 @@
             v-model="searchKeyword"
             placeholder="搜索品牌、型号、模板名"
             clearable
-            @keyup.enter="handleSearch"
             @click.stop
           >
             <template #prefix>

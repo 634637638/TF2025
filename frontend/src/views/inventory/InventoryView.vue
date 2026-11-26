@@ -26,6 +26,7 @@
             @export="exportInventory"
           />
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -50,7 +51,7 @@
           :can-view-field="canViewField"
           :colors="colors"
           :filters="filters"
-          :loading="false"
+          :loading="tableLoading || refreshing"
           :memories="memories"
           :model-count="models.length"
           :operators="operators"
@@ -60,7 +61,6 @@
           @filter-change="loadInventory"
           @reset="resetFilters"
           @search="loadInventory"
-          @search-input="debounceLoadInventory"
           @operator-search="searchOperatorsRemote"
         />
 
@@ -816,7 +816,6 @@ const { fetchBasicData, handleBrandChange, searchOperatorsRemote } = useInventor
 })
 
 const {
-  debounceLoadInventory,
   loadInventory,
   loadInventoryData,
   tableLoading

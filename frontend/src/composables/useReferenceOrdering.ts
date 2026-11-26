@@ -9,7 +9,7 @@ type ReferenceOrderRow = Pick<Brand, 'id' | 'sort_order'>
 
 interface ReferenceOrderingOptions<T extends ReferenceOrderRow> {
   rows: Ref<T[]>
-  endpoint: '/brands' | '/models' | '/colors' | '/memories'
+  endpoint: '/brands' | '/models' | '/colors' | '/memories' | '/stores'
   moduleName: string
   canEdit: Ref<boolean>
   reload: () => Promise<void>
@@ -77,10 +77,6 @@ export const useReferenceOrdering = <T extends ReferenceOrderRow>({
       return false
     }
     const orders = affected.map(row => row.sort_order ?? 0)
-    if (new Set(orders).size !== orders.length) {
-      warning('当前记录存在相同排序值，请先修改排序值再拖拽')
-      return false
-    }
     const reordered = [...affected]
     const [item] = reordered.splice(oldIndex - start, 1)
     reordered.splice(newIndex - start, 0, item)

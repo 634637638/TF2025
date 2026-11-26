@@ -7,6 +7,7 @@
       </h3>
       <div class="announcement-card-actions">
         <el-button
+          class="tf-button--refresh"
           circle
           text
           aria-label="刷新公告列表"

@@ -79,8 +79,8 @@
 
     .media-type-badge {
       position: absolute;
-      left: 8px;
-      bottom: 8px;
+      inset-inline-start: var(--tf-space-2);
+      bottom: var(--tf-space-2);
       display: inline-flex;
       align-items: center;
       gap: 5px;
@@ -94,93 +94,20 @@
 
     .primary-badge {
       position: absolute;
-      top: 8px;
-      left: 8px;
+      bottom: var(--tf-space-2);
+      inset-inline-end: var(--tf-space-2);
       background: linear-gradient(135deg, var(--tf-color-accent-orange) 0%, var(--tf-color-orange-dark) 100%);
       color: var(--color-bg-white);
       padding: 4px 8px;
       border-radius: 4px;
       font-size: var(--tf-type-scale-12);
+      pointer-events: none;
 
       i {
         margin-right: 4px;
       }
     }
 
-    /* 拖拽手柄 */
-    .drag-handle {
-      position: absolute;
-      top: 4px;
-      left: 4px;
-      width: 24px;
-      height: 24px;
-      background: rgba(0, 0, 0, 0.5);
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: move;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 5;
-
-      i {
-        font-size: var(--tf-type-scale-12);
-        color: white;
-      }
-    }
-
-    &:hover .drag-handle {
-      opacity: 1;
-    }
-
-    /* 设置主图按钮 */
-    .set-primary-btn {
-      position: absolute;
-      bottom: 4px;
-      right: 4px;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      opacity: 0;
-      transition: all 0.2s;
-      z-index: 5;
-
-      i {
-        font-size: var(--tf-type-scale-14);
-        color: var(--tf-button-danger-soft-color);
-      }
-
-      &:hover {
-
-        transform: scale(1.1);
-      }
-    }
-
-    &:hover .set-primary-btn {
-      opacity: 1;
-    }
-
-    /* 右上角删除按钮 */
-    .image-delete-btn {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 6;
-
-      i {
-        font-size: var(--tf-type-scale-12);
-      }
-    }
-
-    &:hover .image-delete-btn {
-      opacity: 1;
-    }
   }
 
 }

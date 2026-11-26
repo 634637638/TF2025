@@ -46,7 +46,6 @@
           :can-view-field="canViewSaleField"
           @search="loadAvailablePhones"
           @reset="resetFilters"
-          @debounced-search="debounceLoadAvailablePhones"
           @brand-change="handleBrandChange"
           @operator-search="searchOperatorsRemote"
         />
@@ -1118,11 +1117,6 @@ const loadFiltersFromStorage = () => {
   }
 }
 
-
-// 防抖加载可销售手机列表（用于搜索输入框）
-const { debouncedFn: debounceLoadAvailablePhones } = useDebounce(() => {
-  loadAvailablePhones(false, true, false)
-}, 500) // 500ms 防抖延迟
 
 // 加载统计数据（今日出库、平均利润率等）
 const loadSalesStats = async () => {

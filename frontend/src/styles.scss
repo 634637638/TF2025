@@ -342,22 +342,33 @@ html {
 .tf2025-loading-spinner {
   position: absolute;
   inset: 0;
+  // 反馈层铺满目标区域，背景由唯一的区域遮罩承载。
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  z-index: calc(var(--tf-z-loading-overlay) + 1);
+  pointer-events: none;
+}
+
+.tf2025-loading-spinner__content {
+  position: fixed;
+  top: 50dvh;
+  left: 50vw;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--tf-space-2);
-  // 反馈层铺满目标区域，背景由唯一的区域遮罩承载。
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
+  width: min(var(--tf-loading-content-width, 100%), calc(100vw - var(--tf-space-4)), 420px);
+  max-width: min(var(--tf-loading-content-width, 100%), calc(100vw - var(--tf-space-4)));
   min-width: 0;
   box-sizing: border-box;
   padding: 10px 14px;
   color: var(--tf-loading-surface-text, var(--tf-color-slate-700));
   font-size: var(--tf-type-scale-14);
   font-weight: 600;
-  z-index: 2;
-  pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 
 .tf2025-loading-spinner__icon {
@@ -373,15 +384,17 @@ html {
   animation: tf-spinner-rotate var(--tf-loading-speed, 0.72s) linear infinite;
 }
 
-.tf2025-loading-spinner > span {
+.tf2025-loading-spinner__content > span {
+  flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
   white-space: normal;
   word-break: normal;
   overflow-wrap: anywhere;
 }
 
 @media (max-width: 767px) {
-  .tf2025-loading-spinner > span {
+  .tf2025-loading-spinner__content > span {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;

@@ -141,6 +141,10 @@ PC 顶部登录时间使用 `--tf-type-scale-13`（13px），保证时间信息�
 | 打款、付款、结算 | `tf-button--finance` | 财务青绿色 |
 | 入库、出库、调货 | `tf-button--transfer` | 库存紫色 |
 | 导出、下载、同步、刷新 | `tf-button--export`、`tf-button--download`、`tf-button--sync`、`tf-button--refresh` | 工具蓝色 |
+
+所有刷新按钮接入 `tf-button--refresh` 公共类并使用 Element Plus `:loading` 表达刷新状态。加载期间公共样式隐藏按钮自动插入的前置 spinner，让按钮原有刷新图标在原位旋转；刷新完成后原图标继续显示并停止动画。刷新按钮不得按页面自行制作 spinner、动画、图标切换或私有加载样式。保存、提交、上传等其他更新按钮继续使用 Element Plus 原生 `:loading` 状态。
+
+公共检索面板的搜索按钮使用 `tf-button--search`，加载期间隐藏原搜索图标并显示一个旋转加载图标；结束后恢复原搜索图标。重置按钮使用 `tf-button--reset`，查询进行中统一禁用。完整筛选区复用 `UnifiedSearchPanel`，弹窗或局部异步检索按钮复用 `SearchActionButton`。自定义 `actions` 插槽也必须传递这两个语义类，避免重复图标或私有加载动画。页面不得在搜索区自行插入 `InlineLoading`、spinner 或重复的搜索/刷新图标。
 | 取消编辑、关闭、返回、重置 | 默认按钮、`tf-button--neutral` | 中性白灰色 |
 
 语义按操作后果判断，不按按钮文字机械匹配。“取消编辑”不改变已保存数据，属于中性；“取消打款”会撤销已存在的业务结果，属于危险；“停用”可恢复但会改变可用状态，属于警示；“删除”通常不可恢复，属于危险。顶部退出登录与支付页取消打款必须使用同一套危险色变量，页面不得各自定义红色。
@@ -202,7 +206,13 @@ PC 端模态框 footer 按钮按内容自适应并靠右，单个按钮最小宽
 
 手机端公共操作尺寸引用 `_buttons.scss` 中独立的 `--tf-button-small-base-*` 基础令牌，再由 `_dialog-actions.scss` 统一映射尺寸别名，避免循环引用或页面重复定义。浏览器回归执行 `npm --prefix frontend run test:dialog-widths`，包含真实综合查询组件、默认/自定义/原生 footer、正文工具栏、1～4 个按钮和明暗主题。
 
-照片缩略图的查看/删除使用 `el-button` 的 `primary/danger` 语义与 `circle`，不声明尺寸，并提供 `title` 和 `aria-label`。全屏图片预览统一接入 `MediaPreviewViewer`，其工具按钮由 `tf-button--overlay-tool` 维护，删除附加 `tf-button--overlay-danger`；这些图标工具遵循公共媒体工具规格，不与 footer 普通文字按钮混用。国补申请、国补照片管理均遵守此规则。
+上传和素材管理中的缩略图本身是查看按钮，使用 `tf-button--content tf-button--media-tile` 并提供可读的 `aria-label`，支持点击、触屏及键盘打开 `MediaPreviewViewer`。需要铺满已定尺寸的相对定位容器时附加 `tf-button--media-tile-cover`。缩略图只提供一个查看入口，图上无需额外放大镜。
+
+缩略图的操作统一使用 `MediaThumbnailActions`，从图片右上角向左排列，依次为删除、设为主图、拖动排序。按钮直径 28px，图标 13px，边距和操作间距为 4px。删除为红色垃圾桶，设为主图为橙色星形。调用方按权限和素材状态传入 `removable`、`can-set-primary`、`sortable`，处理 `remove` 和 `set-primary`。拖拽列表复用 `.tf-media-thumbnail-drag-handle`。浏览器回归入口为 `test:dialog-widths -- --buttons-only`。
+
+商城首页配置的「管理商品」在桌面使用同一套右上角操作，移除按钮的文案通过 `remove-label="移除商品"` 提供。移除沿用业务权限和确认流程，手机通过记录详情操作。实际页面回归入口为 `test:mobile-details:browser -- --home-sections-only`。危险覆盖工具 `tf-button--overlay-danger` 用于公共查看器和扫码器，`check:buttons` 扫描所有 Vue 模板的静态及动态类名。
+
+全屏图片预览使用 `MediaPreviewViewer`，其图标工具由 `tf-button--overlay-tool` 维护 42px 按钮与 16px 图标，布局由查看器维护。
 
 所有模态框（包括销售出库、批量销售、入库、划拨、批发、综合查询、权限和 H5 管理弹窗）都必须遵守同一条规则：
 PC 端按钮按内容自适应并靠右，手机端按钮居中等分、保持同一行，按钮高度、最小宽度、最大宽度（手机/平板 `--tf-dialog-action-max-width`）和间距只能由

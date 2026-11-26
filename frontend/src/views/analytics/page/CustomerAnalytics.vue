@@ -315,7 +315,10 @@
             <div class="card-header">
               <span>客户行为洞察</span>
               <el-button
+                class="tf-button--refresh"
                 link
+                :loading="loading"
+                :disabled="loading"
                 @click="refreshInsights"
               >
                 <el-icon><Refresh /></el-icon>

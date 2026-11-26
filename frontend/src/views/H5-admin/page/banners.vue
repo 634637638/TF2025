@@ -191,24 +191,23 @@
                 :key="index"
                 class="banner-image-item"
               >
-                <img
-                  :src="getImageUrl(img)"
-                  :alt="`轮播图${index + 1}`"
+                <el-button
+                  native-type="button"
+                  class="tf-button--content tf-button--media-tile tf-button--media-tile-cover"
+                  :disabled="false"
+                  :aria-label="`查看轮播图 ${index + 1}`"
+                  @click="previewBannerImage(index)"
                 >
-                <div class="image-actions">
-                  <span class="table-number-badge banner-number-position">{{ index + 1 }}</span>
-                  <el-button
-                    native-type="button"
-                    class="image-delete-btn tf-button--overlay-tool tf-button--overlay-danger"
-                    title="删除图片"
-                    aria-label="删除图片"
-                    @click="removeImage(index)"
+                  <img
+                    :src="getImageUrl(img)"
+                    :alt="`轮播图 ${index + 1}`"
                   >
-                    <i
-                      class="fas fa-times"
-                    />
-                  </el-button>
-                </div>
+                </el-button>
+                <span class="table-number-badge banner-number-position">{{ index + 1 }}</span>
+                <MediaThumbnailActions
+                  :removable="canSaveCurrentBanner"
+                  @remove="removeImage(index)"
+                />
               </div>
               <el-upload
                 :show-file-list="false"
@@ -343,6 +342,11 @@
           </div>
         </template>
       </MobileDialog>
+      <MediaPreviewViewer
+        v-model="bannerPreviewVisible"
+        :items="bannerImages"
+        :initial-index="bannerPreviewIndex"
+      />
       <RecordDetailDialog
         v-model="recordVisible"
         title="轮播图详情"
@@ -426,6 +430,12 @@ interface BannerImage {
   url: string
 }
 const bannerImages = ref<BannerImage[]>([])
+const bannerPreviewVisible = ref(false)
+const bannerPreviewIndex = ref(0)
+const previewBannerImage = (index: number) => {
+  bannerPreviewIndex.value = index
+  bannerPreviewVisible.value = true
+}
 const originalBannerImages = ref<string[]>([]) // 记录原始图片列表
 const uploadedTempImages = ref<string[]>([]) // 记录本次上传的临时图片
 

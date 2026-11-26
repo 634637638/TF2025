@@ -61,6 +61,7 @@ for (const file of walk(sourceRoot)) {
 
 for (const file of [
   'src/components/DataEmptyState.vue',
+  'src/components/search/SearchActionButton.vue',
   'src/components/search/UnifiedSearchPanel.vue',
   'src/components/Pagination.vue',
   'src/components/MobileDialog.vue',

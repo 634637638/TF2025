@@ -20,6 +20,7 @@
             <i class="fas fa-plus" /> 新增
           </el-button>
           <el-button
+            class="tf-button--refresh"
             type="info"
             :loading="refreshing"
             :disabled="refreshing"
@@ -125,7 +126,6 @@
               v-model="filters.search"
               placeholder="搜索维修单号、客户、手机型号"
               clearable
-              @keyup.enter="handleSearch"
             >
               <template #prefix>
                 <i class="fas fa-search" />
@@ -788,15 +788,10 @@
                       >
                       <span class="repair-media-label">{{ media.type === 'video' ? '视频' : '图片' }}</span>
                     </el-button>
-                    <el-button
-                      native-type="button"
-                      class="repair-media-delete tf-button--overlay-tool tf-button--overlay-danger"
-                      title="删除媒体"
-                      aria-label="删除媒体"
-                      @click.stop="removeFormMedia(index)"
-                    >
-                      <i class="fas fa-trash" />
-                    </el-button>
+                    <MediaThumbnailActions
+                      removable
+                      @remove="removeFormMedia(index)"
+                    />
                   </div>
                 </div>
               </el-form-item>
@@ -939,16 +934,10 @@
                 >
                 <span class="repair-media-label">{{ media.type === 'video' ? '视频' : '图片' }}</span>
               </el-button>
-              <el-button
-                v-if="canEdit"
-                native-type="button"
-                class="repair-media-delete tf-button--overlay-tool tf-button--overlay-danger"
-                title="删除媒体"
-                aria-label="删除媒体"
-                @click.stop="removeManagerMedia(index)"
-              >
-                <i class="fas fa-trash" />
-              </el-button>
+              <MediaThumbnailActions
+                :removable="canEdit"
+                @remove="removeManagerMedia(index)"
+              />
             </div>
           </div>
           <DataEmptyState
@@ -1839,23 +1828,18 @@ usePageShortcuts('/repairs', {
 
 .repair-media-label {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
+  inset-inline-start: var(--tf-space-1);
+  bottom: var(--tf-space-1);
   padding: 2px 4px;
   border-radius: 3px;
   background: color-mix(in srgb, var(--tf-color-black) 60%, transparent);
   color: var(--color-bg-white);
   font-size: var(--tf-type-scale-11);
+  pointer-events: none;
 }
 
 .repair-media-preview {
   width: 100%;
-}
-
-.repair-media-delete {
-  position: absolute;
-  top: var(--tf-space-1);
-  right: var(--tf-space-1);
 }
 
 .repair-media-manager {
