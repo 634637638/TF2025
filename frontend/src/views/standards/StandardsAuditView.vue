@@ -25,7 +25,12 @@
       </PageHeader>
 
       <div class="standards-audit-content admin-page-content">
-        <div class="stats-cards standards-stats">
+        <div
+          class="stats-cards"
+          role="region"
+          aria-label="规范统计"
+          tabindex="0"
+        >
           <div class="stat-card stat-card--primary">
             <div class="stat-icon">
               <i class="fas fa-layer-group" />
@@ -903,7 +908,7 @@
               </div>
               <div
                 v-else
-                class="preview-page"
+                class="admin-page-content"
               >
                 <PageHeader
                   icon="fas fa-layer-group"
@@ -911,22 +916,27 @@
                 />
                 <div class="tf-page-tabs tab-navigation">
                   <el-button
-                    type="primary"
-                    :class="{ 'is-active': previewPageTab === 'current' }"
+                    :type="previewPageTab === 'current' ? 'primary' : 'default'"
+                    :aria-pressed="previewPageTab === 'current'"
                     @click="previewPageTab = 'current'"
                   >
                     当前页
                   </el-button>
                   <el-button
-                    :class="{ 'is-active': previewPageTab === 'other' }"
+                    :type="previewPageTab === 'other' ? 'primary' : 'default'"
+                    :aria-pressed="previewPageTab === 'other'"
                     @click="previewPageTab = 'other'"
                   >
                     其他页
                   </el-button>
                 </div>
-                <el-tag type="info">
-                  当前展示：{{ previewPageTab === 'current' ? '当前页' : '其他页' }}
-                </el-tag>
+                <div class="tf-tab-content">
+                  <div class="tf-tab-panel">
+                    <el-tag type="info">
+                      当前展示：{{ previewPageTab === 'current' ? '当前页' : '其他页' }}
+                    </el-tag>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1241,7 +1251,6 @@ const previewIcon = (kind: StandardPreviewKind) => {
 
 <style scoped>
 .standards-audit-content { display: flex; flex-direction: column; gap: var(--admin-panel-gap); }
-.standards-stats { margin: 0; }
 .standards-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--tf-space-4); padding: var(--admin-panel-padding); }
 .standards-toolbar__search { flex: 1 1 360px; max-width: 560px; }
 .standards-toolbar__status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--tf-space-2); }
@@ -1326,8 +1335,6 @@ const previewIcon = (kind: StandardPreviewKind) => {
 .preview-security i { font-size: var(--tf-type-scale-22); }
 .preview-runtime { justify-content: space-between; }
 .preview-runtime code { padding: var(--tf-space-2) var(--tf-space-3); border-radius: var(--tf-radius-control); background: var(--tf-color-slate-900); color: var(--tf-color-slate-100); font-size: var(--tf-font-caption); }
-.preview-page { display: flex; flex-direction: column; gap: var(--tf-space-2); }
-.preview-page :deep(.page-header) { min-height: auto; padding: var(--tf-space-2) var(--tf-space-3); }
 .standard-detail__columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--tf-space-5); }
 .standard-detail__columns p { margin: 0; color: var(--tf-color-slate-500); font-size: var(--tf-font-body); line-height: 1.6; }
 .standard-requirement-list { display: flex; flex-direction: column; gap: var(--tf-space-2); margin: 0 0 var(--tf-space-4); padding-left: var(--tf-space-5); color: var(--tf-color-slate-600); font-size: var(--tf-font-body); line-height: 1.55; }

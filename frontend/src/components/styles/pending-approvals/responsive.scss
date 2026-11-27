@@ -2,47 +2,6 @@
 // 响应式设计
 @media (max-width: 767px) {
   .pending-approvals {
-    .approvals-overview {
-      grid-template-columns: repeat(3, 1fr);
-      padding: var(--tf-space-3);
-      gap: var(--tf-space-2);
-
-      .overview-card {
-        min-width: 0;
-        flex-direction: column;
-        justify-content: center;
-        gap: var(--tf-space-1);
-        padding: var(--tf-space-2);
-        text-align: center;
-
-        .card-icon {
-          width: var(--admin-stat-icon-size);
-          height: var(--admin-stat-icon-size);
-          font-size: var(--tf-type-scale-18);
-        }
-
-        .card-content {
-          min-width: 0;
-          flex: 0 1 auto;
-
-          .card-value {
-            font-size: var(--tf-font-stat-value);
-          }
-
-          .card-label {
-            font-size: var(--tf-font-stat-label);
-            line-height: var(--tf-line-height-compact);
-          }
-        }
-
-        .card-badge {
-          width: 20px;
-          height: 20px;
-          font-size: var(--tf-type-scale-10);
-        }
-      }
-    }
-
     .approvals-detail {
       padding: 15px;
 
@@ -102,14 +61,6 @@
           }
         }
       }
-    }
-  }
-}
-
-@media (max-width: 479px) {
-  .pending-approvals {
-    .approvals-overview {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 }

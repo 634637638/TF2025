@@ -8,8 +8,8 @@
 /* 设置卡片组 */
 .settings-cards-group {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr));
+  gap: var(--admin-panel-gap);
 }
 
 .setting-card {

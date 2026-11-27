@@ -1,7 +1,6 @@
 
 .sales-analytics {
   .forecast-card {
-    margin-top: 24px;
 
     .forecast-content {
       padding: 16px 0;
@@ -54,108 +53,6 @@
         }
       }
 
-      .forecast-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 10px;
-
-        .forecast-card-item {
-          background: white;
-          border-radius: 6px;
-          padding: 10px 12px;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-          transition: all 0.3s ease;
-
-          &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
-          }
-
-          .card-header-mini {
-            margin-bottom: 8px;
-
-            .product-info {
-              display: flex;
-              align-items: center;
-              gap: 4px;
-              font-size: var(--tf-type-scale-12);
-              line-height: 1.4;
-              flex-wrap: wrap;
-
-              .model {
-                font-weight: 600;
-                color: var(--el-text-color-primary);
-              }
-
-              .color {
-                color: var(--el-color-primary);
-              }
-
-              .memory {
-                color: var(--el-text-color-regular);
-              }
-            }
-          }
-
-          .card-body {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-
-            .stat-item {
-              display: flex;
-              align-items: baseline;
-              gap: 4px;
-
-              .label {
-                font-size: var(--tf-type-scale-12);
-                color: var(--el-text-color-secondary);
-              }
-
-              .value {
-                font-size: var(--tf-type-scale-18);
-                font-weight: 700;
-                color: var(--el-text-color-primary);
-              }
-
-              &.confidence {
-                margin-left: auto;
-              }
-            }
-          }
-
-          // 高预测值样式
-          &.high-prediction {
-            border: 2px solid var(--color-success);
-            background: linear-gradient(135deg, var(--tf-color-blue-50) 0%, var(--tf-color-sky-100) 100%);
-
-            .stat-item:first-child .value {
-              color: var(--color-success);
-              font-size: var(--tf-type-scale-20);
-            }
-          }
-
-          // 中等预测值样式
-          &.medium-prediction {
-            border: 2px solid var(--color-warning);
-            background: linear-gradient(135deg, var(--tf-color-amber-50) 0%, var(--tf-color-amber-100) 100%);
-
-            .stat-item:first-child .value {
-              color: var(--color-warning);
-            }
-          }
-
-          // 低预测值样式（预测为0）
-          &.low-prediction {
-            opacity: 0.6;
-            border: 1px dashed var(--color-border);
-
-            .stat-item:first-child .value {
-              color: var(--color-info);
-            }
-          }
-        }
-      }
     }
 
     .history-date-tip {

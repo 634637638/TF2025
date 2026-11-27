@@ -58,7 +58,7 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 | `frontend/src/utils/format.ts` | 统一金额与货币格式 | 否 |
 | 业务页面 `<style scoped>` | 业务字段、状态徽章、金额、IMEI、特殊交互 | 是，但不得覆盖通用视觉 |
 
-`admin-layout.css` 已由 `frontend/src/main.ts` 全局加载，页面不需要再次导入。
+`admin-layout.css` 由后台路由的 `SimpleAdminView.vue` 统一加载，后台子页面直接使用公共 class。批发报价和销售报价是独立公开路由，各自引用同一份样式。
 
 表格拖动行为由 `main.ts` 在挂载后通过已有业务路由初始化入口按需加载 `admin-table-drag-scroll.ts`，首次进入非登录页面时统一初始化一次；登录页不加载该工具，业务页面不得自行重复初始化。
 
@@ -78,6 +78,8 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 规范页自身不得新增第二套表格或按钮尺寸。任何公共高度、宽度、间距或字体调整，都必须先修改公共变量和本文，再同步检查 `/standards` 预览及 `check:tables`。
 
 ## 3. 标准页面结构
+
+列表总数使用「共 N 条」，与[公共分页](pagination-standards.md#组件使用规范)一致。
 
 页面根节点、内容区、统计卡片和表格卡片使用以下 class：
 
@@ -102,7 +104,7 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
       <div class="section-title">
         <i class="fas fa-list" />
         列表名称
-        <span class="record-count">共 {{ total }} 条记录</span>
+        <span class="record-count">共 {{ total }} 条</span>
       </div>
 
       <div class="table-responsive">
@@ -114,6 +116,8 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 ```
 
 不得使用页面私有的 `section-header + table-info` 重新实现标题行。记录数统一放在 `.section-title` 内的 `.record-count`。
+
+筛选区下方的列表有模式切换时，可在 `.section-title` 内使用 `.section-title__label` 合并图标和标题，随后放置公共 `tf-page-tabs--inline` 和 `.record-count`。标题、按钮和记录数按可用宽度排列。
 
 权限管理的角色管理、用户角色、门店绑定、模块管理和权限日志均复用上述表格卡片外壳；模块管理不能仅保留 `modules-section` 私有类并另设背景、边框、阴影或圆角。模块管理的网格卡片外壳同样读取公共卡片令牌，悬停使用 `--admin-interactive-hover-border` 和 `--admin-interactive-hover-shadow`，不因自定义名称或启用状态改变整张卡片边框；业务状态由徽章表达。
 
@@ -153,11 +157,23 @@ PC 端数据行使用 `48px`，手机端数据行使用 `40px`；手机端表头
 
 当字段总宽度超过容器时，只使用 Element Plus 内部滚动容器。Element 表格根节点必须保持 `width/min-width/max-width: 100%`，不得继承原生表格的 `--admin-data-table-min-width`，否则 `.table-responsive` 会形成无法与表头同步的第二层横向滚动。表头和汇总行容器必须保持 `overflow-x: hidden`，使 Element Plus 可以通过 `scrollLeft` 与表体同步，但它们不得成为用户可独立操作的滚动层。手机端直接触摸横移；PC 端除触控板和 `Shift + 滚轮` 外，还统一支持在表头或表体的非按钮区域按住鼠标左键拖动。拖动能力由全局入口自动安装，并在每次原生滚动和鼠标拖动时同步 Element Plus 分离的表头、表体和汇总行；业务页面不得再次实现 `mousedown`、`pointermove`、表头位移或外层滚动条。
 
+### Element Plus 内部表格宽度隔离
+
+公共响应式样式中对原生 `table` 设置固定最小宽度时，选择器必须排除 Element Plus 的 `.el-table__header` 和 `.el-table__body`。`.table-container table`、`.responsive-table table` 等历史规则只能写成 `table:not(.el-table__header):not(.el-table__body)`，否则手机端的 `600px` 最小宽度会把表头和表体内部表格整体撑宽，内容驱动列会出现大面积空白。
+
+业务样式不得给 `.el-table` 根节点、`.el-table__header` 或 `.el-table__body` 设置 `600px`、`1200px` 等固定最小宽度。Element 根节点保持公共 `width/min-width/max-width: 100%`，列的最小宽度由当前表头和当前页内容计算；字段总宽度超过视口时，仅由 Element Plus 内部同步滚动容器承载横向移动。该边界同时适用于主列表、弹窗表格、综合预警详情和后续新增表格。
+
+`check:tables` 会扫描公共响应式样式、遗留全局样式和综合预警详情样式，校验原生表格最小宽度选择器已排除 Element Plus 内部表格，并阻止业务样式重新给 Element 表格设置固定大宽度。
+
 调货/同行批发记录统一由 `row-class-name` 返回 `admin-row--peer-transfer`，整行使用公共紫蓝识别色；需要强调的文本使用 `admin-wholesale-text`。页面不得为 IMEI 单独制作背景卡片，也不得自行选择另一套批发颜色。
 
 金额统一调用 `formatAmount` / `formatCurrency`：不使用千分位逗号，整数不显示小数，小数固定保留两位。例如 `¥89578`、`¥89578.50`。
 
-必须完整显示的普通文本列使用 `complete-text-column`，序列号、IMEI 和业务单号使用 `identifier-column`。这两类列都必须配合 `getTextColumnMinWidth` / `getIdentifierColumnMinWidth` 计算当前页表头与数据的内容宽度，禁止依赖单元格省略号。备注、说明等可能很长的连续文本默认使用 `complete-text-column wrapped-text-column` 在列内完整换行；PC 紧凑主列表确需节省宽度时，备注等可独立查看的长文本允许使用 `ellipsis-text-column` 设置内容驱动的最小宽度和有限 `maxWidth`，但必须提供双击查看完整原文的入口，且不得用于 Apple ID、序列号、IMEI、名称、价格、状态等普通业务字段。
+必须完整显示的普通文本列使用 `complete-text-column`，序列号、IMEI 和业务单号使用 `identifier-column`。每张统一表格的每个普通字段列都必须计算内容驱动的最小安全宽度，不得只给部分列计算，也不得把固定 `width` 或静态 `min-width` 当作最终列宽。列宽取表头文本与当前页所有可见行实际展示文本中较宽者，再加真实单元格左右内边距及列内图标、徽标等控件占用空间；普通文本使用 `getTextColumnMinWidth`，标识字段使用 `getIdentifierColumnMinWidth`，序号/ID 使用 `getNumberColumnMinWidth`，操作列使用 `getAdaptiveActionColumnWidth`。固定数值只可作为语义下限传给计算函数的 `minWidth`。
+
+计算值应以响应式结果绑定到 `:min-width`，以便 Element Plus 按当前内容保障完整显示，并由 `fit` 将剩余空间分配给普通字段。数据页码或筛选结果变化、字段权限变化、响应式列变化、显示格式变化后，计算值必须同步更新。表格无数据时仍须把表头纳入计算；空值按实际展示占位符（通常为 `-`）计算。字段含按钮、状态徽标、图标或多值内容时，按最终渲染内容计算，并将控件宽度、间距和真实内边距计入安全宽度。
+
+备注、说明等可能很长的连续文本默认使用 `complete-text-column wrapped-text-column` 在列内完整换行；PC 紧凑主列表确需节省宽度时，备注等可独立查看的长文本允许使用 `ellipsis-text-column` 设置内容驱动的最小宽度和有限 `maxWidth`，但必须提供双击查看完整原文的入口，且不得用于 Apple ID、序列号、IMEI、名称、价格、状态等普通业务字段。省略展示例外仍按表头和当前页所有实际内容计算宽度，`maxWidth` 只能限制长文本列的最大占用，不得代替最小宽度计算。
 
 列宽的字段语义下限由页面声明，实际宽度必须通过公共工具按当前页内容计算。固定值只能作为 `minWidth`，不能直接作为最终列宽：
 
@@ -184,7 +200,7 @@ const actionWidth = computed(() => getAdaptiveActionColumnWidth(
 ))
 ```
 
-所有长度不固定的普通字段使用 `getTextColumnMinWidth`；序列号、IMEI、业务单号等标识字段统一使用 `getIdentifierColumnMinWidth` 和 `identifier-column`。工具会按当前页表头及最长内容计算最小宽度；字段少时由 Element Plus 的 `fit` 自动分配剩余宽度铺满表格，空间不足时由表格内部横向滑动。这里的“自动缩放”是列宽随当前页内容调整，不是让单个单元格自行缩小字号；PC 与手机字体只读取全局断点变量。
+每个普通字段都使用对应公共函数，而不是仅对“长度不固定”的字段使用。`getTextColumnMinWidth` 负责普通文本和格式化后的显示值；序列号、IMEI、业务单号统一使用 `getIdentifierColumnMinWidth` 和 `identifier-column`。工具接收的数组必须包含表头及当前页实际显示值，按最长内容计算最小安全宽度；字段少时由 Element Plus 的 `fit` 自动分配剩余宽度铺满表格，空间不足时由表格内部横向滑动。这里的“自动缩放”是列宽随当前页内容调整，不是让单个单元格自行缩小字号；PC 与手机字体只读取全局断点变量。
 
 普通文字的公共测量默认预留 `24px` 水平安全空间；页面只在字段含徽章、图标或额外控件时提高 `horizontalPadding`。不得为普通纯文字列沿用 `36px`、`40px` 等大留白。说明、备注等连续长文本应设置合理 `maxWidth` 并配合 `wrapped-text-column` 完整换行，避免单个长值挤占整张表格。
 
@@ -425,7 +441,7 @@ const clearSelection = () => {
 
 ## 6. 手机端规则
 
-1. 统计卡片固定为每行两张，使用 `repeat(2, minmax(0, 1fr))`；包括基础资料页在内，不得被桌面端 `auto-fit` 或最小列宽覆盖。卡片间距、内边距和字号继续读取 `--admin-stats-*`、`--admin-stat-*` 公共变量。
+1. 统计卡片必须复用公共 `.stats-cards`。手机每行最多两张、最多两行；平板最多两行，按 3 或 4 列排列；PC 单行最多六张，超出设备容量时只在统计区横向滚动。列数、等高、间距和滚动规则见[后台统计卡片规范](admin-stat-card-color-standard.md#响应式布局与尺寸)。权限隐藏后按实际可见卡片重新布局，接口加载期间保持稳定的卡片数量。
 2. 表头和内容必须由同一个 Element Plus 表格滚动容器驱动，横向移动时保持同步。
 3. 可滑动时隐藏可见滚动条，不增加独立的“左右拉动条”。
    该规则同时适用于 PC 和手机；桌面端支持鼠标左键拖动、触控板和 `Shift + 滚轮`，手机端支持原生触摸横移。
@@ -571,7 +587,7 @@ Element Plus 弹窗默认可能通过 Teleport 挂载到 `body`，不再位于�
 页面生命周期要求：新增或删除表格页面、Tab、弹窗、表格组件时，必须同步更新[前端页面与功能单元台账](page-audit-inventory.md)及其中的表格专项清单；改名、迁移或合并也必须更新旧记录、新记录和统计数量。未更新台账不得标记为完成。
 
 - 页面根节点有 `.admin-page`，内容区有 `.admin-page-content`。
-- 手机端统计卡片始终每行两张，`320px` 至 `768px` 不允许退化成单列。
+- 统计卡片按[后台统计卡片规范](admin-stat-card-color-standard.md#响应式布局与尺寸)核对手机、平板和 PC 的列数、等高及横滑边界。
 - 搜索使用 `UnifiedSearchPanel`，列表卡片使用 `.admin-panel.admin-table-panel`。
 - 列表标题使用 `.section-title` 和 `.record-count`。
 - 数据列表优先使用 `el-table.data-table.devices-table`。

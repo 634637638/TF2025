@@ -2,7 +2,7 @@
   "files": [
     {
       "file": "src/styles/admin-layout.css",
-      "max": 369,
+      "max": 335,
       "category": "shared-contract",
       "reason": "Unified admin layout must override legacy page-scoped spacing, table shells, statistic card colors, and base-table content dimensions."
     },
@@ -107,12 +107,6 @@
       "max": 79,
       "category": "render-export",
       "reason": "Shareable price canvas, Safari table rendering, and public mobile layout intentionally override global admin shells. Contact cards use the shared public contact styles."
-    },
-    {
-      "file": "src/views/query/styles/query-view/responsive.css",
-      "max": 1,
-      "category": "responsive-safety",
-      "reason": "The mobile query table keeps momentum scrolling over the shared table overflow contract."
     },
     {
       "file": "src/views/H5-admin/page/styles/sold-products-view/desktop.scss",

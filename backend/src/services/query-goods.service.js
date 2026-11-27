@@ -10,6 +10,7 @@ const { hasUnifiedPermission } = require('../middleware/unified-auth')
 const { readAftersaleSettlement } = require('../utils/sales-aftersale-settlement')
 const { readCheckoutOrder } = require('../utils/checkout-order-facts')
 const { readGiftReturnAgreement } = require('../utils/checkout-goods-facts')
+const { addDaysToDateKey, formatBeijingDate, getMonthDateRange } = require('../utils/time')
 
 const reject = (message, statusCode = 400, code = 'VALIDATION_ERROR') => { throw Object.assign(new Error(message), { statusCode, code }) }
 const integer = (value, fallback, max) => {
@@ -134,8 +135,8 @@ const receiptGoods = row => {
 }
 
 class QueryGoodsService {
-  constructor({ repository = new QueryGoodsRepository(), permissionCheck = hasUnifiedPermission, goodsReturns = new SalesGoodsReturnService() } = {}) {
-    Object.assign(this, { repository, permissionCheck, goodsReturns })
+  constructor({ repository = new QueryGoodsRepository(), permissionCheck = hasUnifiedPermission, goodsReturns = new SalesGoodsReturnService(), now = formatBeijingDate } = {}) {
+    Object.assign(this, { repository, permissionCheck, goodsReturns, now })
   }
   /** 同次查询的分页、原单、逐件SN及售后链共用只读快照，不阻塞业务写入。 */
   async readSnapshot(operation) {
@@ -161,7 +162,7 @@ class QueryGoodsService {
       if (!await this.permissionCheck(actor, permission)) reject('无权查询商品销售记录', 403, 'PERMISSION_DENIED')
     }
   }
-  async list(actor, input, searchFields) {
+  async list(actor, input, searchFields, { includeSummary = false, includeCustomerVisits = false, includeBestSellers = false } = {}) {
     await this.authorize(actor)
     if (Object.keys(input).some(key => !['page', 'page_size', 'keyword', 'store_id', 'sale_type', 'sale_operator_id', 'brand_id', 'product_name', 'category_id', 'start_date', 'end_date'].includes(key))) reject('存在不支持的查询条件')
     if (input.store_id !== undefined && !validId(input.store_id)) reject('门店标识无效')
@@ -180,7 +181,23 @@ class QueryGoodsService {
     query.keyword = query.keyword.trim()
     query.product_name = query.product_name?.trim()
     const scope = resolveStoreScope(actor, input.store_id)
-    return this.readSnapshot(connection => this.repository.list(scope, query, searchFields, connection))
+    return this.readSnapshot(async connection => {
+      const result = await this.repository.list(scope, query, searchFields, connection)
+      if (!includeSummary && !includeCustomerVisits && !includeBestSellers) return result
+
+      const today = this.now()
+      const { period_start: monthStart } = getMonthDateRange(today)
+      const dates = {
+        month: `${monthStart} 00:00:00`,
+        yesterday: `${addDaysToDateKey(today, -1)} 00:00:00`,
+        today: `${today} 00:00:00`,
+        tomorrow: `${addDaysToDateKey(today, 1)} 00:00:00`
+      }
+      if (includeSummary) result.summary = await this.repository.periodSummary(scope, query, searchFields, dates, connection)
+      if (includeCustomerVisits) result.customer_visits = await this.repository.customerVisits(scope, query, searchFields, dates, connection)
+      if (includeBestSellers) result.monthly_best_sellers = await this.repository.monthlyBestSellers(scope, query, searchFields, dates, connection)
+      return result
+    })
   }
   async filterOptions(actor) {
     await this.authorize(actor)

@@ -28,8 +28,9 @@ class SubsidyApplyService {
     const checked = validateSubsidyInput(input)
     if (checked.error) return { status: 400, body: { success: false, message: checked.error } }
     input = checked.input
-    if (!input.phone_id || !input.customer_id || !input.imei1 || !input.imei2 || !input.sale_price) {
-      return { status: 400, body: { success: false, message: 'IMEI2为必填项，请完整填写' } }
+    if (!input.serial_number) return { status: 400, body: { success: false, message: '请输入序列号' } }
+    if (!input.phone_id || !input.customer_id || input.sale_price === undefined || input.sale_price === null || input.sale_price === '') {
+      return { status: 400, body: { success: false, message: '设备、客户或销售价格信息不完整' } }
     }
 
     const storedPhotos = normalizeSubsidyPhotoStorageUrls(input.subsidy_photos || [])

@@ -15,7 +15,7 @@
         v-if="effectiveShowTotal"
         class="tf-pagination__total"
       >
-        共 {{ total }} 条记录
+        共 {{ total }} 条
       </span>
       <span
         v-if="effectiveShowRange && total > 0"

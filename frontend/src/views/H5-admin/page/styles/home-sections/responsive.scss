@@ -1,15 +1,10 @@
 @media (max-width: 767px) {
   .home-sections-config-page {
     width: 100%;
-    padding: 0;
     overflow: hidden;
   }
 
   .sections-content {
-    .sections-list {
-      gap: 12px;
-    }
-
     .section-card {
       padding: 12px;
       border-radius: 14px;

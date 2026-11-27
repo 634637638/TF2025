@@ -262,11 +262,17 @@ SN明细额外受配件模块 `basic_info.serial_number` 控制。字段隐藏�
 | --- | --- |
 | `GET /api/query/goods/filter-options` | 商品查询筛选选项，返回按 `basic_info.brand_name`、`basic_info.category` 字段权限裁剪的品牌和商品类型；要求 `query:view` 与 `query:goods-view`，不要求配件管理权限 |
 | `GET /api/query/goods/product-name-options` | 可选 `keyword`（最多100字符；为空时返回最近成交的100个商品名称）、可选 `store_id`；返回当前账号授权销售范围内的成交商品名称，要求 `query:view`、`query:goods-view` 及商品名称字段可见 |
-| `GET /api/query/goods` | `page/page_size`（默认1/20，单页最多100）、可选 `keyword`（最多100字符）、`store_id`、`sale_type=sale/gift`、`sale_operator_id`、`brand_id`、`product_name`（最多100字符，模糊匹配）、`category_id`、`start_date/end_date`（北京时间日期，包含首尾整日）；返回 `data` 记录及 `pagination`，未提供的筛选不限制。筛选字段隐藏时服务端拒绝对应参数 |
+| `GET /api/query/goods` | `page/page_size`（默认1/20，单页最多100）、可选 `keyword`（最多100字符）、`store_id`、`sale_type=sale/gift`、`sale_operator_id`、`brand_id`、`product_name`（最多100字符，模糊匹配）、`category_id`、`start_date/end_date`（北京时间日期，包含首尾整日）。返回 `data`、`pagination` 和 `summary`，未提供的筛选不限制。筛选字段隐藏时服务端拒绝对应参数 |
 | `GET /api/query/goods/:id` | 按商品销售ID读取原单、`serial_numbers` 和 `batches`；不存在或超出门店范围统一404 |
 | `GET /api/query/goods/:id/aftersales` | 按同一销售ID和公共分页读取售后数量/SN、退款/补款及积分变化；仅包含原店与办理店均获权的历史，缺表/字段明确返回409，不伪装为空记录 |
 
 请求链路为 `query.js → QueryGoodsController → QueryGoodsService → QueryGoodsRepository`，复用统一认证/授权、门店范围和共享数据库连接。三个接口及服务均校验上述两项查看权限。未绑定门店不能查到记录；显式越权门店不会扩为全店。列表计数和分页使用相同筛选，SN通过存在性子查询匹配，避免逐件记录扩大销售数量。查询禁用缓存，筛选/翻页/详情使用 `useLatestRequest`；读取失败保留旧列表并提示，关闭或权限撤销取消旧请求。
+
+`summary.sale` 和 `summary.gift` 分别返回 `month`、`today`、`yesterday`，每段包含 `period_quantity`（原出库件数）与 `period_amount`（元）。统计沿用列表筛选、授权门店及同一只读快照，使用北京时间。月初的昨日明细可跨月，本月合计从本月一日计算。收费金额为原单实收。赠送参考金额按原出库件数乘商品档案的当前销售价，变体使用所属模板的销售价。任一匹配记录缺少计价依据时，对应时段的金额返回 `null`。空时段返回零。统计概览字段 `stats.monthly_sales`、`stats.monthly_gifts` 分别控制两张卡片；隐藏用途、数量或销售时间字段时跳过对应汇总。统计字段隐藏时由统一字段脱敏返回空值。成交单价或实收字段隐藏时，汇总金额全部返回 `null`。客户定向商品历史沿用自己的分页响应。
+
+`customer_visits.today` 和 `customer_visits.yesterday` 分别返回 `new_count` 和 `existing_count`。通过商品销售或赠送原单的客户编号关联客户档案，在每个北京时间自然日内去重。客户当天建档记入新客户，早于该日建档记入老客户。仅统计有可核对档案及建档时间的客户，结果沿用当前筛选、授权门店和同一只读快照。无匹配客户时返回零。此汇总只返回新老客户人数，不返回姓名或手机号，因此客户姓名和手机号字段隐藏不影响统计；`stats.customer_visits` 独立控制该卡片，销售时间字段隐藏时跳过统计。商品列表响应使用 `private, no-store`。
+
+`monthly_best_sellers` 返回最多三条 `{ name, quantity }`。按北京时间本月初至当天结束、当前筛选及授权门店汇总收费销售原单。按商品名称合并，名称来源沿用商品列表；空名称略过。销量按原销售件数计算，赠送与售后返库不计入排行。按销量降序、同销量按商品名称升序。无匹配记录返回空数组。`stats.monthly_best_sellers` 独立控制该卡片；商品名称、用途、数量或销售时间任一字段隐藏时跳过统计并省略榜单。
 
 销售记录来自 `accessory_sales`；共同单通过 `sales_order_items` 返回成交时商品资料快照、`sales_orders.order_no`、`order_id/order_item_id` 和关联手机 `sales.invoice_number`。`has_snapshot=0` 的旧出库明确标注“当前档案（原单无资料快照）”，不能把当前名称当成历史快照。综合查询展示、按日筛选和排序使用 `COALESCE(sale_time, created_at)`：新商品购买或赠送保存业务日期加提交时当前北京时间时分秒，贴膜购买或赠送保存提交时当前完整北京时间；`created_at` 保留数据库实际写入时间，旧记录缺少 `sale_time` 时回退读取它。金额、客户、原数量、销售员及其他资料读取原销售事实；新增 `returned_quantity/remaining_quantity` 从原销售关联 `sale_return/gift_return` 事件核对，不改原销售数量。金额界面称“实收”，不作为扣退货后的净收入；接口字段仍按原销售事实返回。`purchase_cost` 为原单保存的成本，界面称“成本”；旧出库可能没有真实批次成本，未知值保持NULL。
 
@@ -608,6 +614,8 @@ MySQL DDL会隐式提交，不能把这9项包成可整体回滚的业务事务�
 - `GET /api/accessories/:id/transfers` 使用 `accessories:view`，门店字段必须可见，分页展示双店均在授权范围内的划拨单。详情记录单号、双店、数量、SN、操作员、北京时间和备注；字段权限逐项遮蔽。SN追踪额外返回 `transfers`，不改原事件字段。
 - 同一事务按现有采购/销售入口锁根模板、库存与SN。普通可用量为门店剩余减在库SN数，使用当前锁定读核对，避免无SN销售、赠送或划拨扣走SN实物。SN出库始终校验实际商品、门店及在库状态，与模板默认开关无关。混合单据按模式分别办理，不允许用不完整SN列表代表整批出库。
 - 划拨表单查询库存时传 `include_variants=false`，只取当前实际商品，避免根模板商品混入其他品牌的数量；详情默认仍汇总所属品牌库存。划拨只更新SN位置与更新时间，保留采购单及逐件成本。日志、SN或库存写入失败整体回滚。相同请求标识与相同内容重试返回原单；变更内容返回409，不重复扣库。
+
+配件详情的批次库存、店铺库存、SN 明细和划拨记录首载时，在空表使用公共 `TableLoadingRow`。库存划拨弹窗读取可划拨库存期间使用 `SectionLoading`，完成后显示表单。仓库设置读取期间使用 `LoadingOverlay` 保留表单内容。具体展示规则见[全局加载规范](../frontend/global-loading-standard.md)。
 
 ### 划拨表迁移
 

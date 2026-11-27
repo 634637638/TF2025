@@ -35,6 +35,9 @@
       <div
         v-if="showStatsCards"
         class="stats-cards"
+        role="region"
+        aria-label="预定统计"
+        tabindex="0"
       >
         <el-card
           v-if="canViewPreorderField('stats_pending_count')"

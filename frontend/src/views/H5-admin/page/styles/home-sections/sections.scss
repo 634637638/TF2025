@@ -1,5 +1,4 @@
 .home-sections-config-page {
-  padding: 20px;
   min-width: 0;
 }
 
@@ -8,7 +7,7 @@
 
   .sections-list {
     display: grid;
-    gap: 16px;
+    gap: var(--admin-panel-gap);
   }
 
   .section-card {

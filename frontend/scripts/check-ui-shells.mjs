@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, extname, join, relative, resolve } from 'node:path'
+import { parse } from '@vue/compiler-sfc'
 
 const root = resolve(import.meta.dirname, '..')
 const sourceRoot = join(root, 'src')
@@ -40,6 +41,34 @@ function lineNumber(source, index) {
 }
 
 const findings = []
+let statGroups = 0
+
+function checkStatGroups(node, file, parentIsStatGroup = false) {
+  const attribute = name => node.type === 1
+    ? node.props.find(prop => prop.type === 6 && prop.name === name)?.value?.content
+    : undefined
+  const classes = attribute('class')?.split(/\s+/) ?? []
+  const isStatGroup = classes.includes('stats-cards')
+  if (isStatGroup) {
+    statGroups++
+    const location = `${file}:${node.loc.start.line}`
+    if (attribute('role') !== 'region' || !attribute('aria-label')?.trim() || attribute('tabindex') !== '0') {
+      findings.push(`${location} 统计卡片组必须提供可聚焦、有名称的滚动区域`)
+    }
+    for (const card of node.children.filter(child => child.type === 1)) {
+      const classes = card.props.find(prop => prop.type === 6 && prop.name === 'class')?.value?.content.split(/\s+/)
+      if (!classes?.includes('stat-card') || card.props.some(prop => prop.type === 7 && prop.name === 'show')) {
+        findings.push(`${file}:${card.loc.start.line} 统计卡片必须直接放在公共容器内，按条件渲染控制可见数量`)
+      }
+    }
+  }
+  if (classes.includes('stat-card') && !parentIsStatGroup) {
+    findings.push(`${file}:${node.loc.start.line} 统计卡片必须接入公共 stats-cards 容器`)
+  }
+  for (const child of node.children ?? []) {
+    if (typeof child === 'object' && child !== null) checkStatGroups(child, file, isStatGroup)
+  }
+}
 const requireToken = (source, token, file, message) => {
   if (!source.includes(token)) findings.push(`${file} ${message}`)
 }
@@ -90,6 +119,10 @@ requireToken(paginationStyleSource, '.pagination-wrapper', 'src/styles/component
 for (const file of walk(sourceRoot)) {
   const source = readFileSync(file, 'utf8')
   const relativeFile = relative(root, file)
+  if (source.includes('stats-cards') || source.includes('stat-card')) {
+    const template = parse(source, { filename: file }).descriptor.template
+    if (template?.ast) checkStatGroups(template.ast, relativeFile)
+  }
   // Views may keep route-level pages and page-internal sections in separate
   // directories. Only the latter should not be required to render the app
   // shell themselves.
@@ -178,4 +211,4 @@ if (findings.length) {
   process.exit(1)
 }
 
-console.log('统一 UI 结构审计通过：Dialog、搜索、分页和后台页面结构均接入公共方案。')
+console.log(`统一 UI 结构审计通过：Dialog、搜索、分页、后台页面和 ${statGroups} 组统计卡片均接入公共方案。`)

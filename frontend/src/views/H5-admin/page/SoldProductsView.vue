@@ -5,7 +5,7 @@
     module-name="已售商品"
     permission-code="h5-sold-products:view"
   >
-    <div class="sold-products-view">
+    <div class="admin-page-content">
       <!-- 搜索栏 -->
       <div class="search-bar">
         <el-input
@@ -46,7 +46,7 @@
         v-else
         v-tf-loading="{ active: loading, text: '正在刷新已售商品...' }"
         v-table-double-tap="recordTapOptions"
-        class="products-list"
+        class="admin-page-content"
       >
         <div
           v-for="product in paginatedProducts"

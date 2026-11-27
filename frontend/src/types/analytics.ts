@@ -161,6 +161,8 @@ export interface InventoryLowStockItem {
   brand: string
   model: string
   color: string
+  memory: string | null
+  condition_label: string
   current_stock: number
   reorder_point: number
   unit_cost: number

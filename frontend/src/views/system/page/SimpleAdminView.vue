@@ -150,6 +150,7 @@ import { storage } from '@/services/storage'
 import { canAccessRoutePath } from '@/constants/routePermissions'
 import { logger } from '@/utils/logger'
 import { useNotification } from '@/composables/useNotification'
+import '@/styles/admin-layout.css'
 const globalNotifications = useNotification()
 
 

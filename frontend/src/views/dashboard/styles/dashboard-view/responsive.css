@@ -83,22 +83,6 @@
     font-size: var(--tf-type-scale-16);
   }
 
-  .view-all-btn {
-    padding: 6px 10px;
-    font-size: var(--tf-type-scale-11);
-  }
-
-  .activity-item {
-    padding: 12px 0;
-  }
-
-  .activity-icon {
-    width: 36px;
-    height: 36px;
-    font-size: var(--tf-type-scale-14);
-    margin-right: 12px;
-  }
-
   .activity-content p {
     font-size: var(--tf-type-scale-13);
   }
@@ -107,7 +91,4 @@
     font-size: var(--tf-type-scale-11);
   }
 
-  .activity-action {
-    padding: 6px;
-  }
 }

@@ -10,14 +10,16 @@ class DashboardController {
   constructor({
     dashboardService = new DashboardService(),
     database = getDatabase,
-    connected = isConnected
+    connected = isConnected,
+    readService = new DashboardReadService({ database, connected })
   } = {}) {
-    this.readService = new DashboardReadService({ database, connected })
+    this.readService = readService
     this.dashboardService = dashboardService
   }
 
   async getDashboardData(req, res) {
     try {
+      res.setHeader('Cache-Control', 'private, no-store')
       return ApiResponse.success(res, await this.readService.getDashboardData(req.user))
     } catch (error) {
       log.error('获取仪表盘数据失败:', error)
@@ -27,10 +29,21 @@ class DashboardController {
 
   async getActivities(req, res) {
     try {
+      res.setHeader('Cache-Control', 'private, no-store')
       return ApiResponse.success(res, await this.readService.getActivities(req.user), '获取最近活动成功')
     } catch (error) {
       log.error('获取最近活动失败:', error)
       return ApiResponse.serverError(res, '获取最近活动失败', error)
+    }
+  }
+
+  async getMyMonthlyStats(req, res) {
+    try {
+      res.setHeader('Cache-Control', 'private, no-store')
+      return ApiResponse.success(res, await this.readService.getMyMonthlyStats(req.user))
+    } catch (error) {
+      log.error('获取本月个人汇总失败:', error)
+      return ApiResponse.error(res, '获取本月个人汇总失败', 500)
     }
   }
 

@@ -540,7 +540,7 @@ import type { CheckoutGoodsOption, FilmServiceContext, SalesCheckoutInput } from
 
 const SalesGoodsCheckoutDialog = defineAsyncComponent(() => import('@/views/sales/page/SalesGoodsCheckoutDialog.vue'))
 const props = defineProps<{ modelValue: boolean; customer: Pick<CustomerOption, 'id' | 'name'> & Partial<Pick<CustomerOption, 'phone'>> | null; phoneId?: number }>()
-const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: boolean]; success: [] }>()
 const query = usePagePermissions('query')
 const allowed = computed(() => query.canView.value && query.hasPermission('film') && visible('customer_name') && (visible('customer_phone') || !!props.phoneId))
 const auth = useAuthStore(), notices = useNotification()
@@ -723,6 +723,7 @@ const submitFree = async () => {
     if (!response.success || !response.data?.film_service_id || !response.data.order_id || response.data.paid_amount !== 0) throw new Error('办理回执不完整，请重试原请求核对')
     pendingFree.value = null
     freeCompleted.value = true
+    emit('success')
     notices.success('免费贴膜办理成功')
     page.value = 1; await load()
   } catch (error) {
@@ -735,7 +736,13 @@ const start = () => {
   if (serviceMode.value === 'free') void submitFree()
   else checkoutVisible.value = true
 }
-const completed = () => { checkoutVisible.value = false; freeCompleted.value = true; page.value = 1; void load() }
+const completed = () => {
+  checkoutVisible.value = false
+  freeCompleted.value = true
+  emit('success')
+  page.value = 1
+  void load()
+}
 const beforeClose = (done: (cancel?: boolean) => void) => { if (!checkoutVisible.value && !freeSaving.value && !pendingFree.value) done() }
 const updateVisible = (value: boolean) => { if (!checkoutVisible.value && !freeSaving.value && !pendingFree.value) emit('update:modelValue', value) }
 watch([() => props.modelValue, () => props.customer?.id, () => props.customer?.name, () => props.customer?.phone, () => props.phoneId, allowed,

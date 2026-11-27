@@ -47,6 +47,9 @@
             <div
               v-if="showPaymentStatsCards"
               class="stats-cards"
+              role="region"
+              aria-label="手机货款统计"
+              tabindex="0"
             >
               <!-- 主要统计 - 3个关键指标 -->
               <div
@@ -289,7 +292,7 @@
                   <i class="fas fa-list" />
                   <span class="title-text">手机列表</span>
                 </div>
-                <span class="record-count">共 {{ pagination.total }} 条记录</span>
+                <span class="record-count">共 {{ pagination.total }} 条</span>
               </div>
               <div
                 v-if="selectedPhones.length > 0"

@@ -1,5 +1,69 @@
 <template>
   <div class="admin-page-content">
+    <div
+      v-if="goodsStats.length && !failed"
+      class="stats-cards"
+      role="region"
+      aria-label="商品查询统计"
+      :aria-busy="loading"
+      tabindex="0"
+    >
+      <div
+        v-for="stat in goodsStats"
+        :key="stat.label"
+        class="stat-card stat-card--with-details stat-card--with-amount-details"
+        :class="stat.accentClass"
+      >
+        <div
+          class="stat-icon"
+          aria-hidden="true"
+        >
+          <IconRenderer :icon="stat.icon" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">
+            {{ stat.label }}
+          </div>
+          <div
+            v-if="stat.value !== undefined"
+            class="stat-value"
+            :class="stat.valueClass"
+          >
+            {{ stat.value }}
+          </div>
+          <div
+            v-if="stat.caption"
+            class="stat-label"
+          >
+            {{ stat.caption }}
+          </div>
+        </div>
+        <dl
+          v-if="stat.details.length"
+          class="stat-card__details"
+          :class="stat.ranked ? 'stat-card__details--ranked' : 'stat-card__details--amount-divider'"
+          :data-amount-divider="stat.ranked ? undefined : 'always'"
+        >
+          <div
+            v-for="item in stat.details"
+            :key="item.label"
+          >
+            <dt :title="stat.ranked ? item.label : undefined">
+              {{ item.label }}
+            </dt>
+            <dd>
+              <span class="stat-card__detail-quantity">{{ item.primary }}</span>
+              <span
+                v-if="item.secondary !== undefined"
+                class="stat-card__detail-amount"
+              >
+                <span class="stat-card__detail-amount-value">{{ item.secondary }}</span>
+              </span>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
     <UnifiedSearchPanel
       v-model:expanded="expanded"
       :loading="loading"
@@ -163,8 +227,21 @@
       type="error"
       :closable="false"
     />
-    <div class="table-section table-card admin-panel">
-      <div class="table-scroll-container">
+    <div class="table-section admin-panel admin-table-panel">
+      <div class="section-title query-list-header">
+        <div class="query-list-header__main">
+          <span class="section-title__label">
+            <i
+              class="fas fa-list"
+              aria-hidden="true"
+            />
+            商品销售列表
+          </span>
+          <slot name="list-tabs" />
+          <span class="record-count">共 {{ total }} 条</span>
+        </div>
+      </div>
+      <div class="table-responsive">
         <el-table
           v-tf-loading="{ active: loading, text: '正在查询商品销售记录...' }"
           v-table-double-tap="{ enabled: isMobile || isTablet, getRowKey: getGoodsTapRowKey, onDoubleTap: handleGoodsDoubleTap }"
@@ -257,6 +334,7 @@
         :total="total"
         :disabled="loading"
         :page-sizes="pageSizes"
+        :show-total="false"
         :show-page-sizes="true"
         @change="changePage"
       />
@@ -606,18 +684,19 @@ import { getGoodsFilterOptions, getGoodsProductNameOptions, getStores, searchOpe
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useMobile } from '@/composables/mobile'
-import { canViewQueryGoodsField as visible, ACCESSORY_FIELD_IDS, type AccessoryFieldName } from '@/components/accessory-field-permissions'
+import { canViewQueryGoodsField as visible, canViewQueryGoodsStat, ACCESSORY_FIELD_IDS, QUERY_GOODS_STAT_FIELD_IDS, type AccessoryFieldName, type QueryGoodsStatField } from '@/components/accessory-field-permissions'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
-import { formatAmount, formatDateTime } from '@/utils/format'
+import { formatAmount, formatCurrency, formatDateTime, formatNumber } from '@/utils/format'
 import { TIME_FORMATS } from '@/utils/time'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import CheckoutOrderDialog from '@/components/query/CheckoutOrderDialog.vue'
 import GoodsReturnDialog from './GoodsReturnDialog.vue'
 import GoodsAftersaleHistory from './GoodsAftersaleHistory.vue'
-import type { AccessorySaleRecord, AccessorySaleDetail } from '@/types/accessory'
+import type { AccessorySaleRecord, AccessorySaleDetail, QueryGoodsSummary, QueryGoodsCustomerVisits, QueryGoodsBestSeller } from '@/types/accessory'
 import type { PaginatedResponse } from '@/types'
 import type { DateRangeValue } from '@/types/date-range'
 
+const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 const { canView: canQuery, hasPermission } = usePagePermissions('query')
 const canGoods = computed(() => hasPermission('goods-view'))
 const { isMobile, isTablet } = useMobile()
@@ -625,7 +704,7 @@ const allowed = computed(() => canQuery.value && canGoods.value)
 const SalesGoodsCheckoutDialog = defineAsyncComponent(() => import('@/views/sales/page/SalesGoodsCheckoutDialog.vue'))
 const canSellGoods = computed(() => allowed.value && (hasPermission('goods-sell') || hasPermission('goods-gift')))
 const saleOpen = ref(false)
-const openSale = () => { if (canSellGoods.value) saleOpen.value = true }
+const openSale = () => { if (props.active && canSellGoods.value) saleOpen.value = true }
 const afterSale = async () => { page.value = 1; await load().catch(() => {}) }
 watch(canSellGoods, value => { if (!value) saleOpen.value = false })
 const requests = useLatestRequest(), details = useLatestRequest(), optionRequests = useLatestRequest(), filterOptionRequests = useLatestRequest(), operatorRequests = useLatestRequest(), productNameRequests = useLatestRequest()
@@ -635,6 +714,73 @@ const operators = ref<ReferenceRecord[]>([]), brands = ref<ReferenceRecord[]>([]
 const productNames = ref<string[]>([])
 const pageSizes = [20, 50, 100]
 const page = ref(1), pageSize = ref(pageSizes[0]), total = ref(0)
+const summary = ref<QueryGoodsSummary | null>(null)
+const customerVisits = ref<QueryGoodsCustomerVisits | null>(null)
+const bestSellers = ref<QueryGoodsBestSeller[] | null>(null)
+interface GoodsStatCard {
+  label: string
+  icon: string
+  accentClass: string
+  value?: string
+  valueClass?: string
+  caption?: string
+  ranked?: boolean
+  details: { label: string; primary: string; secondary?: string }[]
+}
+const goodsStats = computed<GoodsStatCard[]>(() => {
+  if (!allowed.value || !visible('created_at')) return []
+  const periods = summary.value
+  const visits = customerVisits.value
+  const canViewSalesStats = visible('usage_type') && visible('total_quantity')
+  const showAmounts = visible('unit_price') && visible('total_price')
+  const amountText = (amount: number | string | null) => amount === null ? '—' : formatCurrency(amount)
+  const cards: GoodsStatCard[] = []
+  const periodCard = (title: string, totals: NonNullable<QueryGoodsSummary['sale']> | undefined, card: Pick<GoodsStatCard, 'icon' | 'accentClass' | 'valueClass'>, show: boolean) => {
+    if (!show || !totals) return
+    cards.push({
+      ...card,
+      label: `本月${title}`,
+      value: showAmounts ? amountText(totals.month.period_amount) : `${formatNumber(totals.month.period_quantity)}件`,
+      caption: showAmounts && title === '赠送' ? `${formatNumber(totals.month.period_quantity)}件` : undefined,
+      details: [
+        { label: `今日${title}`, total: totals.today },
+        { label: `昨日${title}`, total: totals.yesterday }
+      ].map(({ label, total }) => ({
+        label, primary: `${formatNumber(total.period_quantity)}件`,
+        secondary: showAmounts ? amountText(total.period_amount) : undefined
+      }))
+    })
+  }
+  periodCard('销售', periods?.sale, { icon: 'fas fa-shopping-cart', accentClass: 'stat-card--income', valueClass: 'stat-value--income' }, canViewQueryGoodsStat('monthlySales') && canViewSalesStats)
+  periodCard('赠送', periods?.gift, { icon: 'fas fa-gift', accentClass: 'stat-card--accent' }, canViewQueryGoodsStat('monthlyGifts') && canViewSalesStats)
+  if (visits && canViewQueryGoodsStat('customerVisits')) {
+    cards.push({
+      label: '来访客户',
+      icon: 'fas fa-users',
+      accentClass: 'stat-card--info',
+      caption: '按商品记录统计',
+      details: [
+        { label: '今日', counts: visits.today },
+        { label: '昨日', counts: visits.yesterday }
+      ].map(({ label, counts }) => ({
+        label,
+        primary: `新客户 ${formatNumber(counts.new_count)}人`,
+        secondary: `老客户 ${formatNumber(counts.existing_count)}人`
+      }))
+    })
+  }
+  if (bestSellers.value && canViewQueryGoodsStat('monthlyBestSellers') && canViewSalesStats && visible('name')) {
+    cards.push({
+      label: '本月热销',
+      icon: 'fas fa-fire',
+      accentClass: 'stat-card--warning',
+      ranked: true,
+      caption: bestSellers.value.length ? undefined : '暂无热销商品',
+      details: bestSellers.value.map(({ name, quantity }) => ({ label: name, primary: `${formatNumber(quantity)}件` }))
+    })
+  }
+  return cards
+})
 const expanded = ref(false), keyword = ref(''), storeId = ref<number>(), saleType = ref('')
 const operatorId = ref<number>(), brandId = ref<number>(), categoryId = ref<number>(), productName = ref<string | null>('')
 const operatorLoading = ref(false)
@@ -722,7 +868,11 @@ const load = async () => {
   loading.value = true
   failed.value = false
   try {
-    const response = await unifiedApi.get<Pick<PaginatedResponse<AccessorySaleRecord>, 'data' | 'pagination'>>('/query/goods', {
+    const response = await unifiedApi.get<Pick<PaginatedResponse<AccessorySaleRecord>, 'data' | 'pagination'> & {
+      summary?: QueryGoodsSummary
+      customer_visits?: QueryGoodsCustomerVisits
+      monthly_best_sellers?: QueryGoodsBestSeller[]
+    }>('/query/goods', {
       params: { page: page.value, page_size: pageSize.value, keyword: keyword.value.trim() || undefined,
         store_id: visible('distribution') ? storeId.value : undefined,
         sale_type: visible('usage_type') ? saleType.value || undefined : undefined,
@@ -738,6 +888,9 @@ const load = async () => {
     if (!response.data || !Array.isArray(response.data.data) || !Number.isSafeInteger(response.data.pagination?.total)) throw new Error('商品销售分页响应不完整')
     rows.value = response.data.data
     total.value = response.data.pagination.total
+    summary.value = response.data.summary ?? null
+    customerVisits.value = response.data.customer_visits ?? null
+    bestSellers.value = response.data.monthly_best_sellers ?? null
   } catch (error) {
     if (!request.isLatest() || requests.isCanceledError(error)) return
     failed.value = true
@@ -805,11 +958,22 @@ const handleGoodsDoubleTap = (index: number) => {
 }
 watch(detailOpen, value => { if (!value) { details.cancelLatest(); detail.value = null; detailSaleId.value = null; detailLoading.value = false } })
 watch(returnOpen, value => { if (!value) returnSale.value = null })
-watch(() => [allowed.value, ...Object.keys(ACCESSORY_FIELD_IDS).map(key => visible(key as AccessoryFieldName))], ([value]) => {
+watch(() => props.active, active => {
+  if (active) return
+  detailOpen.value = false
+  orderOpen.value = false
+  orderSaleId.value = null
+  returnOpen.value = false
+  saleOpen.value = false
+})
+watch(() => [allowed.value, ...Object.keys(ACCESSORY_FIELD_IDS).map(key => visible(key as AccessoryFieldName)), ...Object.keys(QUERY_GOODS_STAT_FIELD_IDS).map(key => canViewQueryGoodsStat(key as QueryGoodsStatField))], ([value]) => {
   const activeDetailId = detailOpen.value ? detailSaleId.value : null
   if (operatorSearchTimer) clearTimeout(operatorSearchTimer)
   if (productNameSearchTimer) clearTimeout(productNameSearchTimer)
   requests.cancelLatest(); details.cancelLatest(); optionRequests.cancelLatest(); filterOptionRequests.cancelLatest(); operatorRequests.cancelLatest(); productNameRequests.cancelLatest()
+  summary.value = null
+  customerVisits.value = null
+  bestSellers.value = null
   rows.value = []; stores.value = []; operators.value = []; brands.value = []; categories.value = []; productNames.value = []; total.value = 0; detail.value = null; returnOpen.value = false; saleOpen.value = false; loading.value = false; operatorLoading.value = false; productNameLoading.value = false
   if (!value) { detailOpen.value = false; return }
   void load().catch(() => {})

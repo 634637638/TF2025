@@ -1,3 +1,30 @@
+.query-view.admin-page :deep(.query-list-header) {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.query-view.admin-page :deep(.query-list-header__main) {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--tf-space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.query-view.admin-page :deep(.query-list-header__main > .section-title__label) {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.query-view.admin-page :deep(.query-list-header__main > .tf-page-tabs--inline) {
+  flex: 0 1 auto;
+}
+
+.query-view.admin-page :deep(.query-list-header__main > .record-count) {
+  flex: 0 0 auto;
+}
+
 /* 移动端适配 */
 @media (max-width: 767px) {
   .device-info-section {
@@ -121,10 +148,6 @@
 
   :deep(.btn-text-mobile) {
     display: inline;
-  }
-
-  .query-view.admin-page .stats-cards .stat-card[data-stat-key='in_stock_count'] {
-    display: none !important;
   }
 
   .table-responsive::-webkit-scrollbar {

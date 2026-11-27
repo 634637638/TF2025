@@ -60,7 +60,7 @@ const datasets={
 window.fixtureRead=async url=>{if(Object.hasOwn(datasets,url))return {success:true,data:structuredClone(datasets[url]),pagination:{total:1}};window.fixtureUnknown.push(url);throw Error('未声明的隔离读取 '+url)};
 window.fixtureWrite=(...args)=>{window.fixtureWrites.push(args);throw Error('本测试禁止业务写入')};
 const imports=import.meta.glob('/src/**/*.vue');let app;
-const globals=['MobileDialog','RecordDetailDialog','RecordDescriptions','DataEmptyState','TableLoadingRow','SectionLoading','Pagination','AmountInput','DateRangePicker','MediaPreviewViewer','MediaThumbnailActions','Image','IconRenderer','PageHeader'];
+const globals=['MobileDialog','RecordDetailDialog','RecordDescriptions','DataEmptyState','TableLoadingRow','SectionLoading','Pagination','AmountInput','DateRangePicker','MediaPreviewViewer','MediaThumbnailActions','Image','IconRenderer','PageHeader','SearchActionButton'];
 window.renderMobileCase=async(file,readonly=false)=>{
  app?.unmount();await nextTick();window.fixtureAccess.readonly=readonly;window.fixtureNotices=[];window.fixtureUnknown=[];
  const component=(await imports['/src/'+file]()).default;

@@ -58,8 +58,9 @@
         </div>
       </div>
 
-      <div
-        v-tf-loading="{ active: accessoryLoading, text: '正在核对随单配件...' }"
+      <LoadingOverlay
+        :loading="accessoryLoading"
+        text="正在核对随单配件..."
         class="receipt-scroll-area"
       >
         <div
@@ -344,7 +345,7 @@
             </div>
           </footer>
         </div>
-      </div>
+      </LoadingOverlay>
     </div>
 
     <template #footer>
@@ -382,6 +383,7 @@
 <script setup lang="ts">
 import { printElement } from '@/utils/print'
 import { computed, nextTick, ref, watch, type CSSProperties } from 'vue'
+import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import MobileDialog from '@/components/MobileDialog.vue'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
 import type { CloseEmits, VisibleProps } from '@/types/component'

@@ -18,8 +18,12 @@ function fixture(t) {
     const { scripts } = JSON.parse(readFileSync(new URL(source, import.meta.url), 'utf8'))
     // 审计替身主动失败，能发现任何意外的启动前审计；不运行真实服务或数据库。
     scripts['check:standards'] = 'node audit.cjs'
+    scripts['check:bundle-size'] = 'node bundle.cjs'
+    scripts.build = 'vite build && npm run check:bundle-size'
+    scripts['build:debug'] = 'vite build --config vite.config.debug.ts && npm run check:bundle-size'
     writeFileSync(join(directory, 'package.json'), JSON.stringify({ private: true, scripts }))
     writeFileSync(join(directory, 'audit.cjs'), 'require(\'node:fs\').appendFileSync(process.env.TF_STARTUP_TEST_LOG, JSON.stringify({ command: \'audit\' }) + \'\\n\'); process.exit(79)')
+    writeFileSync(join(directory, 'bundle.cjs'), 'require(\'node:fs\').appendFileSync(process.env.TF_STARTUP_TEST_LOG, JSON.stringify({ command: \'bundle\' }) + \'\\n\')')
   }
   copyFileSync(new URL('../../scripts/fix-ports.js', import.meta.url), join(root, 'scripts/fix-ports.js'))
   // 不结束用户进程或占用真实端口；只保留实际启动编排。
@@ -60,12 +64,17 @@ test('日常启动只运行服务入口，不自动执行全量审计', t => {
   }
 })
 
-test('普通构建、调试构建及发布检查仍必须先通过全量审计', t => {
+test('普通构建不运行全量审计，发布构建和发布检查会阻断于审计失败', t => {
   const f = fixture(t)
-  for (const command of ['build', 'build:debug', 'check:release']) {
+  for (const [command, expectedEvents, expectedStatus] of [
+    ['build', [{ command: 'vite', args: ['build'] }, { command: 'bundle' }], 0],
+    ['build:debug', [{ command: 'vite', args: ['build', '--config', 'vite.config.debug.ts'] }, { command: 'bundle' }], 0],
+    ['check:release', [{ command: 'audit' }], 79],
+    ['build:release', [{ command: 'audit' }], 79]
+  ]) {
     const result = f.run('frontend', command)
-    assert.equal(result.status, 79, `${command}: ${result.stderr}`)
-    assert.deepEqual(result.events, [{ command: 'audit' }])
+    assert.equal(result.status, expectedStatus, `${command}: ${result.stderr}`)
+    assert.deepEqual(result.events, expectedEvents)
   }
 })
 

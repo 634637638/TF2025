@@ -497,6 +497,20 @@ try {
     }
     for (const [mode, title] of [['inventory', '商品库存'], ['templates', '商品模板']]) {
       if (mode === 'templates') { await clickButton('[role="tab"]', title); await settleLayout() }
+      const header = await page.$eval('.admin-table-panel .section-title', section => {
+        const tabs = section.querySelector('[aria-label="商品管理模式"]')
+        const bounds = section.getBoundingClientRect(), tabBounds = tabs.getBoundingClientRect()
+        return {
+          title: section.querySelector('.section-title__label').textContent.trim(),
+          active: tabs.querySelector('[aria-selected="true"]').textContent.trim(),
+          count: section.querySelector('.record-count').textContent.trim(),
+          fits: tabBounds.left >= bounds.left - 1 && tabBounds.right <= bounds.right + 1 && tabs.scrollWidth <= tabs.clientWidth + 1
+        }
+      })
+      assert.equal(header.title, `${title}列表`)
+      assert.equal(header.active, title)
+      assert.match(header.count, /^共 \d+ 条$/)
+      assert.equal(header.fits, true)
       const headings = await page.$$eval('.el-table__header-wrapper th', items => items.map(item => item.textContent.trim()))
       assert.equal(headings.includes('商品名称'), true)
       if (mode === 'inventory') assert.equal(headings.includes('品牌'), true)

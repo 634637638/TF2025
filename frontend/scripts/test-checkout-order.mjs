@@ -77,6 +77,7 @@ window.phoneDetail=reactive({基本信息:{phone_id:11,brand:'手机品牌',mode
 const historyMode=location.pathname==='/history';
 const filmMode=location.pathname==='/film';
 const receiptMode=location.pathname==='/receipt';
+window.pauseReceiptAccessories=receiptMode;
 window.receipt=reactive({number:'RECEIPT-1',status:'sold',items:[{phone_id:11,sale_id:81,brand:'苹果',model:'手机甲',color:'黑色',memory:'128G',
 imei:'012345678901234',serialNumber:'',salePrice:100.01,isNew:1}]});
 window.receiptGoods=[{id:51,name:'原单通用充电器长名称完整显示',brand_name:'配件品牌',product_model:'MWVW3CH',color_name:'白色',unit:'个',quantity:2,
@@ -104,7 +105,16 @@ app.config.globalProperties.$getNumberColumnWidth=getNumberColumnMinWidth;
 app.directive('tf-loading',vTFLoading);app.directive('table-double-tap',vTableDoubleTap);app.directive('permission',{});app.mount('#app');
 `
 const mocks = new Map([
-  [resolve(root, 'src/utils/unified-api.ts'), 'export const unifiedApi={get:async(url,config)=>{window.requests.push(url);await new Promise(r=>setTimeout(r,30));if(window.fail)throw Error(\'隔离读取失败\');return {success:true,data:window.mockRead(url,config)}}}'],
+  [resolve(root, 'src/utils/unified-api.ts'), `export const unifiedApi={get:async(url,config)=>{
+    window.requests.push(url);
+    if (window.pauseReceiptAccessories && url.endsWith('/accessories')) {
+      await new Promise(resolve => { window.resumeReceiptAccessories = resolve });
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 30));
+    }
+    if (window.fail) throw Error('隔离读取失败');
+    return {success:true,data:window.mockRead(url,config)};
+  }}`],
   [resolve(root, 'src/composables/usePagePermissions.ts'), 'import {computed} from \'vue\';export const usePagePermissions=(module)=>({canView:computed(()=>window.access[module===\'accessories\'?\'goods\':module]),canCreate:computed(()=>window.access.create),hasPermission:action=>action===\'goods-view\'?window.access.goods:window.access[action]})'],
   [resolve(root, 'src/composables/useFieldPermissions.ts'), 'export const fieldPermissions={isFieldVisible:(module,field)=>!window.access[module===\'query_queryview\'?\'phoneHidden\':\'goodsHidden\'].includes(field),getHiddenFields:module=>window.access[module===\'query_queryview\'?\'phoneHidden\':\'goodsHidden\']}'],
   [resolve(root, 'src/stores/siteSettings.ts'), 'export const useSiteSettingsStore=()=>({settings:{siteName:\'隔离凭证\'}})']
@@ -139,6 +149,36 @@ const readPrintedReceipt = async page => {
     await page.evaluate(() => window.receiptPrint.close())
     await page.bringToFront()
   }
+}
+
+const verifyReceiptLoading = async page => {
+  await page.waitForFunction(() => window.resumeReceiptAccessories && document.querySelector('[data-receipt-export]'))
+  const loading = await page.$eval('[data-receipt-export]', receipt => {
+    const region = receipt.parentElement
+    const message = region.querySelector('[title="正在核对随单配件..."]')
+    if (!message) return null
+    const text = document.createRange()
+    text.selectNodeContents(message)
+    const textRect = text.getBoundingClientRect()
+    const icon = message.previousElementSibling.getBoundingClientRect()
+    const bounds = region.getBoundingClientRect()
+    return {
+      horizontalOffset: Math.abs((icon.left + textRect.right - bounds.left - bounds.right) / 2),
+      verticalOffset: Math.abs((textRect.top + textRect.bottom - bounds.top - bounds.bottom) / 2),
+      lines: text.getClientRects().length,
+      exportDisabled: ['打印', '保存图片'].every(label => [...receipt.closest('[role="dialog"]').querySelectorAll('button')]
+        .some(button => button.textContent.trim() === label && button.disabled))
+    }
+  })
+  assert.ok(loading, '随单配件未返回时应显示凭证加载提示')
+  assert.ok(loading.horizontalOffset <= 2 && loading.verticalOffset <= 2, `凭证加载提示偏离正文中心 ${JSON.stringify(loading)}`)
+  assert.equal(loading.lines, 1, '凭证加载文字应保持单行')
+  assert.equal(loading.exportDisabled, true, '加载期间禁用打印和保存图片')
+  await page.evaluate(() => {
+    window.pauseReceiptAccessories = false
+    window.resumeReceiptAccessories()
+    window.resumeReceiptAccessories = undefined
+  })
 }
 
 const verifyReceipt = async (page, temporary, errors) => {
@@ -227,8 +267,9 @@ const verifyReceipt = async (page, temporary, errors) => {
   await page.evaluate(() => { window.fail = true; window.access.goods = true })
   await page.waitForFunction(() => document.body.textContent.includes('随单配件核对失败'))
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].filter(el => ['打印', '保存图片'].includes(el.textContent.trim())).every(el => el.disabled)), true)
-  await page.evaluate(() => { window.fail = false })
+  await page.evaluate(() => { window.fail = false; window.pauseReceiptAccessories = true })
   await clickButton(page, '重新核对')
+  await verifyReceiptLoading(page)
   await page.waitForFunction(() => document.body.textContent.includes('原赠膜'))
   for (const status of ['peer_transfer', 'supplier_proxy']) {
     const requests = await page.evaluate(status => { window.receipt.status = status; return window.requests.length }, status)
@@ -271,11 +312,12 @@ try {
   for (const mode of selectedModes) for (const width of viewportWidths) for (const dark of [false, true]) {
     const history = mode === 'history', film = mode === 'film', receipt = mode === 'receipt'
     const page = await browser.newPage(), errors = [], blocked = []
-    await page.setViewport({ width, height: 1000, hasTouch: (goodsPage || history) && width <= 1024 })
+    const viewportHeight = phoneQueryOnly ? 740 : 1000
+    await page.setViewport({ width, height: viewportHeight, hasTouch: (goodsPage || history) && width <= 1024 })
     // 公共设备检测同时读取screen与视口；同步仿真屏幕，避免桌面视口被headless默认800px屏幕误判为平板。
     const metrics = await page.createCDPSession()
     await metrics.send('Emulation.setDeviceMetricsOverride', {
-      width, height: 1000, screenWidth: width, screenHeight: 1000, deviceScaleFactor: 1, mobile: false
+      width, height: viewportHeight, screenWidth: width, screenHeight: viewportHeight, deviceScaleFactor: 1, mobile: false
     })
     await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: dark ? 'dark' : 'light' }])
     await page.setRequestInterception(true)
@@ -337,9 +379,13 @@ try {
       console.log(purchaseReturn ? `采购退供试算 ${width}px ${dark ? '暗' : '明'}：普通/SN、退款/留抵/冲应付、切换失效/迟到响应/失败重试/撤权通过（只读内存服务）` : filmService ? `贴膜办理 ${width}px ${dark ? '暗' : '明'}：跨店/取消/免费及收费/积分净额/原键重试/历史重读/撤权通过（内存服务）` : goodsPage ? `商品查询 ${mode} ${width}px ${dark ? '暗' : '明'}：检索/分页/筛选/原单与售后/失败重试/撤权及迟到响应通过` : goodsExchange ? `商品换货 ${mode} ${width}px ${dark ? '暗' : '明'}：原SN/新销售员/净差价/积分/未知冻结及重试/撤权通过` : phoneReturn ? `手机联合退货 ${mode} ${width}px ${dark ? '暗' : '明'}：原单/收费保留及退回/SN/赠品扣款/退款补款/未知冻结及重试通过` : quickSale ? `快速出库 ${width}px ${dark ? '暗' : '明'}：真实表单/客户继承/公共宽度/取消保留/最新价格/购买赠送/单次合单提交通过` : salesPage ? `销售整页 ${mode} ${width}px ${dark ? '暗' : '明'}：${actions}通过` : `结算组件 ${mode} ${width}px ${dark ? '暗' : '明'}：真实检索/SN/赠送/关联/积分/防重重试/撤权通过`)
       continue
     }
+    if (receipt) {
+      await page.evaluate(dark => { document.documentElement.classList.toggle('dark', dark); document.documentElement.dataset.theme = dark ? 'dark' : 'light' }, dark)
+      await verifyReceiptLoading(page)
+    }
     const readyText = film ? '贴膜记录' : sample
     await page.waitForFunction(value => document.body.textContent.includes(value), {}, readyText).catch(error => { throw new Error(error.message + ': ' + errors.join(' | ')) })
-    await page.evaluate(dark => { document.documentElement.classList.toggle('dark', dark); document.documentElement.dataset.theme = dark ? 'dark' : 'light' }, dark)
+    if (!receipt) await page.evaluate(dark => { document.documentElement.classList.toggle('dark', dark); document.documentElement.dataset.theme = dark ? 'dark' : 'light' }, dark)
     if (history || film) {
       await (history ? verifyCustomerGoodsHistory(page, capture) : verifyCustomerFilmHistory(page, capture))
       assert.deepEqual(errors, []); assert.deepEqual(blocked, [])
@@ -351,7 +397,7 @@ try {
       await verifyReceipt(page, temporary, errors)
       assert.deepEqual(errors, []); assert.deepEqual(blocked, [])
       await page.close()
-      console.log(`销售凭证 ${width}px ${dark ? '暗' : '明'}：购买/赠品、SN、原净额、打印及连续PNG下载、撤权与重试通过`)
+      console.log(`销售凭证 ${width}px ${dark ? '暗' : '明'}：加载居中、购买/赠品、SN、原净额、打印及连续PNG下载、撤权与重试通过`)
       continue
     }
     const result = await page.evaluate(() => {

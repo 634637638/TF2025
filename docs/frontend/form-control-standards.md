@@ -107,7 +107,7 @@ Element Plus 的 `el-select`、`el-date-picker`、`el-input`、`el-input-number`
 
 ### 输入、提交与后端兜底
 
-设备编码共用 `backend/src/config/input-validation.json` 的 `imei` / `phoneSerial`，前端唯一工具为 `utils/device-identifier.ts`，后端复用 `utils/imei.js`。标准 IMEI 为完整15位数字；手机 SN 为4–50位字母、数字、斜杠或连字符，分隔符须位于编码片段之间，保留前导零并转大写。无 IMEI 设备使用同一个合法 SN 作为 IMEI。入库、综合查询编辑、快速出库和导入不再删除非法字符或截短后提交；配件 SN 继续按其独立业务档位校验。编码文本框统一接入全局 `v-identifier-input`：键入、粘贴、拖放及中文输入法提交时主动阻止不符合字符集的内容，且不通过删除字符将错误值改造成合法值；规则仍在提交及服务端复核。扫码保留明确标签提取和 Apple 前缀选项，IMEI 扫码额外校验校验位，不能从超长或混入字符的字段提取有效前缀。手输与历史接口保持原有格式校验，不因本次统一新增 IMEI 校验位门槛。
+设备编码共用 `backend/src/config/input-validation.json` 的 `imei` / `phoneSerial`，前端唯一工具为 `utils/device-identifier.ts`，后端复用 `utils/imei.js`。标准 IMEI 为完整15位数字；手机 SN 为4–50位字母、数字、斜杠或连字符，分隔符须位于编码片段之间，保留前导零并转大写。无 IMEI 设备使用同一个合法 SN 作为 IMEI。入库、综合查询编辑、快速出库和导入不再删除非法字符或截短后提交；配件 SN 继续按其独立业务档位校验。国补申请仅将 IMEI1 与合法 SN 完全相同的值识别为该无 IMEI 标记，不当成 IMEI 并在国补记录中归一化为空，IMEI2 仍按选填字段校验，填写后必须是15位数字。编码文本框统一接入全局 `v-identifier-input`：键入、粘贴、拖放及中文输入法提交时主动阻止不符合字符集的内容，且不通过删除字符将错误值改造成合法值；规则仍在提交及服务端复核。扫码保留明确标签提取和 Apple 前缀选项，IMEI 扫码额外校验校验位，不能从超长或混入字符的字段提取有效前缀。手输与历史接口保持原有格式校验，不因本次统一新增 IMEI 校验位门槛。
 
 1. 输入阶段复用 Element Plus、`AmountInput` 和公共标准化工具，保留小数点、负号等合法编辑中间态。`inputmode`、`type`、`min/max` 及 `maxlength` 只改善输入体验，不能充当完整验证。
 2. 中文输入法组合输入期间不清洗、不截断正在组合的文字，也不重复提示；组合完成后统一处理。键盘、粘贴、拖入、自动填充、扫码和程序回填须遵守相同字段契约，不能只拦截 `keydown`。

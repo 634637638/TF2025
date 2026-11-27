@@ -49,31 +49,9 @@
       </PageHeader>
 
       <div class="accessories-table-container admin-page-content">
-        <div
-          class="tab-navigation tf-page-tabs"
-          role="tablist"
-          aria-label="配件管理模式"
-        >
-          <el-button
-            role="tab"
-            :aria-selected="activeMode === 'stock'"
-            :type="activeMode === 'stock' ? 'primary' : 'default'"
-            @click="switchMode('stock')"
-          >
-            商品库存
-          </el-button>
-          <el-button
-            role="tab"
-            :aria-selected="activeMode === 'templates'"
-            :type="activeMode === 'templates' ? 'primary' : 'default'"
-            @click="switchMode('templates')"
-          >
-            商品模板
-          </el-button>
-        </div>
         <div class="tf-tab-content">
           <div
-            class="tf-tab-panel"
+            class="tf-tab-panel admin-page-content"
             role="tabpanel"
             :aria-label="isTemplateMode ? '商品模板' : '商品库存'"
           >
@@ -220,12 +198,37 @@
             </UnifiedSearchPanel>
 
             <div class="table-container table-section admin-panel admin-table-panel">
-              <div class="section-header">
-                <div class="section-title">
-                  <i class="fas fa-list" />
-                  {{ isTemplateMode ? '商品模板管理' : '配件库存' }}
-                  <span class="record-count">共 {{ total }} 条记录</span>
+              <div class="section-title">
+                <span class="section-title__label">
+                  <i
+                    class="fas fa-list"
+                    aria-hidden="true"
+                  />
+                  {{ isTemplateMode ? '商品模板列表' : '商品库存列表' }}
+                </span>
+                <div
+                  class="tab-navigation tf-page-tabs tf-page-tabs--inline"
+                  role="tablist"
+                  aria-label="商品管理模式"
+                >
+                  <el-button
+                    role="tab"
+                    :aria-selected="activeMode === 'stock'"
+                    :type="activeMode === 'stock' ? 'primary' : 'default'"
+                    @click="switchMode('stock')"
+                  >
+                    商品库存
+                  </el-button>
+                  <el-button
+                    role="tab"
+                    :aria-selected="activeMode === 'templates'"
+                    :type="activeMode === 'templates' ? 'primary' : 'default'"
+                    @click="switchMode('templates')"
+                  >
+                    商品模板
+                  </el-button>
                 </div>
+                <span class="record-count">共 {{ total }} 条</span>
               </div>
 
               <div class="table-responsive">

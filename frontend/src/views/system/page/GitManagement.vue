@@ -49,6 +49,9 @@
           <div
             v-if="showStatsCards"
             class="stats-cards"
+            role="region"
+            aria-label="Git 仓库统计"
+            tabindex="0"
           >
             <div
               v-if="canViewGitField('stats_current_branch')"
@@ -1176,12 +1179,6 @@ const commitDetailFields = computed(() => {
   background: linear-gradient(135deg, var(--tf-color-surface) 0%, var(--tf-color-border-gradient) 100%);
 }
 
-.content {
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 24px 32px;
-}
-
 .stat-value {
   font-size: var(--tf-type-scale-24);
   font-weight: 600;
@@ -1196,15 +1193,16 @@ const commitDetailFields = computed(() => {
 
 .main-grid {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: var(--admin-panel-gap);
 }
 
 .left-section,
 .right-section {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--admin-panel-gap);
+  min-width: 0;
 }
 
 .detached-alert {
@@ -1430,8 +1428,5 @@ const commitDetailFields = computed(() => {
     gap: 16px;
   }
 
-  .content {
-    padding: 0;
-  }
 }
 </style>

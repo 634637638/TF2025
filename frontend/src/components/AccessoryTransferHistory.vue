@@ -95,8 +95,13 @@
         class-name="complete-text-column wrapped-text-column"
       />
       <template #empty>
+        <TableLoadingRow
+          v-if="loading"
+          mode="block"
+          text="正在读取划拨记录..."
+        />
         <DataEmptyState
-          v-if="!loading"
+          v-else
           description="暂无库存划拨记录"
           size="compact"
         />
@@ -120,6 +125,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { computed, ref, watch } from 'vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'

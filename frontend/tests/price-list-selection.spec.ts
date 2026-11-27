@@ -7,15 +7,16 @@ import PriceListView from '@/views/price-list/PriceListView.vue'
 import type { PriceListRow } from '@/types/price-list'
 
 const mocks = vi.hoisted(() => ({
-  list: vi.fn(), batch: vi.fn(), get: vi.fn(), confirm: vi.fn(),
+  list: vi.fn(), batch: vi.fn(), sync: vi.fn(), get: vi.fn(), confirm: vi.fn(),
   success: vi.fn(), warning: vi.fn(), error: vi.fn(), noPermission: vi.fn(),
   mobile: false
 }))
-const permissions = reactive({ view: true, edit: true })
+const permissions = reactive({ view: true, edit: true, sync: false })
 vi.mock('@/api/price-list', async importOriginal => ({
   ...await importOriginal<typeof import('@/api/price-list')>(),
   getPriceList: mocks.list,
   batchUpdatePriceSettings: mocks.batch,
+  triggerSync: mocks.sync,
   getPriceHistoryTrends: vi.fn().mockResolvedValue({ success: true, data: [] }),
   getAllSyncConfigs: vi.fn().mockResolvedValue({ success: true, data: [] })
 }))
@@ -26,7 +27,7 @@ vi.mock('@/composables/useNotification', () => ({ useNotification: () => mocks }
 vi.mock('@/composables/usePagePermissions', () => ({ usePagePermissions: () => ({
   canView: computed(() => permissions.view), canEdit: computed(() => permissions.edit),
   canCreate: computed(() => false), canDelete: computed(() => false),
-  canExport: computed(() => false), canImport: computed(() => false), canSync: computed(() => false),
+  canExport: computed(() => false), canImport: computed(() => false), canSync: computed(() => permissions.sync),
   handleNoPermission: mocks.noPermission
 }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ permissions: [], isAuthenticated: true }) }))
@@ -107,6 +108,7 @@ function selection(wrapper: VueWrapper) { return wrapper.find('[data-column="选
 beforeEach(() => {
   permissions.view = true
   permissions.edit = true
+  permissions.sync = false
   mocks.mobile = false
   mocks.list.mockReset().mockImplementation(async (params: { page: number }) => response(params.page === 1 ? [1, 2] : [3, 4]))
   mocks.batch.mockReset().mockResolvedValue({ success: true, message: '设置成功' })
@@ -115,6 +117,21 @@ beforeEach(() => {
 })
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount())
+})
+
+it('只有同步权限也可手动采集，回读并展示计算后的售价', async () => {
+  permissions.edit = false
+  permissions.sync = true
+  mocks.sync.mockResolvedValueOnce({ success: true, data: { total: 1, success: 1, failed: 0, sources: [{ success: true }] } })
+  const wrapper = await render()
+  mocks.list.mockResolvedValueOnce({
+    success: true, data: { list: [{ ...row(1), retail_price: 8000, sales_display_price: 8123 }], total: 1 }
+  })
+  await button(wrapper, '同步').trigger('click')
+  await flushPromises()
+  expect(mocks.sync).toHaveBeenCalledWith('all')
+  expect(wrapper.text()).toContain('¥8123')
+  expect(wrapper.text()).not.toContain('¥8000')
 })
 
 describe.each([false, true])('报价跨页选择，手机端=%s', mobile => {

@@ -1,175 +1,75 @@
 <template>
-  <div class="sales-analytics">
+  <div class="sales-analytics admin-page-content">
     <!-- 销售概览卡片 -->
-    <el-row
-      :gutter="12"
-      class="overview-cards"
+    <Teleport
+      :to="props.overviewTarget || 'body'"
+      :disabled="!props.overviewTarget"
     >
-      <el-col
-        v-if="canViewSalesField('total_sales')"
-        :span="4"
-        :xs="12"
-        :sm="6"
-        :md="4"
+      <div
+        class="stats-cards"
+        role="region"
+        aria-label="销售分析统计"
+        tabindex="0"
       >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon total">
-              <Money />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                总销售额
-              </div>
-              <div class="card-value">
-                ¥{{ formatAmount(totalSalesAmount) }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewSalesField('total_sales')"
+          class="stat-card stat-card--income"
+          label="总销售额"
+          :value="`¥${formatAmount(totalSalesAmount)}`"
+          :icon="Money"
+        />
 
-      <el-col
-        v-if="canViewSalesField('total_orders')"
-        :span="4"
-        :xs="12"
-        :sm="6"
-        :md="4"
-      >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon orders">
-              <ShoppingCart />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                总销售台数
-              </div>
-              <div class="card-value">
-                {{ totalSalesCount }}台
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewSalesField('total_orders')"
+          class="stat-card stat-card--primary"
+          label="总销售台数"
+          :value="`${totalSalesCount}台`"
+          :icon="ShoppingCart"
+        />
 
-      <el-col
-        v-if="canViewSalesField('new_sales_count')"
-        :span="4"
-        :xs="12"
-        :sm="6"
-        :md="4"
-      >
-        <el-card class="overview-card new">
-          <div class="card-content">
-            <div class="card-icon new">
-              <Star />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                全新销售
-              </div>
-              <div class="card-value">
-                {{ newUsedSales.new?.count || 0 }}台
-              </div>
-              <div class="card-subtitle">
-                ¥{{ formatAmount(newUsedSales.new?.amount || 0) }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewSalesField('new_sales_count')"
+          class="stat-card stat-card--new-money"
+          label="全新销售"
+          :value="`${newUsedSales.new?.count || 0}台`"
+          :icon="Star"
+          :details="[{ label: '销售额', value: `¥${formatAmount(newUsedSales.new?.amount || 0)}` }]"
+        />
 
-      <el-col
-        v-if="canViewSalesField('used_sales_count')"
-        :span="4"
-        :xs="12"
-        :sm="6"
-        :md="4"
-      >
-        <el-card class="overview-card used">
-          <div class="card-content">
-            <div class="card-icon used">
-              <RefreshRight />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                二手销售
-              </div>
-              <div class="card-value">
-                {{ newUsedSales.used?.count || 0 }}台
-              </div>
-              <div class="card-subtitle">
-                ¥{{ formatAmount(newUsedSales.used?.amount || 0) }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewSalesField('used_sales_count')"
+          class="stat-card stat-card--used-money"
+          label="二手销售"
+          :value="`${newUsedSales.used?.count || 0}台`"
+          :icon="RefreshRight"
+          :details="[{ label: '销售额', value: `¥${formatAmount(newUsedSales.used?.amount || 0)}` }]"
+        />
 
-      <el-col
-        :span="4"
-        :xs="12"
-        :sm="6"
-        :md="4"
-      >
-        <el-card class="overview-card transfer">
-          <div class="card-content">
-            <div class="card-icon transfer">
-              <Switch />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                批发
-              </div>
-              <div class="card-value">
-                {{ transferAllocationData.transfer?.count || 0 }}台
-              </div>
-              <div class="card-subtitle">
-                ¥{{ formatAmount(transferAllocationData.transfer?.profit || 0) }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          class="stat-card stat-card--info"
+          label="批发"
+          :value="`${transferAllocationData.transfer?.count || 0}台`"
+          :icon="Switch"
+          :details="[{ label: '利润', value: `¥${formatAmount(transferAllocationData.transfer?.profit || 0)}` }]"
+        />
 
-      <el-col
-        :span="4"
-        :xs="12"
-        :sm="6"
-        :md="4"
-      >
-        <el-card class="overview-card allocation">
-          <div class="card-content">
-            <div class="card-icon allocation">
-              <Connection />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                划拨
-              </div>
-              <div class="card-value">
-                {{ transferAllocationData.allocation?.count || 0 }}台
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        <AnalyticsStatCard
+          class="stat-card stat-card--accent"
+          label="划拨"
+          :value="`${transferAllocationData.allocation?.count || 0}台`"
+          :icon="Connection"
+        />
+      </div>
+    </Teleport>
 
     <!-- 图表区域 -->
-    <el-row
+    <div
       v-if="showSalesChartsRow"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid"
     >
       <!-- 销售趋势图 -->
-      <el-col
+      <div
         v-if="canViewSalesField('sales_trend_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card">
           <template #header>
@@ -193,15 +93,11 @@
             />
           </div>
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 产品销售分布 -->
-      <el-col
+      <div
         v-if="canViewSalesField('product_distribution_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card">
           <template #header>
@@ -221,24 +117,19 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 数据表格区域 -->
-    <el-row
+    <div
       v-if="showSalesTableRow"
-      :gutter="16"
-      class="table-section admin-panel admin-table-panel"
+      class="analytics-panel-grid analytics-panel-grid--7-5"
     >
       <!-- 热销产品排行 -->
-      <el-col
+      <div
         v-if="canViewSalesField('top_products_table')"
-        :xs="24"
-        :sm="24"
-        :md="14"
-        :lg="14"
       >
-        <el-card class="table-card admin-panel admin-table-panel">
+        <el-card class="table-card">
           <template #header>
             <div class="card-header">
               <h3>热销产品排行</h3>
@@ -276,7 +167,8 @@
             class="data-table"
             :data="filteredTopProducts"
             stripe
-            style="width: 100%"
+            table-layout="fixed"
+            :fit="true"
             @row-dblclick="productDetailDoubleClick"
           >
             <el-table-column
@@ -290,16 +182,17 @@
               </template>
             </el-table-column>
             <el-table-column
-              prop="name"
-              label="产品名称"
-            >
-              <template #default="{ row }">
-                <div class="product-name">
-                  <span class="brand">{{ row.brand_name }}</span>
-                  <span class="model">{{ row.model_name }}</span>
-                </div>
-              </template>
-            </el-table-column>
+              prop="brand_name"
+              label="品牌"
+              :min-width="topProductColumnWidths.brand"
+              class-name="complete-text-column"
+            />
+            <el-table-column
+              prop="model_name"
+              label="型号"
+              :min-width="topProductColumnWidths.model"
+              class-name="complete-text-column"
+            />
             <el-table-column
               prop="quantity"
               label="销量"
@@ -352,15 +245,11 @@
             :has-actions="false"
           />
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 店铺销售对比 -->
-      <el-col
+      <div
         v-if="canViewSalesField('store_comparison_chart')"
-        :xs="24"
-        :sm="24"
-        :md="10"
-        :lg="10"
       >
         <el-card class="chart-card">
           <template #header>
@@ -375,8 +264,8 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 销售预测 -->
     <el-card
@@ -451,34 +340,28 @@
               <i class="fas fa-times" /> 清除选择
             </el-button>
           </div>
-          <div class="forecast-cards">
+          <div
+            class="stats-cards"
+            role="region"
+            aria-label="型号销量预测"
+            tabindex="0"
+          >
             <div
               v-for="(item, index) in getProductsWithPrediction(selectedDate)"
               :key="index"
-              class="forecast-card-item"
-              :class="{
-                'high-prediction': item.prediction >= 2,
-                'medium-prediction': item.prediction === 1,
-                'low-prediction': item.prediction === 0
-              }"
+              class="stat-card"
+              :class="item.prediction >= 2 ? 'stat-card--success' : item.prediction === 1 ? 'stat-card--warning' : 'stat-card--neutral'"
             >
-              <div class="card-header-mini">
-                <div class="product-info">
-                  <span class="model">{{ item.model_name }}</span>
-                  <span class="color">{{ item.color_name }}</span>
-                  <span class="memory">{{ item.memory }}</span>
+              <div class="stat-content">
+                <div class="stat-label">
+                  {{ item.model_name }} {{ item.color_name }} {{ item.memory }}
                 </div>
-              </div>
-              <div class="card-body">
-                <div class="stat-item">
-                  <span class="label">预计</span>
-                  <span class="value">{{ item.prediction }}</span>
+                <div class="stat-main-line">
+                  <span class="stat-label">预计</span>
+                  <strong class="stat-value">{{ item.prediction }}</strong>
                 </div>
-                <div class="stat-item">
-                  <span class="label">销售</span>
-                  <span class="value">{{ getActualSales(item, selectedDate) }}</span>
-                </div>
-                <div class="stat-item confidence">
+                <div class="stat-main-line">
+                  <span class="stat-sub">销售 {{ getActualSales(item, selectedDate) }}</span>
                   <el-tag
                     :type="getConfidenceType(item.confidence)"
                     size="small"
@@ -561,6 +444,7 @@
 </template>
 
 <script setup lang="ts">
+import AnalyticsStatCard from './AnalyticsStatCard.vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -592,6 +476,7 @@ import type { SalesAnalyticsProps, LoadingChangeEmits } from '@/types/component'
 import { useAnalyticsFieldVisibility } from './useAnalyticsFieldVisibility'
 import echarts, { ECharts } from '@/utils/echarts'
 import { buildCsvContent } from '@/utils/csv-export'
+import { getTextColumnMinWidth } from '@/utils/table-layout'
 import { sortOptionsByOrder } from '@/utils/option-sort'
 import { logger } from '@/utils/logger'
 import { TimeUtil } from '@/utils/time'
@@ -734,6 +619,14 @@ const filteredTopProducts = computed(() => {
     product.brand_name?.includes(productFilter.value) ||
     product.model_name?.includes(productFilter.value)
   )
+})
+
+const topProductColumnWidths = computed(() => {
+  const rows = filteredTopProducts.value
+  return {
+    brand: getTextColumnMinWidth(['品牌', ...rows.map(row => row.brand_name)], { minWidth: 80 }),
+    model: getTextColumnMinWidth(['型号', ...rows.map(row => row.model_name)], { minWidth: 120 })
+  }
 })
 
 const showSalesChartsRow = computed(() => canViewAnySalesField(['sales_trend_chart', 'product_distribution_chart']))
@@ -1703,17 +1596,21 @@ onBeforeUnmount(() => {
 
 const { isMobile } = useMobile()
 const { detailRow: productDetailRow, detailVisible: productDetailVisible, doubleTapOptions: productDetailTapOptions, handleRowDoubleClick: productDetailDoubleClick } = useMobileTableDetail<(typeof filteredTopProducts.value)[number]>({
-  enabled: () => isMobile.value, rows: () => filteredTopProducts.value, getKey: row => JSON.stringify([row.brand_name, row.model_name])
+  enabled: () => isMobile.value && canViewSalesField('top_products_table'),
+  rows: filteredTopProducts,
+  getKey: row => row.id
 })
 const productDetailFields = computed<RecordDetailField[]>(() => {
   const row = productDetailRow.value
   if (!row) return []
+  const visible = canViewSalesField('top_products_table')
   return [
-    { key: 'name', label: '产品名称', value: [row.brand_name, row.model_name].join(' / '), visible: canViewSalesField('top_products_table'), wide: true },
-    { key: 'quantity', label: '销量', value: row.quantity, visible: canViewSalesField('top_products_table') },
-    { key: 'revenue', label: '销售额', value: formatAmount(row.revenue), visible: canViewSalesField('top_products_table') },
-    { key: 'profit', label: '利润', value: formatAmount(row.profit), visible: canViewSalesField('top_products_table') },
-    { key: 'growth', label: '增长率', value: [(row.growth || 0) > 0 ? '+' : '', (row.growth || 0).toFixed(1)].join(' / '), visible: canViewSalesField('top_products_table') }
+    { key: 'brand_name', label: '品牌', value: row.brand_name, visible },
+    { key: 'model_name', label: '型号', value: row.model_name, visible, wide: true },
+    { key: 'quantity', label: '销量', value: row.quantity, visible },
+    { key: 'revenue', label: '销售额', value: formatAmount(row.revenue), visible },
+    { key: 'profit', label: '利润', value: formatAmount(row.profit), visible },
+    { key: 'growth', label: '增长率', value: [(row.growth || 0) > 0 ? '+' : '', (row.growth || 0).toFixed(1)].join(' / '), visible }
   ]
 })
 

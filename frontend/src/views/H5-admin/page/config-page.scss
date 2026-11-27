@@ -45,18 +45,6 @@
   margin: var(--tf-space-3) 0 0;
 }
 
-.payment-interface-tabs {
-  min-width: 0;
-
-  :deep(.el-tabs__nav-wrap) {
-    overflow-x: auto;
-  }
-
-  :deep(.el-tabs__nav) {
-    min-width: max-content;
-  }
-}
-
 @media (max-width: 479px) {
   .payment-method-list {
     grid-template-columns: minmax(0, 1fr);

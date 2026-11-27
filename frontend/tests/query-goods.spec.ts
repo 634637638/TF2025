@@ -34,7 +34,7 @@ const History = { props: ['saleId'], template: '<section class="aftersales">原�
 const Checkout = { props: ['modelValue'], emits: ['success', 'update:modelValue'], template: '<div v-if="modelValue" class="goods-checkout"><button @click="$emit(\'success\'); $emit(\'update:modelValue\', false)">完成商品销售</button></div>' }
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async () => {
-  const wrapper = mount(Panel, { global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, CheckoutOrderDialog: { name: 'CheckoutOrderDialog', props: ['modelValue', 'saleId', 'source'], template: '<div class="order-child" />' }, GoodsReturnDialog: ReturnDialog, GoodsAftersaleHistory: History, SalesGoodsCheckoutDialog: Checkout, Pagination, UnifiedSearchPanel: Search, DateRangePicker: true, SectionLoading: true, TableLoadingRow: true, DataEmptyState: true },
+  const wrapper = mount(Panel, { global: { plugins: [ElementPlus], stubs: { IconRenderer: true, MobileDialog: Dialog, CheckoutOrderDialog: { name: 'CheckoutOrderDialog', props: ['modelValue', 'saleId', 'source'], template: '<div class="order-child" />' }, GoodsReturnDialog: ReturnDialog, GoodsAftersaleHistory: History, SalesGoodsCheckoutDialog: Checkout, Pagination, UnifiedSearchPanel: Search, DateRangePicker: true, SectionLoading: true, TableLoadingRow: true, DataEmptyState: true },
     mocks: { $getNumberColumnWidth: () => 80 }, directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': vTableDoubleTap } } })
   wrappers.push(wrapper)
   await flushPromises()
@@ -92,6 +92,61 @@ it('切换商品模式每页条数后回到第一页并提交新的页大小', a
     params: expect.objectContaining({ page: 1, page_size: 50 })
   }))
   expect(wrapper.findComponent(Pagination).props()).toMatchObject({ current: 1, pageSize: 50 })
+})
+
+it('客户姓名和手机号隐藏时仍展示来访人数，隐藏销售时间时收起卡片', async () => {
+  mocks.get.mockResolvedValue({ data: { ...result().data, customer_visits: {
+    today: { new_count: 2, existing_count: 5 }, yesterday: { new_count: 0, existing_count: 3 }
+  } } })
+  const wrapper = await render()
+  const card = wrapper.get('.stats-cards .stat-card')
+  expect(card.text()).toContain('来访客户')
+  expect(card.findAll('dl > div').map(line => line.text().replace(/\s/g, ''))).toEqual([
+    '今日新客户2人老客户5人', '昨日新客户0人老客户3人'
+  ])
+  hiddenFields.value.add('customer_info.customer_phone')
+  await flushPromises()
+  expect(wrapper.text()).toContain('来访客户')
+  hiddenFields.value.add('customer_info.customer_name')
+  await flushPromises()
+  expect(wrapper.text()).toContain('来访客户')
+  hiddenFields.value.add('time_info.created_at')
+  await flushPromises()
+  expect(wrapper.find('.stats-cards').exists()).toBe(false)
+})
+
+it('统计概览四张卡片分别受各自字段权限控制', async () => {
+  const totals = { period_quantity: 4, period_amount: '80.00' }
+  mocks.get.mockResolvedValue({ data: {
+    ...result().data,
+    summary: {
+      sale: { month: totals, today: totals, yesterday: totals },
+      gift: { month: totals, today: totals, yesterday: totals }
+    },
+    customer_visits: {
+      today: { new_count: 2, existing_count: 5 },
+      yesterday: { new_count: 0, existing_count: 3 }
+    },
+    monthly_best_sellers: [{ name: '原单充电器', quantity: 4 }]
+  } })
+  const wrapper = await render()
+  const cards = () => wrapper.findAll('.stats-cards .stat-card').map(card => card.text())
+  expect(cards()).toHaveLength(4)
+
+  const cases = [
+    ['stats.monthly_sales', '本月销售'],
+    ['stats.monthly_gifts', '本月赠送'],
+    ['stats.customer_visits', '来访客户'],
+    ['stats.monthly_best_sellers', '本月热销']
+  ] as const
+  for (const [field, label] of cases) {
+    hiddenFields.value.add(field)
+    await flushPromises()
+    expect(cards().some(card => card.includes(label))).toBe(false)
+    expect(cards()).toHaveLength(3)
+    hiddenFields.value.delete(field)
+    await flushPromises()
+  }
 })
 
 it('商品退货只针对有权限的共同原单，成功后立即重读数量，不改写原销售事实', async () => {

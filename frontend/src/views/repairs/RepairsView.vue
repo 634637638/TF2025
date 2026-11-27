@@ -44,6 +44,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="维修统计"
+          tabindex="0"
         >
           <div
             v-if="canViewRepairField('stats_pending')"
@@ -156,7 +159,7 @@
             <div class="section-title">
               <i class="fas fa-list" />
               维修记录
-              <span class="record-count">共 {{ pagination.total }} 条记录</span>
+              <span class="record-count">共 {{ pagination.total }} 条</span>
             </div>
           </div>
 

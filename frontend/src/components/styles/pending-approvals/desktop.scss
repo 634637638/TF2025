@@ -5,111 +5,15 @@
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 
-  .approvals-overview {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    padding: 20px;
-    background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
+  .stat-card {
+    cursor: pointer;
+  }
 
-    .overview-card {
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
-      border-radius: 10px;
-      padding: 15px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border: 2px solid transparent;
-      position: relative;
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.25);
-        transform: translateY(-2px);
-      }
-
-      &.has-pending {
-        animation: pulse 2s infinite;
-      }
-
-      @keyframes pulse {
-        0%, 100% {
-          box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
-        }
-        50% {
-          box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-        }
-      }
-
-      .card-icon {
-        width: 45px;
-        height: 45px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: var(--tf-type-scale-20);
-        color: white;
-
-        &.attendance {
-          background: linear-gradient(135deg, var(--tf-color-indigo-brand), var(--tf-color-purple-brand));
-        }
-
-        &.leave {
-          background: linear-gradient(135deg, var(--tf-color-pink-gradient), var(--tf-color-coral-gradient));
-        }
-
-        &.overtime {
-          background: linear-gradient(135deg, var(--tf-color-sky-gradient), var(--tf-color-cyan-gradient));
-        }
-      }
-
-      .card-content {
-        flex: 1;
-
-        .card-value {
-          font-size: var(--tf-type-scale-24);
-          font-weight: 700;
-          color: white;
-          line-height: 1.2;
-        }
-
-        .card-label {
-          font-size: var(--tf-type-scale-12);
-          color: rgba(255, 255, 255, 0.9);
-        }
-      }
-
-      .card-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        width: 24px;
-        height: 24px;
-        background: var(--tf-color-coral);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: var(--tf-type-scale-12);
-        animation: bell-ring 1s ease-in-out infinite;
-
-        @keyframes bell-ring {
-          0%, 100% {
-            transform: rotate(0deg);
-          }
-          25% {
-            transform: rotate(15deg);
-          }
-          75% {
-            transform: rotate(-15deg);
-          }
-        }
-      }
-    }
+  .card-badge {
+    position: absolute;
+    inset: var(--tf-space-1) var(--tf-space-1) auto auto;
+    color: var(--admin-stat-color-warning);
+    font-size: var(--tf-font-caption);
   }
 
   .approvals-detail {

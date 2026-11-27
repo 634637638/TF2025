@@ -36,6 +36,10 @@ test('subsidy update service returns 404 and rejects invalid price before updati
     status: 400,
     body: { success: false, message: '销售价格不能为空' }
   })
+  assert.deepEqual(await service.update('9', { serial_number: '   ' }, scopedActor), {
+    status: 400,
+    body: { success: false, message: '请输入序列号' }
+  })
   assert.deepEqual(updates, [])
 })
 
@@ -59,6 +63,7 @@ test('subsidy update service persists canonical fields, mirrors sale date and in
   assert.deepEqual(await service.update('9', {
     customer_name: '李四',
     customer_phone: '13800000000',
+    imei2: '',
     sale_time: '2026-11-07',
     sale_price: '1200',
     store_id: 3,
@@ -70,9 +75,11 @@ test('subsidy update service persists canonical fields, mirrors sale date and in
   assert.ok(fields.includes('sale_price = ?'))
   assert.ok(fields.includes('apply_time = ?'))
   assert.ok(fields.includes('store_id = ?'))
+  assert.ok(fields.includes('imei2 = ?'))
   assert.ok(fields.includes('handler_name = NULL'))
   assert.ok(!fields.includes('updated_at = NOW()'))
   assert.ok(values.includes('1200.00'))
+  assert.equal(values[3], null)
   assert.ok(values.includes('2026-11-01 00:00:00'))
   assert.deepEqual(events.find(event => event[0] === 'phone-sale-time'), ['phone-sale-time', 12, '2026-11-07 00:00:00'])
   assert.deepEqual(events.at(-1), ['cache', '/subsidy'])

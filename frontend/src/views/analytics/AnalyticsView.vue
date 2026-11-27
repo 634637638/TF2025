@@ -37,6 +37,26 @@
           </template>
         </PageHeader>
 
+        <!-- TAB导航 -->
+        <div
+          v-if="visibleAnalyticsTabs.length"
+          class="tab-navigation tf-page-tabs"
+        >
+          <el-button
+            v-for="tab in visibleAnalyticsTabs"
+            :key="tab.key"
+            :type="activeTab === tab.key ? 'primary' : 'default'"
+            @click="activeTab = tab.key"
+          >
+            <IconRenderer :icon="tab.icon" />
+            {{ tab.label }}
+          </el-button>
+        </div>
+        <div
+          ref="overviewTarget"
+          class="analytics-overview"
+        />
+
         <!-- 公共检索区域 -->
         <UnifiedSearchPanel
           v-model:expanded="searchExpanded"
@@ -171,22 +191,6 @@
 
         <!-- 核心分析标签页 -->
         <div class="analytics-tabs admin-page-content">
-          <!-- TAB导航 -->
-          <div
-            v-if="visibleAnalyticsTabs.length"
-            class="tab-navigation tf-page-tabs"
-          >
-            <el-button
-              v-for="tab in visibleAnalyticsTabs"
-              :key="tab.key"
-              :type="activeTab === tab.key ? 'primary' : 'default'"
-              @click="activeTab = tab.key"
-            >
-              <IconRenderer :icon="tab.icon" />
-              {{ tab.label }}
-            </el-button>
-          </div>
-
           <!-- TAB内容 -->
           <div
             v-if="visibleAnalyticsTabs.length"
@@ -207,6 +211,7 @@
                     ref="activeAnalyticsRef"
                     :loading="loading"
                     :is-active="activeTab === tab.key"
+                    :overview-target="overviewTarget"
                     :start-date="searchParams.start_date"
                     :end-date="searchParams.end_date"
                     :store-id="searchParams.store_id"
@@ -308,6 +313,7 @@ const searchParams = computed<AnalyticsSearchParams>(() => ({
 
 // 响应式数据
 const activeTab = ref('sales')
+const overviewTarget = ref<HTMLElement | null>(null)
 const { loading } = useLoadingState()
 const { loading: refreshing } = useLoadingState()
 interface AnalyticsTabExpose { refreshSilently?: () => void | Promise<void> }
@@ -688,17 +694,7 @@ usePageShortcuts('/analytics', {
 
 <style lang="scss" scoped>
 .analytics-view {
-  padding: 24px;
   background: var(--el-bg-color-page);
   min-height: 100vh;
-}
-
-// 响应式
-@media (max-width: 767px) {
-  .analytics-view {
-    padding-inline: var(--admin-page-gap-x);
-    padding-top: 10px;
-  }
-
 }
 </style>

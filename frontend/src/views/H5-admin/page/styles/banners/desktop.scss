@@ -1,13 +1,10 @@
 
 .banner-management-page {
-  padding: 24px;
   min-width: 0;
 }
 
 // 轮播图列表
 .banner-list {
-  max-width: 900px;
-  margin: 0 auto;
   min-width: 0;
 
   .banner-item {
@@ -17,7 +14,6 @@
     background: var(--color-bg-white);
     border-radius: 8px;
     padding: 16px;
-    margin-bottom: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition: all 0.3s;
 

@@ -20,6 +20,7 @@
 - [新品预定专题索引](preorders/INDEX.md)
 - [租赁专题索引](rentals/INDEX.md)
 - [营销专题索引](marketing/INDEX.md)
+- [国补申请设备标识规则](subsidy-device-identifier-standard.md) - 设备由已售设备 ID 和销售/客户关联定位；序列号必填，IMEI1、IMEI2 可留空，有值时继续校验标准格式
 - [客户管理密码修改功能说明](客户管理密码修改功能.md)
 
 ## 销售划拨专题

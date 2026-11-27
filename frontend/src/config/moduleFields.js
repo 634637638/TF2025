@@ -46,7 +46,7 @@ export const MODULE_FIELDS = {
         group: '统计概览',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '顶部在库数量统计卡片'
+        description: '同时控制在库合计及全新、二手在库台数'
       },
       {
         id: 'stats.sold_count',
@@ -54,23 +54,31 @@ export const MODULE_FIELDS = {
         group: '统计概览',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '顶部已售数量统计卡片'
+        description: '未选状态时控制已售总数，选中状态后控制该状态总数'
+      },
+      {
+        id: 'stats.transfer_counts',
+        name: '调货划拨概览',
+        group: '统计概览',
+        type: FIELD_TYPES.TEXT,
+        sensitivity: SENSITIVITY_LEVELS.INTERNAL,
+        description: '同时控制调货和划拨台数'
       },
       {
         id: 'stats.new_count',
-        name: '全新设备概览',
+        name: '全新数量概览',
         group: '统计概览',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '顶部全新设备统计卡片'
+        description: '未选状态时控制全新已售数量，选中状态后控制该状态全新数量'
       },
       {
         id: 'stats.used_count',
-        name: '二手设备概览',
+        name: '二手数量概览',
         group: '统计概览',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '顶部二手设备统计卡片'
+        description: '未选状态时控制二手已售数量，选中状态后控制该状态二手数量'
       },
       // 供应商信息字段
       {
@@ -3310,19 +3318,19 @@ export const MODULE_FIELDS = {
       },
       {
         id: 'inventory.recent_sales_table',
-        name: '最近销售型号',
+        name: '最热品牌',
         group: '库存分析',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '最近销售的10个型号表格'
+        description: '库存分析最热品牌表格，展示最近 10 条销售记录'
       },
       {
         id: 'inventory.category_distribution_chart',
-        name: '分类库存分析',
+        name: '库存分析',
         group: '库存分析',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '分类库存分析图表'
+        description: '库存分析图表'
       },
       {
         id: 'inventory.turnover_trend_chart',
@@ -3739,10 +3747,14 @@ export const MODULE_FIELDS = {
     icon: 'fas fa-tachometer-alt',
     category: '系统首页',
     fields: [
-      { id: 'stats.today_sales', name: '今日销售', group: '统计概览', type: FIELD_TYPES.CURRENCY, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '今日销售金额统计卡片' },
-      { id: 'stats.total_customers', name: '客户总数', group: '统计概览', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '客户总数统计卡片' },
-      { id: 'stats.total_products', name: '库存商品', group: '统计概览', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '在库手机数量统计卡片' },
+      { id: 'stats.today_sales', name: '今日销售', group: '统计概览', type: FIELD_TYPES.CURRENCY, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '今日销售总额及全新、二手手机销售额和台数' },
+      { id: 'stats.total_customers', name: '客户总数', group: '统计概览', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '客户总数及本月、上月新增人数' },
+      { id: 'stats.total_products', name: '库存商品', group: '统计概览', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '在库手机总数及全新、二手台数' },
       { id: 'stats.pending_repairs', name: '待维修', group: '统计概览', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '待维修数量统计卡片' },
+      { id: 'stats.monthly_sales', name: '本月销售', group: '员工数据', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '当前登录员工本月手机零售、划拨、调货及商品销售数量' },
+      { id: 'stats.monthly_commission', name: '本月销售提成', group: '员工数据', type: FIELD_TYPES.CURRENCY, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '当前登录员工当月工资口径的销售提成' },
+      { id: 'stats.monthly_attendance', name: '本月考勤', group: '员工数据', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '当前登录员工本月请假、休假和加班汇总' },
+      { id: 'stats.monthly_attendance_amounts', name: '本月考勤金额', group: '员工数据', type: FIELD_TYPES.CURRENCY, sensitivity: SENSITIVITY_LEVELS.SENSITIVE, description: '当前登录员工本月请假扣款及加班金额' },
       { id: 'stats.inventory_alert', name: '库存预警', group: '统计概览', type: FIELD_TYPES.BOOLEAN, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '库存预警提示' },
       { id: 'stats.urgent_repairs', name: '紧急维修', group: '统计概览', type: FIELD_TYPES.NUMBER, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '紧急维修数量提示' },
       { id: 'warnings.comprehensive', name: '综合预警', group: '业务提醒', type: FIELD_TYPES.TEXT, sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '综合库存预警区域' },
@@ -4722,7 +4734,6 @@ export const MODULE_FIELDS = {
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
         description: '主IMEI号',
-        required: true,
         searchable: true
       },
       {
@@ -4731,8 +4742,7 @@ export const MODULE_FIELDS = {
         group: '设备信息',
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
-        description: '辅助IMEI号',
-        required: true
+        description: '辅助IMEI号'
       },
       {
         id: 'device_info.serial_number',
@@ -4741,6 +4751,7 @@ export const MODULE_FIELDS = {
         type: FIELD_TYPES.TEXT,
         sensitivity: SENSITIVITY_LEVELS.INTERNAL,
         description: '设备序列号',
+        required: true,
         searchable: true
       },
       {
@@ -4930,10 +4941,29 @@ function resolveModuleConfig(moduleId) {
   return null
 }
 
-// 商品查询沿用原字段ID；独立字段范围只登记查询、成交及追溯资料。
+const QUERY_GOODS_STATS_FIELDS = [
+  {
+    id: 'stats.monthly_sales', name: '本月销售概览', group: '统计概览', type: FIELD_TYPES.TEXT,
+    sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '本月销售统计卡片'
+  },
+  {
+    id: 'stats.monthly_gifts', name: '本月赠送概览', group: '统计概览', type: FIELD_TYPES.TEXT,
+    sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '本月赠送统计卡片'
+  },
+  {
+    id: 'stats.customer_visits', name: '来访客户概览', group: '统计概览', type: FIELD_TYPES.TEXT,
+    sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '来访客户人数统计卡片'
+  },
+  {
+    id: 'stats.monthly_best_sellers', name: '本月热销概览', group: '统计概览', type: FIELD_TYPES.TEXT,
+    sensitivity: SENSITIVITY_LEVELS.INTERNAL, description: '本月热销商品统计卡片'
+  }
+]
+
+// 商品查询沿用原字段ID；独立字段范围只登记查询、成交、追溯资料和统计概览。
 MODULE_FIELDS.query_goods = {
   name: '商品模式', icon: 'fas fa-shopping-bag', category: '查询模块',
-  fields: MODULE_FIELDS.accessories.fields.filter(field => [
+  fields: [...QUERY_GOODS_STATS_FIELDS, ...MODULE_FIELDS.accessories.fields.filter(field => [
     'basic_info.sequence', 'basic_info.name', 'basic_info.barcode', 'basic_info.batch_no',
     'basic_info.category', 'basic_info.brand_name', 'basic_info.specifications', 'basic_info.color_name',
     'basic_info.model_name', 'basic_info.supplier_name', 'basic_info.unit', 'basic_info.usage_type',
@@ -4962,7 +4992,7 @@ MODULE_FIELDS.query_goods = {
       'time_info.created_at': '包含售后时间'
     }
     return { ...field, name, description: descriptions[field.id] || `控制${name}显示` }
-  })
+  })]
 }
 
 // 只有页面已有字段级编辑入口的字段才开放“编辑”状态，动作权限仍由页面与服务端单独校验。

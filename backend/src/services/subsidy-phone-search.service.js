@@ -1,6 +1,7 @@
 'use strict'
 
 const { resolveStoreScope } = require('../utils/store-scope')
+const { isNoImeiDevice } = require('../utils/imei')
 
 const SubsidyPhoneSearchRepository = require('../repositories/subsidy-phone-search.repository')
 
@@ -39,7 +40,7 @@ class SubsidyPhoneSearchService {
       const isNew = phone.is_new === 1
       return {
         phone_id: phone.phone_id,
-        imei: phone.imei,
+        imei: isNoImeiDevice(phone.imei, phone.serial_number) ? null : phone.imei,
         serial_number: phone.serial_number,
         is_new: phone.is_new,
         status: phone.status,

@@ -843,9 +843,7 @@
             v-if="activeTab === 'warning' && canViewField('warning.config')"
             class="tab-panel tf-tab-panel"
           >
-            <div class="phone-warning-config-wrapper">
-              <PhoneWarningConfigView ref="warningConfigRef" />
-            </div>
+            <PhoneWarningConfigView ref="warningConfigRef" />
           </div>
 
           <div

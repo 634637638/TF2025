@@ -331,7 +331,7 @@
           <div class="group-header">
             <div class="group-info">
               <span class="group-key">{{ group.key }}</span>
-              <span class="group-count">{{ group.count }} 条记录</span>
+              <span class="group-count">共 {{ group.count }} 条</span>
             </div>
             <div
               v-if="!isMobile"

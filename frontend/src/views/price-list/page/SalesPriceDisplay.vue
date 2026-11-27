@@ -261,6 +261,7 @@ import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 import type { SalesPriceDisplayRow } from '@/types/price-list'
 import { useNotification } from '@/composables/useNotification'
+import '@/styles/admin-layout.css'
 const globalNotifications = useNotification()
 
 

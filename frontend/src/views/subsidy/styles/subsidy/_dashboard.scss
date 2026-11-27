@@ -6,17 +6,8 @@
 .content {
   .stats-cards {
     .stat-card {
-      position: relative;
-      display: flex;
       flex-direction: column;
-      overflow: hidden;
-      min-height: 118px;
-      gap: 12px;
       justify-content: flex-start;
-
-      @media (max-width: 767px) {
-        flex-direction: column;
-      }
 
 
       .stat-card__glow {
@@ -302,10 +293,6 @@
       }
 
       @media (max-width: 767px) {
-        min-height: 0;
-        padding: 10px;
-        gap: 8px;
-
         .stat-card__body-row {
           grid-template-columns: 1fr;
           gap: 6px;

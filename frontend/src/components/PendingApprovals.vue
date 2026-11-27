@@ -5,20 +5,24 @@
     class="pending-approvals"
   >
     <!-- 预警概览卡片 -->
-    <div class="approvals-overview">
+    <div
+      class="stats-cards"
+      role="region"
+      aria-label="待审批统计"
+      tabindex="0"
+    >
       <div
-        class="overview-card"
-        :class="{ 'has-pending': attendanceCount > 0 }"
+        class="stat-card stat-card--warning"
         @click="goToAttendance('pending')"
       >
-        <div class="card-icon attendance">
+        <div class="stat-icon">
           <i class="fas fa-calendar-check" />
         </div>
-        <div class="card-content">
-          <div class="card-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ attendanceCount }}
           </div>
-          <div class="card-label">
+          <div class="stat-label">
             待审批考勤
           </div>
         </div>
@@ -31,18 +35,17 @@
       </div>
 
       <div
-        class="overview-card"
-        :class="{ 'has-pending': leaveCount > 0 }"
+        class="stat-card stat-card--accent"
         @click="goToAttendance('leave')"
       >
-        <div class="card-icon leave">
+        <div class="stat-icon">
           <i class="fas fa-umbrella-beach" />
         </div>
-        <div class="card-content">
-          <div class="card-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ leaveCount }}
           </div>
-          <div class="card-label">
+          <div class="stat-label">
             待审批休假
           </div>
         </div>
@@ -55,18 +58,17 @@
       </div>
 
       <div
-        class="overview-card"
-        :class="{ 'has-pending': overtimeCount > 0 }"
+        class="stat-card stat-card--info"
         @click="goToAttendance('overtime')"
       >
-        <div class="card-icon overtime">
+        <div class="stat-icon">
           <i class="fas fa-business-time" />
         </div>
-        <div class="card-content">
-          <div class="card-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ overtimeCount }}
           </div>
-          <div class="card-label">
+          <div class="stat-label">
             待审批加班
           </div>
         </div>

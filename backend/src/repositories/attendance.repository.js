@@ -223,8 +223,36 @@ class AttendanceRepository extends BaseRepository {
   }
 
   /**
-   * 获取员工在指定日期范围内的考勤统计
+   * 按员工汇总指定日期范围内的考勤
    */
+  async getMonthlyActivity(employeeId, start, end) {
+    const conditions = ["status IN ('pending', 'approved')", 'record_date BETWEEN ? AND ?']
+    const params = [start, end]
+    if (employeeId !== null) {
+      conditions.push('employee_id = ?')
+      params.push(employeeId)
+    }
+    const [rows] = await this.getConnection().execute(`
+      SELECT employee_id,
+        COALESCE(SUM(CASE WHEN record_type = 'monthly_leave' THEN monthly_leave_days END), 0) AS leave_days,
+        COALESCE(SUM(CASE WHEN record_type = 'leave' THEN leave_days END), 0) AS unpaid_leave_days,
+        COALESCE(SUM(CASE WHEN record_type = 'overtime' THEN overtime_hours END), 0) AS overtime_hours,
+        COUNT(CASE WHEN record_type IN ('leave', 'overtime') THEN 1 END) AS cost_record_count
+      FROM attendance_records WHERE ${conditions.join(' AND ')}
+      GROUP BY employee_id
+    `, params)
+    return rows
+  }
+
+  async getMonthlyCostTemplates(employeeId) {
+    const [rows] = await this.getConnection().execute(`
+      SELECT u.id AS employee_id, u.hire_date, st.auto_raise_rule, st.overtime_hourly_rate, st.base_salary
+      FROM users u LEFT JOIN salary_templates st ON u.salary_template_id = st.id
+      WHERE u.status = 1 ${employeeId === null ? '' : 'AND u.id = ?'}
+    `, employeeId === null ? [] : [employeeId])
+    return rows
+  }
+
   async getEmployeeAttendanceStats(employee_id, start_date, end_date) {
     try {
       const query = `

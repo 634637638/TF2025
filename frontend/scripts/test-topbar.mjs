@@ -13,21 +13,43 @@ const { default: puppeteer } = createRequire(resolve(root, '../backend/package.j
 const temporary = await mkdtemp(join(tmpdir(), 'tf-topbar-'))
 const shellFile = resolve(root, 'src/views/system/page/SimpleAdminView.vue')
 const menuFile = resolve(root, 'src/components/ResponsiveMenu.vue')
+const tabsFile = resolve(root, 'src/components/TabsBar.vue')
+const scrollFixture = `
+import {ElButton,ElTabs,ElTabPane} from 'element-plus';
+const ScrollFixture=defineComponent({setup(){
+ const active=ref(0),buttonTab=ref(0);
+ const labels=Array.from({length:28},(_,index)=>'测试标签 '+(index+1));
+ return ()=>h('section',{class:'admin-page','data-tabs-fixture':''},[
+  h(ElTabs,{class:['tf-page-tabs',{'tf-page-tabs--transparent':window.fixture.publicPage}],modelValue:active.value,'onUpdate:modelValue':value=>{active.value=value}},
+   ()=>labels.map((label,name)=>h(ElTabPane,{class:'tf-tab-panel',key:name,label,name}))),
+  h('div',{class:'tf-page-tabs tab-navigation'},labels.map((label,index)=>h(ElButton,{
+   key:index,type:buttonTab.value===index?'primary':'default',onClick:()=>{buttonTab.value=index}
+  },()=>label))),
+  h('div',{class:'tf-tab-content'},[
+   h('div',{class:'tf-tab-panel'},[
+    ...(window.fixture.longContent?[h('div',{style:{height:'1400px'}})]:[]),
+    h('button',{type:'button','data-bottom':''},'内容末尾')
+   ])
+  ])
+ ]);
+}});
+`
 const shellScript = `
-import {ref,computed,defineComponent} from 'vue';
+import {ref,computed,defineComponent,h} from 'vue';
 import {Lock,Unlock,SwitchButton} from '@element-plus/icons-vue';
 import ResponsiveMenu from '@/components/ResponsiveMenu.vue';
+import TabsBar from '@/components/TabsBar.vue';
+${scrollFixture}
 const props=defineProps({compact:Boolean,name:String,role:String});
 const empty=defineComponent({render:()=>null});
-const ScreenLock=empty,SimpleSidebar=empty,NotificationContainer=empty,ReminderHost=empty,RouterView=empty;
-const TabsBar=defineComponent({template:'<div>首页</div>'});
+const ScreenLock=empty,SimpleSidebar=empty,NotificationContainer=empty,ReminderHost=empty;
 const isDesktopLayout=computed(()=>!props.compact),isLocked=ref(false),sidebarCollapsed=ref(false),isScrolled=ref(false);
 const isAuthenticated=true,authUser=computed(()=>({name:props.name})),userRoleText=computed(()=>props.role),beijingTime='09:30:00';
 const menuItems=[],quickActions=[],responsiveMenuRef=ref(),contentAreaRef=ref();
 const handleLockStateChange=value=>{isLocked.value=value};
 const toggleScreenLock=()=>{isLocked.value=!isLocked.value};
 const handleLogout=()=>{window.fixture.logout++};
-const handleMenuNavigation=()=>{},getRouteCacheKey=()=>'',isRefreshingCurrentRoute=()=>false;
+const handleMenuNavigation=()=>{};
 `
 const menuScript = `
 import {ref,defineComponent} from 'vue';
@@ -39,20 +61,174 @@ const isDrawerNavigation=true,isSlideMenuOpen=ref(false),isMenuLoading=false,sli
 const closeSlideMenu=()=>{isSlideMenuOpen.value=false},handleMenuButtonClick=()=>{isSlideMenuOpen.value=!isSlideMenuOpen.value};
 const forwardMenuClick=()=>{},handleQuickAction=()=>{};
 `
+const tabsScript = `
+import {ref} from 'vue';
+import IconRenderer from '@/components/IconRenderer.vue';
+const tabs=Array.from({length:28},(_,index)=>({path:String(index),title:'页面标签 '+(index+1),fixed:true}));
+const activeTab=ref(tabs[0].path);
+const switchTab=path=>{activeTab.value=path};
+const closeTab=()=>{},handleCommand=()=>{};
+`
 const entry = `
-import {createApp,h,reactive,nextTick} from 'vue';
+import {createApp,h,reactive,nextTick,ref,defineComponent} from 'vue';
 import ElementPlus from 'element-plus';
 import Shell from '/src/views/system/page/SimpleAdminView.vue';
 import 'element-plus/dist/index.css';
 import '/src/styles.scss';import '/src/styles/responsive.scss';import '/src/styles/admin-layout.css';
-window.fixture=reactive({compact:true,name:'Boss',role:'管理员',logout:0});
-const app=createApp({render:()=>h(Shell,window.fixture)});app.use(ElementPlus);app.mount('#app');
+import {initPageTabScroll} from '/src/utils/page-tab-scroll.ts';
+${scrollFixture}
+window.fixture=reactive({compact:true,name:'Boss',role:'管理员',logout:0,longContent:false,publicPage:false,viewportKey:0});
+const app=createApp({render:()=>window.fixture.publicPage?h(ScrollFixture):h(Shell,{...window.fixture,key:window.fixture.viewportKey})});
+app.use(ElementPlus);app.mount('#app');
+initPageTabScroll();
 window.updateTopbar=async values=>{
  Object.assign(window.fixture,values);await nextTick();await new Promise(requestAnimationFrame);
  await Promise.all(document.getAnimations().filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity).map(animation=>animation.finished.catch(()=>{})));
 };
 window.ready=true;
 `
+
+async function swipe(page, fromX, fromY, toX, toY) {
+  const touch = await page.touchscreen.touchStart(fromX, fromY)
+  for (let step = 1; step <= 6; step++) {
+    await touch.move(fromX + (toX - fromX) * step / 6, fromY + (toY - fromY) * step / 6)
+  }
+  // End with the finger stationary so the test does not depend on fling distance.
+  await new Promise(resolve => setTimeout(resolve, 120))
+  await touch.end()
+}
+
+async function checkTabScrolling(page, width) {
+  const mobile = width < 768
+  await page.setViewport({ width, height: 820, isMobile: mobile, hasTouch: mobile })
+  await page.evaluate(values => window.updateTopbar(values), { compact: width < 1025, longContent: false, viewportKey: width })
+  const layout = () => page.$eval('.content-area', area => ({
+    width: area.clientWidth,
+    bottom: area.getBoundingClientRect().bottom,
+    overscroll: getComputedStyle(area).overscrollBehaviorY,
+    rootExtent: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+    rootOverscroll: getComputedStyle(document.documentElement).overscrollBehaviorY
+  }))
+  const short = await layout()
+  await page.evaluate(() => window.updateTopbar({ longContent: true }))
+  const long = await layout()
+  assert.equal(long.width, short.width, `${width} 短内容切换成长内容时宽度稳定`)
+  assert.ok(long.bottom <= 820 && long.rootExtent <= 1, `${width} 正文底边在视口内且文档没有第二层纵向滚动`)
+  assert.equal(long.overscroll, 'none', `${width} 后台正文在边缘取消滚动回弹`)
+  assert.equal(long.rootOverscroll, 'none', `${width} 文档在边缘取消滚动回弹`)
+
+  const rails = [
+    '.tf-page-tabs .el-tabs__nav-scroll',
+    '.tf-page-tabs.tab-navigation'
+  ]
+  if (width >= 1025) rails.push('.tf-topbar-tabs .tabs-container')
+  for (const selector of rails) {
+    const label = `${width} ${selector}`
+    const rail = await page.$(selector)
+    const bounds = await rail.boundingBox()
+    const scroll = () => rail.evaluate(element => element.scrollLeft)
+    const max = await rail.evaluate(element => element.scrollWidth - element.clientWidth)
+    const styles = await rail.evaluate(element => {
+      const style = getComputedStyle(element)
+      return { scrollbar: style.scrollbarWidth, overscroll: style.overscrollBehaviorX }
+    })
+    assert.equal(styles.scrollbar, 'none', `${label} 底部无横向滚动条`)
+    assert.equal(styles.overscroll, 'none', `${label} 横向边缘取消回弹`)
+    assert.ok(max > 0, `${label} 存在溢出标签`)
+
+    const x = Math.round(bounds.x + bounds.width / 2)
+    const y = Math.round(bounds.y + bounds.height / 2)
+    if (mobile) {
+      await swipe(page, x + 55, y, x - 55, y)
+      await page.waitForFunction(element => element.scrollLeft > 0, { timeout: 4000 }, rail)
+      await swipe(page, x - 110, y, x + 110, y)
+      await page.waitForFunction(element => element.scrollLeft <= 1, { timeout: 4000 }, rail)
+      // A vertical gesture starting on a TAB must still scroll the parent page.
+      await swipe(page, x, y, x, y - 90)
+      await page.waitForFunction(() => document.querySelector('.content-area').scrollTop > 0, { timeout: 4000 })
+      await page.$eval('.content-area', area => { area.scrollTop = 0 })
+    } else {
+      await page.mouse.move(x, y)
+      await page.mouse.wheel({ deltaY: max + 50 })
+      await page.waitForFunction(element => element.scrollLeft >= element.scrollWidth - element.clientWidth - 1, { timeout: 4000 }, rail)
+      await page.mouse.wheel({ deltaY: -max - 50 })
+      await page.waitForFunction(element => element.scrollLeft <= 1, { timeout: 4000 }, rail)
+    }
+
+    const items = await rail.$$('[role=tab], .el-button')
+    await rail.evaluate(element => { element.scrollLeft = element.scrollWidth })
+    await items.at(-1).click()
+    assert.ok(Math.abs(await scroll() - max) <= 1, `${label} 切换末项后 TAB 仍停在末端`)
+    await rail.evaluate(element => { element.scrollLeft = 0 })
+    await items[0].click()
+    assert.ok(await scroll() <= 1, `${label} 切回首项后 TAB 仍停在起点`)
+
+    if (!mobile && selector.endsWith('.el-tabs__nav-scroll')) {
+      await items[0].focus()
+      await page.keyboard.press('ArrowLeft')
+      await page.waitForFunction(element => {
+        const active = element.querySelector('[role=tab][aria-selected=true]')
+        return active === element.querySelector('[role=tab]:last-child') &&
+          active.getBoundingClientRect().right <= element.getBoundingClientRect().right + 1
+      }, { timeout: 4000 }, rail)
+    }
+  }
+
+  await page.$eval('.content-area', area => { area.scrollTop = area.scrollHeight })
+  const bottom = () => page.$eval('.content-area', area => ({
+    top: area.scrollTop,
+    max: area.scrollHeight - area.clientHeight,
+    end: area.querySelector('[data-bottom]').getBoundingClientRect().bottom,
+    root: document.documentElement.scrollTop
+  }))
+  const before = await bottom()
+  assert.ok(before.top > 0 && Math.abs(before.top - before.max) <= 1 && before.end <= long.bottom, `${width} 内容末项完整可达`)
+  if (mobile) {
+    await swipe(page, width / 2, 740, width / 2, 440)
+  } else {
+    await page.mouse.move(width / 2, 740)
+    await page.mouse.wheel({ deltaY: 800 })
+  }
+  await page.evaluate(() => new Promise(requestAnimationFrame))
+  assert.deepEqual(await bottom(), before, `${width} 到底后继续滚动不移动文档或末项`)
+}
+
+async function checkPublicTabScrolling(page, width) {
+  const mobile = width < 768
+  await page.setViewport({ width, height: 820, isMobile: mobile, hasTouch: mobile })
+  await page.evaluate(() => window.updateTopbar({ publicPage: true, longContent: true }))
+  const tabAppearance = await page.$eval('.tf-page-tabs > .el-tabs__header', header => {
+    const style = getComputedStyle(header)
+    const selected = getComputedStyle(header.querySelector('.el-tabs__item.is-active'))
+    return { background: style.backgroundColor, border: style.borderTopWidth, shadow: style.boxShadow, selected: selected.backgroundColor }
+  })
+  assert.equal(tabAppearance.background, 'rgba(0, 0, 0, 0)', `${width} 公开 TAB 外层透明`)
+  assert.equal(tabAppearance.border, '0px', `${width} 公开 TAB 外层无边框`)
+  assert.equal(tabAppearance.shadow, 'none', `${width} 公开 TAB 外层无阴影`)
+  assert.notEqual(tabAppearance.selected, tabAppearance.background, `${width} 公开 TAB 保留选中底色`)
+  const readScroll = () => page.evaluate(() => {
+    const root = document.scrollingElement
+    return {
+      top: root.scrollTop,
+      max: root.scrollHeight - root.clientHeight,
+      overscroll: getComputedStyle(root).overscrollBehaviorY,
+      bottom: document.querySelector('[data-bottom]').getBoundingClientRect().bottom
+    }
+  })
+  assert.equal((await readScroll()).overscroll, 'none', `${width} 公开 TAB 页文档在边缘取消滚动回弹`)
+  await page.evaluate(() => { window.scrollTo(0, document.scrollingElement.scrollHeight) })
+  const before = await readScroll()
+  assert.ok(before.top > 0 && Math.abs(before.top - before.max) <= 1 && before.bottom <= 820, `${width} 公开 TAB 页末项可达`)
+  if (mobile) {
+    await swipe(page, width / 2, 740, width / 2, 440)
+  } else {
+    await page.mouse.move(width / 2, 740)
+    await page.mouse.wheel({ deltaY: 800 })
+  }
+  await page.evaluate(() => new Promise(requestAnimationFrame))
+  assert.deepEqual(await readScroll(), before, `${width} 公开 TAB 页到底后继续滚动时末项稳定`)
+}
+
 let server, browser
 try {
   server = await createServer({ root,configFile:false,envFile:false,logLevel:'error',cacheDir:join(temporary,'vite'),
@@ -61,12 +237,14 @@ try {
       resolveId:id=>id==='/__topbar.js'?'\0topbar-entry':undefined,
       async load(id) {
         if(id==='\0topbar-entry')return entry
-        if(id!==shellFile&&id!==menuFile)return
+        if(id!==shellFile&&id!==menuFile&&id!==tabsFile)return
         const source=await readFile(id,'utf8')
-        return source.replace(/<script\b[^>]*>[\s\S]*?<\/script>/,()=>'<script setup>'+ (id===shellFile?shellScript:menuScript) +'</script>')
+        const script=id===shellFile?shellScript:id===menuFile?menuScript:tabsScript
+        const template=id===shellFile?source.replace(/<router-view\b[\s\S]*?<\/router-view>/,'<ScrollFixture />'):source
+        return template.replace(/<script\b[^>]*>[\s\S]*?<\/script>/,()=>'<script setup>'+script+'</script>')
       },
       configureServer(vite){vite.middlewares.use((req,res,next)=>{
-        if(req.url==='/__topbar.html'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="app"></div><script type="module" src="/__topbar.js"></script></body></html>');return}
+        if(req.url==='/__topbar.html'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="app"></div><script type="module" src="/__topbar.js"></script></body></html>');return}
         if(req.method!=='GET'||req.url?.startsWith('/api/')){res.statusCode=403;res.end('禁止业务请求');return}
         next()
       })}
@@ -134,9 +312,13 @@ try {
       cases++
     }
   }
+  const tabWidths = [360, 390, 767, 768, 1024, 1025, 1440]
+  for (const width of tabWidths) await checkTabScrolling(page, width)
+  for (const width of [390, 1440]) await checkPublicTabScrolling(page, width)
   assert.deepEqual(errors,[])
   assert.deepEqual(blocked,[])
   console.log(`顶部栏浏览器回归通过：${cases}组；实际导航模板/样式、10个视口、明暗、长姓名及紧凑设备分支；无真实登录、锁屏或退出请求。`)
+  console.log(`TAB 滚动浏览器回归通过：后台 ${tabWidths.length} 个视口、公开页 2 个视口；触摸、滚轮、键盘、首尾标签和底部边界。`)
 } finally {
   await browser?.close()
   await server?.close()

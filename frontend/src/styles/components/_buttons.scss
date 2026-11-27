@@ -11,6 +11,9 @@
   --tf-button-radius: var(--tf-radius-control);
   --tf-button-font-size: var(--tf-button-small-base-font-size);
   --tf-button-font-size-small: var(--tf-button-small-base-font-size);
+  --tf-button-compact-height: var(--tf-button-small-base-height);
+  --tf-button-compact-padding-x: var(--tf-button-small-base-padding-x);
+  --tf-compact-group-padding: var(--tf-space-1);
   --tf-button-batch-small-height: 24px;
   --tf-button-batch-small-padding-x: var(--tf-space-2);
   --tf-button-batch-small-padding-y: var(--tf-space-1);
@@ -290,10 +293,10 @@
   min-height: var(--tf-button-height-large) !important;
 }
 
-/* 密集快捷命令复用小号基础令牌，不受父表单 size 继承影响。 */
+/* 紧凑工具栏和页签共用尺寸，父表单 size 只控制表单输入。 */
 .el-button.tf-button--compact:not(.is-circle):where(:not(.is-text):not(.is-link)) {
-  --tf-button-height: var(--tf-button-small-base-height);
-  --tf-button-padding-x: var(--tf-button-small-base-padding-x);
+  --tf-button-height: var(--tf-button-compact-height);
+  --tf-button-padding-x: var(--tf-button-compact-padding-x);
   --tf-button-font-size: var(--tf-button-small-base-font-size);
 }
 
@@ -1232,6 +1235,9 @@ body .el-button.el-button.tf-button--menu-action:focus {
     --tf-button-small-base-padding-x: clamp(6px, 2.14vw, 8px);
     --tf-button-font-size: var(--tf-type-scale-13);
     --tf-button-small-base-font-size: var(--tf-type-scale-12);
+    --tf-button-compact-height: calc(var(--tf-space-7) - var(--tf-space-1));
+    --tf-button-compact-padding-x: calc(var(--tf-space-3) / 2);
+    --tf-compact-group-padding: calc(var(--tf-space-1) / 2);
     --tf-toolbar-button-height: clamp(28px, 7.5vw, 30px);
     --tf-toolbar-button-padding-x: clamp(5px, 1.6vw, 7px);
     --tf-toolbar-button-font-size: var(--tf-type-scale-12);

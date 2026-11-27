@@ -104,6 +104,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="角色权限统计"
+          tabindex="0"
         >
           <div
             v-if="canViewPermissionsField('stats_total_roles')"

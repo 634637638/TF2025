@@ -34,6 +34,7 @@
       v-model="filmVisible"
       :customer="filmCustomer"
       :phone-id="filmPhoneId"
+      @success="emit('film-success')"
     />
   </MobileDialog>
 </template>
@@ -58,6 +59,7 @@ interface Emits extends UpdateModelValueEmits {
   edit: []
   delete: []
   return: []
+  'film-success': []
 }
 
 const props = defineProps<Props>()

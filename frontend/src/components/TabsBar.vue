@@ -135,34 +135,6 @@ const handleCommand = (command: string) => {
 </script>
 
 <style scoped>
-.tabs-bar {
-  min-width: 0;
-}
-
-.tabs-container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--tf-tabs-gap);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--tf-color-gray-300) transparent;
-}
-
-.tabs-container::-webkit-scrollbar {
-  height: 4px;
-}
-
-.tabs-container::-webkit-scrollbar-thumb {
-  background: var(--tf-color-gray-300);
-  border-radius: 2px;
-}
-
-.tabs-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 .tab-icon,
 .tab-title,
 .tab-close {

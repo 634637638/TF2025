@@ -461,7 +461,7 @@ body {
     overflow-x: auto;
   }
 
-  .responsive-table table {
+  .responsive-table table:not(.el-table__header):not(.el-table__body) {
     min-width: 600px;
   }
 

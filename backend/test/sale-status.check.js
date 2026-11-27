@@ -192,6 +192,63 @@ test('综合查询仅按当前销售员匹配，只有人员筛选时分页及�
   }
 })
 
+test('综合查询已售合计等于全新、二手已售之和，调货划拨独立统计并遵循筛选', async t => {
+  const f = fixture(t)
+  const repo = new QueryRepository()
+  repo.getConnection = () => f.database
+  const QueryService = require('../src/services/query.service')
+  const service = new QueryService()
+  service.queryRepository = repo
+  for (const [id, status, store_id, sale_time, is_new] of [
+    [3, 'peer_transfer', 2, '2026-11-10 09:00:00', 1],
+    [4, 'peer_transfer', 2, '2026-11-11 09:00:00', 0],
+    [5, 'supplier_proxy', 2, '2026-11-11 10:00:00', 1],
+    [6, 'supplier_proxy', 1, '2026-11-11 10:00:00', 0]
+  ]) {
+    f.insert('phones', { id, status, store_id, sale_time, is_new })
+  }
+  f.insert('phones', { id: 7, status: 'sold', store_id: 2, is_new: 0, sale_time: '2026-11-11 11:00:00' })
+  f.insert('phones', { id: 8, status: 'sold', store_id: 2, is_new: null, sale_time: '2026-11-11 12:00:00' })
+  const counts = async (filters, stores = [2]) => {
+    const { data } = await service.getStatistics(filters, null, stores)
+    return [data.sold_count, data.new_count, data.used_count, data.peer_transfer_count, data.supplier_proxy_count]
+  }
+  assert.deepEqual(await counts({}), [2, 1, 1, 2, 1])
+  assert.deepEqual(await counts({ start_date: '2026-11-11', end_date: '2026-11-11' }), [1, 0, 1, 1, 1])
+  assert.deepEqual(await counts({ status: 'peer_transfer' }), [2, 1, 1, 2, 0])
+  assert.deepEqual(await counts({ status: 'supplier_proxy' }, [1]), [1, 0, 1, 0, 1])
+  assert.deepEqual(await counts({ status: 'sold' }, [1]), [0, 0, 0, 0, 0])
+  assert.deepEqual(await counts({}, []), [0, 0, 0, 0, 0])
+})
+
+test('综合查询按门店和筛选拆分在库成色，未知成色只计入在库合计', async t => {
+  const f = fixture(t)
+  const repo = new QueryRepository()
+  repo.getConnection = () => f.database
+  const QueryService = require('../src/services/query.service')
+  const service = new QueryService()
+  service.queryRepository = repo
+  for (const [id, status, store_id, is_new, is_preordered] of [
+    [3, 'in_stock', 2, 0, 0],
+    [4, 'in_stock', 2, null, 0],
+    [5, 'in_stock', 1, 0, 0],
+    [6, 'in_stock', 2, 0, 1],
+    [7, 'peer_transfer', 2, 1, 0]
+  ]) {
+    f.insert('phones', { id, status, store_id, is_new, is_preordered })
+  }
+  const counts = async (filters, stores = [2]) => {
+    const { data } = await service.getStatistics(filters, null, stores)
+    return [data.in_stock_count, data.in_stock_new_count, data.in_stock_used_count]
+  }
+  assert.deepEqual(await counts({}), [3, 1, 1])
+  assert.deepEqual(await counts({ status: 'in_stock' }), [3, 1, 1])
+  assert.deepEqual(await counts({ status: 'sold' }), [0, 0, 0])
+  assert.deepEqual(await counts({ status: 'peer_transfer' }, [1]), [0, 0, 0])
+  assert.deepEqual(await counts({}, [1]), [1, 0, 1])
+  assert.deepEqual(await counts({}, []), [0, 0, 0])
+})
+
 test('手机库存详情、维修检索和补贴检索统一排除旧客户，最新销售只有一条', async t => {
   const f = fixture(t), inventory = new PhoneInventoryQueryRepository(() => f.database)
   const detail = (await inventory.getPhoneDetails(1))[0]

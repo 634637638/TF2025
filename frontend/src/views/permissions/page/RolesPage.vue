@@ -3,7 +3,7 @@
     <div class="section-title">
       <i class="fas fa-list" />
       角色列表
-      <span class="record-count">共 {{ ctx.rolesPagination.total }} 条记录</span>
+      <span class="record-count">共 {{ ctx.rolesPagination.total }} 条</span>
     </div>
 
     <div class="table-responsive">

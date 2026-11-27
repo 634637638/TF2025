@@ -56,6 +56,22 @@ export interface AccessoryRecord {
 
 export type AccessoryUsageType = 'sale' | 'gift'
 
+/** 当前筛选命中的商品原单汇总。金额按北京时间分段，缺价或隐藏时返回 null。 */
+export type QueryGoodsSummary = Record<AccessoryUsageType, Record<'month' | 'today' | 'yesterday', {
+  period_quantity: number
+  period_amount: number | string | null
+}>>
+
+export type QueryGoodsCustomerVisits = Record<'today' | 'yesterday', {
+  new_count: number
+  existing_count: number
+}>
+
+export interface QueryGoodsBestSeller {
+  name: string
+  quantity: number
+}
+
 /** 综合查询商品模式：销售事实与原单资料，金额保留数据库小数文本及字段脱敏的空值。 */
 export interface AccessorySaleRecord {
   id: number

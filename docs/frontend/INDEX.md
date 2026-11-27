@@ -6,8 +6,8 @@
 
 以下文件由 [`standards-manifest.json`](standards-manifest.json) 登记；该清单同时列出对应审计命令和公共实现来源。新增或修改强制规范时，按[规范审计接入指南](standards-audit-guide.md)执行。
 
-- [后台卡片与表格](admin-table-standards.md) — 手机双击记录查看，业务操作统一在详情底部，禁止行内按钮展开
-- [后台统计卡片颜色](admin-stat-card-color-standard.md)
+- [后台卡片与表格](admin-table-standards.md) — 普通字段列按表头和当前页内容计算最小安全宽度；手机双击记录查看，业务操作统一在详情底部
+- [后台统计卡片](admin-stat-card-color-standard.md) — 手机每行 2 张最多 2 行、平板 3/4 列最多 2 行、PC 单行最多 6 张，以及横滑和语义色
 - [按钮](button-standards.md) — 业务按钮省略尺寸声明，默认读取公共响应式规格；标杆页保留明确标记的尺寸演示
 - [全局颜色令牌与语义色](color-token-standard.md)
 - [公共组件采用与例外](component-adoption-standard.md)

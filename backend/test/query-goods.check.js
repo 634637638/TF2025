@@ -11,18 +11,31 @@ const actor = { id: 7, store_ids: [1, 2] }
 const record = { id: 51, sale_no: 'AS-ORIGINAL', name: '原单充电器', customer_name: '测试顾客', customer_phone: '13900000001',
   quantity: 2, returned_quantity: 1, remaining_quantity: 1, unit_price: '20.50', total_price: '41.00', purchase_cost: null, profit: null, points_awarded: 0, points_used: 0, deduction_amount: '0.00',
   sale_type: 'sale', store_id: 1, store_name: '一店', has_snapshot: 1 }
+const totals = { period_amount: '385.50', period_quantity: 24 }
+const summary = {
+  sale: { month: totals, today: totals, yesterday: totals },
+  gift: { month: totals, today: totals, yesterday: totals }
+}
+const customerVisits = { today: { new_count: 2, existing_count: 5 }, yesterday: { new_count: 1, existing_count: 8 } }
+const bestSellers = [{ name: '原单充电器', quantity: 10 }]
 const response = () => ({ status(code) { this.code = code; return this }, json(body) { this.body = body; return this } })
 const fixture = (hidden = []) => {
   const calls = [], reads = []
   const repository = {
     withConnection: withReadConnection,
-    async list(scope, query, fields) { reads.push({ scope, query, fields }); return { data: [structuredClone(record)], pagination: { total: 125 } } },
+    async list(scope, query, fields) {
+      reads.push({ scope, query, fields })
+      return { data: [structuredClone(record)], pagination: { total: 125 } }
+    },
+    async periodSummary(scope, query, fields, dates) { reads.push({ scope, query, fields, dates }); return summary },
+    async customerVisits(scope, query, fields, dates) { reads.push({ scope, query, fields, dates }); return customerVisits },
+    async monthlyBestSellers(scope, query, fields, dates) { reads.push({ scope, query, fields, dates }); return bestSellers },
     async filterOptions() { return { brands: [{ id: 2, name: '苹果' }], categories: [{ id: 3, name: '充电头' }] } },
     async productNameOptions(scope, keyword) { reads.push({ scope, keyword }); return ['原单充电器'] },
     async detail(scope, id) { reads.push({ scope, id }); return id === 51 ? { ...structuredClone(record), serial_numbers: ['SN1', 'SN2'],
       batches: [{ id: 1, quantity: 2, purchase_cost: 10, supplier_name: '供应商', batch_no: 'IN1' }] } : null }
   }
-  const service = new Service({ repository, permissionCheck: async (_actor, permission) => { calls.push(permission); return true } })
+  const service = new Service({ repository, now: () => '2026-12-01', permissionCheck: async (_actor, permission) => { calls.push(permission); return true } })
   const masking = { async getUserFieldPermissions() { return { hiddenFields: hidden } }, filterSensitiveFields(rows) { return rows } }
   return { service, controller: new Controller({ service, masking, logger: { error() {} } }), calls, reads }
 }
@@ -102,14 +115,72 @@ test('隐藏数量或成交金额时同时遮蔽相关成本/利润/积分，不
     assert.equal(row.points_used, null)
     assert.equal(row.deduction_amount, null)
     if (field === 'stock_info.total_quantity') {
+      assert.equal(res.body.data.summary, undefined)
       assert.equal(row.quantity, null)
       assert.equal(row.returned_quantity, null)
       assert.equal(row.remaining_quantity, null)
     } else {
+      for (const type of ['sale', 'gift']) {
+        for (const period of ['month', 'today', 'yesterday']) {
+          assert.deepEqual(res.body.data.summary[type][period], { period_amount: null, period_quantity: 24 })
+        }
+      }
       assert.equal(row.returned_quantity, 1)
       assert.equal(row.remaining_quantity, 1)
     }
   }
+})
+
+test('商品统计沿用筛选和授权门店，月初仍请求上个月最后一天的昨日汇总', async () => {
+  const visible = response(), f = fixture()
+  await f.controller.list({ user: actor, query: { page: 2, store_id: 2, keyword: '充电' } }, visible)
+  assert.deepEqual(visible.body.data.summary, summary)
+  assert.deepEqual(visible.body.data.customer_visits, customerVisits)
+  assert.deepEqual(visible.body.data.monthly_best_sellers, bestSellers)
+  const [list, aggregate, visits, ranking] = f.reads
+  assert.deepEqual(aggregate, { ...list, dates: {
+    month: '2026-12-01 00:00:00', yesterday: '2026-11-30 00:00:00',
+    today: '2026-12-01 00:00:00', tomorrow: '2026-12-02 00:00:00'
+  } })
+  assert.deepEqual(visits, aggregate)
+  assert.deepEqual(ranking, aggregate)
+  const statFields = [
+    ['stats.monthly_sales', 'sale'],
+    ['stats.monthly_gifts', 'gift'],
+    ['stats.customer_visits', 'customer_visits'],
+    ['stats.monthly_best_sellers', 'monthly_best_sellers']
+  ]
+  for (const [field, responseKey] of statFields) {
+    const hidden = response(), restricted = fixture([field])
+    await restricted.controller.list({ user: actor, query: {} }, hidden)
+    assert.equal(hidden.body.data[responseKey] === null || hidden.body.data[responseKey] === undefined, true, `${field} 应遮蔽对应统计块`)
+    for (const [, visibleKey] of statFields.filter(([candidate]) => candidate !== field)) {
+      assert.notEqual(hidden.body.data[visibleKey], null, `${field} 不应影响 ${visibleKey}`)
+    }
+  }
+  for (const field of ['basic_info.usage_type', 'stock_info.total_quantity', 'time_info.created_at']) {
+    const hidden = response(), restricted = fixture([field])
+    await restricted.controller.list({ user: actor, query: { page: 2 } }, hidden)
+    assert.equal(hidden.body.data.summary, undefined)
+    assert.equal(hidden.body.data.monthly_best_sellers, undefined)
+    assert.equal(hidden.body.data.pagination.total, 125)
+    const visitsAllowed = field !== 'time_info.created_at'
+    assert.deepEqual(hidden.body.data.customer_visits, visitsAllowed ? customerVisits : undefined)
+    assert.equal(restricted.reads.length, visitsAllowed ? 2 : 1)
+  }
+  for (const field of ['customer_info.customer_name', 'customer_info.customer_phone']) {
+    const hidden = response(), restricted = fixture([field])
+    await restricted.controller.list({ user: actor, query: {} }, hidden)
+    assert.deepEqual(hidden.body.data.customer_visits, customerVisits)
+    assert.deepEqual(hidden.body.data.summary, summary)
+    assert.deepEqual(hidden.body.data.monthly_best_sellers, bestSellers)
+    assert.equal(restricted.reads.length, 4)
+  }
+  const hidden = response(), restricted = fixture(['basic_info.name'])
+  await restricted.controller.list({ user: actor, query: {} }, hidden)
+  assert.equal(hidden.body.data.monthly_best_sellers, undefined)
+  assert.deepEqual(hidden.body.data.summary, summary)
+  assert.equal(restricted.reads.length, 3)
 })
 
 test('隐藏筛选字段时不允许用门店、时间、类型、销售员、品牌、名称或商品类型探测数据', async () => {

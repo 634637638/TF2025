@@ -1,5 +1,10 @@
 <template>
-  <div class="stats-cards">
+  <div
+    class="stats-cards"
+    role="region"
+    aria-label="工资统计"
+    tabindex="0"
+  >
     <div
       v-if="canViewField(moduleKey, 'stats_pending_salary')"
       class="stat-card stat-card--expense-pending"

@@ -4,11 +4,13 @@ const QueryGoodsService = require('../services/query-goods.service')
 const FieldAccessService = require('../services/field-access.service')
 const log = require('../utils/log')
 
-const financialKeys = ['total_price', 'profit', 'points_awarded', 'points_used', 'deduction_amount',
+const financialKeys = ['total_price', 'period_amount', 'profit', 'points_awarded', 'points_used', 'deduction_amount',
   'base_refund_amount', 'points_recovery_amount', 'points_compensation_amount', 'gift_charge_amount', 'refund_amount', 'collection_amount', 'settlement_offset_amount',
   'replacement_amount', 'additional_amount', 'exchange_credit_amount', 'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state',
   'points_delta', 'points_award_returned', 'points_redemption_returned', 'settlement_method', 'settlement_channel']
 const responseKeys = {
+  'stats.monthly_sales': ['sale'], 'stats.monthly_gifts': ['gift'],
+  'stats.customer_visits': ['customer_visits'], 'stats.monthly_best_sellers': ['monthly_best_sellers'],
   'basic_info.sequence': ['sale_no', 'order_no', 'linked_phone_invoice'],
   'basic_info.name': ['name', 'accessory_id'], 'basic_info.barcode': ['barcode'],
   'basic_info.category': ['category'], 'basic_info.brand_name': ['brand_name'],
@@ -17,9 +19,9 @@ const responseKeys = {
   'basic_info.supplier_name': ['supplier_name'], 'basic_info.serial_number': ['serial_numbers'],
   // 未退赠品扣款是用途派生事实；隐藏用途时同步隐藏数量和完整资金组，避免反推及残缺回执。
   'basic_info.serial_tracking': ['serial_tracking'], 'basic_info.usage_type': ['sale_type', 'usage_type',
-    'quantity', 'returned_quantity', 'remaining_quantity', 'gift_charge_quantity', ...financialKeys],
+    'quantity', 'period_quantity', 'returned_quantity', 'remaining_quantity', 'gift_charge_quantity', ...financialKeys],
   'stock_info.distribution': ['store_id', 'store_name'],
-  'stock_info.total_quantity': ['quantity', 'returned_quantity', 'remaining_quantity', 'gift_charge_quantity', 'purchase_cost', ...financialKeys],
+  'stock_info.total_quantity': ['quantity', 'period_quantity', 'returned_quantity', 'remaining_quantity', 'gift_charge_quantity', 'purchase_cost', ...financialKeys],
   'price_info.unit_price': ['unit_price', ...financialKeys],
   'price_info.total_price': financialKeys,
   'price_info.purchase_cost': ['purchase_cost', 'profit'], 'price_info.profit': ['profit'],
@@ -89,12 +91,18 @@ class QueryGoodsController {
       if (mode === 'list' && Object.entries(queryFields).some(([key, field]) => req.query[key] !== undefined && hidden.has(field))) {
         return res.status(403).json({ success: false, message: '不能使用已隐藏的筛选字段', code: 'FIELD_PERMISSION_DENIED' })
       }
+      const salesStatsVisible = !['basic_info.usage_type', 'stock_info.total_quantity', 'time_info.created_at'].some(field => hidden.has(field))
+      const canViewSalesStat = !hidden.has('stats.monthly_sales') || !hidden.has('stats.monthly_gifts')
       const result = mode === 'detail' ? await this.service.detail(req.user, req.params.id)
         : mode === 'phoneReceipt' ? await this.service.phoneReceipt(req.user, req.params.saleId)
           : mode === 'aftersales' ? await this.service.aftersales(req.user, req.params.id, req.query)
             : mode === 'customerHistory' ? await this.service.customerHistory(req.user, req.params.customerId, req.query)
               // 关键词只用于定位记录，结果仍由统一字段脱敏处理，隐藏字段不能因此回显。
-              : await this.service.list(req.user, req.query, searchKeys)
+              : await this.service.list(req.user, req.query, searchKeys, {
+                includeSummary: salesStatsVisible && canViewSalesStat,
+                includeCustomerVisits: !hidden.has('stats.customer_visits') && !hidden.has('time_info.created_at'),
+                includeBestSellers: !hidden.has('stats.monthly_best_sellers') && salesStatsVisible && !hidden.has('basic_info.name')
+              })
       return res.json({ success: true, data: this.access.maskPayload(result, permissions) })
     } catch (error) {
       if (error.statusCode >= 400 && error.statusCode < 500) return res.status(error.statusCode).json({ success: false, message: error.message, code: error.code })

@@ -79,6 +79,13 @@ export interface PriceTrendRecord {
   [key: string]: unknown
 }
 
+export interface PriceSyncSummary {
+  total: number
+  success: number
+  failed: number
+  sources: Array<{ configId: number, success: boolean, message: string, total: number, successCount: number, failedCount: number }>
+}
+
 export interface PriceSyncConfig {
   id: number
   is_default: boolean | number

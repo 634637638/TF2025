@@ -23,6 +23,7 @@ const goods=[{id:56,name:'原装充电器',brand_name:'实际品牌',product_mod
 {id:58,name:'摩登仕M200',brand_name:'摩登仕',product_model:'M200 Ultra',category:'无线耳机',barcode:'6979263330138',sale_price:99,quantity:19,unit:'副',serial_quantity:0}];
 window.mockRead=(url,config)=>{
   if(url.startsWith('/query/goods/')&&url.endsWith('/order'))return {success:true,data:window.fixture.lastOrder};
+  if(url==='/sales/customers'||url==='/customers/search')return {success:true,data:[{id:9,name:'样本客户',phone:'13900000001'}]};
   if(url==='/sales/checkout/customer-summary')return {success:true,data:{member_number:'VIP001',points:1000,available_points:1000,balance:25}};
   if(!['/accessories/sale-options','/query/goods/sale-options'].includes(url))throw Error('未登记的隔离读取');
   window.fixture.reads.push(structuredClone(config.params));
@@ -167,6 +168,8 @@ export function createSalesCheckoutMocks(root) {
     [resolve(root, 'src/composables/usePermissionPreload.ts'), 'export const usePermissionPreload=()=>({preloadPermissions:async()=>{}})'],
     [resolve(root, 'src/composables/useNotification.ts'), 'export const useNotification=()=>Object.fromEntries(["success","error","warning","info"].map(type=>[type,message=>window.fixture.notices.push({type,message})]));export const notifications=useNotification()'],
     [resolve(root, 'src/services/reference-options.ts'), `export const getStores=async()=>({success:true,data:[{id:1,name:'一店',status:1},{id:2,name:'二店',status:1}]});
+      export const getGoodsFilterOptions=async()=>({success:true,data:{brands:[],categories:[]}});
+      export const getGoodsProductNameOptions=async()=>({success:true,data:[]});
       export const searchOperators=async()=>({success:true,data:[{id:7,name:'样本销售员',username:'fixture'}]});
       export const getCachedBrands=async()=>({success:true,data:[{id:1,name:'苹果'}]});
       export const getModels=async()=>({success:true,data:[{id:1,name:'手机甲',brand_id:1},{id:2,name:'手机乙',brand_id:1}]});
@@ -175,8 +178,7 @@ export function createSalesCheckoutMocks(root) {
       export const getCachedSuppliers=async()=>({success:true,data:[{id:1,name:'手机供应商'}]});
       export const getCachedQueryOptions=async()=>({success:true,data:{stores:[{id:1,name:'一店'}],brands:[],suppliers:[],users:[],statuses:[]}});
       export const searchEmployees=async()=>({success:true,data:[{id:7,name:'样本销售员'}]});
-      export const searchBrands=getCachedBrands,searchColors=getCachedColors,searchMemories=getCachedMemories`],
-    [resolve(root, 'src/services/customer-options.ts'), 'export const searchCustomerOptions=async()=>[{id:9,name:"样本客户",phone:"13900000001"}]']
+      export const searchBrands=getCachedBrands,searchColors=getCachedColors,searchMemories=getCachedMemories`]
   ])
 }
 
@@ -758,6 +760,24 @@ async function checkInheritedSaleFields(page) {
 
 export async function verifySalesPage(page, scenario, capture = async () => {}) {
   await page.waitForSelector('.sales-view .device-card, .sales-view .el-table__row')
+  const toolbar = await page.$eval('.sales-mode-tabs', bar => {
+    const styles = getComputedStyle(bar)
+    return {
+      mobile: matchMedia('(max-width: 767px)').matches,
+      blockPadding: [styles.paddingTop, styles.paddingBottom],
+      scroll: [styles.overflowX, styles.scrollbarWidth, styles.overscrollBehaviorX],
+      buttons: [...bar.querySelectorAll('button[aria-pressed]')].map(button => {
+        const style = getComputedStyle(button)
+        return { label: button.textContent.trim(), height: style.height, padding: style.paddingInlineStart, fontSize: style.fontSize }
+      })
+    }
+  })
+  const groupPadding = toolbar.mobile ? '2px' : '4px'
+  assert.deepEqual(toolbar.blockPadding, [groupPadding, groupPadding], '销售按钮栏采用公共上下内边距')
+  assert.deepEqual(toolbar.scroll, ['auto', 'none', 'none'], '销售按钮栏保留横滑，隐藏滚动条并取消横向回弹')
+  assert.deepEqual(toolbar.buttons, ['调货', '划拨', '对库', '图文', '表格'].map(label => ({
+    label, height: '28px', padding: toolbar.mobile ? '6px' : '10px', fontSize: toolbar.mobile ? '12px' : '13px'
+  })), '库存操作和设备视图切换共用紧凑按钮尺寸')
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('button')].some(element => element.checkVisibility() && element.textContent.trim() === '销售商品')), false, '销售页不提供独立商品开单')
   {
     if (scenario === 'batch') {
@@ -807,10 +827,10 @@ export async function verifySalesPage(page, scenario, capture = async () => {}) 
     await clickButton(page, '配件')
   }
   await checkInheritedSaleFields(page)
-  await select(page, '附加商品', '原装充电器')
+  await select(page, '商品检索', '原装充电器')
   if (scenario === 'batch') await select(page, '关联手机', '手机甲')
   await clickButton(page, '确认')
-  await select(page, '附加商品', '赠膜')
+  await select(page, '商品检索', '赠膜')
   await select(page, '出库方式', '赠送')
   if (scenario === 'batch') await select(page, '关联手机', '手机乙')
   await clickButton(page, '确认')
@@ -849,7 +869,9 @@ export async function verifySalesPage(page, scenario, capture = async () => {}) 
   assert.equal(result.posted.length, 1)
   const data = result.posted[0].data
   assert.equal(data.store_id, 2, '共同结算必须沿用销售二店')
-  assert.deepEqual(data.phones, scenario === 'batch' ? [{ phone_id:11,sale_price:100.01 },{ phone_id:12,sale_price:200.02 }] : [{ phone_id:11,sale_price:100.01 }])
+  const expectedPhones = [{ phone_id: 11, sale_price: 100.01, purchase_cost: 80 }]
+  if (scenario === 'batch') expectedPhones.push({ phone_id: 12, sale_price: 200.02, purchase_cost: 81 })
+  assert.deepEqual(data.phones, expectedPhones)
   assert.deepEqual(data.accessories.map(row => row.linked_phone_id), scenario === 'batch' ? [11,12] : [11,11])
   assert.deepEqual(data.accessories.map(row => [row.accessory_id,row.quantity,row.sale_type,row.unit_price]), [[56,1,'sale',30],[57,1,'gift',0]])
   assert.deepEqual(data.customer_info, { name:'样本客户',phone:'13900000001' })

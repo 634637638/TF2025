@@ -1,6 +1,6 @@
 :root {
   --tf-tabs-height: var(--tf-button-height-small, var(--tf-space-4));
-  --tf-tabs-padding: var(--tf-space-1);
+  --tf-tabs-padding: var(--tf-compact-group-padding);
   --tf-tabs-gap: var(--tf-space-1);
   --tf-tabs-radius: var(--admin-panel-radius, var(--tf-radius-panel));
   --tf-tab-radius: var(--tf-radius-control);
@@ -10,9 +10,6 @@
   --tf-tabs-bg: #e9eff7;
   --tf-tabs-border: #cbd6e5;
   --tf-tabs-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
-  --tf-topbar-tabs-height: var(--tf-button-height-small);
-  --tf-topbar-tab-padding-x: var(--tf-button-padding-x-small);
-  --tf-topbar-tab-font-size: var(--tf-button-font-size-small);
   --tf-tab-color: #334155;
   --tf-tab-bg: rgba(255, 255, 255, 0.58);
   --tf-tab-border: #c4cfde;
@@ -27,6 +24,36 @@
   --tf-tab-active-shadow: 0 3px 9px rgba(37, 99, 235, 0.24);
 }
 
+html:has(.admin-container, .tf-page-tabs),
+.admin-container .content-area {
+  overscroll-behavior-y: none;
+}
+
+.tf-page-tabs.tab-navigation,
+.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll,
+.tf-topbar-tabs .tabs-container,
+.tf-compact-toolbar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.tf-compact-toolbar {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding-block: var(--tf-compact-group-padding);
+  padding-inline: var(--tf-space-2);
+  background: var(--tf-button-neutral-hover-bg);
+  border: 1px solid var(--tf-button-neutral-border);
+  border-radius: var(--admin-panel-radius, var(--tf-radius-panel));
+}
+
 /* Top-level page tabs. Business-specific segmented controls must not use this class. */
 .tf-page-tabs.tab-navigation {
   display: flex;
@@ -39,17 +66,20 @@
   box-sizing: border-box;
   margin: 0 0 var(--admin-panel-gap, 16px);
   padding: var(--tf-tabs-padding);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
   border: 1px solid var(--tf-tabs-border);
   border-radius: var(--tf-tabs-radius);
   background: var(--tf-tabs-bg);
   box-shadow: var(--tf-tabs-shadow);
 }
 
-.tf-page-tabs.tab-navigation::-webkit-scrollbar {
-  display: none;
+.tf-page-tabs.tab-navigation.tf-page-tabs--inline {
+  width: fit-content;
+  margin-bottom: 0;
+}
+
+/* The parent layout supplies the spacing when the TAB bar is a direct child. */
+.admin-page-content > .tf-page-tabs.tab-navigation {
+  margin-bottom: 0;
 }
 
 .tf-page-tabs.tab-navigation .el-button {
@@ -186,10 +216,18 @@
   min-width: 0;
   gap: var(--tf-tabs-gap);
   align-self: center;
-  height: var(--tf-topbar-tabs-height);
+  height: var(--tf-tabs-height);
   padding: 0 var(--tf-tabs-padding);
   overflow: hidden;
   background: var(--tf-nav-topbar-bg);
+}
+
+.tf-topbar-tabs .tabs-container {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: var(--tf-tabs-gap);
 }
 
 .tf-topbar-tabs .tf-topbar-tab {
@@ -200,16 +238,16 @@
   width: auto !important;
   min-width: 0 !important;
   max-width: 180px;
-  height: var(--tf-topbar-tabs-height) !important;
-  min-height: var(--tf-topbar-tabs-height) !important;
+  height: var(--tf-tabs-height) !important;
+  min-height: var(--tf-tabs-height) !important;
   margin: 0 !important;
-  padding-inline: var(--tf-topbar-tab-padding-x) !important;
+  padding-inline: var(--tf-tab-padding-x) !important;
   border: 1px solid var(--tf-tab-border) !important;
   border-radius: var(--tf-tab-radius) !important;
   background: var(--tf-tab-bg) !important;
   box-shadow: var(--tf-tab-shadow) !important;
   color: var(--tf-tab-color) !important;
-  font-size: var(--tf-topbar-tab-font-size) !important;
+  font-size: var(--tf-tab-font-size) !important;
   font-weight: var(--tf-tab-font-weight) !important;
   white-space: nowrap;
 }
@@ -277,6 +315,13 @@
   margin-bottom: 0;
 }
 
+.tf-page-tabs.tab-navigation.tf-page-tabs--inline,
+.tf-page-tabs.el-tabs.tf-page-tabs--transparent > .el-tabs__header {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-wrap::after,
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__active-bar {
   display: none;
@@ -290,20 +335,11 @@
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll {
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  touch-action: pan-x;
-  overscroll-behavior-x: contain;
   cursor: grab;
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll:active {
   cursor: grabbing;
-}
-
-.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll::-webkit-scrollbar {
-  display: none;
 }
 
 .tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-wrap.is-scrollable {
@@ -363,14 +399,6 @@
   overflow: visible;
 }
 
-/* Dense category navigation uses the same compact dimensions as table actions. */
-.tf-page-tabs--compact {
-  --tf-tabs-height: var(--tf-button-height-small);
-  --tf-tabs-padding: var(--tf-space-1);
-  --tf-tab-padding-x: var(--tf-button-padding-x-small);
-  --tf-tab-font-size: var(--tf-button-font-size-small);
-}
-
 /* Every page TAB uses the same zero-inset content frame. Business panels own their
  * internal padding; nesting another page frame here would create stepped edges. */
 .tf-tab-content,
@@ -416,23 +444,23 @@
 
 @media (max-width: 767px) {
   :root {
-    --tf-tabs-height: var(--tf-button-height-small);
-    --tf-tabs-padding: var(--tf-space-1);
-    --tf-tabs-gap: var(--tf-space-1);
     --tf-tabs-radius: var(--mobile-card-radius, 12px);
     --tf-tab-radius: 6px;
-    --tf-tab-padding-x: var(--tf-button-padding-x-small);
-    --tf-tab-font-size: var(--tf-button-font-size-small);
+  }
+
+  .tf-page-tabs,
+  .tf-topbar-tabs {
+    --tf-tabs-height: var(--tf-button-compact-height);
+    --tf-tab-padding-x: var(--tf-button-compact-padding-x);
+  }
+
+  .tf-compact-toolbar {
+    padding-inline: var(--tf-space-1);
   }
 
   .tf-page-tabs.tab-navigation,
   .tf-page-tabs.el-tabs > .el-tabs__header {
     margin-bottom: var(--admin-panel-gap, 10px);
-  }
-
-  .tf-topbar-tabs {
-    --tf-topbar-tabs-height: var(--tf-button-height-small);
-    --tf-tabs-padding: var(--tf-space-1);
   }
 
   .tf-page-tabs.tab-navigation .el-button .el-icon,

@@ -137,6 +137,23 @@
     flex-direction: column;
   }
 
+  .device-item {
+    .device-meta {
+      order: -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin: 0 0 8px;
+      text-align: right;
+    }
+
+    .device-price {
+      margin-bottom: 0;
+    }
+
+  }
+
   .info-label {
     width: auto;
   }
@@ -146,12 +163,23 @@
     gap: 12px;
   }
 
+  .info-row-inline--two-column .inline-item {
+    width: calc((100% - 12px) / 2);
+    min-width: 0;
+  }
+
+  .info-row-inline--two-column .inline-item--full-row {
+    width: 100%;
+  }
+
   .inline-item {
     width: 100%;
   }
 
   .inline-item .info-value {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .inline-item .info-value .form-input-inline,

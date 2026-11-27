@@ -3,6 +3,9 @@
     v-if="visible"
     class="stats-cards"
     :class="{ loading }"
+    role="region"
+    aria-label="手机库存统计"
+    tabindex="0"
   >
     <div
       v-for="(stat, index) in stats"

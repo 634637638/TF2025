@@ -36,6 +36,18 @@ beforeEach(() => {
   mocks.get.mockImplementation(async (id: number, page: number) => fixture(page, 1, id))
 })
 
+it('首次读取批次时显示等待提示，完成后显示库存行', async () => {
+  let finish!: (value: ReturnType<typeof fixture>) => void
+  mocks.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  const wrapper = await render()
+  expect(wrapper.text()).toContain('正在核对当前批次库存...')
+  expect(wrapper.text()).not.toContain('暂无剩余批次库存')
+  finish(fixture(1, 1))
+  await flushPromises()
+  expect(wrapper.text()).not.toContain('正在核对当前批次库存...')
+  expect(wrapper.text()).toContain('当前二店')
+})
+
 it('仅对可核验普通数量采购批次提供盘点入口', async () => {
   const wrapper = await render()
   const action = wrapper.find('button[aria-label="盘点ORIGINAL-11"]')

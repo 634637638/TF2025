@@ -4,7 +4,7 @@
       <div class="section-title">
         <i class="fas fa-list" />
         国补申请列表
-        <span class="record-count">共 {{ subsidyPagination?.total || 0 }} 条记录</span>
+        <span class="record-count">共 {{ subsidyPagination?.total || 0 }} 条</span>
       </div>
 
       <div
@@ -22,7 +22,7 @@
             @click="emit('pin-selected-items')"
           >
             <i class="fas fa-thumbtack" />
-            <span>固定选中项 ({{ selectedItems.length }})</span>
+            <span>固定选中</span>
           </el-button>
           <el-button
             v-if="pinnedItems.length > 0"
@@ -39,7 +39,7 @@
             @click="emit('open-batch-dialog')"
           >
             <i class="fas fa-calendar-alt" />
-            <span>批量修改时间</span>
+            <span>批量修改</span>
           </el-button>
           <el-button
             @click="emit('clear-selection')"
@@ -104,6 +104,7 @@
             v-for="column in visibleTableColumns"
             :key="column.key"
             :label="column.label"
+            :width="column.key === 'model' ? getColumnMinWidth(column) : undefined"
             :min-width="getColumnMinWidth(column)"
             :class-name="getColumnClassName(column.key)"
             align="center"
@@ -216,7 +217,7 @@
                 >-</span>
               </template>
 
-              <span v-else-if="column.key === 'subsidy_photos' && isMobile">{{ photoCount(row) }} 张</span>
+              <span v-else-if="column.key === 'subsidy_photos' && isHandheld">{{ photoCount(row) }} 张</span>
               <div
                 v-else-if="column.key === 'subsidy_photos'"
                 class="photo-icon-wrapper clickable"
@@ -242,7 +243,7 @@
                   {{ formatDate(row.apply_time) }}
                 </div>
                 <el-button
-                  v-else-if="!isMobile && canApprove"
+                  v-else-if="!isHandheld && canApprove"
                   type="primary"
                   class="table-action table-action--manage table-inline-action"
                   title="审批"
@@ -264,7 +265,7 @@
                   {{ formatDate(row.arrival_time) }}
                 </div>
                 <el-button
-                  v-else-if="!isMobile && canArrival"
+                  v-else-if="!isHandheld && canArrival"
                   type="success"
                   class="table-action table-action--finance table-inline-action"
                   title="到账"
@@ -372,6 +373,7 @@ const props = defineProps<{
   tableColumns: TableColumn[]
   fieldVisibility: Record<string, boolean>
   isMobile: boolean
+  isTablet: boolean
   selectedItems: number[]
   pinnedItems: NationalSubsidyRecord[]
   subsidyPagination: PaginationState
@@ -408,6 +410,7 @@ const handlerInfoVisibility = ref<Map<number, boolean>>(new Map())
 const canBatchUpdate = computed(() => (
   props.canApprove || props.canArrival
 ))
+const isHandheld = computed(() => props.isMobile || props.isTablet)
 const qrCodeVisible = ref(false)
 const qrCodePosition = ref({ top: '0px', left: '0px' })
 const qrCodeTitle = ref('')
@@ -758,7 +761,19 @@ watch(
 onUnmounted(() => {
   clearQrTimers()
 })
-const visibleTableColumns = computed(() => props.tableColumns.filter(column => !props.isMobile || column.key !== 'actions'))
+const phoneColumnKeys = new Set(['store_name', 'sale_time', 'customer_name', 'model', 'color'])
+const tabletColumnKeys = new Set([
+  ...phoneColumnKeys,
+  'brand', 'memory', 'sale_price', 'subsidy_amount', 'subsidy_photos', 'apply_time', 'arrival_time'
+])
+const visibleTableColumns = computed(() => props.tableColumns.filter(column => {
+  if (props.isMobile) return phoneColumnKeys.has(column.key)
+  if (props.isTablet) {
+    if (['apply_time', 'arrival_time'].includes(column.key)) return props.fieldVisibility[column.key] === true
+    return tabletColumnKeys.has(column.key)
+  }
+  return true
+}))
 const { doubleTapOptions: detailTapOptions, handleRowDoubleClick: detailDoubleClick } = useMobileTableDetail<NationalSubsidyRecord>({
   enabled: true, rows: () => props.displayList, getKey: row => row.id, onOpen: row => emit('row-double-click', row)
 })

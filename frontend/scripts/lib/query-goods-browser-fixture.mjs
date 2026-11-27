@@ -12,6 +12,7 @@ import TableLoadingRow from '/src/components/TableLoadingRow.vue';
 import Pagination from '/src/components/Pagination.vue';
 import DateRangePicker from '/src/components/DateRangePicker.vue';
 import IconRenderer from '/src/components/IconRenderer.vue';
+import SearchActionButton from '/src/components/search/SearchActionButton.vue';
 import InlineLoading from '/src/components/InlineLoading.vue';
 import {vIdentifierInput} from '/src/directives/identifier-input.ts';
 import {initScrollAnimations} from '/src/utils/scrollAnimation.ts';
@@ -24,8 +25,10 @@ const first={id:51,accessory_id:5,order_id:10,order_item_id:101,sale_no:'AS-ORIG
   unit_price:20,total_price:35,purchase_cost:null,profit:null,points_used:500,deduction_amount:5,points_awarded:0,
   operator_name:'原销售员',sale_time:'2026-11-14 10:00:00',remarks:'原单公共备注'.repeat(12),has_snapshot:1};
 const rows=Array.from({length:21},(_,index)=>({...first,id:51+index,sale_no:'AS-ORIGINAL-'+(51+index),
-  name:index===20?'末页商品':index===1?'原赠膜':index?'其他商品'+index:first.name,
+  name:index===20?'末页商品':index===1?'原赠膜':index===3||index===4?'多接口快充数据线兼容手机平板电脑旅行装':index?'其他商品'+index:first.name,
   sale_type:index===1?'gift':'sale',unit_price:index===1?0:20,total_price:index===1?0:35,
+  customer_id:9,customer_created_at:'2026-11-25',
+  sale_time:index<2?'2026-11-26 10:00:00':index===2?'2026-11-25 10:00:00':first.sale_time,
   points_used:index===1?0:500,deduction_amount:index===1?0:5}));
 const history={id:31,operation_type:'goods_return',quantity:1,serial_numbers:['ORIGINAL-SN-01'],
   replacement:null,replacement_amount:0,exchange_credit_amount:0,gift_charge_quantity:0,gift_charge_amount:0,
@@ -55,7 +58,10 @@ window.mockPost=async(url,data)=>{
 window.mockRead=async(url,config={})=>{
   if(url==='/query/goods/checkout/customer-summary')return saleRead('/sales/checkout/customer-summary',config);
   if(url==='/query/comprehensive')return {success:true,data:scenario==='phone-query'?[queryPhone]:[],pagination:{total:scenario==='phone-query'?1:0}};
-  if(url==='/query/statistics')return {success:true,data:{}};
+  if(url==='/query/statistics')return {success:true,data:{
+    total_phones:68,in_stock_count:12,in_stock_new_count:8,in_stock_used_count:4,sold_count:9,
+    peer_transfer_count:42,supplier_proxy_count:7,new_count:6,used_count:3
+  }};
   if(scenario==='phone-query'){
     window.fixture.reads.push({url,params:JSON.parse(JSON.stringify(config.params||{}))});
     if(url==='/phones/11/images'||url==='/query/sales/81/accessories')return {success:true,data:[]};
@@ -73,7 +79,24 @@ window.mockRead=async(url,config={})=>{
   if(url==='/query/goods'){
     const filtered=rows.filter(row=>(!params.keyword||[row.name,row.customer_phone,row.product_model].some(value=>value.includes(params.keyword)))&&
       (!params.sale_type||row.sale_type===params.sale_type)&&(!params.store_id||row.store_id===params.store_id));
-    return {success:true,data:paginate(filtered,params.page,params.page_size)};
+    const summary=Object.fromEntries(['sale','gift'].map(type=>[type,Object.fromEntries(
+      Object.entries({month:'2026-11',today:'2026-11-26',yesterday:'2026-11-25'}).map(([period,date])=>{
+        const matches=filtered.filter(row=>row.sale_type===type&&row.sale_time.startsWith(date));
+        return [period,{period_quantity:matches.reduce((total,row)=>total+row.quantity,0),
+          period_amount:matches.reduce((total,row)=>total+(type==='gift'?row.quantity*20:row.total_price),0)}];
+      }))]));
+    const customer_visits=Object.fromEntries(Object.entries({today:'2026-11-26',yesterday:'2026-11-25'}).map(([period,date])=>{
+      const customers=filtered.filter(row=>row.customer_id&&row.sale_time.startsWith(date));
+      return [period,{new_count:new Set(customers.filter(row=>row.customer_created_at===date).map(row=>row.customer_id)).size,
+        existing_count:new Set(customers.filter(row=>row.customer_created_at<date).map(row=>row.customer_id)).size}];
+    }));
+    const quantities=new Map();
+    for(const row of filtered.filter(row=>row.sale_type==='sale'&&row.sale_time.startsWith('2026-11'))){
+      quantities.set(row.name,(quantities.get(row.name)||0)+row.quantity);
+    }
+    const monthly_best_sellers=[...quantities].map(([name,quantity])=>({name,quantity}))
+      .sort((a,b)=>b.quantity-a.quantity||a.name.localeCompare(b.name,'zh-CN')).slice(0,3);
+    return {success:true,data:{...paginate(filtered,params.page,params.page_size),summary,customer_visits,monthly_best_sellers}};
   }
   if(url.endsWith('/aftersales'))return {success:true,data:paginate([history],params.page,params.page_size)};
   if(scenario==='goods-sale'&&url.endsWith('/order'))return saleRead(url,config);
@@ -93,10 +116,10 @@ const Query=['goods-sale','phone-query'].includes(scenario)?(await import('/src/
 const router=createRouter({history:createMemoryHistory(),routes:[{path:'/query',component:Query||Panel}]});
 await router.push(scenario==='goods-sale'?'/query?mode=goods&openSale=true':'/query');await router.isReady();
 window.fixtureRouter=router;
-const app=createApp({render:()=>h(RouterView)});
+const app=createApp({render:()=>Query?h(RouterView):h('div',{class:'admin-page'},[h(RouterView)])});
 app.use(router);
 app.use(createPinia());app.use(ElementPlus);
-for(const [name,component] of Object.entries({MobileDialog,SectionLoading,RecordDescriptions,DataEmptyState,TableLoadingRow,Pagination,DateRangePicker,IconRenderer,
+for(const [name,component] of Object.entries({MobileDialog,SectionLoading,RecordDescriptions,DataEmptyState,TableLoadingRow,Pagination,DateRangePicker,IconRenderer,SearchActionButton,
   AmountInput,PaymentMethodSelect,PaymentChannelSelect,InlineLoading}))app.component(name,component);
 app.config.globalProperties.$getNumberColumnWidth=getNumberColumnMinWidth;
 app.directive('permission',{});app.directive('identifier-input',vIdentifierInput);app.directive('tf-loading',vTFLoading);app.directive('table-double-tap',vTableDoubleTap);
@@ -106,6 +129,51 @@ if(Query)initScrollAnimations();
 
 export async function verifyQueryPhone(page, capture = async () => {}) {
   await page.waitForSelector('.devices-table .el-table__row')
+  assert.equal(await page.$eval('.query-list-header .record-count', count => count.textContent.trim()), '共 1 条')
+  const readCard = async label => {
+    await page.waitForFunction(label => [...document.querySelectorAll('.stats-cards .stat-card')]
+      .some(card => card.querySelector('.stat-label')?.textContent.trim() === label), {}, label)
+    return page.$$eval('.stats-cards .stat-card', (cards, label) => {
+      const card = cards.find(item => item.querySelector('.stat-label')?.textContent.trim() === label)
+      if (!card) throw new Error(`找不到统计卡片：${label}`)
+      return {
+        label: card.querySelector('.stat-label').textContent.trim(),
+        total: card.querySelector('.stat-value').textContent.trim(),
+        details: [...card.querySelectorAll('dt')].map((item, index) => [item.textContent.trim(), card.querySelectorAll('dd')[index].textContent.trim()]),
+        layout: [card.querySelector('.stat-content'), card.querySelector('.stat-card__details')].map(element => {
+          if (!element) return null
+          const rect = element.getBoundingClientRect()
+          return { left: rect.left, right: rect.right, top: rect.top }
+        })
+      }
+    }, label)
+  }
+  const inStock = await readCard('在库数量')
+  assert.deepEqual(inStock.label, '在库数量')
+  assert.equal(inStock.total, '12台')
+  assert.deepEqual(inStock.details, [['全新', '8台'], ['二手', '4台']])
+  assert.ok(inStock.layout[1].left >= inStock.layout[0].right, '分项应展示在主数量右侧')
+  await page.evaluate(() => { window.fixture.hidden.push('stats.in_stock_count') })
+  await page.waitForFunction(() => ![...document.querySelectorAll('.stats-cards .stat-card')]
+    .some(card => card.querySelector('.stat-label')?.textContent.trim() === '在库数量'))
+  await page.evaluate(() => { window.fixture.hidden.pop() })
+  await readCard('在库数量')
+  const sold = await readCard('已售数量')
+  const newSold = await readCard('全新已售')
+  const usedSold = await readCard('二手已售')
+  assert.equal(sold.total, '9台')
+  assert.equal(newSold.total, '6台')
+  assert.equal(usedSold.total, '3台')
+  assert.equal(Number(newSold.total.replace('台', '')) + Number(usedSold.total.replace('台', '')),
+    Number(sold.total.replace('台', '')), '已售总数等于全新和二手已售数量之和')
+  const transfer = await readCard('调货划拨')
+  const transferSummary = [transfer.label, transfer.total, transfer.details.map(item => item[0]), transfer.details.map(item => item[1])]
+  assert.deepEqual(transferSummary, ['调货划拨', '49台', ['调货', '划拨'], ['42台', '7台']])
+  await page.evaluate(() => { window.fixture.hidden.push('stats.transfer_counts') })
+  await page.waitForFunction(() => ![...document.querySelectorAll('.stats-cards .stat-card')]
+    .some(card => card.querySelector('.stat-label')?.textContent.trim() === '调货划拨'))
+  await page.evaluate(() => { window.fixture.hidden.pop() })
+  await readCard('调货划拨')
   const visibleDialogs = () => page.$$eval('.el-dialog', elements => elements.filter(element => element.checkVisibility()).length)
   const closeTop = async () => {
     const count = await visibleDialogs()
@@ -205,7 +273,7 @@ async function openDetail(page) {
     await cell.tap()
     await cell.tap()
   } else await clickVisible(await row.waitForSelector('button', { visible: true }))
-  await page.waitForFunction(() => document.body.textContent.includes('销售时资料') && document.body.textContent.includes('独立售后备注')).catch(async error => {
+  await page.waitForFunction(() => document.body.textContent.includes('原始凭据') && document.body.textContent.includes('独立售后备注')).catch(async error => {
     const state = await page.evaluate(() => ({ text: document.body.textContent.slice(-2500), reads: JSON.parse(JSON.stringify(window.fixture.reads.slice(-4))) }))
     throw new Error(`商品详情未完成：${JSON.stringify(state)}`, { cause: error })
   })
@@ -222,44 +290,105 @@ async function closeDialog(page) {
 
 export async function verifyQueryGoods(page, capture = async () => {}) {
   await page.waitForFunction(() => document.body.textContent.includes('原单充电器') && document.body.textContent.includes('原赠膜'))
+  const stats = '[aria-label="商品查询统计"]'
+  const values = () => page.$$eval(`${stats} .stat-value`, items => items.map(item => item.textContent.replace(/\s/g, '')))
+  const allValues = ['¥700', '¥40']
+  assert.deepEqual(await values(), allValues)
+  const dayValues = () => page.$$eval(`${stats} .stat-card__details--amount-divider > div`, items => items.map(item => item.innerText.replace(/\s/g, '')))
+  const rankedValues = () => page.$$eval(`${stats} .stat-card__details--ranked > div`, items => items.map(item => item.innerText.replace(/\s/g, '')))
+  const ranking = await rankedValues()
+  assert.equal(ranking.length, 3)
+  assert.equal(ranking[0], '多接口快充数据线兼容手机平板电脑旅行装4件')
+  assert.ok(ranking.slice(1).every(value => value.endsWith('2件') && !value.includes('原赠膜')))
+  const visitValues = ['今日新客户0人老客户1人', '昨日新客户1人老客户0人']
+  assert.deepEqual(await dayValues(), ['今日销售2件¥35', '昨日销售2件¥35', '今日赠送2件¥40', '昨日赠送0件¥0', ...visitValues])
+  const layout = await page.$eval(stats, group => {
+    const bounds = group.getBoundingClientRect()
+    const cards = [...group.children].map(card => card.getBoundingClientRect())
+    const content = group.parentElement
+    const search = content.querySelector('.unified-search-panel').getBoundingClientRect()
+    const table = content.querySelector('.admin-table-panel').getBoundingClientRect()
+    return {
+      rows: new Set(cards.map(card => card.top)).size,
+      expectedRows: innerWidth <= 767 ? 2 : 1,
+      fits: cards.every(card => card.left >= bounds.left - 1 && card.right <= bounds.right + 1),
+      rankedFits: [...group.querySelectorAll('.stat-card__details--ranked dt')].every(label => {
+        const card = label.closest('.stat-card').getBoundingClientRect()
+        const quantity = label.nextElementSibling.getBoundingClientRect()
+        return getComputedStyle(label).borderInlineEndStyle === 'dashed' && getComputedStyle(label).textOverflow === 'ellipsis' &&
+          label.clientWidth > 0 && quantity.right <= card.right
+      }),
+      dividers: [...group.querySelectorAll('.stat-card__details--amount-divider')].every(details => {
+        const amounts = [...details.querySelectorAll('.stat-card__detail-amount')]
+        return amounts.length === 2 && amounts.every(amount => getComputedStyle(amount).borderInlineStartStyle === 'dashed') &&
+          Math.abs(amounts[0].getBoundingClientRect().left - amounts[1].getBoundingClientRect().left) <= 1
+      }),
+      edgeOffsets: [Math.min(...cards.map(card => card.left)) - search.left,
+        Math.max(...cards.map(card => card.right)) - search.right, table.left - search.left, table.right - search.right]
+    }
+  })
+  assert.equal(layout.rows, layout.expectedRows)
+  assert.equal(layout.fits, true)
+  assert.equal(layout.rankedFits, true)
+  assert.equal(layout.dividers, true, '同张卡片的今日和昨日金额分隔线对齐')
+  assert.ok(layout.edgeOffsets.every(offset => Math.abs(offset) <= 1), `统计、检索和表格左右对齐，偏差 ${layout.edgeOffsets.join(', ')}px`)
+  assert.equal(await page.$eval('.admin-table-panel .section-title .section-title__label', title => title.textContent.trim()), '商品销售列表')
+  assert.equal(await page.$eval('.admin-table-panel .section-title .record-count', count => count.textContent.trim()), '共 21 条')
   await checkBoundaries(page)
   assert.equal(await page.evaluate(() => document.body.textContent.includes('¥NaN')), false)
   await clickVisible(await page.$('.tf-pagination__btn--next'))
-  await page.waitForFunction(() => document.body.textContent.includes('末页商品') && !document.body.textContent.includes('原单充电器'))
+  await page.waitForFunction(() => document.querySelector('.admin-data-table').textContent.includes('末页商品') &&
+    !document.querySelector('.admin-data-table').textContent.includes('原单充电器'))
+  assert.deepEqual(await values(), allValues, '翻页保持全部匹配记录的统计')
+  assert.deepEqual((await dayValues()).slice(-2), visitValues)
+  assert.deepEqual(await rankedValues(), ranking)
   await search(page, '原单充电器')
   await page.waitForFunction(() => document.body.textContent.includes('原单充电器') && !document.body.textContent.includes('末页商品'))
+  assert.deepEqual(await values(), ['¥35', '¥0'])
+  assert.deepEqual(await rankedValues(), ['原单充电器2件'])
   assert.equal(await page.evaluate(() => window.fixture.reads.at(-1).params.page), 1)
   await clickButton(page, '重置')
   await filter(page, '出库类型', '赠送')
   await page.waitForFunction(() => document.body.textContent.includes('原赠膜') && !document.body.textContent.includes('原单充电器'))
+  assert.deepEqual(await values(), ['¥0', '¥40'])
+  assert.deepEqual(await rankedValues(), [])
+  assert.equal(await page.$eval(stats, group => group.textContent.includes('暂无热销商品')), true)
   await filter(page, '销售门店', '二店')
   await page.waitForFunction(() => document.body.textContent.includes('暂无商品销售或赠送记录'))
+  assert.deepEqual(await values(), ['¥0', '¥0'])
+  assert.deepEqual((await dayValues()).slice(-2), ['今日新客户0人老客户0人', '昨日新客户0人老客户0人'])
   await checkBoundaries(page)
   await clickButton(page, '重置')
   await page.waitForFunction(() => document.body.textContent.includes('原单充电器'))
+  await page.evaluate(() => { window.fixture.hidden.push('stock_info.total_quantity') })
+  await page.waitForFunction(selector => document.querySelectorAll(`${selector} .stat-card`).length === 1, {}, stats)
+  assert.deepEqual(await values(), [])
+  assert.deepEqual(await dayValues(), visitValues)
+  await page.evaluate(() => { window.fixture.hidden = [] })
+  await page.waitForFunction(selector => document.querySelectorAll(`${selector} .stat-card`).length === 4, {}, stats)
   await openDetail(page)
   if (await page.evaluate(() => innerWidth < 768)) {
-    const spans = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.el-descriptions__label')]
-      .filter(element => ['商品名称', '客户手机号', '商品类型'].includes(element.textContent.trim()))
-      .map(element => [element.textContent.trim(), element.getAttribute('colspan')])))
-    assert.deepEqual(spans, { 商品名称: '2', 客户手机号: '2', 商品类型: '1' })
+    const grids = await page.$$eval('.goods-detail__compact-grid--product, .goods-detail__compact-grid--customer', grids =>
+      grids.map(grid => getComputedStyle(grid).gridTemplateColumns.split(' ').length))
+    assert.deepEqual(grids, [2, 2], '手机详情的客户和商品资料各用两列')
   }
   await capture()
   for (const text of ['原采购供应商', 'IN-ORIGINAL-9', 'ORIGINAL-SN-02', '原实付应退', '独立售后备注']) {
     assert.equal(await page.evaluate(text => document.body.textContent.includes(text), text), true, text)
   }
   await checkBoundaries(page)
-  const clipped = await page.evaluate(() => [...document.querySelectorAll('.el-descriptions__content')].filter(element => {
+  const clipped = await page.evaluate(() => [...document.querySelectorAll('.goods-detail__compact-field strong, .el-descriptions__content')].filter(element => {
     const rect = element.getBoundingClientRect()
     return rect.width && (rect.left < 0 || rect.right > innerWidth + 1 || element.scrollWidth > element.clientWidth + 2)
   }).map(element => element.textContent))
   assert.deepEqual(clipped, [], '商品详情长字段不能溢出或被截断')
   await page.evaluate(() => { window.fixture.hidden.push('customer_info.customer_phone', 'basic_info.serial_number') })
   await page.waitForFunction(() => !document.body.textContent.includes('13900000001') && !document.body.textContent.includes('ORIGINAL-SN-01'))
+  assert.equal(await page.evaluate(() => document.body.textContent.includes('来访客户')), true)
   await page.evaluate(() => { window.fixture.hidden = [] })
   await page.waitForFunction(() => document.body.textContent.includes('13900000001') && document.body.textContent.includes('ORIGINAL-SN-01'))
   await clickButton(page, '整单明细')
-  await page.waitForFunction(() => document.body.textContent.includes('本次结算的原成交记录') && document.body.textContent.includes('¥35')).catch(async error => {
+  await page.waitForFunction(() => document.body.textContent.includes('本单现金入账') && document.body.textContent.includes('SO-ORIGINAL-10') && document.body.textContent.includes('¥35')).catch(async error => {
     const state = await page.evaluate(() => ({ text: document.body.textContent.slice(-2500), reads: JSON.parse(JSON.stringify(window.fixture.reads.slice(-4))) }))
     throw new Error(`整单明细未完成：${JSON.stringify(state)}`, { cause: error })
   })
@@ -269,11 +398,13 @@ export async function verifyQueryGoods(page, capture = async () => {}) {
   await page.evaluate(() => { window.fixture.failNext = true })
   await clickButton(page, '搜索')
   await page.waitForFunction(() => document.body.textContent.includes('商品销售记录读取失败'))
+  assert.deepEqual(await values(), [])
   await clickButton(page, '搜索')
   await page.waitForFunction(() => !document.body.textContent.includes('商品销售记录读取失败'))
   await openDetail(page)
   await page.evaluate(() => { window.fixture.denied.push('query:goods-view') })
   await page.waitForFunction(() => !document.body.textContent.includes('原单充电器') && !document.body.textContent.includes('独立售后备注'))
+  assert.deepEqual(await values(), [])
   const count = await page.evaluate(() => window.fixture.reads.length)
   await clickButton(page, '搜索')
   assert.equal(await page.evaluate(() => window.fixture.reads.length), count, '撤回查看权限不得继续读取')
@@ -294,6 +425,61 @@ async function waitSaleDialog(page) {
   await page.waitForSelector('.cashier-workspace', { visible: true })
 }
 
+async function checkQueryModeTabs(page, title, activeMode) {
+  const modes = await page.$$eval('[aria-label="查询模式"]', groups => groups.filter(group => group.checkVisibility()).map(group => {
+    const header = group.closest('.admin-table-panel .section-title')
+    const label = header?.querySelector('.section-title__label')
+    if (!header || !label) return { title: null }
+    const bounds = header?.getBoundingClientRect()
+    const tabs = group.getBoundingClientRect()
+    const style = getComputedStyle(group)
+    const compact = innerWidth <= 767
+    return {
+      title: label?.textContent.trim(),
+      active: group.querySelector('[aria-pressed="true"]')?.textContent.trim(),
+      fits: Boolean(bounds && tabs.left >= bounds.left - 1 && tabs.right <= bounds.right + 1 && group.scrollWidth <= group.clientWidth + 1),
+      frameRemoved: style.backgroundColor === 'rgba(0, 0, 0, 0)' && style.borderWidth === '0px' && style.boxShadow === 'none',
+      beside: compact || Math.abs(label.getBoundingClientRect().y + label.getBoundingClientRect().height / 2 - tabs.y - tabs.height / 2) <= 1,
+      sizing: style.paddingTop === (compact ? '2px' : '4px') && style.paddingLeft === style.paddingTop &&
+        [...group.querySelectorAll('button')].every(button => {
+          const size = getComputedStyle(button)
+          return size.height === '28px' && size.paddingLeft === (compact ? '6px' : '10px') && size.paddingRight === size.paddingLeft
+        })
+    }
+  }))
+  assert.deepEqual(modes, [{ title, active: activeMode, fits: true, frameRemoved: true, beside: true, sizing: true }])
+}
+
+async function checkQueryModeTabSwipe(page) {
+  const tabs = await page.waitForSelector('[aria-label="查询模式"]:has([aria-pressed="true"][class*="primary"])', { visible: true })
+  await tabs.scrollIntoView()
+  const bounds = await tabs.evaluate(group => {
+    for (let index = 1; index <= 16 && group.scrollWidth - group.clientWidth <= 12; index++) {
+      const tab = group.querySelector('button').cloneNode(true)
+      tab.textContent = `附加查询 ${index}`
+      tab.dataset.fixtureTab = ''
+      group.append(tab)
+    }
+    const { x, y, width, height } = group.getBoundingClientRect()
+    return { x, y: y + height / 2, width, overflow: group.scrollWidth - group.clientWidth }
+  })
+  try {
+    assert.ok(bounds.overflow > 0, '窄屏上多余页签应在栏内溢出')
+    const touch = await page.touchscreen.touchStart(bounds.x + bounds.width * 0.88, bounds.y)
+    for (const position of [0.65, 0.40, 0.12]) await touch.move(bounds.x + bounds.width * position, bounds.y)
+    await touch.end()
+    await page.waitForFunction(group => group.scrollLeft > 0, {}, tabs)
+    await page.waitForFunction(group => group.lastElementChild.getBoundingClientRect().right <= group.getBoundingClientRect().right + 1, {}, tabs)
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true)
+  } finally {
+    await tabs.evaluate(group => {
+      group.querySelectorAll('[data-fixture-tab]').forEach(tab => tab.remove())
+      group.scrollLeft = 0
+    })
+    await tabs.dispose()
+  }
+}
+
 export async function verifyQueryGoodsSale(page, capture = async () => {}) {
   await waitSaleDialog(page)
   await page.waitForFunction(() => window.fixtureRouter.currentRoute.value.query.openSale===undefined)
@@ -301,21 +487,37 @@ export async function verifyQueryGoodsSale(page, capture = async () => {}) {
   assert.equal(await page.evaluate(() => window.fixture.posts.length), 0, '快捷打开收银不提交交易')
   await clickButton(page, '取消')
   await page.waitForFunction(() => !document.querySelector('.checkout-additional-goods'))
-  await clickButton(page, '手机模式')
-  await page.waitForFunction(() => document.body.textContent.includes('手机模式'))
-  assert.equal(await page.evaluate(() => [...document.querySelectorAll('.page-header button')].some(element => element.checkVisibility() && element.textContent.trim() === '商品销售')), false, '手机模式不显示独立商品销售')
-  await clickButton(page, '商品模式')
-  await page.waitForFunction(() => document.body.textContent.includes('原单充电器'))
-  await clickVisible(await page.$('.tf-pagination__btn--next'))
-  await page.waitForFunction(() => document.body.textContent.includes('末页商品'))
-  const initial = await page.evaluate(() => window.fixture.reads.length)
+  await checkQueryModeTabs(page, '商品销售列表', '商品销售')
+  if (page.viewport().width < 768) await checkQueryModeTabSwipe(page)
+  await clickButton(page, '综合查询')
+  await checkQueryModeTabs(page, '综合销售列表', '综合查询')
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('.page-header button')].some(element => element.checkVisibility() && element.textContent.trim() === '商品开单')), false, '综合查询页签隐藏商品开单入口')
   await clickButton(page, '商品销售')
+  await page.waitForFunction(() => document.body.textContent.includes('原单充电器'))
+  await checkQueryModeTabs(page, '商品销售列表', '商品销售')
+  await clickVisible(await page.$('.tf-pagination__btn--next'))
+  await page.waitForFunction(() => document.querySelector('.admin-data-table')?.textContent.includes('末页商品'))
+  const countGoodsReads = () => page.evaluate(() => window.fixture.reads.filter(read => read.url === '/query/goods').length)
+  const readsBeforeSwitch = await countGoodsReads()
+  const stats = '[aria-label="商品查询统计"]'
+  await page.waitForSelector(stats, { visible: true })
+  await clickButton(page, '综合查询')
+  await page.waitForSelector(stats, { hidden: true })
+  await clickButton(page, '商品销售')
+  await page.waitForSelector(stats, { visible: true, timeout: 2000 })
+  assert.equal(await countGoodsReads(), readsBeforeSwitch, '返回商品模式保留统计与列表，不重发查询')
+  assert.ok(await page.$eval('.admin-data-table', table => table.textContent.includes('末页商品')), '返回商品模式保留页码')
+  await clickButton(page, '刷新')
+  await page.waitForFunction(count => window.fixture.reads.filter(read => read.url === '/query/goods').length === count + 1 &&
+    document.querySelector('[aria-label="商品查询统计"]')?.getAttribute('aria-busy') === 'false', {}, readsBeforeSwitch)
+  const initial = await page.evaluate(() => window.fixture.reads.length)
+  await clickButton(page, '商品开单')
   await waitSaleDialog(page)
   await clickButton(page, '取消')
   await page.waitForFunction(() => !document.querySelector('.checkout-additional-goods'))
   assert.equal(await page.evaluate(() => window.fixture.reads.length), initial, '取消商品销售不刷新或更改查询页码')
   assert.equal(await page.evaluate(() => window.fixture.posts.length), 0)
-  await clickButton(page, '商品销售')
+  await clickButton(page, '商品开单')
   await waitSaleDialog(page)
   await select(page, '销售门店', '一店')
   await page.waitForFunction(() => [...document.querySelectorAll('.cashier-product button')].some(element => element.textContent.trim() === '原装充电器'))
@@ -343,7 +545,7 @@ export async function verifyQueryGoodsSale(page, capture = async () => {}) {
   assert.equal(result.last.params.page, 1, '成功回第一页查看新成交')
   assert.equal(result.last.useCache, false)
   await page.evaluate(() => window.fixture.denied.push('query:goods-sell'))
-  await clickButton(page, '商品销售')
+  await clickButton(page, '商品开单')
   await waitSaleDialog(page)
   await select(page, '销售门店', '一店')
   await page.waitForFunction(() => [...document.querySelectorAll('.cashier-product button')].some(element => element.textContent.trim() === '赠膜'))
@@ -351,13 +553,17 @@ export async function verifyQueryGoodsSale(page, capture = async () => {}) {
   await clickButton(page, '加入清单')
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('.el-form .el-select')].some(element => element.textContent.trim() === '赠送')), true, '仅赠送权限仍可打开赠送开单')
   await page.evaluate(() => window.fixture.denied.push('query:goods-gift'))
-  await page.waitForFunction(() => !document.querySelector('.checkout-additional-goods') && ![...document.querySelectorAll('button')].some(element => element.checkVisibility() && element.textContent.trim() === '商品销售'))
+  await page.waitForFunction(() => !document.querySelector('.checkout-additional-goods') && ![...document.querySelectorAll('button')].some(element => element.checkVisibility() && element.textContent.trim() === '商品开单'))
   assert.equal(await page.evaluate(() => window.fixture.posts.length), 1, '撤回全部商品动作后关闭开单且不提交')
   await page.evaluate(() => { window.fixture.denied = window.fixture.denied.filter(permission => !['query:goods-sell', 'query:goods-gift'].includes(permission)) })
-  await clickButton(page, '商品销售')
+  await clickButton(page, '商品开单')
   await waitSaleDialog(page)
   await clickButton(page, '取消')
-  await clickButton(page, '手机模式')
-  await page.waitForFunction(() => ![...document.querySelectorAll('.page-header button')].some(element => element.checkVisibility() && element.textContent.trim() === '商品销售'))
-  assert.equal(await page.evaluate(() => Boolean(document.querySelector('.checkout-additional-goods'))), false, '切回手机模式不能遗留商品销售草稿')
+  await clickButton(page, '综合查询')
+  await page.waitForFunction(() => ![...document.querySelectorAll('.page-header button')].some(element => element.checkVisibility() && element.textContent.trim() === '商品开单'))
+  assert.equal(await page.evaluate(() => Boolean(document.querySelector('.checkout-additional-goods'))), false, '切回综合查询关闭商品销售草稿')
+  const readsBeforeRevoke = await countGoodsReads()
+  await page.evaluate(() => { window.fixture.denied.push('query:goods-view') })
+  await page.waitForFunction(() => !document.querySelector('[aria-label="商品查询统计"]'))
+  assert.equal(await countGoodsReads(), readsBeforeRevoke, '撤权时不请求商品记录')
 }

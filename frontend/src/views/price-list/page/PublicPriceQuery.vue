@@ -495,6 +495,7 @@ import { useSiteSettingsStore } from '@/stores/siteSettings'
 import { parsePublicPriceContacts, getDefaultPublicPriceContact, formatPublicPriceWatermark } from '@/utils/publicPriceSettings'
 import { getRequestErrorStatus } from '@/utils/api-response'
 import { useNotification } from '@/composables/useNotification'
+import '@/styles/admin-layout.css'
 const globalNotifications = useNotification()
 
 

@@ -37,7 +37,7 @@ router.get('/goods/checkout/customer-summary', requirePermission('query:view'), 
 router.post('/goods/checkout/quote', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift']), salesCheckoutController.queryGoodsQuote.bind(salesCheckoutController))
 router.post('/goods/checkout', requirePermission('query:view'), requirePermission('query:goods-view'), requireAnyPermission(['query:goods-sell', 'query:goods-gift']), salesCheckoutController.queryGoodsCheckout.bind(salesCheckoutController))
 
-router.get('/goods', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.list.bind(queryGoodsController))
+router.get('/goods', noStore, requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.list.bind(queryGoodsController))
 router.get('/customers/:customerId/goods', noStore, requirePermission('customers:view'), requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.customerHistory.bind(queryGoodsController))
 router.get('/goods/:id', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.detail.bind(queryGoodsController))
 router.get('/goods/:id/order', requirePermission('query:view'), requirePermission('query:goods-view'), queryGoodsController.goodsOrder.bind(queryGoodsController))

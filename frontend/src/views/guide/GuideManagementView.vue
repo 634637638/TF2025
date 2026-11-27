@@ -5,7 +5,7 @@
   >
     <div
       v-table-double-tap="recordTapOptions"
-      class="admin-page guide-management"
+      class="admin-page admin-page-content"
     >
       <PageHeader
         title="导航管理"
@@ -187,7 +187,7 @@
                 >
                   <el-tabs
                     v-model="activeCategoryTabs[category.id]"
-                    class="tf-page-tabs tf-page-tabs--compact"
+                    class="tf-page-tabs"
                   >
                     <el-tab-pane
                       :label="category.name"
@@ -1120,7 +1120,6 @@ usePageShortcuts('/guide', {
 </script>
 
 <style scoped>
-.guide-management { display: grid; gap: var(--tf-space-4); padding: var(--admin-page-padding, var(--tf-space-4)); }
 .guide-panel { padding: var(--tf-space-4); border: 1px solid var(--tf-color-slate-200); border-radius: var(--tf-radius-panel); background: var(--tf-color-white); }
 .guide-panel__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--tf-space-3); margin-bottom: var(--tf-space-4); }
 .guide-panel__heading h2 { margin: 0; color: var(--tf-color-slate-900); font-size: var(--tf-type-scale-18); }
@@ -1154,7 +1153,6 @@ usePageShortcuts('/guide', {
 .qr-upload img { width: 64px; height: 64px; object-fit: contain; border: 1px solid var(--tf-color-slate-200); border-radius: var(--tf-radius-control); }
 .qr-upload input { max-width: 220px; }
 @media (max-width: 767px) {
-  .guide-management { padding: var(--tf-space-3); }
   .guide-panel { padding: var(--tf-space-3); }
   .announcement-row, .link-admin-row { align-items: flex-start; }
   .announcement-row .el-tag, .link-admin-row .el-tag { margin-left: auto; }

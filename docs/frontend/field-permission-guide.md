@@ -12,6 +12,10 @@
 
 配置入口为“权限管理 → 角色 → 字段权限 → 综合查询 → 手机模式 / 商品模式”。母模块名称、排序跟随菜单映射；选中模式后显示对应字段分组和字段开关。配件管理（菜单可改名为商品管理）仍只控制其自身页面；“已售商品”属于 H5 商城，不控制综合查询商品模式。
 
+手机模式的“统计概览”使用 `stats.total_phones`、`stats.in_stock_count`、`stats.sold_count`、`stats.transfer_counts`、`stats.new_count`、`stats.used_count`。前端按对应字段隐藏卡片，`GET /query/statistics` 同时由后端按相同字段遮蔽统计值。未选择状态时，`stats.sold_count`、`stats.new_count`、`stats.used_count`表示已售总数及全新、二手已售数量；选择状态后，三者联动表示当前筛选状态的总数及全新、二手数量。“在库数量概览”同时保护 `in_stock_count`、`in_stock_new_count`、`in_stock_used_count`，“调货划拨概览”同时保护 `peer_transfer_count`、`supplier_proxy_count`，均为只读汇总。顶部卡片统一标题在上、主值在下，有附加统计时分项显示在卡片右侧。
+
+商品模式同样有“统计概览”分组，分别配置 `stats.monthly_sales`、`stats.monthly_gifts`、`stats.customer_visits`、`stats.monthly_best_sellers`。每项独立控制对应卡片，商品列表接口同步按字段遮蔽或跳过读取对应统计块；出库类型、数量、金额、商品名称和销售时间等基础字段仍按各自权限进一步限制卡片内容或统计值。
+
 商品模式字段名称使用简短业务名称，如“销售员”“销售时间”“收款金额”；说明只保留简短用途或必要的联动范围，不在每个字段重复整段适用页面说明。
 
 复用 `query_queryview` 已有字段配置，不增加页面权限模块或动作：手机字段仍在原 `hidden_fields/editable_fields`，商品字段保存于 `field_config.scopes.goods`。角色字段 GET/PUT 使用 `module_key=query_queryview`、`field_scope=goods`，保存时事务合并并保留另一模式和既有可编辑规则；读取失败不能按空配置保存。前端仍使用公共 `useFieldPermissions`，后端仍使用严格 `FieldAccessService`；商品读取键 `query_goods` 仅为用户字段接口合成的子范围，不是新模块或可授予的动作。

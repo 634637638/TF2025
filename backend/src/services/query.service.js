@@ -236,7 +236,11 @@ class QueryService {
             data: {
               total_phones: 0,
               in_stock_count: 0,
+              in_stock_new_count: 0,
+              in_stock_used_count: 0,
               sold_count: 0,
+              peer_transfer_count: 0,
+              supplier_proxy_count: 0,
               new_count: 0,
               used_count: 0,
               total_purchase_cost: 0,
@@ -256,7 +260,11 @@ class QueryService {
         data: {
           total_phones: parseInt(stats.total_phones) || 0,
           in_stock_count: parseInt(stats.in_stock_count) || 0,
+          in_stock_new_count: Number(stats.in_stock_new_count),
+          in_stock_used_count: Number(stats.in_stock_used_count),
           sold_count: parseInt(stats.sold_count) || 0,
+          peer_transfer_count: Number(stats.peer_transfer_count),
+          supplier_proxy_count: Number(stats.supplier_proxy_count),
           new_count: parseInt(stats.new_count) || 0,
           used_count: parseInt(stats.used_count) || 0,
           total_purchase_cost: parseFloat(stats.total_purchase_cost) || 0,

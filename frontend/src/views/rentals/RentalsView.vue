@@ -31,7 +31,10 @@
       <div class="rentals-content admin-page-content">
         <div
           v-if="showStats"
-          class="stats-grid stats-cards"
+          class="stats-cards"
+          role="region"
+          aria-label="租赁统计"
+          tabindex="0"
         >
           <div
             v-if="canViewRentalField('stats_active_count')"
@@ -67,80 +70,81 @@
           </div>
         </div>
 
+        <UnifiedSearchPanel
+          v-if="showSearchPanel"
+          v-model:expanded="searchExpanded"
+          :loading="loading"
+          @search="handleSearch"
+          @reset="resetSearch"
+        >
+          <template #primary>
+            <el-input
+              v-if="showSearchField"
+              v-model="filters.keyword"
+              placeholder="合同、客户、手机号、IMEI"
+              clearable
+            >
+              <template #prefix>
+                <i class="fas fa-search" />
+              </template>
+            </el-input>
+          </template>
+          <div
+            v-if="canViewRentalField('billing_mode')"
+            class="form-group filter-item"
+            data-field="billing-mode"
+          >
+            <el-select
+              v-model="filters.billing_mode"
+              placeholder="合同类型"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option
+                label="到期买断"
+                value="buyout"
+              />
+              <el-option
+                label="按天租赁"
+                value="daily"
+              />
+            </el-select>
+          </div>
+          <div
+            v-if="canViewRentalField('status')"
+            class="form-group filter-item"
+            data-field="status"
+          >
+            <el-select
+              v-model="filters.status"
+              placeholder="合同状态"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option
+                label="进行中"
+                value="active"
+              />
+              <el-option
+                label="已归还"
+                value="returned"
+              />
+              <el-option
+                label="已逾期"
+                value="overdue"
+              />
+              <el-option
+                label="设备损坏"
+                value="damaged"
+              />
+            </el-select>
+          </div>
+        </UnifiedSearchPanel>
+
         <section class="table-section admin-panel admin-table-panel">
           <div class="panel-heading">
             <h3>租赁合同</h3>
           </div>
-          <UnifiedSearchPanel
-            v-if="showSearchPanel"
-            v-model:expanded="searchExpanded"
-            :loading="loading"
-            @search="handleSearch"
-            @reset="resetSearch"
-          >
-            <template #primary>
-              <el-input
-                v-if="showSearchField"
-                v-model="filters.keyword"
-                placeholder="合同、客户、手机号、IMEI"
-                clearable
-              >
-                <template #prefix>
-                  <i class="fas fa-search" />
-                </template>
-              </el-input>
-            </template>
-            <div
-              v-if="canViewRentalField('billing_mode')"
-              class="form-group filter-item"
-              data-field="billing-mode"
-            >
-              <el-select
-                v-model="filters.billing_mode"
-                placeholder="合同类型"
-                clearable
-                @change="handleSearch"
-              >
-                <el-option
-                  label="到期买断"
-                  value="buyout"
-                />
-                <el-option
-                  label="按天租赁"
-                  value="daily"
-                />
-              </el-select>
-            </div>
-            <div
-              v-if="canViewRentalField('status')"
-              class="form-group filter-item"
-              data-field="status"
-            >
-              <el-select
-                v-model="filters.status"
-                placeholder="合同状态"
-                clearable
-                @change="handleSearch"
-              >
-                <el-option
-                  label="进行中"
-                  value="active"
-                />
-                <el-option
-                  label="已归还"
-                  value="returned"
-                />
-                <el-option
-                  label="已逾期"
-                  value="overdue"
-                />
-                <el-option
-                  label="设备损坏"
-                  value="damaged"
-                />
-              </el-select>
-            </div>
-          </UnifiedSearchPanel>
 
           <div class="table-responsive">
             <el-table
@@ -1523,7 +1527,7 @@ usePageShortcuts('/rentals', {
 </script>
 
 <style scoped>
-.rentals-view{padding:20px}.rentals-content{display:flex;flex-direction:column;gap:16px}.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat-card{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border:1px solid var(--el-border-color-lighter);border-radius:6px;background:var(--color-bg-white)}.stat-card strong{font-size:var(--tf-type-scale-20)}.stat-card span,small{color:var(--el-text-color-secondary)}.panel-heading{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}.panel-heading h3,.form-section h4,.files-section h4{margin:0}.amount-due{color:var(--el-color-danger)}.form-section{padding:14px 0;border-bottom:1px solid var(--el-border-color-lighter)}.form-section:last-child{border-bottom:0}.form-section h4{margin-bottom:12px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}.form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.rental-form :deep(.el-select),.rental-form :deep(.el-input-number),.rental-form :deep(.el-date-editor){width:100%}.rental-form :deep(.el-input-number.is-disabled){width:100%}.field-hint{display:block;margin-top:4px;font-size:var(--tf-type-scale-12)}.customer-empty{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;color:var(--el-text-color-secondary)}.customer-editor{margin-top:10px;padding:10px 12px;background:var(--el-fill-color-light);border-radius:6px}.customer-editor-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.buyout-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}.buyout-summary-item{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;padding:10px 12px;border:1px solid;border-radius:6px}.buyout-summary-item span{font-size:var(--tf-type-scale-12);white-space:nowrap}.buyout-summary-item strong{font-size:var(--tf-type-scale-16);white-space:nowrap}.buyout-summary-item--principal{background:var(--tf-button-primary-soft-bg);border-color:var(--tf-button-primary-soft-border);color:var(--tf-button-primary-soft-color)}.buyout-summary-item--period{background:var(--tf-button-success-soft-bg);border-color:var(--tf-button-success-soft-border);color:var(--tf-button-success-soft-color)}.buyout-summary-item--receivable{background:var(--tf-button-warning-soft-bg);border-color:var(--tf-button-warning-soft-border);color:var(--tf-button-warning-soft-color)}.detail-toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:14px}.files-section{margin-top:18px}.file-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.file-item{display:flex;align-items:center;justify-content:space-between;min-width:0;padding:8px 10px;border:1px solid var(--el-border-color);border-radius:6px}.file-item a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.payment-summary,.payment-total{padding:12px;background:var(--el-fill-color-light);border-radius:6px;margin-bottom:12px}.payment-total{margin-top:12px;font-weight:700}.period-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.period-grid :deep(.el-checkbox){width:100%;margin:0}.period-grid :deep(.el-checkbox__label){display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%}.period-grid :deep(.el-checkbox__label>span:first-child){display:flex;flex-direction:column}.period-grid small{font-size:var(--tf-type-scale-11)}@media(max-width: 767px){.rentals-view{padding:8px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.form-grid,.form-grid.three{grid-template-columns:1fr}.buyout-summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.buyout-summary-item{align-items:flex-start;flex-direction:column;gap:2px;padding:8px}.buyout-summary-item strong{font-size:var(--tf-type-scale-14)}.file-grid{grid-template-columns:1fr}.period-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-toolbar{justify-content:stretch}.detail-toolbar :deep(.el-button){flex:1}.action-buttons{flex-wrap:nowrap}}@media(max-width:390px){.buyout-summary{grid-template-columns:1fr}.buyout-summary-item{align-items:center;flex-direction:row}}
+small{color:var(--el-text-color-secondary)}.panel-heading{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}.panel-heading h3,.form-section h4,.files-section h4{margin:0}.amount-due{color:var(--el-color-danger)}.form-section{padding:14px 0;border-bottom:1px solid var(--el-border-color-lighter)}.form-section:last-child{border-bottom:0}.form-section h4{margin-bottom:12px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}.form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.rental-form :deep(.el-select),.rental-form :deep(.el-input-number),.rental-form :deep(.el-date-editor){width:100%}.rental-form :deep(.el-input-number.is-disabled){width:100%}.field-hint{display:block;margin-top:4px;font-size:var(--tf-type-scale-12)}.customer-empty{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;color:var(--el-text-color-secondary)}.customer-editor{margin-top:10px;padding:10px 12px;background:var(--el-fill-color-light);border-radius:6px}.customer-editor-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.buyout-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}.buyout-summary-item{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;padding:10px 12px;border:1px solid;border-radius:6px}.buyout-summary-item span{font-size:var(--tf-type-scale-12);white-space:nowrap}.buyout-summary-item strong{font-size:var(--tf-type-scale-16);white-space:nowrap}.buyout-summary-item--principal{background:var(--tf-button-primary-soft-bg);border-color:var(--tf-button-primary-soft-border);color:var(--tf-button-primary-soft-color)}.buyout-summary-item--period{background:var(--tf-button-success-soft-bg);border-color:var(--tf-button-success-soft-border);color:var(--tf-button-success-soft-color)}.buyout-summary-item--receivable{background:var(--tf-button-warning-soft-bg);border-color:var(--tf-button-warning-soft-border);color:var(--tf-button-warning-soft-color)}.detail-toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:14px}.files-section{margin-top:18px}.file-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.file-item{display:flex;align-items:center;justify-content:space-between;min-width:0;padding:8px 10px;border:1px solid var(--el-border-color);border-radius:6px}.file-item a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.payment-summary,.payment-total{padding:12px;background:var(--el-fill-color-light);border-radius:6px;margin-bottom:12px}.payment-total{margin-top:12px;font-weight:700}.period-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.period-grid :deep(.el-checkbox){width:100%;margin:0}.period-grid :deep(.el-checkbox__label){display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%}.period-grid :deep(.el-checkbox__label>span:first-child){display:flex;flex-direction:column}.period-grid small{font-size:var(--tf-type-scale-11)}@media(max-width: 767px){.form-grid,.form-grid.three{grid-template-columns:1fr}.buyout-summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.buyout-summary-item{align-items:flex-start;flex-direction:column;gap:2px;padding:8px}.buyout-summary-item strong{font-size:var(--tf-type-scale-14)}.file-grid{grid-template-columns:1fr}.period-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.detail-toolbar{justify-content:stretch}.detail-toolbar :deep(.el-button){flex:1}.action-buttons{flex-wrap:nowrap}}@media(max-width:390px){.buyout-summary{grid-template-columns:1fr}.buyout-summary-item{align-items:center;flex-direction:row}}
  .form-section{padding:16px;border:1px solid var(--el-border-color-lighter);border-radius:8px;background:var(--el-bg-color);margin-bottom:12px}
 .form-section-head{display:flex;align-items:center;gap:9px;margin-bottom:14px;min-height:28px}
 .form-section-head h4{margin:0;font-size:var(--tf-type-scale-15);font-weight:650;color:var(--el-text-color-primary)}

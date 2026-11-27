@@ -57,7 +57,7 @@ test('补贴设备搜索 service 合并最新客户、国补状态并计算申�
       async findSoldPhones(pattern) {
         calls.push(['phones', pattern])
         return [
-          { phone_id: 1, is_new: 1, sale_price: '6000', imei: 'A' },
+          { phone_id: 1, is_new: 1, sale_price: '6000', imei: 'SN-0001', serial_number: 'SN-0001' },
           { phone_id: 2, is_new: 0, sale_price: '3000', imei: 'B' },
           { phone_id: 3, is_new: 1, sale_price: '7000', imei: 'C' }
         ]
@@ -75,6 +75,7 @@ test('补贴设备搜索 service 合并最新客户、国补状态并计算申�
   const result = await service.search(' abc ', (label, details) => progress.push([label, details]), scopedActor)
   assert.deepEqual(calls, [['phones', '%abc%'], ['related', [1, 2, 3]]])
   assert.equal(result[0].sale_price, 6000)
+  assert.equal(result[0].imei, null)
   assert.equal(result[0].customer_name, '客户')
   assert.equal(result[0].can_apply_subsidy, true)
   assert.equal(result[0].reason, '符合条件')

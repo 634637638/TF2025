@@ -644,18 +644,19 @@ try {
       const expectedDefault = viewport < 768 ? Math.min(36, Math.max(34, viewport * 0.096)) : 28
       const expectedSmall = viewport < 768 ? Math.min(32, Math.max(30, viewport * 0.0854)) : 28
       for (const button of metrics) {
-        const expectedHeight = button.id === 'command-large' ? 44 : button.id === 'command-header'
+        const compact = button.id.startsWith('command-compact')
+        const expectedHeight = compact ? 28 : button.id === 'command-large' ? 44 : button.id === 'command-header'
           ? viewport < 768 ? Math.min(30, Math.max(28, viewport * 0.075)) : 28
-          : button.id.startsWith('command-compact') || button.id === 'command-small' || button.id === 'command-small-circle' ? expectedSmall : expectedDefault
+          : button.id === 'command-small' || button.id === 'command-small-circle' ? expectedSmall : expectedDefault
         assert.ok(Math.abs(button.height - expectedHeight) < 0.1, `${viewport}/${theme}/${button.id} 高度 ${button.height} 应为 ${expectedHeight}`)
         assert.ok(button.left >= -1 && button.right <= viewport + 1, `${button.id} 不得横向溢出`)
         if (viewport >= 768) {
           assert.equal(button.font, 13, `${button.id} 电脑端字号`)
           assert.equal(button.padding, button.id.includes('circle') ? 0 : 10, `${button.id} 电脑端内边距`)
         }
-        if (viewport < 768 && button.id.startsWith('command-compact')) {
+        if (viewport < 768 && compact) {
           assert.equal(button.font, 12, `${button.id} 手机端紧凑字号`)
-          assert.ok(Math.abs(button.padding - Math.min(8, Math.max(6, viewport * 0.0214))) < 0.1, `${button.id} 手机端紧凑内边距`)
+          assert.equal(button.padding, 6, `${button.id} 手机端紧凑内边距`)
         }
         if (button.id.includes('circle')) assert.equal(button.width, button.height, '圆形按钮必须等宽等高')
       }

@@ -27,6 +27,7 @@
       >
         <draggable
           v-model="banners"
+          class="admin-page-content"
           :animation="200"
           handle=".drag-handle"
           item-key="id"

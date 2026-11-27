@@ -125,7 +125,7 @@ test('iPhone Duo search covers external display-name aliases', () => {
 })
 
 test('external model search does not combine a brand filter with model codes', () => {
-  const searchUrl = new URL(priceListService.buildExternalModelSearchUrl('A3521'))
+  const searchUrl = new URL(priceListService.buildExternalModelSearchUrl('A3521', 'https://quotes.example.test/quoteList.action'))
 
   assert.equal(searchUrl.searchParams.get('arg_name'), 'A3521')
   assert.equal(searchUrl.searchParams.get('pp'), '')

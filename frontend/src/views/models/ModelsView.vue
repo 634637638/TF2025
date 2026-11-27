@@ -39,6 +39,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="型号统计"
+          tabindex="0"
         >
           <div
             v-if="canViewField('stats_total_models')"
@@ -175,7 +178,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             型号列表
-            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            <span class="record-count">共 {{ pagination.total }} 条</span>
           </div>
 
           <div class="table-responsive">

@@ -1,15 +1,10 @@
 
 @media (max-width: 767px) {
   .banner-management-page {
-    width: 100%;
-    padding: 0;
     overflow: hidden;
   }
 
   .banner-list {
-    width: 100%;
-    max-width: none;
-
     .banner-item {
       display: grid;
       grid-template-columns: 22px 94px minmax(0, 1fr);
@@ -19,7 +14,6 @@
       align-items: center;
       gap: 10px;
       min-width: 0;
-      margin-bottom: 10px;
       padding: 12px;
       border: 1px solid rgba(226, 232, 240, 0.9);
       border-radius: 14px;

@@ -1,140 +1,62 @@
 <template>
-  <div class="transfer-analytics">
+  <div class="transfer-analytics admin-page-content">
     <!-- 划拨批发概览卡片 -->
-    <el-row
-      v-if="showTransferOverviewCards"
-      :gutter="16"
-      class="overview-cards"
+    <Teleport
+      :to="props.overviewTarget || 'body'"
+      :disabled="!props.overviewTarget"
     >
-      <!-- 批发数量 -->
-      <el-col
-        v-if="canViewTransferField('wholesale_count')"
-        :xs="12"
-        :sm="6"
+      <div
+        v-if="showTransferOverviewCards"
+        class="stats-cards"
+        role="region"
+        aria-label="划拨批发分析统计"
+        tabindex="0"
       >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon wholesale">
-              <i class="fas fa-shopping-cart" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                批发数量
-              </div>
-              <div class="card-value">
-                {{ allocationData.wholesaleCount || 0 }}
-              </div>
-              <div class="card-compare">
-                <span class="compare-label">上月: {{ lastMonthData.wholesaleCount || 0 }}</span>
-                <span :class="getChangeClass(allocationData.wholesaleCount, lastMonthData.wholesaleCount)">
-                  <i :class="getTrendIcon(allocationData.wholesaleCount, lastMonthData.wholesaleCount)" />
-                  {{ calculateChange(allocationData.wholesaleCount, lastMonthData.wholesaleCount) }}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewTransferField('wholesale_count')"
+          class="stat-card stat-card--primary"
+          label="批发数量"
+          :value="`${allocationData.wholesaleCount || 0}台`"
+          :icon="ShoppingCart"
+          :details="getComparisonDetails(allocationData.wholesaleCount, lastMonthData.wholesaleCount, `${lastMonthData.wholesaleCount || 0}台`)"
+        />
 
-      <!-- 批发利润 -->
-      <el-col
-        v-if="canViewTransferField('wholesale_profit')"
-        :xs="12"
-        :sm="6"
-      >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon wholesale-profit">
-              <i class="fas fa-chart-line" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                批发利润
-              </div>
-              <div class="card-value">
-                {{ formatAmount(allocationData.wholesaleProfit || 0) }}
-              </div>
-              <div class="card-compare">
-                <span class="compare-label">上月: {{ formatAmount(lastMonthData.wholesaleProfit || 0) }}</span>
-                <span :class="getChangeClass(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit)">
-                  <i :class="getTrendIcon(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit)" />
-                  {{ calculateChange(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit) }}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewTransferField('wholesale_profit')"
+          class="stat-card stat-card--income"
+          label="批发利润"
+          :value="`¥${formatAmount(allocationData.wholesaleProfit || 0)}`"
+          :icon="TrendCharts"
+          :details="getComparisonDetails(allocationData.wholesaleProfit, lastMonthData.wholesaleProfit, `¥${formatAmount(lastMonthData.wholesaleProfit || 0)}`)"
+        />
 
-      <!-- 划拨数量 -->
-      <el-col
-        v-if="canViewTransferField('allocation_count')"
-        :xs="12"
-        :sm="6"
-      >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon allocation">
-              <i class="fas fa-share-alt" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                划拨数量
-              </div>
-              <div class="card-value">
-                {{ allocationData.allocationCount || 0 }}
-              </div>
-              <div class="card-compare">
-                <span class="compare-label">上月: {{ lastMonthData.allocationCount || 0 }}</span>
-                <span :class="getChangeClass(allocationData.allocationCount, lastMonthData.allocationCount)">
-                  <i :class="getTrendIcon(allocationData.allocationCount, lastMonthData.allocationCount)" />
-                  {{ calculateChange(allocationData.allocationCount, lastMonthData.allocationCount) }}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewTransferField('allocation_count')"
+          class="stat-card stat-card--info"
+          label="划拨数量"
+          :value="`${allocationData.allocationCount || 0}台`"
+          :icon="Share"
+          :details="getComparisonDetails(allocationData.allocationCount, lastMonthData.allocationCount, `${lastMonthData.allocationCount || 0}台`)"
+        />
 
-      <!-- 划拨金额 -->
-      <el-col
-        v-if="canViewTransferField('allocation_amount')"
-        :xs="12"
-        :sm="6"
-      >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon allocation-amount">
-              <i class="fas fa-coins" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                划拨金额
-              </div>
-              <div class="card-value">
-                {{ formatAmount(allocationData.allocationAmount || 0) }}
-              </div>
-              <div class="card-compare">
-                <span class="compare-label">上月: {{ formatAmount(lastMonthData.allocationAmount || 0) }}</span>
-                <span :class="getChangeClass(allocationData.allocationAmount, lastMonthData.allocationAmount)">
-                  <i :class="getTrendIcon(allocationData.allocationAmount, lastMonthData.allocationAmount)" />
-                  {{ calculateChange(allocationData.allocationAmount, lastMonthData.allocationAmount) }}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        <AnalyticsStatCard
+          v-if="canViewTransferField('allocation_amount')"
+          class="stat-card stat-card--accent"
+          label="划拨金额"
+          :value="`¥${formatAmount(allocationData.allocationAmount || 0)}`"
+          :icon="Coin"
+          :details="getComparisonDetails(allocationData.allocationAmount, lastMonthData.allocationAmount, `¥${formatAmount(lastMonthData.allocationAmount || 0)}`)"
+        />
+      </div>
+    </Teleport>
 
     <!-- 图表区域 -->
-    <el-row
+    <div
       v-if="canViewTransferField('trend_chart')"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid"
     >
       <!-- 调货趋势 - 本月数据 -->
-      <el-col :span="24">
+      <div>
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
@@ -165,21 +87,16 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
-    <el-row
+    <div
       v-if="showTransferRankingCharts"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid"
     >
       <!-- 批发产品排行 TOP10 -->
-      <el-col
+      <div
         v-if="canViewTransferField('wholesale_rank_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card">
           <template #header>
@@ -200,15 +117,11 @@
             />
           </div>
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 划拨产品排行 TOP10 -->
-      <el-col
+      <div
         v-if="canViewTransferField('allocation_rank_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card">
           <template #header>
@@ -229,16 +142,15 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
-    <el-row
+    <div
       v-if="canViewTransferField('store_distribution_chart')"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid"
     >
       <!-- 店铺分布 -->
-      <el-col :span="24">
+      <div>
         <el-card class="chart-card">
           <template #header>
             <div class="card-header">
@@ -252,17 +164,16 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 数据表格区域 -->
-    <el-row
+    <div
       v-if="canViewTransferField('operation_records_table')"
-      :gutter="16"
-      class="table-section admin-panel admin-table-panel"
+      class="analytics-panel-grid"
     >
-      <el-col :span="24">
-        <el-card class="table-card admin-panel admin-table-panel">
+      <div>
+        <el-card class="table-card">
           <template #header>
             <div class="card-header">
               <h3>最近操作记录</h3>
@@ -417,12 +328,14 @@
             :has-actions="false"
           />
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import AnalyticsStatCard from './AnalyticsStatCard.vue'
+import { ArrowUp, ArrowDown, Minus, Coin, Share, ShoppingCart, TrendCharts } from '@element-plus/icons-vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -632,29 +545,16 @@ const showTransferOverviewCards = computed(() => canViewAnyTransferField([
 
 const showTransferRankingCharts = computed(() => canViewAnyTransferField(['wholesale_rank_chart', 'allocation_rank_chart']))
 
-// 计算环比变化
-const calculateChange = (current: number, last: number): string => {
-  if (!last || last === 0) return '0'
-  const change = ((current - last) / last) * 100
-  return change.toFixed(1)
-}
+// 上月为零时沿用 0% 的环比显示。
+const getComparisonDetails = (current: number, last: number, previousValue: string) => {
+  const difference = last ? current - last : 0
+  const change = last ? ((difference / last) * 100).toFixed(1) : '0'
+  const icon = difference > 0 ? ArrowUp : difference < 0 ? ArrowDown : Minus
 
-// 获取变化样式类
-const getChangeClass = (current: number, last: number): string => {
-  if (!last || last === 0) return 'neutral'
-  const change = current - last
-  if (change > 0) return 'up'
-  if (change < 0) return 'down'
-  return 'neutral'
-}
-
-// 获取趋势图标
-const getTrendIcon = (current: number, last: number): string => {
-  if (!last || last === 0) return 'fas fa-minus'
-  const change = current - last
-  if (change > 0) return 'fas fa-arrow-up'
-  if (change < 0) return 'fas fa-arrow-down'
-  return 'fas fa-minus'
+  return [
+    { label: '上月', value: previousValue },
+    { value: `${change}%`, icon }
+  ]
 }
 
 const displayRecords = computed(() => {
@@ -1290,131 +1190,6 @@ const transferDetailFields = computed<RecordDetailField[]>(() => {
     }
   }
 
-  .overview-cards {
-    margin-bottom: 24px;
-  }
-
-  .overview-card {
-    height: 130px;
-
-    .card-content {
-      display: flex;
-      align-items: center;
-      height: 100%;
-      gap: 16px;
-    }
-
-    .card-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: var(--tf-type-scale-22);
-      color: white;
-
-      &.transfer {
-        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-      }
-
-      &.inbound {
-        background: linear-gradient(135deg, var(--tf-color-transfer-chart-teal) 0%, var(--tf-color-green-gradient) 100%);
-      }
-
-      &.outbound {
-        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
-      }
-
-      &.pending {
-        background: linear-gradient(135deg, var(--tf-color-pink-legacy) 0%, var(--tf-color-yellow-bright) 100%);
-      }
-
-      &.allocation {
-        background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
-      }
-
-      &.allocation-amount {
-        background: linear-gradient(135deg, var(--tf-color-cyan-200) 0%, var(--tf-color-danger-legacy) 100%);
-      }
-
-      &.wholesale {
-        background: linear-gradient(135deg, var(--tf-color-green-gradient) 0%, var(--tf-color-teal-gradient) 100%);
-      }
-
-      &.wholesale-profit {
-        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
-      }
-    }
-
-    .card-info {
-      flex: 1;
-
-      .card-title {
-        font-size: var(--tf-type-scale-13);
-        color: var(--el-text-color-secondary);
-        margin-bottom: 4px;
-      }
-
-      .card-value {
-        font-size: var(--tf-type-scale-22);
-        font-weight: 600;
-        color: var(--el-text-color-primary);
-        margin-bottom: 4px;
-      }
-
-      .card-subtitle {
-        font-size: var(--tf-type-scale-12);
-        color: var(--el-text-color-placeholder);
-        font-weight: 400;
-      }
-
-      .card-compare {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-size: var(--tf-type-scale-11);
-        margin-top: 4px;
-
-        .compare-label {
-          color: var(--el-text-color-secondary);
-        }
-
-        &.up {
-          color: var(--el-color-success);
-        }
-
-        &.down {
-          color: var(--el-color-danger);
-        }
-
-        &.neutral {
-          color: var(--el-color-info);
-        }
-      }
-
-      .card-change {
-        display: flex;
-        align-items: center;
-        font-size: var(--tf-type-scale-12);
-        font-weight: 500;
-        gap: 4px;
-
-        &.positive { color: var(--el-color-success); }
-        &.negative { color: var(--el-color-danger); }
-        &.neutral { color: var(--el-color-info); }
-      }
-    }
-  }
-
-  .charts-section {
-    margin-bottom: 24px;
-  }
-
-  .table-section {
-    margin-bottom: 24px;
-  }
-
   .chart-card,
   .table-card {
     .card-header {
@@ -1460,58 +1235,6 @@ const transferDetailFields = computed<RecordDetailField[]>(() => {
 
   // 响应式设计 - 手机端
   @media (max-width: 767px) {
-    .overview-card {
-      height: auto;
-      min-height: 110px;
-
-      :deep(.el-card__body) {
-        padding: 12px;
-      }
-
-      .card-content {
-        gap: 10px;
-      }
-
-      .card-icon {
-        width: 44px;
-        height: 44px;
-        font-size: var(--tf-type-scale-18);
-        flex-shrink: 0;
-      }
-
-      .card-info {
-        min-width: 0;
-        flex: 1;
-
-        .card-title {
-          font-size: var(--tf-type-scale-12);
-          margin-bottom: 3px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .card-value {
-          font-size: var(--tf-type-scale-18);
-          margin-bottom: 3px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .card-compare {
-          font-size: var(--tf-type-scale-10);
-          margin-top: 3px;
-          flex-wrap: wrap;
-          gap: 4px;
-
-          .compare-label {
-            font-size: var(--tf-type-scale-10);
-          }
-        }
-      }
-    }
-
     .chart-container {
       height: 250px;
 

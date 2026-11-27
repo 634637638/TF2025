@@ -3,7 +3,9 @@
     <div
       v-if="summary"
       class="stats-cards accessory-purchase-stats-cards"
+      role="region"
       aria-label="商品货款汇总"
+      tabindex="0"
     >
       <div
         v-if="visible('payment.payment_status') && visible('payment.purchase_cost')"
@@ -485,8 +487,13 @@
           </template>
         </el-table-column>
         <template #empty>
+          <TableLoadingRow
+            v-if="loading"
+            mode="block"
+            text="正在读取商品货款..."
+          />
           <DataEmptyState
-            v-if="!loading"
+            v-else
             :description="failed ? '读取失败，请刷新重试' : '暂无商品货款记录'"
             size="compact"
           />
@@ -968,8 +975,13 @@
             </template>
           </el-table-column>
           <template #empty>
+            <TableLoadingRow
+              v-if="historyLoading"
+              mode="block"
+              text="正在读取采购打款历史..."
+            />
             <DataEmptyState
-              v-if="!historyLoading"
+              v-else
               :description="historyFailed ? '读取失败，请重试' : '暂无打款登记'"
               size="compact"
             />
@@ -989,6 +1001,7 @@
 </template>
 
 <script setup lang="ts">
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'

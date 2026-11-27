@@ -49,6 +49,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="门店统计"
+          tabindex="0"
         >
           <div
             v-if="canViewField('stats_total_stores')"
@@ -164,7 +167,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             店铺列表
-            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            <span class="record-count">共 {{ pagination.total }} 条</span>
           </div>
 
           <div class="table-responsive">

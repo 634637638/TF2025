@@ -241,7 +241,7 @@
 - `canUpdate` 是否继续映射到 `edit`，避免产生虚假的 `update` 权限；
 - 公开页面和扫描排除页面是否仍真实存在。
 
-该检查已接入 `check:standards`，并由 `prebuild`、`prebuild:debug` 和 `check:release` 强制执行；日常启动不运行全量审计。审计失败必须按错误提示补齐真实实现或移除虚假权限，不允许通过新增例外跳过。
+该检查已接入 `check:standards`，并由 `build:release` 和 `check:release` 强制执行；日常构建与启动不运行全量审计。审计失败必须按错误提示补齐真实实现或移除虚假权限，不允许通过新增例外跳过。
 
 ## 示例
 

@@ -1,13 +1,16 @@
 <template>
-  <div class="sales-mode-tabs">
+  <div class="sales-mode-tabs tf-compact-toolbar">
     <div
       v-if="canWholesalePermission || canProxyTransferPermission"
       class="sales-mode-tab-group operation-tabs"
+      role="group"
+      aria-label="库存操作"
     >
       <el-button
         v-if="canWholesalePermission"
         :type="operationMode === 'wholesale' ? 'success' : 'default'"
-        class="sales-mode-tab"
+        :aria-pressed="operationMode === 'wholesale'"
+        class="tf-button--compact"
         @click="emit('wholesale')"
       >
         <i class="fas fa-boxes" />
@@ -20,7 +23,8 @@
       <el-button
         v-if="canProxyTransferPermission"
         :type="operationMode === 'proxy' ? 'warning' : 'default'"
-        class="sales-mode-tab"
+        :aria-pressed="operationMode === 'proxy'"
+        class="tf-button--compact"
         @click="emit('proxy')"
       >
         <i class="fas fa-exchange-alt" />
@@ -32,10 +36,15 @@
       </el-button>
     </div>
 
-    <div class="sales-mode-tab-group view-tabs">
+    <div
+      class="sales-mode-tab-group view-tabs"
+      role="group"
+      aria-label="设备视图"
+    >
       <el-button
         :type="viewMode === 'summary' ? 'primary' : 'default'"
-        class="sales-mode-tab"
+        :aria-pressed="viewMode === 'summary'"
+        class="tf-button--compact"
         title="对库"
         @click="emit('set-view-mode', 'summary')"
       >
@@ -44,7 +53,8 @@
       </el-button>
       <el-button
         :type="viewMode === 'grid' ? 'primary' : 'default'"
-        class="sales-mode-tab"
+        :aria-pressed="viewMode === 'grid'"
+        class="tf-button--compact"
         title="图文模式"
         @click="emit('set-view-mode', 'grid')"
       >
@@ -53,7 +63,8 @@
       </el-button>
       <el-button
         :type="viewMode === 'table' ? 'primary' : 'default'"
-        class="sales-mode-tab"
+        :aria-pressed="viewMode === 'table'"
+        class="tf-button--compact"
         title="表格模式"
         @click="emit('set-view-mode', 'table')"
       >
@@ -62,7 +73,7 @@
       </el-button>
       <el-button
         v-if="viewMode === 'summary'"
-        class="sales-mode-tab"
+        class="tf-button--compact"
         type="primary"
         title="保存为图片"
         :loading="savingInventorySummary"
@@ -81,7 +92,7 @@
       <span class="selection-count"><i class="fas fa-check-square" /> 已选 {{ selectedCount }} 台</span>
       <el-button
         type="primary"
-        class="sales-mode-tab"
+        class="tf-button--compact"
         :disabled="!canSell"
         @click="emit('batch-sale')"
       >
@@ -91,7 +102,7 @@
       <el-button
         type="info"
         plain
-        class="sales-mode-tab"
+        class="tf-button--compact"
         @click="emit('clear-selection')"
       >
         <i class="fas fa-times" />
@@ -117,6 +128,7 @@
       <el-button
         v-if="selectedCount > 0"
         :type="operationMode === 'wholesale' ? 'success' : 'warning'"
+        class="tf-button--compact"
         :disabled="operationMode === 'wholesale' ? !canWholesale : !canProxy"
         @click="emit('open-wholesale')"
       >
@@ -165,15 +177,7 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
   display: flex;
   align-items: center;
   gap: var(--tf-space-2);
-  min-width: 0;
-  max-width: 100%;
   margin-bottom: var(--tf-space-3);
-  padding: var(--tf-space-1) var(--tf-space-2);
-  overflow-x: auto;
-  background: var(--tf-button-neutral-hover-bg);
-  border: 1px solid var(--tf-button-neutral-border);
-  border-radius: var(--admin-panel-radius);
-  scrollbar-width: thin;
 }
 
 .sales-mode-tab-group {
@@ -193,11 +197,11 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
   margin-left: auto;
 }
 
-.sales-mode-tab {
-  margin: 0;
+.sales-mode-tab-group > .el-button + .el-button {
+  margin-inline-start: 0;
 }
 
-.sales-mode-tab .badge {
+.operation-tabs .badge {
   opacity: 0.85;
 }
 
@@ -238,10 +242,9 @@ const canOperationAvailable = (mode: Exclude<OperationMode, null>) => {
   .sales-mode-tabs {
     gap: var(--tf-space-1);
     margin-bottom: var(--tf-space-2);
-    padding: var(--tf-space-1);
   }
 
-  .sales-mode-tab .badge {
+  .operation-tabs .badge {
     display: none;
   }
 

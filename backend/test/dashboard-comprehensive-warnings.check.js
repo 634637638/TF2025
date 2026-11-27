@@ -2,9 +2,82 @@
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const { DatabaseSync } = require('node:sqlite')
 const DashboardService = require('../src/services/dashboard.service')
 const DashboardRepository = require('../src/repositories/dashboard.repository')
 const DashboardReadRepository = require('../src/repositories/dashboard-read.repository')
+
+test('今日全新和二手的台数与金额使用同一批门店销售记录', async t => {
+  const db = new DatabaseSync(':memory:')
+  t.after(() => db.close())
+  db.exec(`
+    CREATE TABLE phones (id INTEGER PRIMARY KEY, status TEXT, is_new INTEGER);
+    CREATE TABLE sales (id INTEGER PRIMARY KEY, phone_id INTEGER, store_id INTEGER, status TEXT, sale_type TEXT, sale_time TEXT, sale_price NUMERIC);
+    INSERT INTO phones VALUES
+      (1, 'sold', 1), (2, 'peer_transfer', 0), (3, 'sold', NULL), (4, 'sold', 1),
+      (5, 'supplier_proxy', 1), (6, 'sold', 0), (7, 'sold', 1);
+    INSERT INTO sales VALUES
+      (1, 1, 2, 'completed', 'retail', '2026-11-26 00:00:00', 90),
+      (2, 1, 2, 'completed', 'retail', '2026-11-26 01:00:00', 100),
+      (3, 2, 2, 'completed', 'wholesale', '2026-11-26 23:59:59', 50.25),
+      (4, 3, 2, 'completed', 'retail', '2026-11-26 12:00:00', 80),
+      (5, 4, 2, 'cancelled', 'retail', '2026-11-26 12:00:00', 90),
+      (6, 5, 2, 'completed', 'supplier_proxy', '2026-11-26 12:00:00', 0),
+      (7, 6, 3, 'completed', 'retail', '2026-11-26 12:00:00', 60),
+      (8, 7, 2, 'completed', 'retail', '2026-11-27 00:00:00', 70);
+  `)
+  const repository = new DashboardReadRepository({ database: () => ({
+    async execute(sql, params) { return [db.prepare(sql).all(...params)] }
+  }) })
+  const start = '2026-11-26 00:00:00', end = '2026-11-27 00:00:00'
+  const [[sales]] = await repository.todayPhoneSales({ allStores: false, storeIds: [2] }, start, end)
+  assert.deepEqual({ ...sales }, { amount: 230.25, new_amount: 100, used_amount: 50.25, new_count: 1, used_count: 1 })
+  const [[empty]] = await repository.todayPhoneSales({ allStores: false, storeIds: [] }, start, end)
+  assert.deepEqual({ ...empty }, { amount: 0, new_amount: 0, used_amount: 0, new_count: 0, used_count: 0 })
+})
+
+test('个人月度手机零售、划拨与调货独立统计，按有效交易和日期边界计数', async t => {
+  const db = new DatabaseSync(':memory:')
+  t.after(() => db.close())
+  db.exec(`
+    CREATE TABLE phones (id INTEGER PRIMARY KEY, sale_operator_id INTEGER, status TEXT, is_new INTEGER);
+    CREATE TABLE sales (id INTEGER PRIMARY KEY, phone_id INTEGER, status TEXT, sale_type TEXT, sale_time TEXT);
+    CREATE TABLE accessory_sales (operator_id INTEGER, quantity INTEGER, sale_type TEXT, sale_time TEXT, created_at TEXT);
+    INSERT INTO phones VALUES
+      (1, 7, 'sold', 1), (2, 7, 'sold', 0), (3, 7, 'sold', NULL),
+      (4, 7, 'supplier_proxy', 1), (5, 7, 'peer_transfer', 0),
+      (6, 8, 'peer_transfer', 1), (7, 7, 'supplier_proxy', 1),
+      (8, 7, 'peer_transfer', 0), (9, 7, 'sold', 1),
+      (10, 7, 'in_stock', 1), (11, 7, 'peer_transfer', 1);
+    INSERT INTO sales VALUES
+      (1, 1, 'completed', 'retail', '2026-11-01 00:00:00'),
+      (2, 2, 'completed', 'retail', '2026-11-26 23:59:59'),
+      (3, 3, 'completed', 'retail', '2026-11-05 12:00:00'),
+      (4, 4, 'completed', 'supplier_proxy', '2026-11-05 12:00:00'),
+      (5, 5, 'completed', 'wholesale', '2026-11-05 12:00:00'),
+      (6, 6, 'completed', 'wholesale', '2026-11-05 12:00:00'),
+      (7, 7, 'completed', 'supplier_proxy', '2026-11-05 12:00:00'),
+      (8, 7, 'cancelled', 'supplier_proxy', '2026-11-06 12:00:00'),
+      (9, 8, 'completed', 'wholesale', '2026-11-27 00:00:00'),
+      (10, 9, 'completed', 'retail', '2026-10-31 23:59:59'),
+      (11, 10, 'completed', 'retail', '2026-11-05 12:00:00'),
+      (12, 11, 'completed', 'retail', '2026-11-05 12:00:00');
+    INSERT INTO accessory_sales VALUES
+      (7, 3, 'sale', '2026-11-05 12:00:00', NULL), (7, 4, NULL, NULL, '2026-11-07 12:00:00'),
+      (7, 5, 'gift', '2026-11-05 12:00:00', NULL), (8, 5, 'sale', '2026-11-05 12:00:00', NULL);
+  `)
+  const repository = new DashboardReadRepository({ database: () => ({
+    async execute(sql, params) { return [db.prepare(sql).all(...params)] }
+  }) })
+  const [[sales]] = await repository.monthlySales(7, '2026-11-01', '2026-11-27')
+  assert.deepEqual({ ...sales }, {
+    phone_count: 3, new_count: 1, used_count: 1, allocation_count: 1, transfer_count: 1, goods_quantity: 7
+  })
+  const [[empty]] = await repository.monthlySales(9, '2026-11-01', '2026-11-27')
+  assert.deepEqual({ ...empty }, {
+    phone_count: 0, new_count: 0, used_count: 0, allocation_count: 0, transfer_count: 0, goods_quantity: 0
+  })
+})
 
 test('仪表盘读统计与动态均绑定业务门店，维修 UNION 两段范围一致，空绑定拒绝全部店铺', async () => {
   const calls = []
@@ -12,11 +85,11 @@ test('仪表盘读统计与动态均绑定业务门店，维修 UNION 两段范�
     calls.push({ sql, params }); return [[]]
   } }) })
   const scope = { allStores: false, storeIds: [2, 3] }
-  for (const method of ['countStockPhones', 'todayRetailAmount', 'todayAccessoryAmount', 'todayWholesaleAmount', 'todayAccessoryCount', 'recentAccessorySales']) {
-    await repository[method](scope)
+  for (const method of ['countStockPhones', 'todayPhoneSales', 'todayAccessorySales', 'recentAccessorySales']) {
+    await repository[method](scope, '2026-11-26 00:00:00', '2026-11-27 00:00:00')
   }
-  for (const method of ['phoneSaleActivities', 'accessorySaleActivities', 'inventoryActivities', 'repairActivities']) {
-    await repository[method](8, scope)
+  for (const method of ['phoneSaleActivities', 'accessorySaleActivities', 'inventoryActivities', 'subsidyActivities', 'preorderActivities', 'repairActivities']) {
+    await repository[method](10, scope, '2026-11-26 00:00:00', '2026-11-27 00:00:00')
   }
   for (const call of calls) {
     assert.match(call.sql, /store_id IN \(\?, \?\)/)
@@ -25,8 +98,22 @@ test('仪表盘读统计与动态均绑定业务门店，维修 UNION 两段范�
   assert.doesNotMatch(calls.at(-1).sql, /r\.store_id/)
   assert.match(calls.at(-1).sql, /LEFT JOIN phones p ON p\.id = r\.phone_id/)
   assert.match(calls.at(-1).sql, /p\.store_id IN/)
-  assert.deepEqual(calls.at(-1).params, [2, 3, 2, 3])
+  assert.deepEqual(calls.at(-1).params, [2, 3, 2, 3, 10])
   assert.match(calls[1].sql, /s\.store_id IN/)
+  assert.match(calls[0].sql, /status = 'in_stock' AND supplier_id IS NOT NULL/)
+  assert.match(calls[1].sql, /s\.sale_type = 'wholesale' OR \(\s*s\.sale_type = 'retail' AND p\.status = 'sold'/)
+  assert.match(calls[1].sql, /latest_sale\.status IS NULL OR latest_sale\.status IN \('pending', 'completed'\)/)
+  const subsidyQuery = calls.find(({ sql }) => sql.includes('FROM national_subsidies'))
+  assert.match(subsidyQuery.sql, /COALESCE\(ns\.apply_time, ns\.sale_time\) AS occurred_at/)
+  assert.doesNotMatch(subsidyQuery.sql, /ns\.created_at/)
+  assert.match(subsidyQuery.sql, /ns\.customer_name/)
+  assert.match(subsidyQuery.sql, /ns\.phone_color AS color_name/)
+  assert.match(subsidyQuery.sql, /ns\.phone_memory AS memory_size/)
+  const preorderQuery = calls.find(({ sql }) => sql.includes('FROM preorders pr'))
+  assert.match(preorderQuery.sql, /c\.name AS customer_name/)
+  assert.match(preorderQuery.sql, /co\.name AS color_name/)
+  assert.match(preorderQuery.sql, /mem\.size AS memory_size/)
+  assert.match(preorderQuery.sql, /LEFT JOIN memories mem ON mem\.id = pr\.memory_id/)
   calls.length = 0
   await repository.recentAccessorySales({ allStores: false, storeIds: [] })
   assert.match(calls[0].sql, /1 = 0/)

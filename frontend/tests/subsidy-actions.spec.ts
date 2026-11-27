@@ -16,9 +16,20 @@ const TableStub = defineComponent({
   }
 })
 const ColumnStub = {
-  setup(_: unknown, { slots }: SetupContext) {
+  props: {
+    label: { type: String, default: '' },
+    width: { type: [Number, String], default: undefined },
+    minWidth: { type: [Number, String], default: undefined },
+    className: { type: String, default: '' }
+  },
+  setup(props: { label: string, width?: number | string, minWidth?: number | string, className: string }, { slots }: SetupContext) {
     const rows = inject<NationalSubsidyRecord[]>('subsidyRows', [])
-    return () => h('div', rows.map(row => slots.default?.({ row })))
+    return () => h('div', {
+      class: ['column', props.className],
+      'data-label': props.label,
+      'data-width': props.width,
+      'data-min-width': props.minWidth
+    }, rows.map(row => slots.default?.({ row })))
   }
 }
 
@@ -29,7 +40,7 @@ describe.each([false, true])('国补操作权限，移动端=%s', isMobile => {
       props: {
         loading: false, subsidyList: [row], displayList: [row],
         tableColumns: [{ key: 'subsidy_photos', label: '国补照片' }],
-        fieldVisibility: { subsidy_photos: true }, isMobile, selectedItems: [], pinnedItems: [],
+        fieldVisibility: { subsidy_photos: true }, isMobile, isTablet: false, selectedItems: [], pinnedItems: [],
         subsidyPagination: { page: 1, page_size: 20, total: 1 },
         canApprove: false, canArrival: false, canUpload, canEdit: false, canDelete: false,
         canShowActions: false, canViewCustomerIdcard: false, selectAll: false, isIndeterminate: false
@@ -42,7 +53,7 @@ describe.each([false, true])('国补操作权限，移动端=%s', isMobile => {
     const photoAction = wrapper.find('.photo-icon-wrapper')
     expect(photoAction.exists()).toBe(!isMobile)
     if (isMobile) {
-      expect(wrapper.text()).toContain('0 张')
+      expect(wrapper.text()).not.toContain('0 张')
       wrapper.findComponent(TableStub).vm.$emit('row-dblclick', row, null, new MouseEvent('dblclick'))
       expect(wrapper.emitted('row-double-click')).toEqual([[row]])
       expect(wrapper.emitted('open-photo-manage')).toBeUndefined()
@@ -64,7 +75,7 @@ describe.each([false, true])('国补操作权限，移动端=%s', isMobile => {
     const wrapper = shallowMount(SubsidyListSection, {
       props: {
         loading: false, subsidyList: [row], displayList: [row], tableColumns,
-        fieldVisibility: {}, isMobile, selectedItems: [], pinnedItems: [],
+        fieldVisibility: {}, isMobile, isTablet: false, selectedItems: [], pinnedItems: [],
         subsidyPagination: { page: 1, page_size: 20, total: 1 },
         canApprove, canArrival, canUpload: false, canEdit: false, canDelete: false,
         canShowActions: false, canViewCustomerIdcard: false, selectAll: false, isIndeterminate: false
@@ -95,6 +106,115 @@ describe.each([false, true])('国补操作权限，移动端=%s', isMobile => {
       table.vm.$emit('row-dblclick', row, null, new MouseEvent('dblclick'))
       expect(wrapper.emitted('row-double-click')).toEqual([[row]])
     }
+    wrapper.unmount()
+  })
+})
+
+describe('国补列表按设备断点收敛展示列', () => {
+  const columns = [
+    'store_name', 'sale_time', 'customer_name', 'customer_phone', 'customer_idcard',
+    'brand', 'model', 'color', 'memory', 'serial_number', 'imei1', 'imei2',
+    'sale_price', 'subsidy_amount', 'remarks', 'subsidy_photos', 'apply_time', 'arrival_time', 'actions'
+  ].map(key => ({ key, label: key }))
+
+  const renderColumns = (isMobile: boolean, isTablet: boolean) => shallowMount(SubsidyListSection, {
+    props: {
+      loading: false, subsidyList: [], displayList: [], tableColumns: columns,
+      fieldVisibility: Object.fromEntries(columns.map(column => [column.key, true])), isMobile, isTablet, selectedItems: [], pinnedItems: [],
+      subsidyPagination: { page: 1, page_size: 20, total: 0 },
+      canApprove: false, canArrival: false, canUpload: false, canEdit: false, canDelete: false,
+      canShowActions: false, canViewCustomerIdcard: false, selectAll: false, isIndeterminate: false
+    },
+    global: {
+      directives: { 'tf-loading': {}, 'table-double-tap': {} },
+      stubs: {
+        ElTable: TableStub,
+        ElTableColumn: {
+          props: { label: { type: String, default: '' } },
+          setup(props, { slots }) {
+            const rows = inject<NationalSubsidyRecord[]>('subsidyRows', [])
+            return () => h('span', { class: 'column', 'data-column': props.label }, rows.map(row => slots.default?.({ row })))
+          }
+        },
+        ElCheckbox: true
+      }
+    }
+  })
+
+  it('手机只保留店铺、销售日期、姓名、型号、颜色，并继续隐藏操作列', () => {
+    const wrapper = renderColumns(true, false)
+    expect(wrapper.findAll('.column').map(column => column.attributes('data-column')).filter(Boolean)).toEqual([
+      'store_name', 'sale_time', 'customer_name', 'model', 'color'
+    ])
+    wrapper.unmount()
+  })
+
+  it('iPad 平板增加品牌、内存、价格和状态列，但不把识别码放入主表', () => {
+    const wrapper = renderColumns(false, true)
+    expect(wrapper.findAll('.column').map(column => column.attributes('data-column')).filter(Boolean)).toEqual([
+      'store_name', 'sale_time', 'customer_name', 'brand', 'model', 'color', 'memory',
+      'sale_price', 'subsidy_amount', 'subsidy_photos', 'apply_time', 'arrival_time'
+    ])
+    wrapper.unmount()
+  })
+
+  it('桌面端保留当前用户已授权的完整列集合', () => {
+    const wrapper = renderColumns(false, false)
+    expect(wrapper.findAll('.column')).toHaveLength(columns.length + 1)
+    wrapper.unmount()
+  })
+})
+
+describe('国补型号列内容宽度', () => {
+  it('按当前页最长型号精确设置列宽，保持型号单行显示', () => {
+    const rows: NationalSubsidyRecord[] = [
+      { id: 1, phone_model: 'iPhone 17' },
+      { id: 2, phone_model: 'iPhone 18 Pro Max' }
+    ]
+    const wrapper = shallowMount(SubsidyListSection, {
+      props: {
+        loading: false, subsidyList: rows, displayList: rows,
+        tableColumns: [{ key: 'model', label: '型号' }],
+        fieldVisibility: {}, isMobile: true, isTablet: false, selectedItems: [], pinnedItems: [],
+        subsidyPagination: { page: 1, page_size: 20, total: 1 },
+        canApprove: false, canArrival: false, canUpload: false, canEdit: false, canDelete: false,
+        canShowActions: false, canViewCustomerIdcard: false, selectAll: false, isIndeterminate: false
+      },
+      global: {
+        directives: { 'tf-loading': {}, 'table-double-tap': {} },
+        stubs: { ElTable: TableStub, ElTableColumn: ColumnStub, ElCheckbox: true }
+      }
+    })
+
+    const modelColumn = wrapper.find('[data-label="型号"]')
+    expect(modelColumn.attributes('data-width')).toBe('152')
+    expect(modelColumn.attributes('data-min-width')).toBe('152')
+    expect(modelColumn.classes()).toContain('complete-text-column')
+    expect(modelColumn.classes()).not.toContain('wrapped-text-column')
+    wrapper.unmount()
+  })
+
+  it('超过 180px 的型号仍按完整内容计算，不截断宽度或换行', () => {
+    const row: NationalSubsidyRecord = { id: 1, phone_model: 'Apple iPhone 18 Pro Max 特别版 1TB 国行全新未拆封' }
+    const wrapper = shallowMount(SubsidyListSection, {
+      props: {
+        loading: false, subsidyList: [row], displayList: [row],
+        tableColumns: [{ key: 'model', label: '型号' }],
+        fieldVisibility: {}, isMobile: true, isTablet: false, selectedItems: [], pinnedItems: [],
+        subsidyPagination: { page: 1, page_size: 20, total: 1 },
+        canApprove: false, canArrival: false, canUpload: false, canEdit: false, canDelete: false,
+        canShowActions: false, canViewCustomerIdcard: false, selectAll: false, isIndeterminate: false
+      },
+      global: {
+        directives: { 'tf-loading': {}, 'table-double-tap': {} },
+        stubs: { ElTable: TableStub, ElTableColumn: ColumnStub, ElCheckbox: true }
+      }
+    })
+
+    const modelColumn = wrapper.find('[data-label="型号"]')
+    expect(Number(modelColumn.attributes('data-width'))).toBeGreaterThan(180)
+    expect(modelColumn.attributes('data-width')).toBe(modelColumn.attributes('data-min-width'))
+    expect(modelColumn.classes()).not.toContain('wrapped-text-column')
     wrapper.unmount()
   })
 })

@@ -1,159 +1,69 @@
 <template>
-  <div class="inventory-analytics">
-    <el-row
-      :gutter="16"
-      class="overview-cards"
+  <div class="inventory-analytics admin-page-content">
+    <Teleport
+      :to="props.overviewTarget || 'body'"
+      :disabled="!props.overviewTarget"
     >
-      <el-col
-        v-if="canViewInventoryField('total_products')"
-        :xs="24"
-        :sm="12"
-        :lg="6"
+      <div
+        class="stats-cards"
+        role="region"
+        aria-label="库存分析统计"
+        tabindex="0"
       >
-        <el-card
-          class="insight-card insight-card--primary"
-          shadow="hover"
-        >
-          <div class="insight-card__header">
-            <div class="insight-card__icon">
-              <Box />
-            </div>
-            <el-tag
-              round
-              effect="dark"
-              type="primary"
-            >
-              健康 {{ inventoryData.inventory_health?.score ?? 0 }}
-            </el-tag>
-          </div>
-          <div class="insight-card__label">
-            在库总数
-          </div>
-          <div class="insight-card__value">
-            {{ formatNumber(inventoryData.total_products) }}
-          </div>
-          <div class="insight-card__meta">
-            当前可售设备总量
-          </div>
-          <div class="insight-card__footer">
-            <span>健康等级 {{ healthLevelText }}</span>
-            <span>周转 {{ formatDecimal(inventoryData.stock_turnover) }}</span>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewInventoryField('total_products')"
+          class="stat-card stat-card--primary"
+          label="在库总数"
+          :value="`${formatNumber(inventoryData.total_products)}台`"
+          :icon="Box"
+          :details="[
+            { label: '健康评分', value: inventoryData.inventory_health?.score ?? 0 },
+            { label: '健康等级', value: healthLevelText },
+            { label: '周转', value: formatDecimal(inventoryData.stock_turnover) }
+          ]"
+        />
 
-      <el-col
-        v-if="canViewInventoryField('total_value')"
-        :xs="24"
-        :sm="12"
-        :lg="6"
-      >
-        <el-card
-          class="insight-card insight-card--success"
-          shadow="hover"
-        >
-          <div class="insight-card__header">
-            <div class="insight-card__icon">
-              <Money />
-            </div>
-            <el-tag
-              round
-              type="success"
-            >
-              单台均值 ¥{{ formatAmount(averageUnitCost) }}
-            </el-tag>
-          </div>
-          <div class="insight-card__label">
-            在库价值
-          </div>
-          <div class="insight-card__value insight-card__value--currency">
-            ¥{{ formatAmount(inventoryData.total_value) }}
-          </div>
-          <div class="insight-card__meta">
-            按在库成本实时汇总
-          </div>
-          <div class="insight-card__footer">
-            <span>近10台成交 ¥{{ formatAmount(recentSalesSummary.totalSales) }}</span>
-            <span>最近门店 {{ recentSalesSummary.latestStore }}</span>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewInventoryField('total_value')"
+          class="stat-card stat-card--income"
+          label="在库价值"
+          :value="`¥${formatAmount(inventoryData.total_value)}`"
+          :icon="Money"
+          :details="[
+            { label: '单台均值', value: `¥${formatAmount(averageUnitCost)}` },
+            { label: '近10台成交', value: `¥${formatAmount(recentSalesSummary.totalSales)}` },
+            { label: '最近门店', value: recentSalesSummary.latestStore }
+          ]"
+        />
 
-      <el-col
-        v-if="canViewInventoryField('warning_summary')"
-        :xs="24"
-        :sm="12"
-        :lg="6"
-      >
-        <el-card
-          class="insight-card insight-card--warning clickable"
-          shadow="hover"
-          @click="showLowStockDialog = true"
-        >
-          <div class="insight-card__header">
-            <div class="insight-card__icon">
-              <Warning />
-            </div>
-            <el-tag
-              round
-              :type="warningSummary.criticalCount > 0 ? 'danger' : 'warning'"
-            >
-              {{ warningSummary.criticalCount > 0 ? '存在售罄' : '按预警配置' }}
-            </el-tag>
-          </div>
-          <div class="insight-card__label">
-            库存预警
-          </div>
-          <div class="insight-card__value">
-            {{ formatNumber(warningSummary.total) }}
-          </div>
-          <div class="insight-card__meta">
-            统一取自系统预警配置
-          </div>
-          <div class="insight-card__footer">
-            <span>售罄 {{ formatNumber(warningSummary.criticalCount) }}</span>
-            <span>缺口 {{ formatNumber(warningSummary.shortageUnits) }} 台</span>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewInventoryField('warning_summary')"
+          class="stat-card stat-card--warning"
+          label="库存预警"
+          :value="formatNumber(warningSummary.total)"
+          :icon="Warning"
+          :details="[
+            { label: '售罄', value: formatNumber(warningSummary.criticalCount) },
+            { label: '缺口', value: `${formatNumber(warningSummary.shortageUnits)}台` }
+          ]"
+          :interactive="canViewInventoryField('low_stock_dialog')"
+          @activate="showLowStockDialog = true"
+        />
 
-      <el-col
-        v-if="canViewInventoryField('supplier_count')"
-        :xs="24"
-        :sm="12"
-        :lg="6"
-      >
-        <el-card
-          class="insight-card insight-card--supplier"
-          shadow="hover"
-        >
-          <div class="insight-card__header">
-            <div class="insight-card__icon">
-              <ShoppingCart />
-            </div>
-            <el-tag
-              round
-              type="info"
-            >
-              均分 {{ formatDecimal(supplierQualityAverage) }}
-            </el-tag>
-          </div>
-          <div class="insight-card__label">
-            有货供应商
-          </div>
-          <div class="insight-card__value">
-            {{ formatNumber(supplierCount) }}
-          </div>
-          <div class="insight-card__meta">
-            仍有现货可供补货的供应商
-          </div>
-          <div class="insight-card__footer">
-            <span>TOP {{ topSupplierName }}</span>
-            <span>覆盖价值 ¥{{ formatAmount(topSupplierValue) }}</span>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        <AnalyticsStatCard
+          v-if="canViewInventoryField('supplier_count')"
+          class="stat-card stat-card--info"
+          label="有货供应商"
+          :value="`${formatNumber(supplierCount)}家`"
+          :icon="ShoppingCart"
+          :details="[
+            { label: '均分', value: formatDecimal(supplierQualityAverage) },
+            { label: '首位', value: topSupplierName },
+            { label: '覆盖价值', value: `¥${formatAmount(topSupplierValue)}` }
+          ]"
+        />
+      </div>
+    </Teleport>
 
     <MobileDialog
       v-if="canViewInventoryField('low_stock_dialog')"
@@ -169,7 +79,8 @@
         class="data-table"
         :data="filteredLowStockItems"
         stripe
-        :table-layout="'auto'"
+        table-layout="fixed"
+        :fit="true"
         @row-dblclick="warningDetailDoubleClick"
       >
         <template #empty>
@@ -185,20 +96,19 @@
         </template>
 
         <el-table-column
-          prop="brand"
-          label="品牌"
-          width="120"
-        />
-        <el-table-column
-          prop="model"
-          label="型号"
-          min-width="220"
-        />
-        <el-table-column
-          prop="color"
-          label="颜色"
-          width="100"
-        />
+          v-for="column in lowStockSpecColumns"
+          :key="column.key"
+          :prop="column.key"
+          :label="column.label"
+          :min-width="column.width"
+          class-name="complete-text-column"
+        >
+          <template #default="{ row }">
+            <span :class="column.key === 'condition_label' ? getLowStockConditionBadge(row.condition_label) : undefined">
+              {{ row[column.key] || '—' }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column
           prop="current_stock"
           label="当前库存"
@@ -223,8 +133,7 @@
         <el-table-column
           prop="unit_cost"
           label="成本价"
-          width="120"
-          align="right"
+          :min-width="lowStockColumnWidths.unit_cost"
         >
           <template #default="scope">
             ¥{{ formatAmount(scope.row.unit_cost) }}
@@ -233,8 +142,7 @@
         <el-table-column
           prop="total_value"
           label="库存价值"
-          width="120"
-          align="right"
+          :min-width="lowStockColumnWidths.total_value"
         >
           <template #default="scope">
             ¥{{ formatAmount(scope.row.total_value) }}
@@ -243,7 +151,7 @@
         <el-table-column
           prop="last_sale_time"
           label="最近销售"
-          width="140"
+          :min-width="lowStockColumnWidths.last_sale_time"
         >
           <template #default="scope">
             {{ formatDate(scope.row.last_sale_time) }}
@@ -260,118 +168,97 @@
       :has-actions="false"
     />
 
-    <el-row
+    <section
       v-if="canViewInventoryField('recent_sales_table')"
-      :gutter="16"
-      class="mt-16"
+      class="table-section admin-panel admin-table-panel"
+      aria-labelledby="inventory-recent-sales-title"
     >
-      <el-col :span="24">
-        <el-card class="panel-card recent-sales-card">
-          <template #header>
-            <div class="panel-header">
-              <div>
-                <div class="panel-title">
-                  最近销售的10个型号
-                </div>
-                <div class="panel-subtitle">
-                  按最新销售时间倒序展示，便于快速判断热销流向
-                </div>
-              </div>
-              <div class="panel-metrics">
-                <span class="metric-chip">实时更新</span>
-                <span class="metric-chip">成交 ¥{{ formatAmount(recentSalesSummary.totalSales) }}</span>
-                <span class="metric-chip">{{ recentSalesSummary.latestSaleDate }}</span>
-              </div>
-            </div>
-          </template>
-          <el-table
-            v-table-double-tap="soldDetailTapOptions"
-            v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
-            class="data-table"
-            :data="recentSoldModels"
-            stripe
-            :table-layout="'auto'"
-            @row-dblclick="soldDetailDoubleClick"
-          >
-            <template #empty>
-              <TableLoadingRow
-                v-if="loading"
-                mode="block"
-                text="正在读取库存分析..."
-              />
-              <DataEmptyState
-                v-else
-                description="暂无最近销售记录"
-              />
-            </template>
-
-            <el-table-column
-              prop="brand"
-              label="品牌"
-              min-width="120"
-            />
-            <el-table-column
-              prop="model"
-              label="型号"
-              min-width="180"
-            />
-            <el-table-column
-              prop="color"
-              label="颜色"
-              min-width="100"
-            />
-            <el-table-column
-              prop="sale_price"
-              label="销售价"
-              min-width="120"
-              align="right"
-            >
-              <template #default="scope">
-                ¥{{ formatAmount(scope.row.sale_price) }}
-              </template>
-            </el-table-column>
-            <el-table-column
-              prop="sale_time"
-              label="销售时间"
-              min-width="180"
-            />
-            <el-table-column
-              prop="store"
-              label="销售门店"
-              min-width="120"
-            />
-          </el-table>
-          <RecordDetailDialog
-            v-model="soldDetailVisible"
-            title="近期销售详情"
-            :record="soldDetailRow"
-            :fields="soldDetailFields"
-            :has-actions="false"
+      <div class="section-title flex-wrap justify-between">
+        <span id="inventory-recent-sales-title">
+          最热品牌
+        </span>
+        <span class="text-sm font-normal text-secondary">
+          成交 ¥{{ formatAmount(recentSalesSummary.totalSales) }} · {{ recentSalesSummary.latestSaleDate }}
+        </span>
+      </div>
+      <el-table
+        v-table-double-tap="soldDetailTapOptions"
+        v-tf-loading="{ active: loading, text: '正在刷新库存分析...' }"
+        class="data-table"
+        :data="recentSoldModels"
+        stripe
+        table-layout="fixed"
+        :fit="true"
+        @row-dblclick="soldDetailDoubleClick"
+      >
+        <template #empty>
+          <TableLoadingRow
+            v-if="loading"
+            mode="block"
+            text="正在读取库存分析..."
           />
-        </el-card>
-      </el-col>
-    </el-row>
+          <DataEmptyState
+            v-else
+            description="暂无最近销售记录"
+          />
+        </template>
 
-    <el-row
+        <el-table-column
+          prop="brand"
+          label="品牌"
+          :min-width="recentSaleColumnWidths.brand"
+        />
+        <el-table-column
+          prop="model"
+          label="型号"
+          :min-width="recentSaleColumnWidths.model"
+        />
+        <el-table-column
+          prop="color"
+          label="颜色"
+          :min-width="recentSaleColumnWidths.color"
+        />
+        <el-table-column
+          prop="sale_price"
+          label="销售价"
+          :min-width="recentSaleColumnWidths.sale_price"
+        >
+          <template #default="scope">
+            ¥{{ formatAmount(scope.row.sale_price) }}
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="sale_time"
+          label="销售时间"
+          :min-width="recentSaleColumnWidths.sale_time"
+        />
+        <el-table-column
+          prop="store"
+          label="销售门店"
+          :min-width="recentSaleColumnWidths.store"
+        />
+      </el-table>
+      <RecordDetailDialog
+        v-model="soldDetailVisible"
+        title="近期销售详情"
+        :record="soldDetailRow"
+        :fields="soldDetailFields"
+        :has-actions="false"
+      />
+    </section>
+
+    <div
       v-if="showInventoryChartsRow"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid analytics-panel-grid--wide"
     >
-      <el-col
+      <div
         v-if="canViewInventoryField('category_distribution_chart')"
-        :xs="24"
-        :lg="12"
       >
         <el-card class="panel-card chart-card">
           <template #header>
             <div class="panel-header">
-              <div>
-                <div class="panel-title">
-                  分类库存分析
-                </div>
-                <div class="panel-subtitle">
-                  聚焦品牌价值分布与库存沉淀情况
-                </div>
+              <div class="panel-title">
+                库存分析
               </div>
               <el-button
                 @click="toggleCategoryChartType"
@@ -387,23 +274,16 @@
             />
           </div>
         </el-card>
-      </el-col>
+      </div>
 
-      <el-col
+      <div
         v-if="canViewInventoryField('turnover_trend_chart')"
-        :xs="24"
-        :lg="12"
       >
         <el-card class="panel-card chart-card">
           <template #header>
             <div class="panel-header">
-              <div>
-                <div class="panel-title">
-                  库存周转趋势
-                </div>
-                <div class="panel-subtitle">
-                  对比目标周转率，观察补货与出货节奏
-                </div>
+              <div class="panel-title">
+                库存周转趋势
               </div>
               <el-select
                 v-model="turnoverPeriod"
@@ -432,78 +312,99 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
-    <el-row
+    <div
       v-if="showInventoryTableRow"
-      :gutter="16"
-      class="table-section admin-panel admin-table-panel"
+      class="analytics-panel-grid analytics-panel-grid--wide analytics-panel-grid--7-5"
     >
-      <el-col
+      <div
         v-if="canViewInventoryField('low_stock_table')"
-        :xs="24"
-        :lg="14"
-        class="stretch-col"
       >
-        <el-card class="panel-card table-card low-stock-card admin-panel admin-table-panel">
-          <template #header>
-            <div class="panel-header">
-              <div>
-                <div class="panel-title">
-                  库存预警
+        <section
+          class="table-card low-stock-card admin-panel admin-table-panel"
+          aria-labelledby="inventory-low-stock-title"
+        >
+          <div class="section-title flex-wrap justify-between">
+            <div id="inventory-low-stock-title">
+              库存预警
+            </div>
+            <el-space wrap>
+              <el-select
+                v-model="alertLevel"
+                placeholder="预警级别"
+                size="small"
+                clearable
+                class="alert-select"
+              >
+                <el-option
+                  label="全部"
+                  value=""
+                />
+                <el-option
+                  label="严重"
+                  value="critical"
+                />
+                <el-option
+                  label="警告"
+                  value="warning"
+                />
+              </el-select>
+              <el-button
+                type="success"
+                @click="exportLowStock"
+              >
+                导出
+              </el-button>
+            </el-space>
+          </div>
+
+          <div
+            class="stats-cards"
+            role="region"
+            aria-label="库存补货统计"
+            tabindex="0"
+          >
+            <div class="stat-card stat-card--warning">
+              <div class="stat-content">
+                <div class="stat-label">
+                  预警总数
                 </div>
-                <div class="panel-subtitle">
-                  完全使用系统预警配置中的动态阈值进行判断
+                <div class="stat-value">
+                  {{ formatNumber(warningSummary.total) }}
                 </div>
               </div>
-              <el-space wrap>
-                <el-select
-                  v-model="alertLevel"
-                  placeholder="预警级别"
-                  size="small"
-                  clearable
-                  class="alert-select"
-                >
-                  <el-option
-                    label="全部"
-                    value=""
-                  />
-                  <el-option
-                    label="严重"
-                    value="critical"
-                  />
-                  <el-option
-                    label="警告"
-                    value="warning"
-                  />
-                </el-select>
-                <el-button
-                  type="success"
-                  @click="exportLowStock"
-                >
-                  导出
-                </el-button>
-              </el-space>
             </div>
-          </template>
-
-          <div class="warning-overview">
-            <div class="warning-stat">
-              <span class="warning-stat__label">预警总数</span>
-              <strong class="warning-stat__value">{{ formatNumber(warningSummary.total) }}</strong>
+            <div class="stat-card stat-card--danger">
+              <div class="stat-content">
+                <div class="stat-label">
+                  售罄型号
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(warningSummary.criticalCount) }}
+                </div>
+              </div>
             </div>
-            <div class="warning-stat">
-              <span class="warning-stat__label">售罄型号</span>
-              <strong class="warning-stat__value">{{ formatNumber(warningSummary.criticalCount) }}</strong>
+            <div class="stat-card stat-card--info">
+              <div class="stat-content">
+                <div class="stat-label">
+                  补货缺口
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(warningSummary.shortageUnits) }} 台
+                </div>
+              </div>
             </div>
-            <div class="warning-stat">
-              <span class="warning-stat__label">补货缺口</span>
-              <strong class="warning-stat__value">{{ formatNumber(warningSummary.shortageUnits) }} 台</strong>
-            </div>
-            <div class="warning-stat">
-              <span class="warning-stat__label">建议补货值</span>
-              <strong class="warning-stat__value">¥{{ formatAmount(warningSummary.replenishmentValue) }}</strong>
+            <div class="stat-card stat-card--money">
+              <div class="stat-content">
+                <div class="stat-label">
+                  建议补货值
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(warningSummary.replenishmentValue) }}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -513,8 +414,8 @@
             class="data-table"
             :data="filteredLowStockItems"
             stripe
-            style="width: 100%"
-            :table-layout="'auto'"
+            table-layout="fixed"
+            :fit="true"
             @row-dblclick="stockDetailDoubleClick"
           >
             <template #empty>
@@ -539,16 +440,17 @@
               </template>
             </el-table-column>
             <el-table-column
-              prop="name"
-              label="产品名称"
-              min-width="220"
+              v-for="column in lowStockSpecColumns"
+              :key="column.key"
+              :prop="column.key"
+              :label="column.label"
+              :min-width="column.width"
+              class-name="complete-text-column"
             >
               <template #default="{ row }">
-                <div class="product-name">
-                  <span class="brand">{{ row.brand }}</span>
-                  <span class="model">{{ row.model }}</span>
-                  <span class="color">{{ row.color }}</span>
-                </div>
+                <span :class="column.key === 'condition_label' ? getLowStockConditionBadge(row.condition_label) : undefined">
+                  {{ row[column.key] || '—' }}
+                </span>
               </template>
             </el-table-column>
             <el-table-column
@@ -575,8 +477,7 @@
             <el-table-column
               prop="unit_cost"
               label="单价"
-              width="110"
-              align="right"
+              :min-width="lowStockColumnWidths.unit_cost"
             >
               <template #default="{ row }">
                 ¥{{ formatAmount(row.unit_cost) }}
@@ -585,8 +486,7 @@
             <el-table-column
               prop="total_value"
               label="总值"
-              width="120"
-              align="right"
+              :min-width="lowStockColumnWidths.total_value"
             >
               <template #default="{ row }">
                 ¥{{ formatAmount(row.total_value) }}
@@ -641,25 +541,17 @@
               </el-button>
             </template>
           </RecordDetailDialog>
-        </el-card>
-      </el-col>
+        </section>
+      </div>
 
-      <el-col
+      <div
         v-if="canViewInventoryField('supplier_count')"
-        :xs="24"
-        :lg="10"
-        class="stretch-col"
       >
         <el-card class="panel-card supplier-card">
           <template #header>
             <div class="panel-header">
-              <div>
-                <div class="panel-title">
-                  供应商分析
-                </div>
-                <div class="panel-subtitle">
-                  结合库存价值、商品数量与质量评分观察供应商稳定性
-                </div>
+              <div class="panel-title">
+                供应商分析
               </div>
               <el-button
                 @click="toggleSupplierChartType"
@@ -669,14 +561,31 @@
             </div>
           </template>
 
-          <div class="supplier-summary">
-            <div class="supplier-summary__item">
-              <span>活跃供应商</span>
-              <strong>{{ formatNumber(supplierCount) }}</strong>
+          <div
+            class="stats-cards"
+            role="region"
+            aria-label="供应商表现摘要"
+            tabindex="0"
+          >
+            <div class="stat-card stat-card--primary">
+              <div class="stat-content">
+                <div class="stat-label">
+                  活跃供应商
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(supplierCount) }}
+                </div>
+              </div>
             </div>
-            <div class="supplier-summary__item">
-              <span>平均质量分</span>
-              <strong>{{ formatDecimal(supplierQualityAverage) }}</strong>
+            <div class="stat-card stat-card--success">
+              <div class="stat-content">
+                <div class="stat-label">
+                  平均质量分
+                </div>
+                <div class="stat-value">
+                  {{ formatDecimal(supplierQualityAverage) }}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -713,12 +622,13 @@
             </div>
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import AnalyticsStatCard from './AnalyticsStatCard.vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
@@ -747,6 +657,7 @@ import echarts, { ECharts, type EChartsOption, type TopLevelFormatterParams } fr
 import { buildCsvContent } from '@/utils/csv-export'
 import { logger } from '@/utils/logger'
 import { formatDate, formatAmount } from '@/utils/format'
+import { getTextColumnMinWidth } from '@/utils/table-layout'
 
 const props = withDefaults(defineProps<InventoryAnalyticsProps>(), {
   loading: false,
@@ -874,6 +785,52 @@ const warningSummary = computed(() => {
     shortageUnits: 0,
     replenishmentValue: 0
   })
+})
+
+const recentSaleColumnWidths = computed(() => {
+  const sales = recentSoldModels.value
+  return {
+    brand: getTextColumnMinWidth(['品牌', ...sales.map(row => row.brand)], { minWidth: 120 }),
+    model: getTextColumnMinWidth(['型号', ...sales.map(row => row.model)], { minWidth: 180 }),
+    color: getTextColumnMinWidth(['颜色', ...sales.map(row => row.color)], { minWidth: 100 }),
+    sale_price: getTextColumnMinWidth(['销售价', ...sales.map(row => `¥${formatAmount(row.sale_price)}`)], { minWidth: 120 }),
+    sale_time: getTextColumnMinWidth(['销售时间', ...sales.map(row => row.sale_time)], { minWidth: 180 }),
+    store: getTextColumnMinWidth(['销售门店', ...sales.map(row => row.store)], { minWidth: 120 })
+  }
+})
+
+const lowStockSpecFields = [
+  { key: 'brand', label: '品牌', minWidth: 80 },
+  { key: 'model', label: '型号', minWidth: 120 },
+  { key: 'color', label: '颜色', minWidth: 80 },
+  { key: 'memory', label: '内存', minWidth: 80 },
+  { key: 'condition_label', label: '成色', minWidth: 80 }
+] as const
+
+const lowStockSpecColumns = computed(() => lowStockSpecFields.map(field => ({
+  ...field,
+  width: getTextColumnMinWidth(
+    [field.label, ...filteredLowStockItems.value.map(row => row[field.key])],
+    { minWidth: field.minWidth }
+  )
+})))
+
+const getLowStockConditionBadge = (condition: string) => {
+  if (condition === '全新') return 'condition-badge condition-new'
+  if (condition === '二手') return 'condition-badge condition-used'
+  return undefined
+}
+
+const getLowStockSpecDetail = (row: InventoryLowStockItem, visible: boolean): RecordDetailField[] =>
+  lowStockSpecFields.map(({ key, label }) => ({ key, label, value: row[key] || '—', visible }))
+
+const lowStockColumnWidths = computed(() => {
+  const items = filteredLowStockItems.value
+  return {
+    unit_cost: getTextColumnMinWidth(['成本价', ...items.map(row => `¥${formatAmount(row.unit_cost)}`)], { minWidth: 120 }),
+    total_value: getTextColumnMinWidth(['库存价值', ...items.map(row => `¥${formatAmount(row.total_value)}`)], { minWidth: 120 }),
+    last_sale_time: getTextColumnMinWidth(['最近销售', ...items.map(row => formatDate(row.last_sale_time))], { minWidth: 140 })
+  }
 })
 
 const recentSalesSummary = computed(() => {
@@ -1091,12 +1048,10 @@ const exportLowStock = () => {
 
 const generateLowStockCSV = () => {
   return buildCsvContent(
-    ['产品ID', '品牌', '型号', '颜色', '当前库存', '预警库存', '单价', '总值', '状态'],
+    ['产品ID', ...lowStockSpecFields.map(field => field.label), '当前库存', '预警库存', '单价', '总值', '状态'],
     filteredLowStockItems.value.map((item) => ([
       item.id,
-      item.brand,
-      item.model,
-      item.color,
+      ...lowStockSpecFields.map(field => item[field.key]),
       item.current_stock,
       item.reorder_point,
       item.unit_cost,
@@ -1492,13 +1447,13 @@ const soldDetailFields = computed<RecordDetailField[]>(() => {
 
 
 const { detailRow: stockDetailRow, detailVisible: stockDetailVisible, doubleTapOptions: stockDetailTapOptions, handleRowDoubleClick: stockDetailDoubleClick, runDetailAction: stockDetailRunAction } = useMobileTableDetail<(typeof filteredLowStockItems.value)[number]>({
-  enabled: () => isMobile.value && canViewInventoryField('low_stock_table'), rows: () => filteredLowStockItems.value, getKey: row => JSON.stringify([row.brand, row.model, row.color])
+  enabled: () => isMobile.value && canViewInventoryField('low_stock_table'), rows: () => filteredLowStockItems.value, getKey: row => row.id
 })
 const stockDetailFields = computed<RecordDetailField[]>(() => {
   const row = stockDetailRow.value
   if (!row) return []
   return [
-    { key: 'name', label: '产品名称', value: [row.brand, row.model, row.color].join(' / '), visible: canViewInventoryField('low_stock_table'), wide: true },
+    ...getLowStockSpecDetail(row, canViewInventoryField('low_stock_table')),
     { key: 'current_stock', label: '当前库存', value: row.current_stock, visible: canViewInventoryField('low_stock_table') },
     { key: 'reorder_point', label: '预警库存', value: row.reorder_point, visible: canViewInventoryField('low_stock_table') },
     { key: 'unit_cost', label: '单价', value: formatAmount(row.unit_cost), visible: canViewInventoryField('low_stock_table') },
@@ -1508,15 +1463,13 @@ const stockDetailFields = computed<RecordDetailField[]>(() => {
 })
 const { detailRow: warningDetailRow, detailVisible: warningDetailVisible, doubleTapOptions: warningDetailTapOptions, handleRowDoubleClick: warningDetailDoubleClick } = useMobileTableDetail({
   enabled: () => isMobile.value && showLowStockDialog.value && canViewInventoryField('low_stock_dialog'),
-  rows: filteredLowStockItems, getKey: row => JSON.stringify([row.brand, row.model, row.color])
+  rows: filteredLowStockItems, getKey: row => row.id
 })
 const warningDetailFields = computed<RecordDetailField[]>(() => {
   const row = warningDetailRow.value
   const visible = canViewInventoryField('low_stock_dialog')
   return row ? [
-    { key: 'brand', label: '品牌', value: row.brand, visible },
-    { key: 'model', label: '型号', value: row.model, visible, wide: true },
-    { key: 'color', label: '颜色', value: row.color, visible },
+    ...getLowStockSpecDetail(row, visible),
     { key: 'current_stock', label: '当前库存', value: row.current_stock, visible },
     { key: 'reorder_point', label: '预警库存', value: row.reorder_point, visible },
     { key: 'unit_cost', label: '成本价', value: formatAmount(row.unit_cost), visible },

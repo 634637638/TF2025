@@ -2,9 +2,8 @@
 
 /** 外部报价搜索与结果解析；不读取环境、数据库、Cookie，也不发起网络请求。 */
 class PriceSourceParser {
-  constructor({ htmlParser, baseUrl }) {
+  constructor({ htmlParser }) {
     this.htmlParser = htmlParser
-    this.baseUrl = baseUrl
   }
 
   /**
@@ -96,24 +95,28 @@ class PriceSourceParser {
   /**
    * 构造外部型号检索地址。
    *
-   * 型号代码是跨品牌的数据源标识，外部站点在同时传入 pp=苹果 时会把
-   * A3521 等代码过滤成空表。因此型号检索必须保留空品牌筛选，品牌只在
-   * 返回行的严格匹配阶段校验。
+   * 沿用当前采集源的地址及业务参数。代码检索使用空品牌筛选，
+   * 避免外部站点在同时传入 pp=苹果 时返回空表。
    */
-  buildExternalModelSearchUrl(searchTerm) {
-    const params = new URLSearchParams({
+  buildExternalModelSearchUrl(searchTerm, sourceUrl, brand = '') {
+    const url = new URL(sourceUrl)
+    const defaults = {
       km: '',
-      pp: '',
       network: '',
-      arg_name: String(searchTerm || ''),
       s_jg: '',
       e_jg: '',
       policyid: '',
       tykhgsdm: '',
       isqh: '0'
-    })
+    }
 
-    return `${this.baseUrl}/quoteList.action?${params.toString()}`
+    for (const [name, value] of Object.entries(defaults)) {
+      if (!url.searchParams.has(name)) url.searchParams.set(name, value)
+    }
+    url.searchParams.set('arg_name', String(searchTerm || ''))
+    url.searchParams.set('pp', brand)
+    url.hash = ''
+    return url.href
   }
 }
 

@@ -8,8 +8,12 @@
     destroy-on-close
     @update:model-value="close"
   >
+    <SectionLoading
+      v-if="loading"
+      text="正在查询可划拨库存..."
+    />
     <el-form
-      v-tf-loading="{ active: loading, text: '正在查询可划拨库存...' }"
+      v-else
       class="tf-form-layout tf-form-grid"
       label-position="top"
       @submit.prevent="submit"
@@ -162,6 +166,7 @@
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import SectionLoading from '@/components/SectionLoading.vue'
 import { useSelectLoadMore } from '@/composables/useSelectLoadMore'
 import { unifiedApi } from '@/utils/unified-api'
 import { getAccessoryEntryOptions } from '@/services/reference-options'

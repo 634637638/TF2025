@@ -68,7 +68,7 @@ PC 默认值：
 
 纯图标圆形 `el-button` 使用同一组全局高度变量作为直径：默认及小号 `28px`、大号 `44px`；手机端随对应高度变量一起自适应。公共规则统一保证等宽、等高、无额外内边距和 `50%` 圆角，业务页面不得再修正圆形按钮的宽高或背景形状。破坏性图标操作仍使用删除语义 class，并必须提供 `title`、tooltip 或 `aria-label`。
 
-密集的单行快捷命令使用公共 `tf-button--compact`，不声明 `size`；例如首页快捷方式及其重试入口。此语义在 `_buttons.scss` 直接读取 `--tf-button-small-base-*`：电脑28px高、13px字号、10px水平内边距，手机30～32px高、12px字号、6～8px水平内边距，父表单的small/large不改变此规格；颜色仍由原类型/语义决定。它不替代多行内容、菜单、圆形、链接、表格操作或弹窗底部等已有专用入口。标杆页“紧凑快捷命令”提供实际预览，`test:dialog-widths -- --buttons-only` 核对普通及父表单场景，首页实际按钮由 `test-dashboard-shortcuts.mjs` 核对计算后高度、字号和内边距，不能只凭组件未声明size判断最小尺寸。
+首页快捷方式和销售管理的单行工具栏按钮使用公共 `tf-button--compact`。电脑和平板按钮高度 28px、字号 13px、左右各留 10px。手机端与页面 Tab 共用 `--tf-button-compact-height` 和 `--tf-button-compact-padding-x`，高度 28px、字号 12px、左右各留 6px。可横滑的紧凑工具栏使用 `tf-compact-toolbar`，上下内边距电脑和平板各 4px，手机各 2px。工具栏与页面 Tab 共用横滑、隐藏滚动条和取消边缘回弹的规则。父表单的尺寸声明只控制输入控件，按钮颜色沿用各自语义。标杆页“紧凑快捷命令”提供实际预览，浏览器验证入口见[视觉回归清单](visual-regression-checklist.md)。
 
 轻量的主色快捷入口使用 `tf-button--soft-primary`，可与 `tf-button--compact` 组合。背景、边框、文字及悬停/聚焦直接复用 `--tf-button-primary-soft-*`，呈现浅蓝底、蓝色细边框和同色图文；只改变表面，不另设尺寸。不要同时声明实心类型或依赖 `plain` 覆盖公共实心样式。标杆页“浅色快捷命令”和首页快捷方式复用此入口；浏览器核对计算后的背景、边框、文字和图标颜色，页面不得复制浅色配色。
 

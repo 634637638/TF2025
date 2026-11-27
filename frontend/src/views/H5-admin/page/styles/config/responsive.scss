@@ -2,19 +2,11 @@
 /* 响应式设计 */
 @media (max-width: 767px) {
   .shop-config-page {
-    padding: 0;
-    width: 100%;
     overflow: hidden;
-  }
-
-  .config-content {
-    max-width: 100%;
-    width: 100%;
   }
 
   .config-section {
     padding: 14px;
-    margin-bottom: 12px;
     border-radius: 14px;
     border: 1px solid rgba(226, 232, 240, 0.88);
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);

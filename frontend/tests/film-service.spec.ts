@@ -136,6 +136,7 @@ describe('按当前手机办理贴膜及跨店历史', () => {
     expect(mocks.checkout).toHaveBeenCalledWith(expect.objectContaining({ store_id: 2, operator_id: 7, phones: [], accessories: [],
       film_service: { customer_id: 9, phone_id: 11, mode: 'free', quantity: 3, accessory_id: 55 }, payment_info: expect.objectContaining({ payment_amount: 0 }) }))
     expect(mocks.success).toHaveBeenCalledOnce()
+    expect(wrapper.emitted('success')).toHaveLength(1)
     expect(mocks.context).toHaveBeenLastCalledWith(9, 1, 10, expect.any(AbortSignal), 11)
     expect(start(wrapper).text()).toBe('贴膜完成')
     expect(start(wrapper).attributes('disabled')).toBeDefined()
@@ -148,7 +149,10 @@ describe('按当前手机办理贴膜及跨店历史', () => {
     wrappers.push(wrapper)
     const content = wrapper.findComponent(QueryDetailContent)
     await content.findAll('button').find(button => button.text() === '贴膜')!.trigger('click'); await flushPromises()
-    expect(wrapper.findComponent({ name: 'FilmServiceDialog' }).props()).toMatchObject({ customer, phoneId: 1 })
+    const film = wrapper.getComponent({ name: 'FilmServiceDialog' })
+    expect(film.props()).toMatchObject({ customer, phoneId: 1 })
+    film.vm.$emit('success')
+    expect(wrapper.emitted('film-success')).toHaveLength(1)
     access.film = false
     await wrapper.setProps({ detailItem: { ...item, 基本信息: { ...item.基本信息, phone_id: 2 } } })
     content.vm.$emit('film'); await flushPromises()
@@ -190,6 +194,7 @@ describe('按当前手机办理贴膜及跨店历史', () => {
       initialFilmProduct: expect.objectContaining({ id: 55 }),
       defaults: { customer_name: customer.name, customer_phone: customer.phone, store_id: 2 } })
     wrapper.findComponent(Checkout).vm.$emit('success'); await flushPromises()
+    expect(wrapper.emitted('success')).toHaveLength(1)
     expect(mocks.context).toHaveBeenLastCalledWith(9, 1, 10, expect.any(AbortSignal), 11)
   })
   it('按全部、免费和收费筛选历史，筛选数量保持全量口径并重置为第一页', async () => {

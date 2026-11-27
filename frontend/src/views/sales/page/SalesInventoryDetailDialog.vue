@@ -83,7 +83,7 @@
       <div class="detail-table-wrapper">
         <div class="detail-header">
           <h4>设备列表</h4>
-          <span class="record-count">共 {{ items.length }} 条记录</span>
+          <span class="record-count">共 {{ items.length }} 条</span>
         </div>
         <div class="table-responsive inventory-detail-table-container">
           <el-table

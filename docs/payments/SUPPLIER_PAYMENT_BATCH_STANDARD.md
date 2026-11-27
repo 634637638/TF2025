@@ -76,6 +76,8 @@ npm run type-check
 
 响应汇总 `total/total_quantity/total_amount/paid_amount/unpaid_amount` 只针对当前筛选条件和授权整单；结束日期包含当天全天。列表不传销售状态，查询不依赖销售表或当前商品成本。前端使用 `useLatestRequest` 和无缓存读取；提交中禁止重复操作，失败保留草稿，同内容重试沿用请求标识，成功重新读取原单状态。
 
+商品采购主表和打款历史首次读取时在空表显示公共 `TableLoadingRow`，后续刷新沿用区域遮罩。见[全局加载规范](../frontend/global-loading-standard.md)。
+
 统一字段模块为 `payments_supplierphonepaymentsview`，新增 `purchase.*` 资料字段，共用原 `payment.*` 的供应商、店铺、品牌、型号、颜色、成本和付款字段。隐藏成本时单价、总额、分类汇总及历史金额均脱敏；隐藏打款状态时同时隐藏已付/未付金额汇总，禁止使用隐藏字段筛选；登记必须能查看供应商、成本、状态和操作字段，另外要求对应填写字段可见。后端通过公共 `FieldAccessService` 独立执行，前端按钮隐藏不是授权边界。
 
 采购列表、付款历史、打款登记及撤销均使用严格字段读取，与原采购退供核对保持一致。角色/字段查询故障或存储配置损坏时停止处理，不按完整字段权限继续，也不返回采购或付款数据；故障边界及正式回归见[字段权限指南](../frontend/field-permission-guide.md#后端边界)。

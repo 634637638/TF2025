@@ -285,7 +285,7 @@
           <div class="section-title">
             <i class="fas fa-tags" />
             <span>报价列表</span>
-            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            <span class="record-count">共 {{ pagination.total }} 条</span>
             <div class="section-actions batch-actions-buttons">
               <span
                 v-if="selectedPriceIds.length > 0"
@@ -1696,7 +1696,7 @@
 
           <template v-else>
             <div class="inventory-header">
-              <span class="record-count">共 {{ inventoryTotal }} 条记录</span>
+              <span class="record-count">共 {{ inventoryTotal }} 条</span>
             </div>
             <el-table
               :data="inventoryData"
@@ -2757,20 +2757,23 @@ const handleToggleShowPrice = async (row: PriceListRow) => {
 const handleSync = async () => {
   if (syncing.value) return
 
-  if (!canEdit.value) {
-    handleNoPermission('edit')
+  if (!canSync.value) {
+    handleNoPermission('sync')
     return
   }
 
   syncing.value = true
   try {
     const res = await triggerSync('all')
-    if (res.success) {
-      globalNotifications.success(`全部来源同步完成：共${res.data.total}条，成功${res.data.success}条`)
-      fetchPriceList()
-    }
+    if (!res.success || !res.data) return
+    await fetchPriceList()
+    const failedSources = res.data.sources.filter(source => !source.success).length
+    const summary = `共 ${res.data.total} 条，成功 ${res.data.success} 条`
+    if (!res.data.sources.length) globalNotifications.warning('尚未配置价格采集来源')
+    else if (failedSources || res.data.failed) globalNotifications.warning(`同步结束，${summary}，请查看同步日志`)
+    else globalNotifications.success(`全部来源同步完成，${summary}`)
   } catch (error) {
-    globalNotifications.error('同步失败')
+    logger.error('同步报价失败:', error)
   } finally {
     syncing.value = false
   }

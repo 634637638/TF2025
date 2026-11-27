@@ -21,7 +21,7 @@
           <div class="search-step-intro">
             <h3>步骤1：搜索设备</h3>
             <p class="step-hint">
-              输入IMEI或序列号，在搜索结果中选择正确的设备
+              输入IMEI或序列号检索可国补的设备
             </p>
           </div>
 
@@ -34,6 +34,14 @@
               placeholder="输入IMEI或序列号..."
               @keyup.enter="searchPhones"
             />
+            <SearchActionButton
+              native-type="button"
+              :disabled="!searchIdentifier"
+              :loading="searching"
+              @click="searchPhones"
+            >
+              搜索
+            </SearchActionButton>
           </div>
 
           <div
@@ -226,7 +234,7 @@
               class="info-group"
             >
               <h4>设备信息</h4>
-              <div class="info-row-inline">
+              <div class="info-row-inline info-row-inline--two-column">
                 <div
                   v-if="canViewField('brand')"
                   class="inline-item"
@@ -262,7 +270,7 @@
               >
                 <div class="inline-item">
                   <span class="info-label">IMEI1:</span>
-                  <span class="info-value">{{ phoneDetail.imei1 }}</span>
+                  <span class="info-value">{{ phoneDetail.imei1 || '未提供' }}</span>
                 </div>
               </div>
               <div
@@ -277,7 +285,7 @@
                       v-identifier-input="'imei'"
                       type="text"
                       class="form-input-inline"
-                      placeholder="请输入IMEI2"
+                      placeholder="无SIM2时可不填写"
                     />
                   </div>
                 </div>
@@ -298,7 +306,7 @@
               class="info-group"
             >
               <h4>销售信息</h4>
-              <div class="info-row-inline">
+              <div class="info-row-inline info-row-inline--two-column">
                 <div
                   v-if="canViewField('sale_price')"
                   class="inline-item"
@@ -315,7 +323,7 @@
                 </div>
                 <div
                   v-if="canViewField('sale_time')"
-                  class="inline-item"
+                  class="inline-item inline-item--full-row"
                 >
                   <span class="info-label">销售时间:</span>
                   <span class="info-value">{{ formatDate(phoneDetail.sale_time) }}</span>
@@ -383,7 +391,7 @@
                         class="photo-upload-btn"
                       >
                         <i class="fas fa-camera" />
-                        <span>国补照片上传</span>
+                        <span>上传图片</span>
                       </el-button>
                     </el-upload>
                   </div>
@@ -469,14 +477,6 @@
           >
             取消
           </el-button>
-          <SearchActionButton
-            type="primary"
-            :disabled="!searchIdentifier"
-            :loading="searching"
-            @click="searchPhones"
-          >
-            搜索
-          </SearchActionButton>
           <el-button
             v-if="selectedDevice"
             type="success"
@@ -938,11 +938,6 @@ const submitApply = async () => {
   applyForm.handler_name = normalizePersonName(applyForm.handler_name || '', 20)
   applyForm.handler_phone = normalizePhoneDigits(applyForm.handler_phone || '')
   applyForm.handler_idcard = normalizeIdCard(applyForm.handler_idcard || '')
-
-  if (!applyForm.imei2 || applyForm.imei2.trim() === '') {
-    globalNotifications.warning('请输入IMEI2')
-    return
-  }
 
   if (applyForm.has_different_handler) {
     const missingHandlerField =

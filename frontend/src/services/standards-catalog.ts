@@ -44,7 +44,7 @@ export interface StandardCatalogItem {
 
 const titles: Record<string, string> = {
   'admin-table-standards.md': '后台卡片与表格',
-  'admin-stat-card-color-standard.md': '统计卡片颜色',
+  'admin-stat-card-color-standard.md': '后台统计卡片',
   'button-standards.md': '按钮',
   'color-token-standard.md': '颜色令牌',
   'download-security-standard.md': '安全下载',
@@ -202,7 +202,7 @@ const summaryByCategory: Record<StandardCategory, string> = {
 
 const summaryByDocument: Record<string, string> = {
   'admin-table-standards.md': '后台表格复用公共样式；手机双击打开查看详情，业务操作只在详情底部展示。',
-  'admin-stat-card-color-standard.md': '统计卡片按指标语义使用统一颜色，避免同类数据在不同页面颜色不一致。',
+  'admin-stat-card-color-standard.md': '后台统计卡片统一响应式列数、等高、横向滚动和指标语义色。',
   'button-standards.md': '页面工具栏、表格操作、弹窗和手机端按钮统一使用公共尺寸与语义颜色。',
   'color-token-standard.md': '全局颜色按基础令牌、组件语义色和业务状态色分层维护。',
   'component-adoption-standard.md': '后台页面优先采用统一搜索、分页、弹窗、空状态和 Loading 公共组件。',

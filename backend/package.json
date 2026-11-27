@@ -37,6 +37,7 @@
     "migrate:supplier-business-scope": "node scripts/migrate-supplier-business-scope.js",
     "migrate:brand-business-scope": "node scripts/migrate-brand-business-scope.js",
     "migrate:subsidy-photos": "node scripts/migrate-subsidy-photos.js",
+    "migrate:subsidy-identifier-nullability": "node scripts/migrate-subsidy-identifier-nullability.js",
     "migrate:schema": "node scripts/migrate-schema.js",
     "migrate:invoice-sequences": "node scripts/migrate-invoice-sequences.js",
     "migrate:site-announcements": "node scripts/migrate-site-announcements.js",

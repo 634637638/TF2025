@@ -2,6 +2,10 @@
 
 更新时间：2026-08-28
 
+### 2026-11-26 库存预警规格字段
+
+库存分析预警响应新增已登记的 `memory` 和 `condition_label`，`model` 仅返回型号原名。字段取自现有预警查询中的内存名称和成色范围，沿用现有数据库结构。[接口口径](../backend/phone-stock-warning.md#接口行为)
+
 ### 2026-11-16 商品模板适配品牌摘要
 
 只读响应字段 `compatible_brand_names` 已登记到 `accessories.responseFields`，共享类型使用 `AccessoryRecord`；列表、详情和条码查询从现有适配型号关系聚合品牌，沿用 `basic_info.model_name` 脱敏。原 `compatible_model_names` 保留完整型号供悬停/触摸提示，展示行为与回归入口见[配件接口契约](../backend/accessory-entry.md#权限边界)。本次无数据库物理字段变化，不迁移或回填业务数据；隔离测试不能替代真实云端业务验收。
@@ -516,6 +520,8 @@ npm run test:db
 > 配件模块与共享 `phones`/`sales` 模块的物理列迁移均已完成。
 
 ## 维护规则
+
+综合查询「调货划拨」卡片的 `peer_transfer_count`、`supplier_proxy_count`，以及「在库数量」卡片的 `in_stock_new_count`、`in_stock_used_count`，已登记在 query 响应契约。未选状态时，`new_count`、`used_count` 统计已售成色并与 `sold_count` 对齐，忽略成色缺失记录；选中状态时，三字段联动统计该状态的成色已知合计、全新和二手数量。各字段查询时使用现有状态及成色列聚合，无需数据库迁移。
 
 退库明细字段已登记到 `backend/scripts/config/field-contracts.json` 的 query 契约和真实审计源；`reversal_date` 统一用于创建、编辑、查询及筛选，`created_at` 保留实际操作时间。2026-11-09 获得用户授权、完成目标表备份后，使用 `backend/scripts/migrate-return-stock-details.js` 在当前配置的云端数据库新增五个可空字段，登记为 `completed / migrated_and_verified`。结构回读符合预期，历史记录迁移前后均为15条，全部旧字段内容校验一致，五个新列均为空；重复预览为 `already_ready`，真实仓储列表及关键词只读查询通过。未创建真实退库交易，未代替线上代码部署或手机验收。备份位置、升级及回滚边界见[退库与交易撤销](../business/inventory/transaction-reversal.md)。
 

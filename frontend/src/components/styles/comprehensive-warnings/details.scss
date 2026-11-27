@@ -224,18 +224,6 @@
           }
         }
 
-        // 手机库存预警表格优化
-        &:has(.el-table) {
-          overflow-x: auto;
-
-          .el-table {
-            min-width: 600px;
-
-            @media (min-width: 1200px) {
-              min-width: 100%;
-            }
-          }
-        }
       }
     }
   }

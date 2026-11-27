@@ -1,364 +1,328 @@
 <template>
-  <div class="customer-analytics">
+  <div class="customer-analytics admin-page-content">
     <!-- 客户概览卡片 -->
-    <el-row
-      v-if="canViewCustomerField('overview_stats')"
-      :gutter="24"
-      class="overview-cards"
+    <Teleport
+      :to="props.overviewTarget || 'body'"
+      :disabled="!props.overviewTarget"
     >
-      <el-col
-        v-for="card in overviewCards"
-        :key="card.title"
-        :xs="12"
-        :sm="6"
+      <div
+        v-if="canViewCustomerField('overview_stats')"
+        class="stats-cards"
+        role="region"
+        aria-label="客户分析统计"
+        tabindex="0"
       >
-        <el-card
-          class="overview-card"
-          :class="card.type"
-        >
-          <div class="card-content">
-            <div class="card-icon">
-              <el-icon><component :is="card.icon" /></el-icon>
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                {{ card.title }}
-              </div>
-              <div class="card-value">
-                {{ card.value }}
-              </div>
-              <div
-                class="card-trend"
-                :class="card.trend"
-              >
-                <el-icon><ArrowUp v-if="card.trend === 'up'" /><ArrowDown v-else /></el-icon>
-                {{ card.change }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        <AnalyticsStatCard
+          v-for="card in overviewCards"
+          :key="card.title"
+          class="stat-card"
+          :class="`stat-card--${card.type}`"
+          :label="card.title"
+          :value="card.value"
+          :icon="card.icon"
+          :details="[{ value: card.change, icon: card.trend > 0 ? ArrowUp : card.trend < 0 ? ArrowDown : Minus }]"
+        />
+      </div>
+    </Teleport>
 
     <!-- 图表区域 -->
-    <el-row
+    <div
       v-if="showCustomerPrimaryCharts"
-      :gutter="24"
-      class="chart-section"
+      class="analytics-panel-grid analytics-panel-grid--wide"
     >
       <!-- 客户增长趋势 -->
-      <el-col
+      <el-card
         v-if="canViewCustomerField('growth_chart')"
-        :xs="24"
-        :lg="12"
+        class="chart-card"
       >
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>客户增长趋势</span>
-              <el-radio-group
-                v-model="growthPeriod"
-                class="tf-state-selector"
-                size="small"
-              >
-                <el-radio-button value="7d">
-                  7天
-                </el-radio-button>
-                <el-radio-button value="30d">
-                  30天
-                </el-radio-button>
-                <el-radio-button value="90d">
-                  90天
-                </el-radio-button>
-              </el-radio-group>
-            </div>
-          </template>
-          <div
-            ref="growthChartRef"
-            class="chart-container"
-          />
-        </el-card>
-      </el-col>
+        <template #header>
+          <div class="card-header">
+            <span>客户增长趋势</span>
+            <el-radio-group
+              v-model="growthPeriod"
+              class="tf-state-selector"
+              size="small"
+            >
+              <el-radio-button value="7d">
+                7天
+              </el-radio-button>
+              <el-radio-button value="30d">
+                30天
+              </el-radio-button>
+              <el-radio-button value="90d">
+                90天
+              </el-radio-button>
+            </el-radio-group>
+          </div>
+        </template>
+        <div
+          ref="growthChartRef"
+          class="chart-container"
+        />
+      </el-card>
 
       <!-- 客户细分 -->
-      <el-col
+      <el-card
         v-if="canViewCustomerField('segment_chart')"
-        :xs="24"
-        :lg="12"
+        class="chart-card"
       >
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>客户价值细分</span>
-              <el-tooltip content="基于RFM模型的客户价值分析">
-                <el-icon><InfoFilled /></el-icon>
-              </el-tooltip>
-            </div>
-          </template>
-          <div
-            ref="segmentChartRef"
-            class="chart-container"
-          />
-        </el-card>
-      </el-col>
-    </el-row>
+        <template #header>
+          <div class="card-header">
+            <span>客户价值细分</span>
+            <el-tooltip content="基于RFM模型的客户价值分析">
+              <el-icon><InfoFilled /></el-icon>
+            </el-tooltip>
+          </div>
+        </template>
+        <div
+          ref="segmentChartRef"
+          class="chart-container"
+        />
+      </el-card>
+    </div>
 
-    <el-row
+    <div
       v-if="showCustomerSecondaryCharts"
-      :gutter="24"
-      class="chart-section"
+      class="analytics-panel-grid analytics-panel-grid--wide analytics-panel-grid--2-1"
     >
       <!-- 留存率分析 -->
-      <el-col
+      <el-card
         v-if="canViewCustomerField('retention_chart')"
-        :xs="24"
-        :lg="16"
+        class="chart-card"
       >
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>客户留存率分析</span>
-              <el-select
-                v-model="retentionCohort"
-                size="small"
-                style="width: 120px"
-              >
-                <el-option
-                  label="按注册月"
-                  value="monthly"
-                />
-                <el-option
-                  label="按注册季"
-                  value="quarterly"
-                />
-                <el-option
-                  label="按注册年"
-                  value="yearly"
-                />
-              </el-select>
-            </div>
-          </template>
-          <div
-            ref="retentionChartRef"
-            class="chart-container"
-          />
-        </el-card>
-      </el-col>
+        <template #header>
+          <div class="card-header">
+            <span>客户留存率分析</span>
+            <el-select
+              v-model="retentionCohort"
+              size="small"
+              style="width: 120px"
+            >
+              <el-option
+                label="按注册月"
+                value="monthly"
+              />
+              <el-option
+                label="按注册季"
+                value="quarterly"
+              />
+              <el-option
+                label="按注册年"
+                value="yearly"
+              />
+            </el-select>
+          </div>
+        </template>
+        <div
+          ref="retentionChartRef"
+          class="chart-container"
+        />
+      </el-card>
 
       <!-- 客户活跃度 -->
-      <el-col
+      <el-card
         v-if="canViewCustomerField('activity_chart')"
-        :xs="24"
-        :lg="8"
+        class="chart-card"
       >
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>客户活跃度分布</span>
-            </div>
-          </template>
-          <div
-            ref="activityChartRef"
-            class="chart-container"
-          />
-        </el-card>
-      </el-col>
-    </el-row>
+        <template #header>
+          <div class="card-header">
+            <span>客户活跃度分布</span>
+          </div>
+        </template>
+        <div
+          ref="activityChartRef"
+          class="chart-container"
+        />
+      </el-card>
+    </div>
 
     <!-- 客户列表和分析 -->
-    <el-row
+    <div
       v-if="showCustomerTableSection"
-      :gutter="24"
-      class="table-section admin-panel admin-table-panel"
+      class="analytics-panel-grid analytics-panel-grid--wide analytics-panel-grid--7-5 customer-table-section"
     >
       <!-- 高价值客户 -->
-      <el-col
+      <el-card
         v-if="canViewCustomerField('customer_list')"
-        :xs="24"
-        :lg="14"
+        class="table-card"
       >
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>高价值客户</span>
-              <div class="header-actions">
-                <el-input
-                  v-model="customerSearch"
-                  placeholder="搜索客户..."
-                  prefix-icon="Search"
-                  size="small"
-                  clearable
-                  style="width: 200px"
-                />
-                <el-button
-                  type="success"
-                  @click="exportCustomers"
-                >
-                  <el-icon><Download /></el-icon>
-                  导出
-                </el-button>
-              </div>
-            </div>
-          </template>
-
-          <el-table
-            v-table-double-tap="mobileDetailTapOptions"
-            v-tf-loading="{ active: customerLoading, text: '正在刷新客户分析...' }"
-            class="data-table"
-            :data="filteredCustomers"
-            stripe
-            :max-height="400"
-            @row-dblclick="mobileDetailDoubleClick"
-          >
-            <template #empty>
-              <TableLoadingRow
-                v-if="customerLoading"
-                mode="block"
-                text="正在读取客户分析..."
+        <template #header>
+          <div class="card-header">
+            <span>高价值客户</span>
+            <div class="header-actions">
+              <el-input
+                v-model="customerSearch"
+                placeholder="搜索客户..."
+                prefix-icon="Search"
+                size="small"
+                clearable
+                style="width: 200px"
               />
-              <DataEmptyState
-                v-else
-                description="暂无客户数据"
-              />
-            </template>
-
-            <el-table-column
-              prop="name"
-              label="客户姓名"
-              min-width="100"
-            />
-            <el-table-column
-              prop="phone"
-              label="手机号"
-              width="120"
-            />
-            <el-table-column
-              prop="segment"
-              label="客户细分"
-              width="100"
-            >
-              <template #default="{ row }">
-                <el-tag
-                  :type="getSegmentTagType(row.segment)"
-                  size="small"
-                >
-                  {{ getSegmentText(row.segment) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column
-              prop="orders_count"
-              label="订单数"
-              width="80"
-              align="right"
-            />
-            <el-table-column
-              prop="total_amount"
-              label="消费金额"
-              width="110"
-              align="right"
-            >
-              <template #default="{ row }">
-                ¥{{ formatMoney(row.total_amount) }}
-              </template>
-            </el-table-column>
-            <el-table-column
-              prop="last_order_date"
-              label="最后消费"
-              width="110"
-            >
-              <template #default="{ row }">
-                {{ formatDate(row.last_order_date) }}
-              </template>
-            </el-table-column>
-            <el-table-column
-              v-if="!isMobile && canViewCustomerField('customer_detail')"
-              label="操作"
-              :width="$getActionColumnWidth(['查看详情'])"
-              class-name="actions-column"
-            >
-              <template #default="{ row }">
-                <div class="action-buttons">
-                  <el-button
-                    type="primary"
-                    link
-                    @click.stop="viewCustomerDetail(row)"
-                  >
-                    查看详情
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="table-footer">
-            <Pagination
-              v-model:current="customerPage"
-              v-model:page-size="customerPageSize"
-              :page-sizes="[10, 20, 50]"
-              :total="customerTotal"
-              :show-range="true"
-              @change="handleCustomerPageChange"
-            />
-          </div>
-        </el-card>
-      </el-col>
-
-      <!-- 客户洞察 -->
-      <el-col
-        v-if="canViewCustomerField('behavior_insights')"
-        :xs="24"
-        :lg="10"
-      >
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>客户行为洞察</span>
               <el-button
-                class="tf-button--refresh"
-                link
-                :loading="loading"
-                :disabled="loading"
-                @click="refreshInsights"
+                type="success"
+                @click="exportCustomers"
               >
-                <el-icon><Refresh /></el-icon>
-                刷新
+                <el-icon><Download /></el-icon>
+                导出
               </el-button>
             </div>
+          </div>
+        </template>
+
+        <el-table
+          v-table-double-tap="mobileDetailTapOptions"
+          v-tf-loading="{ active: customerLoading, text: '正在刷新客户分析...' }"
+          class="data-table"
+          :data="filteredCustomers"
+          stripe
+          :max-height="400"
+          @row-dblclick="mobileDetailDoubleClick"
+        >
+          <template #empty>
+            <TableLoadingRow
+              v-if="customerLoading"
+              mode="block"
+              text="正在读取客户分析..."
+            />
+            <DataEmptyState
+              v-else
+              description="暂无客户数据"
+            />
           </template>
 
-          <div class="insights-list">
-            <div
-              v-for="insight in customerInsights"
-              :key="insight.id"
-              class="insight-item"
+          <el-table-column
+            prop="name"
+            label="客户姓名"
+            min-width="100"
+          />
+          <el-table-column
+            prop="phone"
+            label="手机号"
+            width="120"
+          />
+          <el-table-column
+            prop="segment"
+            label="客户细分"
+            width="100"
+          >
+            <template #default="{ row }">
+              <el-tag
+                :type="getSegmentTagType(row.segment)"
+                size="small"
+              >
+                {{ getSegmentText(row.segment) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="orders_count"
+            label="订单数"
+            width="80"
+            align="right"
+          />
+          <el-table-column
+            prop="total_amount"
+            label="消费金额"
+            width="110"
+            align="right"
+          >
+            <template #default="{ row }">
+              ¥{{ formatMoney(row.total_amount) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="last_order_date"
+            label="最后消费"
+            width="110"
+          >
+            <template #default="{ row }">
+              {{ formatDate(row.last_order_date) }}
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="!isMobile && canViewCustomerField('customer_detail')"
+            label="操作"
+            :width="$getActionColumnWidth(['查看详情'])"
+            class-name="actions-column"
+          >
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <el-button
+                  type="primary"
+                  link
+                  @click.stop="viewCustomerDetail(row)"
+                >
+                  查看详情
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="table-footer">
+          <Pagination
+            v-model:current="customerPage"
+            v-model:page-size="customerPageSize"
+            :page-sizes="[10, 20, 50]"
+            :total="customerTotal"
+            :show-range="true"
+            @change="handleCustomerPageChange"
+          />
+        </div>
+      </el-card>
+
+      <!-- 客户洞察 -->
+      <el-card
+        v-if="canViewCustomerField('behavior_insights')"
+        class="table-card"
+      >
+        <template #header>
+          <div class="card-header">
+            <span>客户行为洞察</span>
+            <el-button
+              class="tf-button--refresh"
+              link
+              :loading="loading"
+              :disabled="loading"
+              @click="refreshInsights"
             >
-              <div class="insight-header">
-                <el-icon
-                  class="insight-icon"
-                  :class="insight.type"
-                >
-                  <component :is="insight.icon" />
-                </el-icon>
-                <span class="insight-title">{{ insight.title }}</span>
-              </div>
-              <div class="insight-content">
-                {{ insight.content }}
-              </div>
-              <div class="insight-footer">
-                <span
-                  class="insight-impact"
-                  :class="insight.impact"
-                >
-                  {{ insight.impact_text }}
-                </span>
-                <span class="insight-date">{{ formatDate(insight.date) }}</span>
-              </div>
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </el-button>
+          </div>
+        </template>
+
+        <div class="insights-list">
+          <div
+            v-for="insight in customerInsights"
+            :key="insight.id"
+            class="insight-item"
+          >
+            <div class="insight-header">
+              <el-icon
+                class="insight-icon"
+                :class="insight.type"
+              >
+                <component :is="insight.icon" />
+              </el-icon>
+              <span class="insight-title">{{ insight.title }}</span>
+            </div>
+            <div class="insight-content">
+              {{ insight.content }}
+            </div>
+            <div class="insight-footer">
+              <span
+                class="insight-impact"
+                :class="insight.impact"
+              >
+                {{ insight.impact_text }}
+              </span>
+              <span class="insight-date">{{ formatDate(insight.date) }}</span>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </el-card>
+    </div>
 
     <!-- 客户详情对话框 -->
     <MobileDialog
@@ -435,9 +399,10 @@
 </template>
 
 <script setup lang="ts">
+import AnalyticsStatCard from './AnalyticsStatCard.vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
-import { ref, shallowRef, computed, onUnmounted, nextTick, markRaw, watch } from 'vue'
+import { ref, shallowRef, computed, onUnmounted, nextTick, watch } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
@@ -452,6 +417,7 @@ import {
   Star,
   ArrowUp,
   ArrowDown,
+  Minus,
   InfoFilled,
   Download,
   Refresh
@@ -490,38 +456,38 @@ const customerPageSize = ref(20)
 const customerTotal = ref(0)
 
 // 概览数据
-const overviewCards = ref([
+const overviewCards = shallowRef([
   {
     title: '总客户数',
     value: '0',
     change: '0%',
-    trend: 'up',
+    trend: 0,
     type: 'primary',
-    icon: markRaw(User)
+    icon: User
   },
   {
     title: '新增客户',
     value: '0',
     change: '0%',
-    trend: 'up',
+    trend: 0,
     type: 'success',
-    icon: markRaw(User)
+    icon: User
   },
   {
     title: '活跃客户',
     value: '0',
     change: '0%',
-    trend: 'up',
+    trend: 0,
     type: 'warning',
-    icon: markRaw(TrendCharts)
+    icon: TrendCharts
   },
   {
     title: '高价值客户',
     value: '0',
     change: '0%',
-    trend: 'up',
+    trend: 0,
     type: 'danger',
-    icon: markRaw(Star)
+    icon: Star
   }
 ])
 
@@ -707,7 +673,7 @@ const loadOverview = async (showLoadingState = true) => {
         title: '总客户数',
         value: (data.total_customers || 0).toLocaleString('zh-CN'),
         change: `${(data.customers_growth || 0) > 0 ? '+' : ''}${data.customers_growth || 0}%`,
-        trend: (data.customers_growth || 0) > 0 ? 'up' : 'down',
+        trend: Math.sign(data.customers_growth || 0),
         type: 'primary',
         icon: User
       },
@@ -715,7 +681,7 @@ const loadOverview = async (showLoadingState = true) => {
         title: '新增客户',
         value: (data.new_customers || 0).toLocaleString('zh-CN'),
         change: `${(data.new_customers_growth || 0) > 0 ? '+' : ''}${data.new_customers_growth || 0}%`,
-        trend: (data.new_customers_growth || 0) > 0 ? 'up' : 'down',
+        trend: Math.sign(data.new_customers_growth || 0),
         type: 'success',
         icon: User
       },
@@ -723,7 +689,7 @@ const loadOverview = async (showLoadingState = true) => {
         title: '活跃客户',
         value: (data.active_customers || 0).toLocaleString('zh-CN'),
         change: `${(data.active_customers_growth || 0) > 0 ? '+' : ''}${data.active_customers_growth || 0}%`,
-        trend: (data.active_customers_growth || 0) > 0 ? 'up' : 'down',
+        trend: Math.sign(data.active_customers_growth || 0),
         type: 'warning',
         icon: TrendCharts
       },
@@ -731,7 +697,7 @@ const loadOverview = async (showLoadingState = true) => {
         title: '高价值客户',
         value: (data.high_value_customers || 0).toLocaleString('zh-CN'),
         change: `${(data.high_value_customers_growth || 0) > 0 ? '+' : ''}${data.high_value_customers_growth || 0}%`,
-        trend: (data.high_value_customers_growth || 0) > 0 ? 'up' : 'down',
+        trend: Math.sign(data.high_value_customers_growth || 0),
         type: 'danger',
         icon: Star
       }
@@ -1393,90 +1359,25 @@ const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDe
 
 <style lang="scss" scoped>
 .customer-analytics {
-  padding: 20px;
-
-  .overview-cards {
-    margin-bottom: 24px;
-
-    .overview-card {
-      .card-content {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-
-        .card-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: var(--tf-type-scale-24);
-          color: white;
-        }
-
-        .card-info {
-          flex: 1;
-
-          .card-title {
-            font-size: var(--tf-type-scale-14);
-            color: var(--color-info);
-            margin-bottom: 4px;
-          }
-
-          .card-value {
-            font-size: var(--tf-type-scale-24);
-            font-weight: bold;
-            color: var(--color-text-primary);
-            margin-bottom: 4px;
-          }
-
-          .card-trend {
-            font-size: var(--tf-type-scale-12);
-            display: flex;
-            align-items: center;
-            gap: 2px;
-
-            &.up {
-              color: var(--color-success);
-            }
-
-            &.down {
-              color: var(--color-danger);
-            }
-          }
-        }
-      }
-
-      &.primary .card-icon {
-        background: linear-gradient(135deg, var(--color-primary), var(--tf-color-blue-element-light));
-      }
-
-      &.success .card-icon {
-        background: linear-gradient(135deg, var(--color-success), var(--tf-color-green-element-light));
-      }
-
-      &.warning .card-icon {
-        background: linear-gradient(135deg, var(--color-warning), var(--tf-color-amber-muted));
-      }
-
-      &.danger .card-icon {
-        background: linear-gradient(135deg, var(--color-danger), var(--tf-color-red-element-light));
-      }
-    }
-  }
-
-  .chart-section {
-    margin-bottom: 24px;
-  }
-
   .chart-card {
+    display: flex;
+    flex-direction: column;
     height: 400px;
+
+    :deep(.el-card__header) {
+      flex: 0 0 auto;
+    }
+
+    :deep(.el-card__body) {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
 
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      min-height: var(--tf-button-height-small);
 
       .header-actions {
         display: flex;
@@ -1485,11 +1386,11 @@ const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDe
     }
 
     .chart-container {
-      height: 320px;
+      height: 100%;
     }
   }
 
-  .table-section {
+  .customer-table-section {
     .header-actions {
       display: flex;
       gap: 12px;
@@ -1605,37 +1506,11 @@ const { doubleTapOptions: mobileDetailTapOptions, handleRowDoubleClick: mobileDe
 // 响应式设计
 @media (max-width: 767px) {
   .customer-analytics {
-    padding: 12px;
-
-    .overview-cards {
-      .overview-card {
-        .card-content {
-          gap: 12px;
-
-          .card-icon {
-            width: 40px;
-            height: 40px;
-            font-size: var(--tf-type-scale-20);
-          }
-
-          .card-info {
-            .card-value {
-              font-size: var(--tf-type-scale-20);
-            }
-          }
-        }
-      }
-    }
-
     .chart-card {
       height: 350px;
-
-      .chart-container {
-        height: 270px;
-      }
     }
 
-    .table-section {
+    .customer-table-section {
       .header-actions {
         flex-direction: column;
         gap: 8px;

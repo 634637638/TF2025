@@ -50,6 +50,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="供应商统计"
+          tabindex="0"
         >
           <div
             v-if="canViewField('stats_total_suppliers')"
@@ -167,7 +170,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             供应商列表
-            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            <span class="record-count">共 {{ pagination.total }} 条</span>
           </div>
 
           <div class="table-responsive">

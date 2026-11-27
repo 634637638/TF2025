@@ -5,6 +5,12 @@ export const deviceSerialPattern = new RegExp(phoneSerial, 'i')
 export const deviceIMEIPattern = new RegExp(imei)
 export const isDeviceSerial = (value: unknown): value is string => typeof value === 'string' && deviceSerialPattern.test(value)
 export const isDeviceIMEI = (value: unknown): value is string => typeof value === 'string' && deviceIMEIPattern.test(value)
+export const isNoIMEIDeviceIdentifier = (imeiValue: unknown, serialValue: unknown): boolean => {
+  if (typeof imeiValue !== 'string' || typeof serialValue !== 'string') return false
+  const normalizedIMEI = imeiValue.trim().toUpperCase()
+  const normalizedSerial = serialValue.trim().toUpperCase()
+  return Boolean(normalizedIMEI) && normalizedIMEI === normalizedSerial && isDeviceSerial(normalizedSerial)
+}
 export const normalizeDeviceSerial = (value: string | undefined): string => value?.toUpperCase() ?? ''
 export const normalizeDeviceIMEI = (value: string | undefined, isNoIMEIMode: boolean | undefined): string => (
   isNoIMEIMode ? normalizeDeviceSerial(value) : value ?? ''

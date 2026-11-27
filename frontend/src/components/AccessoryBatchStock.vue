@@ -176,8 +176,13 @@
         </template>
       </el-table-column>
       <template #empty>
+        <TableLoadingRow
+          v-if="loading"
+          mode="block"
+          text="正在核对当前批次库存..."
+        />
         <DataEmptyState
-          v-if="!loading"
+          v-else
           description="暂无剩余批次库存"
           size="compact"
         />
@@ -222,6 +227,7 @@
 </template>
 
 <script setup lang="ts">
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { computed, ref, watch } from 'vue'
 import { getAccessoryBatchStock } from '@/api/accessory-inventory'
 import AccessoryInventoryAdjustmentModal from '@/components/AccessoryInventoryAdjustmentModal.vue'

@@ -3,7 +3,7 @@
     <div class="section-title">
       <i class="fas fa-list" />
       库存列表
-      <span class="record-count">共 {{ pagination.total }} 条记录</span>
+      <span class="record-count">共 {{ pagination.total }} 条</span>
     </div>
 
     <div class="table-responsive">

@@ -3,7 +3,8 @@
  */
 import { unifiedApi } from '@/utils/unified-api'
 import type { RequestConfig } from '@/utils/unified-api'
-import type { PriceMarkupConfig, PriceBatchSettingsPayload } from '@/types/price-list'
+import type { ApiResponse } from '@/types'
+import type { PriceMarkupConfig, PriceBatchSettingsPayload, PriceSyncSummary } from '@/types/price-list'
 export type { PriceMarkupConfig } from '@/types/price-list'
 
 /**
@@ -141,6 +142,8 @@ export function updateSyncConfigById(configId: number, data: unknown) {
 /**
  * 手动触发同步
  */
+export function triggerSync(configId: 'all'): Promise<ApiResponse<PriceSyncSummary>>
+export function triggerSync(configId?: number): Promise<ApiResponse<unknown>>
 export function triggerSync(configId?: number | 'all') {
   return unifiedApi.post('/price-list/sync/trigger', configId ? { configId } : undefined)
 }

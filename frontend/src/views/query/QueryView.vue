@@ -27,7 +27,7 @@
                 :disabled="!goodsPanel"
                 @click="goodsPanel?.openSale()"
               >
-                商品销售
+                商品开单
               </el-button>
               <el-button
                 v-if="queryMode === 'phone' && canCreate"
@@ -83,28 +83,24 @@
           </PageHeader>
         </div>
 
-        <div class="tab-navigation tf-page-tabs">
-          <el-button
-            :type="queryMode === 'phone' ? 'primary' : 'default'"
-            @click="queryMode = 'phone'"
-          >
-            手机模式
-          </el-button>
-          <el-button
-            v-if="canViewGoods"
-            v-permission="'query:goods-view'"
-            :type="queryMode === 'goods' ? 'primary' : 'default'"
-            @click="queryMode = 'goods'"
-          >
-            商品模式
-          </el-button>
-        </div>
         <div class="tf-tab-content">
           <QueryGoodsPanel
-            v-if="queryMode === 'goods' && canViewGoods"
+            v-if="canViewGoods && goodsVisited"
+            v-show="queryMode === 'goods'"
             ref="goodsPanel"
+            :active="queryMode === 'goods'"
             class="tf-tab-panel"
-          />
+          >
+            <template #list-tabs>
+              <div
+                class="tab-navigation tf-page-tabs tf-page-tabs--inline"
+                role="group"
+                aria-label="查询模式"
+              >
+                <QueryModeButtons v-model="queryMode" />
+              </div>
+            </template>
+          </QueryGoodsPanel>
           <div
             v-show="queryMode === 'phone'"
             class="content admin-page-content tf-tab-panel"
@@ -113,15 +109,15 @@
             <div
               v-show="showStatsCards"
               class="stats-cards"
+              role="region"
+              aria-label="综合查询统计"
+              tabindex="0"
             >
               <div
-                v-for="(stat, index) in visibleStatsConfig"
-                :key="index"
-                :data-aos="'fade-up'"
-                :data-aos-delay="index * 100"
-                :data-stat-key="stat.key"
+                v-for="stat in visibleStatsConfig"
+                :key="stat.key"
                 class="stat-card"
-                :class="stat.accentClass"
+                :class="[stat.accentClass, { 'stat-card--with-details stat-card--summary-layout': 'details' in stat }]"
               >
                 <div
                   class="stat-icon"
@@ -129,13 +125,25 @@
                   <IconRenderer :icon="stat.icon" />
                 </div>
                 <div class="stat-content">
-                  <div class="stat-value">
-                    {{ statistics[stat.key] || 0 }}
-                  </div>
                   <div class="stat-label">
                     {{ stat.label }}
                   </div>
+                  <div class="stat-value">
+                    {{ ('details' in stat ? stat.totalCount?.(statistics) ?? statistics[stat.key] : statistics[stat.key]) || 0 }}台
+                  </div>
                 </div>
+                <dl
+                  v-if="'details' in stat"
+                  class="stat-card__details"
+                >
+                  <div
+                    v-for="detail in stat.details"
+                    :key="detail.key"
+                  >
+                    <dt>{{ detail.label }}</dt>
+                    <dd>{{ statistics[detail.key] ?? 0 }}台</dd>
+                  </div>
+                </dl>
               </div>
             </div>
 
@@ -373,10 +381,25 @@
 
             <!-- 数据表格区域 -->
             <div class="table-section admin-panel admin-table-panel">
-              <div class="section-title">
-                <i class="fas fa-list" />
-                综合销售列表
-                <span class="record-count">共 {{ pagination.total }} 条记录</span>
+              <div class="section-title query-list-header">
+                <div class="query-list-header__main">
+                  <span class="section-title__label">
+                    <i
+                      class="fas fa-list"
+                      aria-hidden="true"
+                    />
+                    综合销售列表
+                  </span>
+                  <div
+                    v-if="canViewGoods"
+                    class="tab-navigation tf-page-tabs tf-page-tabs--inline"
+                    role="group"
+                    aria-label="查询模式"
+                  >
+                    <QueryModeButtons v-model="queryMode" />
+                  </div>
+                  <span class="record-count">共 {{ pagination.total }} 条</span>
+                </div>
               </div>
 
               <div class="table-responsive">
@@ -568,6 +591,7 @@
       @edit="openEditModal(detailItem); closeDetailModal()"
       @delete="deleteItem(detailItem); closeDetailModal()"
       @return="confirmReturnToStock(detailItem); closeDetailModal()"
+      @film-success="refreshVisitedGoods"
     />
 
     <!-- 销售单组件 -->
@@ -757,6 +781,7 @@ import Image from '@/components/Image.vue'
 import MediaPreviewViewer from '@/components/MediaPreviewViewer.vue'
 import SalesReceipt from '@/components/query/SalesReceipt.vue'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
+import QueryModeButtons from './page/QueryModeButtons.vue'
 import ImportExportActions from '@/components/business/ImportExportActions.vue'
 import { refreshScrollAnimations } from '@/utils/scrollAnimation'
 import { PHONE_STATUS_OPTIONS, getPhoneStatusClass, getPhoneStatusLabel, getEffectivePhoneStatus } from '@/constants/phoneStatuses'
@@ -793,10 +818,16 @@ const canViewGoods = computed(() => canView.value && hasQueryPagePermission('goo
 const canSellGoods = computed(() => canView.value && canViewGoods.value &&
   (hasQueryPagePermission('goods-sell') || hasQueryPagePermission('goods-gift')))
 const queryMode = ref<'phone' | 'goods'>('phone')
+const goodsVisited = ref(false)
 const goodsPanel = ref<InstanceType<typeof QueryGoodsPanel> | null>(null)
 watch([() => route.query.mode, canViewGoods, () => route.query.openSale], ([mode, allowed]) => {
   queryMode.value = mode === 'goods' && allowed ? 'goods' : 'phone'
 }, { immediate: true })
+watch([queryMode, canViewGoods], ([mode, allowed]) => {
+  if (!allowed) goodsVisited.value = false
+  else if (mode === 'goods') goodsVisited.value = true
+}, { immediate: true })
+const refreshVisitedGoods = () => { void goodsPanel.value?.load().catch(() => {}) }
 useRouteDialog({
   path: '/query', flag: 'openSale', allowed: () => canSellGoods.value,
   ready: () => queryMode.value === 'goods' && !!goodsPanel.value,
@@ -900,22 +931,74 @@ const queryData = ref<QueryItem[]>([])
 // 统计卡片配置
 const statsConfig = [
   { key: 'total_phones', label: '总设备数', icon: 'fas fa-boxes', accentClass: 'stat-card--primary', fieldId: 'stats.total_phones' },
-  { key: 'in_stock_count', label: '在库数量', icon: 'fas fa-warehouse', accentClass: 'stat-card--success', fieldId: 'stats.in_stock_count' },
+  {
+    key: 'in_stock_count',
+    label: '在库数量',
+    icon: 'fas fa-warehouse',
+    accentClass: 'stat-card--success',
+    fieldId: 'stats.in_stock_count',
+    totalCount: (stats: Statistics) => stats.in_stock_count,
+    details: [
+      { key: 'in_stock_new_count', label: '全新' },
+      { key: 'in_stock_used_count', label: '二手' }
+    ]
+  },
   { key: 'sold_count', label: '已售数量', icon: 'fas fa-shopping-cart', accentClass: 'stat-card--info', fieldId: 'stats.sold_count' },
-  { key: 'new_count', label: '全新设备', icon: 'fas fa-gem', accentClass: 'stat-card--new', fieldId: 'stats.new_count' },
-  { key: 'used_count', label: '二手设备', icon: 'fas fa-history', accentClass: 'stat-card--used', fieldId: 'stats.used_count' }
+  { key: 'new_count', label: '全新已售', icon: 'fas fa-gem', accentClass: 'stat-card--new', fieldId: 'stats.new_count' },
+  { key: 'used_count', label: '二手已售', icon: 'fas fa-history', accentClass: 'stat-card--used', fieldId: 'stats.used_count' },
+  {
+    key: 'peer_transfer_count',
+    label: '调货划拨',
+    icon: 'fas fa-exchange-alt',
+    accentClass: 'stat-card--accent',
+    fieldId: 'stats.transfer_counts',
+    totalCount: (stats: Statistics) => (stats.peer_transfer_count || 0) + (stats.supplier_proxy_count || 0),
+    details: [
+      { key: 'peer_transfer_count', label: '调货' },
+      { key: 'supplier_proxy_count', label: '划拨' }
+    ]
+  }
 ] as const satisfies ReadonlyArray<{
   key: keyof Statistics
   label: string
   icon: string
   accentClass: string
   fieldId: string
+  details?: ReadonlyArray<{ key: keyof Statistics; label: string }>
+  totalCount?: (stats: Statistics) => number
 }>
+
+const statusCardLabels: Record<string, { total: string; new: string; used: string }> = {
+  sold: { total: '已售数量', new: '全新已售', used: '二手已售' },
+  peer_transfer: { total: '调货数量', new: '全新调货', used: '二手调货' },
+  supplier_proxy: { total: '划拨数量', new: '全新划拨', used: '二手划拨' },
+  in_stock: { total: '在库数量', new: '全新在库', used: '二手在库' },
+  reserved: { total: '预定数量', new: '全新预定', used: '二手预定' },
+  rented: { total: '租赁数量', new: '全新租赁', used: '二手租赁' },
+  borrowed: { total: '借出数量', new: '全新借出', used: '二手借出' },
+  damaged: { total: '损坏数量', new: '全新损坏', used: '二手损坏' },
+  lost: { total: '丢失数量', new: '全新丢失', used: '二手丢失' },
+  repair: { total: '维修数量', new: '全新维修', used: '二手维修' },
+  returned: { total: '退货数量', new: '全新退货', used: '二手退货' }
+}
+
+const selectedStatusCardLabels = computed(() => {
+  if (!filters.status) return statusCardLabels.sold
+  return statusCardLabels[filters.status] || {
+    total: `${getPhoneStatusLabel(filters.status)}数量`,
+    new: `全新${getPhoneStatusLabel(filters.status)}`,
+    used: `二手${getPhoneStatusLabel(filters.status)}`
+  }
+})
 
 const statistics = ref<Statistics>({
   total_phones: 0,
   in_stock_count: 0,
+  in_stock_new_count: 0,
+  in_stock_used_count: 0,
   sold_count: 0,
+  peer_transfer_count: 0,
+  supplier_proxy_count: 0,
   new_count: 0,
   used_count: 0,
   total_purchase_cost: 0,
@@ -1243,7 +1326,11 @@ const applyStatisticsResult = (data?: Partial<Statistics>) => {
   statistics.value = {
     total_phones: 0,
     in_stock_count: 0,
+    in_stock_new_count: 0,
+    in_stock_used_count: 0,
     sold_count: 0,
+    peer_transfer_count: 0,
+    supplier_proxy_count: 0,
     new_count: 0,
     used_count: 0,
     total_purchase_cost: 0,
@@ -1348,9 +1435,9 @@ const loadQueryStatistics = async (
   }
 
   try {
-    const statsResponse = await unifiedApi.get('/query/statistics', { params })
+    const statsResponse = await unifiedApi.get<Statistics>('/query/statistics', { params })
     if (statsResponse.success && statsResponse.data) {
-      const statsData = statsResponse.data as Statistics
+      const statsData = statsResponse.data
       queryStatsCache.set(cacheKey, {
         data: statsData,
         timestamp: Date.now()
@@ -2212,6 +2299,7 @@ const openQuickSaleModal = () => {
 // 快速出库成功处理
 const handleQuickSaleSuccess = async () => {
   invalidateQueryCaches()
+  refreshVisitedGoods()
   await loadQueryData(true)
 }
 
@@ -2506,9 +2594,13 @@ const shouldShowField = (fieldId: string) => {
 }
 
 const visibleStatsConfig = computed(() => {
-  return statsConfig.filter(stat => (
-    shouldShowField(stat.fieldId) &&
-    (windowWidth.value > 768 || stat.key !== 'in_stock_count')
+  return statsConfig.map(stat => {
+    if (stat.key === 'sold_count') return { ...stat, label: selectedStatusCardLabels.value.total }
+    if (stat.key === 'new_count') return { ...stat, label: selectedStatusCardLabels.value.new }
+    if (stat.key === 'used_count') return { ...stat, label: selectedStatusCardLabels.value.used }
+    return stat
+  }).filter(stat => (
+    shouldShowField(stat.fieldId)
   ))
 })
 

@@ -5,7 +5,7 @@
 .grid-container {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
+  gap: var(--admin-panel-gap);
   width: 100%;
 }
 
@@ -190,7 +190,6 @@
 
   .grid-container {
     grid-template-columns: 1fr;
-    gap: 12px;
   }
 
   .device-card {

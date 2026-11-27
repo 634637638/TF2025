@@ -32,12 +32,21 @@
 }
 
 .search-box-input-only {
+  display: flex;
+  align-items: stretch;
+  gap: var(--tf-space-2);
   min-width: 0;
 }
 
 .search-input-lg,
 .form-input-inline {
   width: 100%;
+}
+
+.search-box-input-only .search-input-lg {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
 }
 
 .tf-textarea {
@@ -83,22 +92,33 @@
 .device-main {
   flex: 1;
   min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 8px;
 }
 
 .device-model {
+  min-width: 0;
+  overflow: hidden;
   font-size: var(--tf-type-scale-1rem);
   font-weight: 600;
   color: var(--tf-color-heading);
-  margin-bottom: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .device-specs {
+  min-width: 0;
+  overflow: hidden;
   font-size: var(--tf-type-scale-0-875rem);
   color: var(--tf-color-muted);
-  margin-bottom: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .device-identifiers {
+  grid-column: 1 / -1;
   font-size: var(--tf-type-scale-0-75rem);
   color: var(--tf-color-gray-bootstrap-500);
 
@@ -116,6 +136,7 @@
 }
 
 .device-customer {
+  grid-column: 1 / -1;
   font-size: var(--tf-type-scale-0-8125rem);
   color: var(--tf-color-indigo-brand);
   margin-top: 4px;

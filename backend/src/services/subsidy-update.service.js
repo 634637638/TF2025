@@ -149,7 +149,7 @@ class SubsidyUpdateService {
       values.push(input.customer_idcard || null)
     }
     if (input.imei2 !== undefined) {
-      fields.push('imei2 = COALESCE(?, imei2)')
+      fields.push('imei2 = ?')
       values.push(input.imei2 || null)
     }
     for (const [field, limit] of [['serial_number', null], ['imei1', null], ['phone_brand', 50], ['phone_model', 100], ['phone_color', 50], ['phone_memory', 50]]) {

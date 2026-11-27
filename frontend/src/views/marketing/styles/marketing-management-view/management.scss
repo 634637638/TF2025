@@ -1,13 +1,12 @@
 
-.marketing-admin-page {
-  width: 100%;
-}
-
 .marketing-admin-grid {
   display: grid;
   grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--admin-panel-gap);
+}
+
+.marketing-admin-grid > :only-child {
+  grid-column: 1 / -1;
 }
 
 .context-card,
@@ -69,7 +68,6 @@
 }
 
 .mode-tabs {
-  width: 100%;
   margin-top: 2px;
 }
 

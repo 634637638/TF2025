@@ -162,6 +162,7 @@
             v-if="canViewField('serial_number')"
             class="tf-form-field--wide"
             label="序列号"
+            required
           >
             <el-input
               v-model="editForm.serial_number"
@@ -189,15 +190,16 @@
             </el-form-item>
 
             <el-form-item
-              v-if="canViewField('imei2') && canEditField('imei2')"
+              v-if="canViewField('imei2')"
               class="tf-form-field--wide"
               label="IMEI2"
             >
               <el-input
                 v-model="editForm.imei2"
                 v-identifier-input="'imei'"
-                placeholder="请输入IMEI2"
+                placeholder="无SIM2时可不填写"
                 clearable
+                :disabled="!canEditField('imei2')"
               />
             </el-form-item>
           </div>
@@ -380,84 +382,6 @@
             </el-form-item>
           </template>
         </section>
-
-        <el-divider v-if="hasReadOnlyFields" />
-        <div
-          v-if="hasReadOnlyFields"
-          class="readonly-fields"
-        >
-          <div class="readonly-title">
-            以下信息为只读：
-          </div>
-          <RecordDescriptions
-            :column="1"
-            border
-          >
-            <el-descriptions-item
-              v-if="canViewField('customer_idcard') && !canEditField('customer_idcard') && editForm.customer_idcard"
-              :span="2"
-              label="客户身份证号"
-            >
-              {{ editForm.customer_idcard || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('imei2') && !canEditField('imei2') && editForm.imei2"
-              :span="2"
-              label="IMEI2"
-            >
-              {{ editForm.imei2 || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('apply_time') && !canApprove && editForm.apply_time"
-              label="提交时间"
-            >
-              {{ formatDateTime(editForm.apply_time) }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('arrival_time') && !canArrival && editForm.arrival_time"
-              label="到账时间"
-            >
-              {{ formatDateTime(editForm.arrival_time) }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('remarks') && !canEditField('remarks') && editForm.remarks"
-              :span="2"
-              label="备注"
-            >
-              {{ editForm.remarks || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('brand') && !canEditField('brand')"
-              label="品牌"
-            >
-              {{ editForm.phone_brand || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('model') && !canEditField('model')"
-              label="型号"
-            >
-              {{ editForm.phone_model || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('color') && !canEditField('color')"
-              label="颜色"
-            >
-              {{ editForm.phone_color || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('memory') && !canEditField('memory')"
-              label="内存"
-            >
-              {{ editForm.phone_memory || '-' }}
-            </el-descriptions-item>
-            <el-descriptions-item
-              v-if="canViewField('sale_price') && !canEditField('sale_price')"
-              label="销售价格"
-            >
-              ¥{{ formatAmount(editForm.sale_price) }}
-            </el-descriptions-item>
-          </RecordDescriptions>
-        </div>
       </el-form>
     </div>
 
@@ -504,7 +428,6 @@ import { TIME_FORMATS } from '@/utils/time'
 import { buildSubsidyRemarks } from '../subsidy-calculations'
 import { logger } from '@/utils/logger'
 import { useBrandModels } from '@/composables/useBrandModels'
-import { formatAmount, formatDateTime as formatGlobalDateTime } from '@/utils/format'
 import { normalizeDeviceSerial } from '@/utils/device-identifier'
 import { isAxiosError } from 'axios'
 import type { ReferenceRecord } from '@/services/reference-options'
@@ -558,16 +481,6 @@ const canViewField = (field: string) => props.canViewField(field)
 const canEditField = (field: string) => props.canEditField(field)
 const canApprove = computed(() => props.canApprove)
 const canArrival = computed(() => props.canArrival)
-
-const hasReadOnlyFields = computed(() => {
-  const allFields = [
-    'customer_idcard', 'imei2', 'apply_time', 'arrival_time', 'remarks',
-    'brand', 'model', 'color', 'memory', 'sale_price'
-  ]
-  return allFields.some(field => canViewField(field) && !canEditField(field))
-})
-
-const formatDateTime = (date?: string | null) => formatGlobalDateTime(date, TIME_FORMATS.DATETIME_SHORT)
 
 const memoryLabel = (memory: MemoryOption) => String(memory.size || memory.capacity || memory.name || '')
 
@@ -735,16 +648,6 @@ const submitEdit = async () => {
 .edit-section-title i {
   color: var(--tf-color-primary, var(--tf-color-blue-600));
   font-size: var(--tf-type-scale-13);
-}
-
-.readonly-fields {
-  margin-top: var(--tf-space-4);
-}
-
-.readonly-title {
-  margin-bottom: var(--tf-space-3);
-  font-size: var(--tf-type-scale-13);
-  color: var(--tf-color-muted);
 }
 
 @media (max-width: 767px) {

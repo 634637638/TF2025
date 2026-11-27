@@ -24,7 +24,7 @@ interface DirectiveElement extends HTMLElement {
   _tfLoadingRegistered?: boolean
   _tfLoadingInitialPending?: boolean
   _tfLoadingInitialised?: boolean
-  _tfLoadingPositionHandler?: () => void
+  _tfLoadingPositionCleanup?: () => void
 }
 
 // 加载指令
@@ -418,9 +418,16 @@ function showLoading(el: HTMLElement, text: string) {
   el.appendChild(loading)
 
   const updatePosition = () => updateLoadingContentPosition(el)
-  loadingElement._tfLoadingPositionHandler = updatePosition
+  const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updatePosition)
+  observer?.observe(el)
+  observer?.observe(content)
   window.addEventListener('resize', updatePosition)
   window.addEventListener('scroll', updatePosition, true)
+  loadingElement._tfLoadingPositionCleanup = () => {
+    observer?.disconnect()
+    window.removeEventListener('resize', updatePosition)
+    window.removeEventListener('scroll', updatePosition, true)
+  }
   updatePosition()
 }
 
@@ -432,11 +439,8 @@ function hideLoading(el: HTMLElement) {
     useLoadingStore().stopLocalLoading()
     loadingElement._tfLoadingRegistered = false
   }
-  if (loadingElement._tfLoadingPositionHandler) {
-    window.removeEventListener('resize', loadingElement._tfLoadingPositionHandler)
-    window.removeEventListener('scroll', loadingElement._tfLoadingPositionHandler, true)
-    loadingElement._tfLoadingPositionHandler = undefined
-  }
+  loadingElement._tfLoadingPositionCleanup?.()
+  loadingElement._tfLoadingPositionCleanup = undefined
   const overlay = el.querySelector('.tf2025-loading-overlay')
   if (overlay) {
     overlay.remove()
@@ -449,11 +453,30 @@ function hideLoading(el: HTMLElement) {
 
 function updateLoadingContentPosition(el: HTMLElement) {
   const content = el.querySelector('.tf2025-loading-spinner__content') as HTMLElement | null
-  if (!content) return
+  const layer = content?.parentElement
+  if (!content || !layer) return
 
-  const bounds = el.getBoundingClientRect()
-  content.style.setProperty('--tf-loading-content-width', `${el.clientWidth}px`)
-  content.style.left = `${bounds.left + bounds.width / 2}px`
+  const bounds = layer.getBoundingClientRect()
+  if (bounds.height === 0) return
+
+  const viewportHeight = document.documentElement.clientHeight
+  let visibleTop = Math.max(0, bounds.top)
+  let visibleBottom = Math.min(viewportHeight, bounds.bottom)
+  for (let ancestor: HTMLElement | null = el; ancestor; ancestor = ancestor.parentElement) {
+    if (!/^(auto|scroll|hidden|clip|overlay)$/.test(getComputedStyle(ancestor).overflowY)) continue
+    const clip = ancestor.getBoundingClientRect()
+    visibleTop = Math.max(visibleTop, clip.top)
+    visibleBottom = Math.min(visibleBottom, clip.bottom)
+  }
+
+  // 以遮罩为定位参照，避免弹窗变换或背景滤镜改变 fixed 的坐标系。
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop)
+  content.style.setProperty('--tf-loading-content-height', `${visibleHeight / bounds.height * layer.clientHeight}px`)
+  const halfHeight = content.getBoundingClientRect().height / 2
+  const center = visibleHeight <= halfHeight * 2
+    ? (visibleTop + visibleBottom) / 2
+    : Math.min(visibleBottom - halfHeight, Math.max(visibleTop + halfHeight, viewportHeight / 2))
+  content.style.top = `${Math.min(100, Math.max(0, (center - bounds.top) / bounds.height * 100))}%`
 }
 
 function showCopySuccess(el: HTMLElement) {

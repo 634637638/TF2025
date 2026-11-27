@@ -1,24 +1,11 @@
 
-.sold-products-view {
-  padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
 .search-bar {
   display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--tf-space-3);
 
   .el-input {
     flex: 1;
   }
-}
-
-.products-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
 .product-card {

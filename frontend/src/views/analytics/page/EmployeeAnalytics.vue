@@ -1,136 +1,67 @@
 <template>
-  <div class="employee-analytics">
+  <div class="employee-analytics admin-page-content">
     <!-- 员工概览卡片 -->
-    <div
-      v-if="canViewEmployeeField('overview_stats')"
-      class="overview-grid"
+    <Teleport
+      :to="props.overviewTarget || 'body'"
+      :disabled="!props.overviewTarget"
     >
-      <el-card class="overview-card">
-        <div class="card-content">
-          <div class="card-icon total">
-            <i class="fas fa-users" />
-          </div>
-          <div class="card-info">
-            <div class="card-title">
-              员工总数
-            </div>
-            <div class="card-value">
-              {{ employeeData.totalCount || 0 }}
-            </div>
-            <div
-              class="card-change"
-              :class="getChangeClass(employeeData.totalTrend)"
-            >
-              <el-icon><component :is="getTrendIcon(employeeData.totalTrend)" /></el-icon>
-              {{ formatPercent(employeeData.totalChange) }}
-            </div>
-          </div>
-        </div>
-      </el-card>
+      <div
+        v-if="canViewEmployeeField('overview_stats')"
+        class="stats-cards"
+        role="region"
+        aria-label="员工分析统计"
+        tabindex="0"
+      >
+        <AnalyticsStatCard
+          class="stat-card stat-card--primary"
+          label="员工总数"
+          :value="`${employeeData.totalCount || 0}人`"
+          :icon="UserFilled"
+          :details="[{ value: formatPercent(employeeData.totalChange), icon: getTrendIcon(employeeData.totalTrend) }]"
+        />
 
-      <el-card class="overview-card">
-        <div class="card-content">
-          <div class="card-icon active">
-            <i class="fas fa-user-check" />
-          </div>
-          <div class="card-info">
-            <div class="card-title">
-              在职员工
-            </div>
-            <div class="card-value">
-              {{ employeeData.activeCount || 0 }}
-            </div>
-            <div class="card-change neutral">
-              <el-icon><Minus /></el-icon>
-              稳定
-            </div>
-          </div>
-        </div>
-      </el-card>
+        <AnalyticsStatCard
+          class="stat-card stat-card--success"
+          label="在职员工"
+          :value="`${employeeData.activeCount || 0}人`"
+          :icon="User"
+          :details="[{ value: '稳定', icon: Minus }]"
+        />
 
-      <el-card class="overview-card overview-card-salary">
-        <div class="card-content">
-          <div class="card-icon salary">
-            <i class="fas fa-money-bill-wave" />
-          </div>
-          <div class="card-info">
-            <div class="card-title">
-              本月应发工资
-            </div>
-            <div class="card-value">
-              ¥{{ formatAmount(employeeData.totalSalary || 0) }}
-            </div>
-            <div
-              class="card-change"
-              :class="getChangeClass(employeeData.salaryTrend)"
-            >
-              <el-icon><component :is="getTrendIcon(employeeData.salaryTrend)" /></el-icon>
-              {{ formatPercent(employeeData.salaryChange) }}
-            </div>
-          </div>
-        </div>
-      </el-card>
+        <AnalyticsStatCard
+          class="stat-card stat-card--expense"
+          label="本月应发工资"
+          :value="`¥${formatAmount(employeeData.totalSalary || 0)}`"
+          :icon="Wallet"
+          :details="[{ value: formatPercent(employeeData.salaryChange), icon: getTrendIcon(employeeData.salaryTrend) }]"
+        />
 
-      <el-card class="overview-card">
-        <div class="card-content">
-          <div class="card-icon new-sales">
-            <i class="fas fa-mobile-alt" />
-          </div>
-          <div class="card-info">
-            <div class="card-title">
-              全新机销量
-            </div>
-            <div class="card-value">
-              {{ salesData.newCount || 0 }}
-            </div>
-            <div
-              class="card-change"
-              :class="getChangeClass(salesData.newTrend)"
-            >
-              <el-icon><component :is="getTrendIcon(salesData.newTrend)" /></el-icon>
-              {{ formatPercent(salesData.newChange) }}
-            </div>
-          </div>
-        </div>
-      </el-card>
+        <AnalyticsStatCard
+          class="stat-card stat-card--new"
+          label="全新机销量"
+          :value="`${salesData.newCount || 0}台`"
+          :icon="Cellphone"
+          :details="[{ value: formatPercent(salesData.newChange), icon: getTrendIcon(salesData.newTrend) }]"
+        />
 
-      <el-card class="overview-card">
-        <div class="card-content">
-          <div class="card-icon used-sales">
-            <i class="fas fa-recycle" />
-          </div>
-          <div class="card-info">
-            <div class="card-title">
-              二手机销量
-            </div>
-            <div class="card-value">
-              {{ salesData.usedCount || 0 }}
-            </div>
-            <div
-              class="card-change"
-              :class="getChangeClass(salesData.usedTrend)"
-            >
-              <el-icon><component :is="getTrendIcon(salesData.usedTrend)" /></el-icon>
-              {{ formatPercent(salesData.usedChange) }}
-            </div>
-          </div>
-        </div>
-      </el-card>
-    </div>
+        <AnalyticsStatCard
+          class="stat-card stat-card--used"
+          label="二手机销量"
+          :value="`${salesData.usedCount || 0}台`"
+          :icon="RefreshRight"
+          :details="[{ value: formatPercent(salesData.usedChange), icon: getTrendIcon(salesData.usedTrend) }]"
+        />
+      </div>
+    </Teleport>
 
     <!-- 图表区域 -->
-    <el-row
+    <div
       v-if="showEmployeePrimaryCharts"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid"
     >
       <!-- 员工角色分布 -->
-      <el-col
+      <div
         v-if="canViewEmployeeField('role_distribution_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card role-chart-card">
           <template #header>
@@ -156,15 +87,11 @@
             />
           </div>
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 销售对比 -->
-      <el-col
+      <div
         v-if="canViewEmployeeField('sales_compare_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card sales-chart-card">
           <template #header>
@@ -203,21 +130,16 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
-    <el-row
+    <div
       v-if="showEmployeeSecondaryCharts"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid analytics-panel-grid--2-1"
     >
       <!-- 工资趋势分析 -->
-      <el-col
+      <div
         v-if="canViewEmployeeField('salary_trend_chart')"
-        :xs="24"
-        :sm="24"
-        :md="16"
-        :lg="16"
       >
         <el-card class="chart-card">
           <template #header>
@@ -244,15 +166,11 @@
             />
           </div>
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 出勤统计 -->
-      <el-col
+      <div
         v-if="canViewAttendance && canViewEmployeeField('attendance_chart')"
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
       >
         <el-card class="chart-card">
           <template #header>
@@ -267,24 +185,19 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 数据表格区域 -->
-    <el-row
+    <div
       v-if="showEmployeeTableSection"
-      :gutter="16"
-      class="table-section admin-panel admin-table-panel"
+      class="analytics-panel-grid analytics-panel-grid--2-1"
     >
       <!-- 员工销售业绩排行 -->
-      <el-col
+      <div
         v-if="canViewEmployeeField('performance_table')"
-        :xs="24"
-        :sm="24"
-        :md="16"
-        :lg="16"
       >
-        <el-card class="table-card admin-panel admin-table-panel">
+        <el-card class="table-card">
           <template #header>
             <div class="card-header">
               <div class="card-header-main">
@@ -328,18 +241,41 @@
               </div>
             </div>
           </template>
-          <div class="performance-summary-strip">
-            <div class="performance-summary-item">
-              <span class="summary-label">排行人数</span>
-              <span class="summary-value">{{ performanceSummary.employeeCount }}</span>
+          <div
+            class="stats-cards"
+            role="region"
+            aria-label="员工业绩摘要"
+            tabindex="0"
+          >
+            <div class="stat-card stat-card--primary">
+              <div class="stat-content">
+                <div class="stat-label">
+                  排行人数
+                </div>
+                <div class="stat-value">
+                  {{ performanceSummary.employeeCount }}
+                </div>
+              </div>
             </div>
-            <div class="performance-summary-item">
-              <span class="summary-label">总销售额</span>
-              <span class="summary-value">¥{{ formatAmount(performanceSummary.totalSales) }}</span>
+            <div class="stat-card stat-card--income">
+              <div class="stat-content">
+                <div class="stat-label">
+                  总销售额
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(performanceSummary.totalSales) }}
+                </div>
+              </div>
             </div>
-            <div class="performance-summary-item">
-              <span class="summary-label">批发 / 划拨</span>
-              <span class="summary-value">{{ performanceSummary.wholesaleCount }} / {{ performanceSummary.allocationCount }}</span>
+            <div class="stat-card stat-card--info">
+              <div class="stat-content">
+                <div class="stat-label">
+                  批发 / 划拨
+                </div>
+                <div class="stat-value">
+                  {{ performanceSummary.wholesaleCount }} / {{ performanceSummary.allocationCount }}
+                </div>
+              </div>
             </div>
           </div>
           <el-table
@@ -485,17 +421,13 @@
             :has-actions="false"
           />
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 考勤详情 -->
-      <el-col
+      <div
         v-if="canViewAttendance && canViewEmployeeField('attendance_records_table')"
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
       >
-        <el-card class="table-card admin-panel admin-table-panel">
+        <el-card class="table-card">
           <template #header>
             <div class="card-header">
               <h3>考勤记录</h3>
@@ -515,38 +447,49 @@
           </template>
           <div
             v-if="attendanceSummary.totalRecords > 0"
-            class="attendance-summary-grid"
+            class="stats-cards"
+            role="region"
+            aria-label="员工考勤摘要"
+            tabindex="0"
           >
-            <div class="attendance-summary-item">
-              <div class="summary-label">
-                近30天记录
-              </div>
-              <div class="summary-value">
-                {{ attendanceSummary.totalRecords }}
-              </div>
-            </div>
-            <div class="attendance-summary-item warning">
-              <div class="summary-label">
-                异常记录
-              </div>
-              <div class="summary-value">
-                {{ attendanceSummary.abnormalCount }}
+            <div class="stat-card stat-card--neutral">
+              <div class="stat-content">
+                <div class="stat-label">
+                  近30天记录
+                </div>
+                <div class="stat-value">
+                  {{ attendanceSummary.totalRecords }}
+                </div>
               </div>
             </div>
-            <div class="attendance-summary-item primary">
-              <div class="summary-label">
-                请假/休假
-              </div>
-              <div class="summary-value">
-                {{ attendanceSummary.leaveCount }}
+            <div class="stat-card stat-card--warning">
+              <div class="stat-content">
+                <div class="stat-label">
+                  异常记录
+                </div>
+                <div class="stat-value">
+                  {{ attendanceSummary.abnormalCount }}
+                </div>
               </div>
             </div>
-            <div class="attendance-summary-item success">
-              <div class="summary-label">
-                加班记录
+            <div class="stat-card stat-card--primary">
+              <div class="stat-content">
+                <div class="stat-label">
+                  请假/休假
+                </div>
+                <div class="stat-value">
+                  {{ attendanceSummary.leaveCount }}
+                </div>
               </div>
-              <div class="summary-value">
-                {{ attendanceSummary.overtimeCount }}
+            </div>
+            <div class="stat-card stat-card--success">
+              <div class="stat-content">
+                <div class="stat-label">
+                  加班记录
+                </div>
+                <div class="stat-value">
+                  {{ attendanceSummary.overtimeCount }}
+                </div>
               </div>
             </div>
           </div>
@@ -635,19 +578,20 @@
             :has-actions="false"
           />
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import AnalyticsStatCard from './AnalyticsStatCard.vue'
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
 import { formatAmount } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
-import { ArrowUp, ArrowDown, Minus } from '@element-plus/icons-vue'
+import { ArrowUp, ArrowDown, Minus, Cellphone, RefreshRight, User, UserFilled, Wallet } from '@element-plus/icons-vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
 import { useCachedRequest, DEFAULT_CACHE_TTL } from '@/composables/usePageCache'
@@ -778,14 +722,6 @@ const _formatAmount = (amount: number) => {
 
 const formatPercent = (percent: number) => {
   return `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%`
-}
-
-const getChangeClass = (trend: string) => {
-  return {
-    'positive': trend === 'up',
-    'negative': trend === 'down',
-    'neutral': trend === 'stable'
-  }
 }
 
 const getTrendIcon = (trend: string) => {

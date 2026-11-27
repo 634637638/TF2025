@@ -46,6 +46,12 @@ class QueryController {
     this.queryService = service
     this.masking = masking
     this.queryFields = new FieldAccessService({ moduleKey: 'query_queryview', masking, responseKeys: {
+      'stats.total_phones': ['total_phones'],
+      'stats.in_stock_count': ['in_stock_count', 'in_stock_new_count', 'in_stock_used_count'],
+      'stats.sold_count': ['sold_count'],
+      'stats.transfer_counts': ['peer_transfer_count', 'supplier_proxy_count'],
+      'stats.new_count': ['new_count'],
+      'stats.used_count': ['used_count'],
       'basic_info.purchase_cost': ['total_purchase_cost'],
       'basic_info.sale_price': ['total_sales_revenue']
     } })

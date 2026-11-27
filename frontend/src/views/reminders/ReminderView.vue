@@ -43,7 +43,10 @@
       <div class="admin-page-content">
         <div
           v-if="showStats"
-          class="stats-cards reminder-stats"
+          class="stats-cards"
+          role="region"
+          aria-label="待办提醒统计"
+          tabindex="0"
         >
           <div
             v-if="canViewReminderField('stats_total')"
@@ -170,7 +173,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             待办列表
-            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            <span class="record-count">共 {{ pagination.total }} 条</span>
           </div>
           <div class="table-responsive">
             <el-table

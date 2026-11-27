@@ -1,5 +1,5 @@
 <template>
-  <div class="marketing-admin-page">
+  <div class="admin-page">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -7,7 +7,7 @@
       module-name="营销管理"
       permission-code="marketing:view"
     >
-      <div class="admin-page-content marketing-admin-content">
+      <div class="admin-page-content">
         <PageHeader
           icon="fas fa-bullhorn"
           title="营销管理"

@@ -353,18 +353,17 @@ html {
 }
 
 .tf2025-loading-spinner__content {
-  position: fixed;
-  top: 50dvh;
-  left: 50vw;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--tf-space-2);
-  width: min(var(--tf-loading-content-width, 100%), calc(100vw - var(--tf-space-4)), 420px);
-  max-width: min(var(--tf-loading-content-width, 100%), calc(100vw - var(--tf-space-4)));
+  width: min(100%, calc(100vw - var(--tf-space-4)), 420px);
   min-width: 0;
   box-sizing: border-box;
-  padding: 10px 14px;
+  padding: var(--tf-space-2) var(--tf-space-4);
   color: var(--tf-loading-surface-text, var(--tf-color-slate-700));
   font-size: var(--tf-type-scale-14);
   font-weight: 600;
@@ -385,9 +384,12 @@ html {
 }
 
 .tf2025-loading-spinner__content > span {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
+  max-height: max(0px, calc(var(--tf-loading-content-height, 100dvh) - 2 * var(--tf-space-2)));
+  overflow: hidden;
+  pointer-events: auto;
   white-space: normal;
   word-break: normal;
   overflow-wrap: anywhere;
@@ -395,7 +397,6 @@ html {
 
 @media (max-width: 767px) {
   .tf2025-loading-spinner__content > span {
-    overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }

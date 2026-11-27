@@ -6,7 +6,7 @@
     module-name="商城模板"
     permission-code="h5-templates:view"
   >
-    <div class="template-management-page">
+    <div class="template-management-page admin-page-content">
       <UnifiedSearchPanel
         :expanded="true"
         :loading="loading"
@@ -435,7 +435,7 @@
             <el-tabs
               v-if="childDrafts.length"
               v-model="selectedChildKey"
-              class="tf-page-tabs tf-page-tabs--inline child-template-tabs"
+              class="tf-page-tabs tf-page-tabs--inline"
             >
               <el-tab-pane
                 v-for="child in childDrafts"

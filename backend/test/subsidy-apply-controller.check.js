@@ -90,16 +90,38 @@ test('subsidy apply service commits normalized application data and invalidates 
   assert.deepEqual(invalidations, ['/subsidy'])
 })
 
-test('subsidy apply rejects missing fields and duplicate applications without leaving a transaction open', async () => {
+test('subsidy apply requires a serial number but accepts devices without IMEI identifiers', async () => {
   const missing = createHarness()
-  assert.equal((await missing.service.create({ ...input, imei2: '' }, 19, scopedActor)).status, 400)
-  assert.deepEqual(missing.events, [])
-  assert.deepEqual(missing.invalidations, [])
+  const resultWithoutImeis = await missing.service.create({ ...input, imei1: null, imei2: '' }, 19, scopedActor)
+  assert.equal(resultWithoutImeis.status, 200)
+  const createdWithoutImeis = missing.events.find(event => Array.isArray(event) && event[0] === 'create')[1]
+  assert.equal(createdWithoutImeis.imei1, null)
+  assert.equal(createdWithoutImeis.imei2, '')
+
+  const legacyNoImei = createHarness()
+  const legacyNoImeiResult = await legacyNoImei.service.create({ ...input, imei1: input.serial_number, imei2: '' }, 19, scopedActor)
+  assert.equal(legacyNoImeiResult.status, 200)
+  const createdLegacyNoImei = legacyNoImei.events.find(event => Array.isArray(event) && event[0] === 'create')[1]
+  assert.equal(createdLegacyNoImei.imei1, null)
+  assert.equal(createdLegacyNoImei.imei2, '')
+
+  const missingSerial = createHarness()
+  assert.equal((await missingSerial.service.create({ ...input, serial_number: '' }, 19, scopedActor)).status, 400)
+  assert.deepEqual(missingSerial.events, [])
+  assert.deepEqual(missingSerial.invalidations, [])
+
+  const incomplete = createHarness()
+  assert.equal((await incomplete.service.create({ ...input, phone_id: null }, 19, scopedActor)).status, 400)
+  assert.deepEqual(incomplete.events, [])
+  assert.deepEqual(incomplete.invalidations, [])
+
+  assert.deepEqual(missing.events.map(event => Array.isArray(event) ? event[0] : event), ['begin', 'find', 'idcard', 'create', 'commit', 'release'])
+  assert.deepEqual(missing.invalidations, ['/subsidy'])
 
   const duplicate = createHarness({ existing: { id: 44, apply_status: 'pending' } })
-  const result = await duplicate.service.create(input, 19, scopedActor)
-  assert.equal(result.status, 400)
-  assert.deepEqual(result.body.data, { existing_id: 44, apply_status: 'pending' })
+  const duplicateResult = await duplicate.service.create(input, 19, scopedActor)
+  assert.equal(duplicateResult.status, 400)
+  assert.deepEqual(duplicateResult.body.data, { existing_id: 44, apply_status: 'pending' })
   assert.deepEqual(duplicate.events.map(event => Array.isArray(event) ? event[0] : event), ['begin', 'find', 'rollback', 'release'])
   assert.deepEqual(duplicate.invalidations, [])
 })
@@ -111,7 +133,7 @@ test('国补申请非法姓名、电话和金额在取连接前拒绝，不写�
     { sale_price: '1e3' }, { sale_price: true }, { sale_price: '10.001' },
     { subsidy_amount: '3元' }, { handler_info: { handler_name: '代\t办' } },
     { imei1: '123456789012345中' }, { imei2: 123456789012345 }, { imei1: '1e14' },
-    { serial_number: 'ABC中1234' }, { serial_number: 'S'.repeat(51) }, { serial_number: ['SERIAL'] },
+    { serial_number: 'ABC中1234' }, { serial_number: 'S'.repeat(51) }, { serial_number: ['SERIAL'] }, { serial_number: '   ' },
     { handler_info: { handler_phone: '138000000001' } }, { handler_info: [] }
   ]) {
     const harness = createHarness()
@@ -179,5 +201,23 @@ test('subsidy apply repository binds phone, customer, and full insert values', a
   assert.equal(calls[3][1][1], 8)
   assert.equal(calls[3][1][5], 'CARD')
   assert.equal(calls[3][1][22], '["subsidy/a.jpg"]')
-  assert.deepEqual(calls[4], ['release'])
+
+  await repository.withConnection(async connection => {
+    await repository.create(connection, {
+      ...input,
+      serial_number: null,
+      imei1: null,
+      imei2: '',
+      customer_idcard: null,
+      sale_time: null,
+      subsidy_photos: [],
+      handler_name: null,
+      handler_phone: null,
+      handler_idcard: null
+    })
+  })
+  assert.equal(calls[5][1][10], null)
+  assert.equal(calls[5][1][11], null)
+  assert.equal(calls[5][1][12], null)
+  assert.deepEqual(calls[6], ['release'])
 })

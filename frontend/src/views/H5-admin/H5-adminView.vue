@@ -3,7 +3,7 @@
   功能：统一的H5商城管理后台布局 + 公共TAB导航
 -->
 <template>
-  <div class="h5-admin-layout admin-page">
+  <div class="h5-admin-layout admin-page admin-page-content">
     <PermissionGate
       :can-view="canView"
       mode="denied"
@@ -94,7 +94,7 @@
       </div>
 
       <!-- 页面内容 -->
-      <div class="admin-content tf-tab-content">
+      <div class="tf-tab-content">
         <router-view v-slot="{ Component, route: viewRoute }">
           <div class="tf-tab-panel">
             <KeepAlive :max="6">
@@ -224,28 +224,5 @@ onMounted(() => {
 .h5-admin-layout {
   min-height: 100vh;
   background: var(--tf-color-surface);
-  padding: 24px;
-}
-
-.header-link {
-  text-decoration: none;
-  margin-left: 8px;
-}
-
-.admin-content {
-  min-width: 0;
-}
-
-// 响应式
-@media (max-width: 767px) {
-  .h5-admin-layout {
-    padding-inline: var(--admin-page-gap-x);
-    padding-top: 10px;
-  }
-
-  .admin-content {
-    width: 100%;
-    min-width: 0;
-  }
 }
 </style>

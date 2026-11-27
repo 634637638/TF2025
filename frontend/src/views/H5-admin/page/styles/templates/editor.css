@@ -16,12 +16,6 @@
   margin: 0;
 }
 
-.child-template-tabs {
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
 .editor-panel {
   min-height: 0;
   min-width: 0;

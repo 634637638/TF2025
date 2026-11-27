@@ -2,43 +2,46 @@
   <div class="returngoods-page admin-page admin-page-content safe-area-top safe-area-bottom">
     <div
       v-if="canViewField('stats.summary')"
-      class="returngoods-overview"
+      class="stats-cards"
+      role="region"
+      aria-label="退库概览"
+      tabindex="0"
     >
-      <div class="overview-card">
-        <div class="overview-icon primary">
+      <div class="stat-card stat-card--primary">
+        <div class="stat-icon">
           <i class="fas fa-undo-alt" />
         </div>
-        <div class="overview-content">
-          <div class="overview-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ stats.total_records }}
           </div>
-          <div class="overview-label">
+          <div class="stat-label">
             退库总数
           </div>
         </div>
       </div>
-      <div class="overview-card">
-        <div class="overview-icon success">
+      <div class="stat-card stat-card--success">
+        <div class="stat-icon">
           <i class="fas fa-mobile-alt" />
         </div>
-        <div class="overview-content">
-          <div class="overview-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ stats.total_phones }}
           </div>
-          <div class="overview-label">
+          <div class="stat-label">
             设备数量
           </div>
         </div>
       </div>
-      <div class="overview-card">
-        <div class="overview-icon warning">
+      <div class="stat-card stat-card--warning">
+        <div class="stat-icon">
           <i class="fas fa-calendar-alt" />
         </div>
-        <div class="overview-content">
-          <div class="overview-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ stats.total_days }}
           </div>
-          <div class="overview-label">
+          <div class="stat-label">
             涉及天数
           </div>
         </div>
@@ -873,62 +876,6 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
   gap: 16px;
 }
 
-.returngoods-overview {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.overview-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, var(--color-bg-white) 0%, var(--tf-color-surface-blue) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-}
-
-.overview-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--tf-type-scale-18);
-  color: var(--color-bg-white);
-}
-
-.overview-icon.primary {
-  background: linear-gradient(135deg, var(--tf-color-blue-600) 0%, var(--tf-color-blue-500) 100%);
-}
-
-.overview-icon.success {
-  background: linear-gradient(135deg, var(--tf-color-emerald-600) 0%, var(--tf-color-emerald-500) 100%);
-}
-
-.overview-icon.warning {
-  background: linear-gradient(135deg, var(--tf-color-amber-600) 0%, var(--tf-color-amber-500) 100%);
-}
-
-.overview-content {
-  min-width: 0;
-}
-
-.overview-value {
-  font-size: var(--tf-type-scale-28);
-  line-height: 1;
-  font-weight: 700;
-  color: var(--tf-color-slate-900);
-}
-
-.overview-label {
-  margin-top: 6px;
-  font-size: var(--tf-type-scale-13);
-  color: var(--tf-color-slate-500);
-}
 
 .panel-header {
   display: flex;
@@ -1006,33 +953,6 @@ const mobileDetailFields = computed<RecordDetailField[]>(() => {
 }
 
 @media (max-width: 767px) {
-  .returngoods-overview {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .overview-card {
-    padding: 12px 10px;
-    border-radius: 14px;
-    gap: 10px;
-  }
-
-  .overview-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
-    font-size: var(--tf-type-scale-14);
-  }
-
-  .overview-value {
-    font-size: var(--tf-type-scale-20);
-  }
-
-  .overview-label {
-    font-size: var(--tf-type-scale-11);
-    margin-top: 4px;
-  }
-
   .edit-grid {
     grid-template-columns: 1fr;
   }

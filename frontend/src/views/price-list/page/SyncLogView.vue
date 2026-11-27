@@ -39,6 +39,9 @@
       <div
         v-if="showStatsCards"
         class="stats-cards"
+        role="region"
+        aria-label="同步日志统计"
+        tabindex="0"
       >
         <div
           v-if="canViewSyncLogField('stats_success_count')"

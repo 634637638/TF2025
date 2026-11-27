@@ -223,7 +223,10 @@
             name="warehouse"
             class="tf-tab-panel"
           >
-            <div v-tf-loading="{ active: warehouseLoading, text: '正在读取仓库设置...' }">
+            <LoadingOverlay
+              :loading="warehouseLoading"
+              text="正在读取仓库设置..."
+            >
               <el-alert
                 title="指定任意有权限的启用店铺作为总仓。新建配件入库时默认选中总仓，也可另选入库店铺；修改设置不会移动现有库存。"
                 type="info"
@@ -269,7 +272,7 @@
                   </el-button>
                 </el-form-item>
               </el-form>
-            </div>
+            </LoadingOverlay>
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -359,6 +362,7 @@
 </template>
 
 <script setup lang="ts">
+import LoadingOverlay from '@/components/LoadingOverlay.vue'
 import { usePageShortcuts } from '@/composables/useRouteDialog'
 import { computed } from 'vue'
 import { useMobile } from '@/composables/mobile'

@@ -41,6 +41,19 @@ beforeEach(() => {
 })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.resetAllMocks() })
 describe('配件跨店库存划拨', () => {
+  it('首次读取可划拨库存时显示等待提示，返回后再展示可操作表单', async () => {
+    let finish!: (value: { data: { stores: { store_id: number; quantity: number }[] } }) => void
+    mocks.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    const wrapper = await render()
+    expect(wrapper.text()).toContain('正在查询可划拨库存...')
+    expect(wrapper.findAllComponents(ElSelect)).toHaveLength(0)
+    expect(button(wrapper).element.disabled).toBe(true)
+    finish({ data: { stores: [{ store_id: 1, quantity: 10 }] } })
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('正在查询可划拨库存...')
+    expect(wrapper.findAllComponents(ElSelect)[0].props('modelValue')).toBe(1)
+  })
+
   it('普通库存按数量划拨，只显示启用授权店，自动选唯一来源，保留实际品牌商品身份', async () => {
     const wrapper = await render()
     expect(wrapper.findAllComponents(ElSelect)[0].props('modelValue')).toBe(1)

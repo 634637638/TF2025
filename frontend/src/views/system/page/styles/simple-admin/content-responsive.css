@@ -1,9 +1,16 @@
 .content-area {
   flex: 1;
   padding: 20px;
+  overflow-x: hidden;
   overflow-y: auto;
   min-height: 0; /* 确保flex子元素可以滚动 */
   position: relative;
+}
+
+@media (min-width: 1025px) {
+  .content-area {
+    scrollbar-gutter: stable;
+  }
 }
 
 /* 禁用路由切换动画，避免闪烁 */

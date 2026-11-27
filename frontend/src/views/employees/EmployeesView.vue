@@ -43,6 +43,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="员工统计"
+          tabindex="0"
         >
           <div
             v-if="canViewField('stats_total_employees')"
@@ -158,7 +161,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             员工列表
-            <span class="record-count">共 {{ employeeTotal }} 条记录</span>
+            <span class="record-count">共 {{ employeeTotal }} 条</span>
           </div>
 
           <div class="table-responsive">

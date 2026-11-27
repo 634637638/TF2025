@@ -49,6 +49,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="国补统计"
+          tabindex="0"
         >
           <div
             v-if="canViewField('stats_total_and_handler')"
@@ -446,6 +449,7 @@
           :table-columns="tableColumns"
           :field-visibility="fieldVisibility"
           :is-mobile="isMobile"
+          :is-tablet="isTablet"
           :selected-items="selectedItems"
           :pinned-items="pinnedItems"
           :subsidy-pagination="subsidyPagination"
@@ -626,7 +630,7 @@
         :field-visibility="fieldVisibility"
       >
         <template
-          v-if="isMobile && (canEdit || canDelete || (canApprove && !currentDetailItem.apply_time) || (canArrival && !currentDetailItem.arrival_time) || fieldVisibility.subsidy_photos || canUpload)"
+          v-if="(isMobile || isTablet) && (canEdit || canDelete || (canApprove && !currentDetailItem.apply_time) || (canArrival && !currentDetailItem.arrival_time) || fieldVisibility.subsidy_photos || canUpload)"
           #actions
         >
           <el-button
@@ -692,11 +696,11 @@ import { fieldPermissions, shouldShowActionColumn } from '@/composables/useField
 import { usePagePermissions } from '@/composables/usePagePermissions'
 import { useRefreshData } from '@/composables/useRefreshData'
 import { useLoadingState } from '@/composables'
+import { useMobile } from '@/composables/mobile'
 import { useCachedRequest } from '@/composables/usePageCache'
 import { useImportExport } from '@/composables/useImportExport'
 import { getStores } from '@/services/reference-options'
 import { TimeUtil, TIME_FORMATS } from '@/utils/time'
-import { isCurrentMobileViewport } from '@/utils/device-detection'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import DateRangePicker from '@/components/DateRangePicker.vue'
 import type { DateRangeValue } from '@/types/date-range'
@@ -989,10 +993,7 @@ const saleDateRange = ref<[string, string] | null>(null)
 const submitDateRange = ref<[string, string] | null>(null)
 const arriveDateRange = ref<[string, string] | null>(null)
 
-// 判断是否为移动端
-const isMobile = computed(() => {
-  return isCurrentMobileViewport()
-})
+const { isMobile, isTablet } = useMobile()
 
 // 搜索展开状态 - 统一管理
 const searchExpanded = ref(false)

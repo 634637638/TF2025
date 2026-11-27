@@ -205,23 +205,20 @@ const rootStyle = computed<CSSProperties>(() => {
   if (isTinyMobile.value) {
     return {
       padding: '0.5rem 0.75rem',
-      borderRadius: '12px',
-      marginBottom: '0.5rem'
+      borderRadius: '12px'
     }
   }
 
   if (isMobile.value) {
     return {
-      padding: '1rem',
-      borderRadius: '12px',
-      marginBottom: '1rem'
+      padding: 'var(--tf-space-2) 1rem',
+      borderRadius: '12px'
     }
   }
 
   return {
-    padding: '32px',
-    borderRadius: '16px',
-    marginBottom: '24px'
+    padding: 'var(--tf-space-5) var(--tf-space-7)',
+    borderRadius: '16px'
   }
 })
 
@@ -386,15 +383,12 @@ const actionsStyle = computed<CSSProperties>(() => ({
 .page-header {
   background: linear-gradient(135deg, var(--tf-color-orange-legacy) 0%, var(--tf-color-page-header-teal) 100%);
   border-radius: 16px;
-  padding: 32px;
-  margin-bottom: 24px;
+  margin-bottom: var(--admin-panel-gap);
   box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
   border: none;
 
   @media (max-width: 767px) {
-    padding: 1rem;
     border-radius: 12px;
-    margin-bottom: 1rem;
   }
 
 }
@@ -549,9 +543,7 @@ const actionsStyle = computed<CSSProperties>(() => ({
 // 超小屏幕优化（375px及以下）
 @media (max-width: 375px) {
   .page-header {
-    padding: 0.5rem 0.75rem;
     border-radius: 12px;
-    margin-bottom: 0.5rem;
   }
 
   .page-title {

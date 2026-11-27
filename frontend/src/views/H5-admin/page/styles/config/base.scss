@@ -2,14 +2,6 @@
 @use '../../config-page.scss';
 
 .shop-config-page {
-  padding: 24px;
-  min-width: 0;
-}
-
-/* 配置内容 */
-.config-content {
-  max-width: 800px;
-  margin: 0 auto;
   min-width: 0;
 }
 
@@ -18,7 +10,6 @@
   background: var(--color-bg-white);
   border-radius: 8px;
   padding: 24px;
-  margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   min-width: 0;
 

@@ -45,6 +45,8 @@ TF2025 项目采用统一的分页组件和数据管理模式，确保所有列�
 
 ### 1. 基础分页组件
 
+总数文案统一采用「共 N 条」。
+
 ```vue
 <!-- components/Pagination.vue -->
 <template>
@@ -52,7 +54,7 @@ TF2025 项目采用统一的分页组件和数据管理模式，确保所有列�
     <!-- 分页信息 -->
     <div class="tf-pagination__info">
       <span v-if="showTotal" class="tf-pagination__total">
-        共 {{ total }} 条记录
+        共 {{ total }} 条
       </span>
       <span v-if="showRange" class="tf-pagination__range">
         当前第 {{ startIndex }} - {{ endIndex }} 条

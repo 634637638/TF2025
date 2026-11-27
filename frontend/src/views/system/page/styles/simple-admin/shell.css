@@ -1,7 +1,14 @@
 .admin-container {
   height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100%;
   overflow: hidden;
+}
+
+/* Keep the document from adding another scroll area when mobile browser chrome is visible. */
+:global(body:has(.admin-container)),
+:global(#app:has(.admin-container)) {
+  min-height: 100dvh;
 }
 
 .admin-layout {

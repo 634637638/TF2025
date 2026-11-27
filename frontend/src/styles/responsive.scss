@@ -230,7 +230,7 @@ body {
   @media (max-width: 479px) {
     overflow-x: auto;
 
-    table {
+    table:not(.el-table__header):not(.el-table__body) {
       min-width: 600px;
     }
 

@@ -39,6 +39,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="颜色统计"
+          tabindex="0"
         >
           <div
             v-if="canViewField('stats_total_colors')"
@@ -154,7 +157,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             颜色列表
-            <span class="record-count">共 {{ pagination.total }} 条记录</span>
+            <span class="record-count">共 {{ pagination.total }} 条</span>
           </div>
 
           <div class="table-responsive">

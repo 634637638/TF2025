@@ -68,7 +68,7 @@
     <div class="table-section admin-panel admin-table-panel">
       <div class="section-header">
         <div class="section-title">
-          <i class="fas fa-list" />工资发放记录<span class="record-count">共 {{ total }} 条记录</span>
+          <i class="fas fa-list" />工资发放记录<span class="record-count">共 {{ total }} 条</span>
         </div>
       </div>
       <div class="table-responsive my-salary-table">

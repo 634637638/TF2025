@@ -1,7 +1,7 @@
 'use strict'
 
 const { isPersonName, isMobilePhone, normalizePhone, isMoneyInput, isSingleLineText } = require('./input-values')
-const { isPhoneSerial, isStandardImei } = require('./imei')
+const { isPhoneSerial, isStandardImei, isNoImeiDevice } = require('./imei')
 
 /** 申请与编辑的资料边界；在仓储写入、文件移动和缓存失效之前执行。 */
 function validateSubsidyInput(source) {
@@ -32,12 +32,17 @@ function validateSubsidyInput(source) {
     if (field === 'sale_price' && (input[field] === '' || input[field] === null)) return { error: '销售价格不能为空' }
     if (!isMoneyInput(input[field]) || Number(input[field]) < 0) return { error: '金额须为大于等于0、最多两位小数的有效数字' }
   }
-  if (input.serial_number !== undefined && input.serial_number !== null && input.serial_number !== '') {
-    if (typeof input.serial_number !== 'string' || !isPhoneSerial(input.serial_number.toUpperCase())) return { error: '序列号须为4-50位字母、数字、斜杠或连字符' }
-    input.serial_number = input.serial_number.toUpperCase()
+  if (input.serial_number !== undefined) {
+    if (typeof input.serial_number !== 'string' || !input.serial_number.trim()) return { error: '请输入序列号' }
+    input.serial_number = input.serial_number.trim().toUpperCase()
+    if (!isPhoneSerial(input.serial_number)) return { error: '序列号须为4-50位字母、数字、斜杠或连字符' }
   }
   for (const field of ['imei1', 'imei2']) {
     const value = input[field]
+    if (field === 'imei1' && isNoImeiDevice(value, input.serial_number)) {
+      input[field] = null
+      continue
+    }
     if (value !== undefined && value !== null && value !== '' && (typeof value !== 'string' || !isSingleLineText(value, 15) || !isStandardImei(value))) return { error: 'IMEI须为完整15位数字' }
   }
   return { input }

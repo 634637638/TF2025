@@ -15,6 +15,9 @@
       <div
         v-if="showStatsCards"
         class="stats-cards"
+        role="region"
+        aria-label="商城订单统计"
+        tabindex="0"
       >
         <div
           v-if="canViewOrderField('stats_total_orders')"

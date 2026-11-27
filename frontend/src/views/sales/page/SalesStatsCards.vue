@@ -1,5 +1,10 @@
 <template>
-  <div class="stats-cards">
+  <div
+    class="stats-cards"
+    role="region"
+    aria-label="销售统计"
+    tabindex="0"
+  >
     <div
       v-if="showAvailableInventory"
       class="stat-card stat-card--primary"

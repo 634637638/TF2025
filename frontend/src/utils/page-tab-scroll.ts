@@ -1,5 +1,7 @@
-const TABS_SELECTOR = '.tf-page-tabs.el-tabs'
-const SCROLLER_SELECTOR = '.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll, .tf-page-tabs.tab-navigation'
+const TABS_SELECTOR = '.tf-page-tabs.el-tabs, .tf-topbar-tabs'
+const ACTIVE_TAB_SELECTOR = '.el-tabs__item.is-active, .tf-topbar-tab.is-active'
+const TAB_RAIL_SELECTOR = '.tf-page-tabs.el-tabs > .el-tabs__header .el-tabs__nav-scroll, .tf-topbar-tabs > .tabs-container'
+const SCROLLER_SELECTOR = `${TAB_RAIL_SELECTOR}, .tf-page-tabs.tab-navigation, .tf-compact-toolbar`
 let initialized = false
 
 /** Native touch scrolling and wheel scrolling share one offset, without vendor arrows. */
@@ -22,19 +24,23 @@ export const initPageTabScroll = () => {
         observed.delete(element)
       }
       for (const root of pending) {
-        const scroller = root.querySelector<HTMLElement>(':scope > .el-tabs__header .el-tabs__nav-scroll')
-        const active = scroller?.querySelector<HTMLElement>('.el-tabs__item.is-active')
-        if (!scroller || !active) continue
+        if (!root.isConnected) continue
+        const scroller = root.querySelector<HTMLElement>(':scope > .el-tabs__header .el-tabs__nav-scroll, :scope > .tabs-container')
+        if (!scroller) continue
         for (const element of [scroller, scroller.querySelector<HTMLElement>('.el-tabs__nav')]) {
           if (!element || observed.has(element)) continue
           observed.add(element)
           resizeObserver.observe(element)
         }
-        if (!scroller.clientWidth) continue
+        const active = scroller.querySelector<HTMLElement>(ACTIVE_TAB_SELECTOR)
+        if (!active || !scroller.clientWidth) continue
         const viewport = scroller.getBoundingClientRect()
         const item = active.getBoundingClientRect()
-        if (item.left < viewport.left) scroller.scrollLeft += item.left - viewport.left
-        else if (item.right > viewport.right) scroller.scrollLeft += item.right - viewport.right
+        if (item.width > scroller.clientWidth || item.left < viewport.left) {
+          scroller.scrollLeft += item.left - viewport.left
+        } else if (item.right > viewport.right) {
+          scroller.scrollLeft += item.right - viewport.right
+        }
       }
       pending.clear()
     })
@@ -66,9 +72,9 @@ export const initPageTabScroll = () => {
   const observer = new MutationObserver(records => {
     for (const record of records) {
       if (!(record.target instanceof Element)) continue
-      if (record.type === 'attributes' && !record.target.matches('.el-tabs__item')) continue
+      if (record.type === 'attributes' && !record.target.matches(ACTIVE_TAB_SELECTOR)) continue
       const root = record.target.closest<HTMLElement>(TABS_SELECTOR)
-      if (root && (record.type === 'attributes' || record.target === root || record.target.closest('.el-tabs__header'))) {
+      if (root && (record.target === root || record.target.closest('.el-tabs__header, .tabs-container'))) {
         revealActiveTab(root)
       }
       for (const node of record.addedNodes) {
@@ -84,11 +90,7 @@ export const initPageTabScroll = () => {
   })
   observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
 
-  const revealAllActiveTabs = () => {
-    document.querySelectorAll<HTMLElement>(TABS_SELECTOR).forEach(revealActiveTab)
-  }
-  window.addEventListener('resize', revealAllActiveTabs, { signal: controller.signal })
-  revealAllActiveTabs()
+  document.querySelectorAll<HTMLElement>(TABS_SELECTOR).forEach(revealActiveTab)
 
   if (import.meta.hot) {
     import.meta.hot.dispose(() => {

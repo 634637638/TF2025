@@ -38,6 +38,7 @@ interface UseInventoryDataOptions {
   pagination: PaginationState
   stats: StatsState
   statsAvailable: Ref<boolean>
+  statsFailed: Ref<boolean>
   onError: (message: string) => void
   onWarning: (message: string) => void
 }
@@ -72,6 +73,7 @@ export const useInventoryData = ({
   pagination,
   stats,
   statsAvailable,
+  statsFailed,
   onError,
   onWarning
 }: UseInventoryDataOptions) => {
@@ -88,6 +90,7 @@ export const useInventoryData = ({
     stats.sold = 0
     stats.totalValue = 0
     statsAvailable.value = false
+    statsFailed.value = false
   }
 
   const updateStats = async (requestParams: Record<string, unknown> = {}) => {
@@ -123,6 +126,7 @@ export const useInventoryData = ({
 
       if (!response.success) {
         clearStats()
+        statsFailed.value = true
         return
       }
 
@@ -136,6 +140,7 @@ export const useInventoryData = ({
       if (requestId !== statsRequestId) return
       logger.error('获取统计数据失败:', error)
       clearStats()
+      statsFailed.value = true
     }
   }
 
@@ -187,6 +192,7 @@ export const useInventoryData = ({
         inventory.value = []
         pagination.total = 0
         clearStats()
+        statsFailed.value = true
         return
       }
 
@@ -242,6 +248,7 @@ export const useInventoryData = ({
       inventory.value = []
       pagination.total = 0
       clearStats()
+      statsFailed.value = true
     } finally {
       if (showLoadingState) tableLoading.value = false
     }

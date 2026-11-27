@@ -55,7 +55,7 @@
           <div class="section-title">
             <i class="fas fa-list" />
             设备列表
-            <span class="record-count">共 {{ pagination.total || 0 }} 条记录</span>
+            <span class="record-count">共 {{ pagination.total || 0 }} 条</span>
           </div>
 
           <SalesViewControls

@@ -101,7 +101,6 @@
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--tf-color-border-muted);
-  margin-bottom: 24px;
 }
 
 .error-content {

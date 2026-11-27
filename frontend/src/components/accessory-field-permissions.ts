@@ -35,6 +35,16 @@ export const canViewAccessoryField = (field: AccessoryFieldName) => canViewField
 /** 综合查询商品模式的字段与商品档案独立，后端按角色兼容未单独保存的旧限制。 */
 export const canViewQueryGoodsField = (field: AccessoryFieldName) => canViewField('query_goods', field)
 
+export const QUERY_GOODS_STAT_FIELD_IDS = {
+  monthlySales: 'stats.monthly_sales', monthlyGifts: 'stats.monthly_gifts',
+  customerVisits: 'stats.customer_visits', monthlyBestSellers: 'stats.monthly_best_sellers'
+} as const
+
+export type QueryGoodsStatField = keyof typeof QUERY_GOODS_STAT_FIELD_IDS
+
+export const canViewQueryGoodsStat = (field: QueryGoodsStatField) =>
+  fieldPermissions.isFieldVisible('query_goods', QUERY_GOODS_STAT_FIELD_IDS[field])
+
 export const pickVisibleAccessoryFields = <T extends object>(
   source: T,
   fieldMap: Partial<Record<keyof T, AccessoryFieldName>>

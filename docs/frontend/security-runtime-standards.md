@@ -10,7 +10,7 @@ Vite 通过 `optimizeDeps.include` 在启动时预构建 Element Plus 的 `eleme
 
 根目录 `npm run dev`、`npm start`、`npm run frontend`，以及前端目录 `npm run dev`、`npm start` 和 HTTPS 开发入口直接启动服务，不自动运行全量审计或业务测试。一次性修复、地区资源准备和数据库迁移也不能挂到这些入口自动重跑；真实数据库写入仍须获得本次明确授权。
 
-已修复问题的正式回归测试和审计保留，通过根目录 `npm run check:standards` 手动执行。前端 `prebuild`、`prebuild:debug` 和 `check:release` 继续强制全量审计，失败不得发布。`check:coverage` 的隔离 npm 生命周期回归验证这两个边界；后端必要的环境、运行时资源和单实例安全检查继续执行。
+已修复问题的正式回归测试和审计保留，通过根目录 `npm run check:standards` 手动执行。日常 `build` 和 `build:debug` 只执行 Vite 构建及产物体积门禁，避免重复运行全量规范和单元测试。发布使用 `build:release`，先执行 `check:release` 再构建，失败不得发布。`check:coverage` 的隔离 npm 生命周期回归验证这些边界；后端必要的环境、运行时资源和单实例安全检查继续执行。
 
 ## 本地 HTTPS 开发
 
@@ -26,9 +26,11 @@ npm --prefix frontend run dev:https
 
 ## 生产构建与产物
 
-唯一标准生产入口为 `frontend/package.json` 的 `build` 脚本，从仓库根目录执行 `npm --prefix frontend run build`：先由 `prebuild` 执行完整规范门禁，再执行 Vite 生产构建和 `check:bundle-size`。输出目录由 `frontend/vite.config.ts` 的 `build.outDir` 统一指定为 `frontend/dist/`；每次构建清理该目录旧产物并生成本次静态文件。
+日常生产构建入口为 `frontend/package.json` 的 `build` 脚本，从仓库根目录执行 `npm --prefix frontend run build`，执行 Vite 生产构建和 `check:bundle-size`。发布构建使用 `npm --prefix frontend run build:release`，先执行 `check:release`，再复用同一个 `build` 入口，避免审计和构建重复执行。输出目录由 `frontend/vite.config.ts` 的 `build.outDir` 统一指定为 `frontend/dist/`；每次构建清理该目录旧产物并生成本次静态文件。
 
 登录首屏不加载业务专用的表格拖动和 TAB 滚动工具；两者复用 `main.ts` 的业务路由初始化入口动态加载，并由原公共工具保证全局只初始化一次。构建仍使用现有体积基线，不通过提高限额或关闭检查规避超限。
+
+后台布局和表格样式 `admin-layout.css` 随后台布局及两个公开报价路由加载。入口共享同一份样式，Vite 在路由组件渲染前加载相应的 CSS。
 
 按用户要求，标准打包只更新 `frontend/dist/`，不自动生成 `dist.zip`、TAR 或其他部署归档，也不增加自动压缩钩子或第二个构建脚本。用户自行压缩、上传该目录内容。Vite 的代码压缩和静态资源 `.gz` 预压缩继续沿用现有配置，它们属于站点资源优化；根目录 `本地备份/` 的项目源码压缩备份按独立特例保留，见[备份管理](../backend/backup-management.md#git-管理页项目压缩包)。
 

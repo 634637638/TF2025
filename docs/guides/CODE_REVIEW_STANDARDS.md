@@ -389,7 +389,7 @@ console.log('debug');  // 禁止
 | 后端逻辑 | 专项测试；`npm --prefix backend test`；定向 ESLint/语法检查 | 数据库条件测试按[数据库回归测试规范](../backend/database-testing.md)执行，默认独立库；明确授权的业务模式须准确指定目标并核验清理；跳过不能计作通过 |
 | 行为、接口、字段、权限、配置、数据库或部署方式 | 同步对应权威正文、索引、台账和审计；`npm run check:docs` | 交付时列出已更新文档；判断无需更新时说明理由，不能只改代码后把文档留到未定义的后续任务 |
 | 审计、构建或测试工具 | 工具的正式正例与负例测试，并运行工具本身 | 确保错误确实失败，不删断言、降级检查或扩大例外掩盖问题 |
-| 发布、构建验收 | `npm --prefix frontend run check:release`；`npm --prefix frontend run build`；后端测试 | 依赖/联网/部署检查失败或未执行时说明，不能把本地检查称为上线验收 |
+| 发布、构建验收 | `npm --prefix frontend run build:release`；后端测试 | `build:release` 已包含 `check:release` 和生产构建；依赖/联网/部署检查失败或未执行时说明，不能把本地检查称为上线验收 |
 | 所有改动 | `git diff --check` | 不自动提交、推送或清理用户工作区 |
 
 定向 ESLint 使用 `npx eslint <本次代码文件> --max-warnings 0`；规范、构建门禁自身变化应运行 `npm --prefix frontend run check:standards`，正式发布不得只执行定向检查。

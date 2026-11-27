@@ -24,8 +24,8 @@ const wrappers: ReturnType<typeof mount>[] = []
 async function render() {
   const wrapper = mount(PurchasePayments, { global: {
     plugins: [ElementPlus], components: { RecordDetailDialog, RecordDescriptions },
-    stubs: { MobileDialog: Dialog, Pagination, SectionLoading: true, DataEmptyState: true },
-    mocks: { $getNumberColumnWidth: () => 80 }, directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': {} }
+    stubs: { MobileDialog: Dialog, Pagination, DataEmptyState: true },
+    mocks: { $getNumberColumnWidth: () => 80 }, directives: { permission: {}, 'tf-loading': {}, 'table-double-tap': {}, 'identifier-input': {} }
   } })
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
@@ -161,8 +161,14 @@ it('筛选旧响应不能覆盖新响应，失败时展示重试并清空旧汇�
 })
 it('历史按原采购ID分页，关闭后丢弃旧响应，隐藏状态不能打开历史', async () => {
   const wrapper = await render()
-  mocks.get.mockResolvedValueOnce({ data: [{ id: 11, stock_in_id: 8, action: 'cancel', amount: 625, reference_event_id: 10, remarks: '核对错误' }], pagination: { total: 21 } })
-  await button(wrapper, '记录').trigger('click'); await flushPromises()
+  const history = { data: [{ id: 11, stock_in_id: 8, action: 'cancel', amount: 625, reference_event_id: 10, remarks: '核对错误' }], pagination: { total: 21 } }
+  let finish!: (value: typeof history) => void
+  mocks.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  await button(wrapper, '记录').trigger('click')
+  expect(wrapper.find('.dialog').text()).toContain('正在读取采购打款历史...')
+  finish(history)
+  await flushPromises()
+  expect(wrapper.find('.dialog').text()).not.toContain('正在读取采购打款历史...')
   expect(wrapper.find('.dialog').text()).toContain('撤销登记')
   expect(wrapper.find('.dialog').text()).toContain('核对错误')
   mocks.get.mockResolvedValueOnce({ data: [], pagination: { total: 21 } })

@@ -1,366 +1,107 @@
 <template>
-  <div class="profit-analytics">
+  <div class="profit-analytics admin-page-content">
     <!-- 盈利概览卡片 -->
-    <el-row
-      v-if="showProfitOverviewCards"
-      :gutter="16"
-      class="overview-cards"
+    <Teleport
+      :to="props.overviewTarget || 'body'"
+      :disabled="!props.overviewTarget"
     >
-      <el-col
-        v-if="canViewProfitField('total_revenue')"
-        :xs="12"
-        :sm="12"
-        :md="6"
-        :lg="6"
+      <div
+        v-if="showProfitOverviewCards"
+        class="stats-cards"
+        role="region"
+        aria-label="盈利分析统计"
+        tabindex="0"
       >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon revenue">
-              <i class="fas fa-chart-line" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                总销售额
-              </div>
-              <div class="card-value">
-                ¥{{ formatAmount(profitData.totalRevenue || 0) }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewProfitField('total_revenue')"
+          class="stat-card stat-card--income"
+          label="总销售额"
+          :value="`¥${formatAmount(profitData.totalRevenue || 0)}`"
+          :icon="TrendCharts"
+        />
 
-      <el-col
-        v-if="canViewProfitField('total_cost')"
-        :xs="12"
-        :sm="12"
-        :md="6"
-        :lg="6"
-      >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon cost">
-              <i class="fas fa-coins" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                总成本
-              </div>
-              <div class="card-value">
-                ¥{{ formatAmount(profitData.totalCost || 0) }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewProfitField('total_cost')"
+          class="stat-card stat-card--expense"
+          label="总成本"
+          :value="`¥${formatAmount(profitData.totalCost || 0)}`"
+          :icon="Coin"
+        />
 
-      <el-col
-        v-if="canViewProfitField('gross_profit')"
-        :xs="12"
-        :sm="12"
-        :md="6"
-        :lg="6"
-      >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon gross">
-              <i class="fas fa-balance-scale" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                销售利润
-              </div>
-              <div class="card-value">
-                ¥{{ formatAmount(profitData.grossProfit || 0) }}
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+        <AnalyticsStatCard
+          v-if="canViewProfitField('gross_profit')"
+          class="stat-card stat-card--success"
+          label="销售利润"
+          :value="`¥${formatAmount(profitData.grossProfit || 0)}`"
+          :icon="DataAnalysis"
+        />
 
-      <el-col
-        v-if="canViewProfitField('total_sales_count')"
-        :xs="12"
-        :sm="12"
-        :md="6"
-        :lg="6"
-      >
-        <el-card class="overview-card">
-          <div class="card-content">
-            <div class="card-icon margin">
-              <i class="fas fa-shopping-cart" />
-            </div>
-            <div class="card-info">
-              <div class="card-title">
-                总销售量
-              </div>
-              <div class="card-value">
-                {{ formatNumber(profitData.totalSalesCount || 0) }}台
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        <AnalyticsStatCard
+          v-if="canViewProfitField('total_sales_count')"
+          class="stat-card stat-card--info"
+          label="总销售量"
+          :value="`${formatNumber(profitData.totalSalesCount || 0)}台`"
+          :icon="ShoppingCart"
+        />
+      </div>
+    </Teleport>
 
-    <!-- 业务统计维度 - 全新/二手/调货-划拨 -->
-    <el-row
+    <div
       v-if="showProfitSalesStatsRow"
-      :gutter="16"
-      class="business-stats"
+      class="stats-cards"
+      role="region"
+      aria-label="盈利业务统计"
+      tabindex="0"
     >
-      <el-col
-        v-if="canViewProfitField('new_sales_stats')"
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
+      <article
+        v-for="card in profitBusinessCards"
+        :key="card.title"
+        class="stat-card stat-card--filled profit-breakdown-card"
+        :class="card.tone"
       >
-        <el-card class="stats-card">
-          <template #header>
-            <div class="card-header">
-              <h3><i class="fas fa-mobile-alt" /> 全新销售</h3>
-              <el-tag
-                type="success"
-                size="large"
-              >
-                全新
-              </el-tag>
-            </div>
-          </template>
-          <el-row :gutter="12">
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  销售数量
-                </div>
-                <div class="stat-value">
-                  {{ formatNumber(newData.salesCount) }}台
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  利润
-                </div>
-                <div class="stat-value">
-                  ¥{{ formatAmount(newData.profit) }}
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  销售金额
-                </div>
-                <div class="stat-value">
-                  ¥{{ formatAmount(newData.salesAmount) }}
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  平均利润
-                </div>
-                <div class="stat-value">
-                  {{ newData.marginRate }}%
-                </div>
-              </div>
-            </el-col>
-          </el-row>
-        </el-card>
-      </el-col>
-
-      <el-col
-        v-if="canViewProfitField('used_sales_stats')"
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
-      >
-        <el-card class="stats-card">
-          <template #header>
-            <div class="card-header">
-              <h3><i class="fas fa-recycle" /> 二手销售</h3>
-              <el-tag
-                type="warning"
-                size="large"
-              >
-                二手
-              </el-tag>
-            </div>
-          </template>
-          <el-row :gutter="12">
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  销售数量
-                </div>
-                <div class="stat-value">
-                  {{ formatNumber(usedData.salesCount) }}台
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  利润
-                </div>
-                <div class="stat-value">
-                  ¥{{ formatAmount(usedData.profit) }}
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  销售金额
-                </div>
-                <div class="stat-value">
-                  ¥{{ formatAmount(usedData.salesAmount) }}
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  平均利润
-                </div>
-                <div class="stat-value">
-                  {{ usedData.marginRate }}%
-                </div>
-              </div>
-            </el-col>
-          </el-row>
-        </el-card>
-      </el-col>
-
-      <el-col
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
-      >
-        <el-card class="stats-card transfer-card">
-          <template #header>
-            <div class="card-header">
-              <h3><i class="fas fa-exchange-alt" /> 调货-划拨</h3>
-              <el-tag
-                type="info"
-                size="large"
-              >
-                批发
-              </el-tag>
-            </div>
-          </template>
-          <el-row :gutter="12">
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  调货数量
-                </div>
-                <div class="stat-value">
-                  {{ formatNumber(transferData.wholesaleCount) }}台
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  划拨数量
-                </div>
-                <div class="stat-value">
-                  {{ formatNumber(transferData.allocationCount) }}台
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  调货利润
-                </div>
-                <div class="stat-value">
-                  ¥{{ formatAmount(transferData.wholesaleProfit) }}
-                </div>
-              </div>
-            </el-col>
-            <el-col
-              :xs="12"
-              :sm="12"
-              :md="12"
-            >
-              <div class="stat-item">
-                <div class="stat-label">
-                  划拨利润
-                </div>
-                <div class="stat-value">
-                  ¥{{ formatAmount(transferData.allocationProfit) }}
-                </div>
-              </div>
-            </el-col>
-          </el-row>
-        </el-card>
-      </el-col>
-    </el-row>
+        <h3 class="profit-breakdown-heading">
+          <span
+            class="stat-card__badge-icon"
+            aria-hidden="true"
+          >
+            <component :is="card.icon" />
+          </span>
+          {{ card.title }}
+        </h3>
+        <dl class="profit-breakdown">
+          <div class="profit-breakdown__quantity">
+            <dt>{{ card.quantityLabel }}</dt>
+            <dd>
+              {{ formatNumber(card.count) }}
+              <span>台</span>
+            </dd>
+          </div>
+          <div
+            v-for="detail in card.details"
+            :key="detail.label"
+            class="stat-card__tile"
+          >
+            <dt>{{ detail.label }}</dt>
+            <dd>{{ detail.value }}</dd>
+          </div>
+          <div
+            v-if="showBusinessSalesShare"
+            class="stat-card__tile"
+          >
+            <dt>销量占比</dt>
+            <dd>{{ formatBusinessSalesShare(card.count) }}</dd>
+          </div>
+        </dl>
+      </article>
+    </div>
 
     <!-- 品牌/型号销量排行 -->
-    <el-row
+    <div
       v-if="showProfitRankingSection"
-      :gutter="16"
-      class="ranking-section"
+      class="analytics-panel-grid ranking-section"
     >
-      <el-col
+      <div
         v-if="canViewProfitField('brand_ranking')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="ranking-card">
           <template #header>
@@ -415,14 +156,10 @@
             </div>
           </div>
         </el-card>
-      </el-col>
+      </div>
 
-      <el-col
+      <div
         v-if="canViewProfitField('model_ranking')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="ranking-card">
           <template #header>
@@ -477,16 +214,15 @@
             </div>
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 员工/店铺业绩统计 -->
-    <el-row
+    <div
       v-if="canViewProfitField('employee_performance_table')"
-      :gutter="16"
-      class="performance-section"
+      class="analytics-panel-grid performance-section"
     >
-      <el-col :span="24">
+      <div>
         <el-card class="performance-card">
           <template #header>
             <div class="card-header">
@@ -661,206 +397,184 @@
             :has-actions="false"
           />
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 利润指标卡片 -->
-    <el-row
+    <div
       v-if="showProfitMetricsSection"
-      :gutter="16"
-      class="metrics-section"
+      class="stats-cards"
+      role="region"
+      aria-label="利润指标"
+      tabindex="0"
     >
-      <el-col
+      <el-card
         v-if="canViewProfitField('metrics_cards')"
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
+        class="stat-card stat-card--success metric-card"
       >
-        <el-card class="metric-card metric-card--margin">
-          <div class="metric-header">
-            <span class="metric-title">净利润率</span>
-            <el-tag
-              :type="profitData.netMarginRate > 15 ? 'success' : 'warning'"
-              size="large"
-            >
-              {{ profitData.netMarginRate || 0 }}%
-            </el-tag>
-          </div>
-          <div class="metric-body">
-            <div class="metric-compare-row">
-              <div class="metric-compare-item">
-                <div class="metric-compare-label">
-                  本月
-                </div>
-                <div class="metric-compare-value">
-                  ¥{{ formatAmount(profitData.netProfit || 0) }}
-                </div>
-                <div class="metric-compare-rate">
-                  {{ profitData.netMarginRate || 0 }}%
-                </div>
+        <div class="metric-header">
+          <span class="metric-title">净利润率</span>
+          <el-tag
+            :type="profitData.netMarginRate > 15 ? 'success' : 'warning'"
+            size="large"
+          >
+            {{ profitData.netMarginRate || 0 }}%
+          </el-tag>
+        </div>
+        <div class="metric-body">
+          <div class="metric-compare-row">
+            <div class="metric-compare-item">
+              <div class="metric-compare-label">
+                本月
               </div>
-              <div class="metric-compare-divider">
-                <i class="fas fa-arrow-right" />
+              <div class="metric-compare-value">
+                ¥{{ formatAmount(profitData.netProfit || 0) }}
               </div>
-              <div class="metric-compare-item">
-                <div class="metric-compare-label">
-                  上月
-                </div>
-                <div class="metric-compare-value">
-                  ¥{{ formatAmount(profitData.lastMonth?.netProfit || 0) }}
-                </div>
-                <div class="metric-compare-rate">
-                  {{ profitData.lastMonth?.netMarginRate || 0 }}%
-                </div>
+              <div class="metric-compare-rate">
+                {{ profitData.netMarginRate || 0 }}%
               </div>
             </div>
-            <div class="metric-trend-row">
-              <span>环比</span>
-              <span :class="profitData.netMarginRateTrend === 'up' ? 'text-success' : 'text-danger'">
-                <i :class="profitData.netMarginRateTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
-                {{ profitData.netMarginRateChange || 0 }}%
-              </span>
+            <div class="metric-compare-divider">
+              <i class="fas fa-arrow-right" />
+            </div>
+            <div class="metric-compare-item">
+              <div class="metric-compare-label">
+                上月
+              </div>
+              <div class="metric-compare-value">
+                ¥{{ formatAmount(profitData.lastMonth?.netProfit || 0) }}
+              </div>
+              <div class="metric-compare-rate">
+                {{ profitData.lastMonth?.netMarginRate || 0 }}%
+              </div>
             </div>
           </div>
-        </el-card>
-      </el-col>
+          <div class="metric-trend-row">
+            <span>环比</span>
+            <span :class="profitData.netMarginRateTrend === 'up' ? 'text-success' : 'text-danger'">
+              <i :class="profitData.netMarginRateTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
+              {{ profitData.netMarginRateChange || 0 }}%
+            </span>
+          </div>
+        </div>
+      </el-card>
 
-      <el-col
+      <el-card
         v-if="canViewProfitField('store_profit_ranking')"
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
+        class="stat-card stat-card--info metric-card store-profit-card"
       >
-        <el-card class="metric-card metric-card--store store-profit-card">
-          <div class="metric-header">
-            <span class="metric-title">门店利润</span>
-            <el-tag
-              type="primary"
-              size="large"
-            >
-              {{ rankedStoreProfits.length }}家门店
-            </el-tag>
-          </div>
-          <div class="metric-body">
+        <div class="metric-header">
+          <span class="metric-title">门店利润</span>
+          <el-tag
+            type="primary"
+            size="large"
+          >
+            {{ rankedStoreProfits.length }}家门店
+          </el-tag>
+        </div>
+        <div class="metric-body">
+          <div
+            v-if="rankedStoreProfits.length > 0"
+            class="store-profit-list"
+          >
             <div
-              v-if="rankedStoreProfits.length > 0"
-              class="store-profit-list"
+              v-for="(store, index) in rankedStoreProfits.slice(0, 4)"
+              :key="store.id"
+              class="store-profit-item"
             >
+              <div class="table-number-badge">
+                {{ index + 1 }}
+              </div>
+              <div class="store-profit-info">
+                <div class="store-profit-name">
+                  {{ store.name }}
+                </div>
+                <div class="store-profit-value">
+                  ¥{{ formatAmount(store.profit) }}
+                </div>
+              </div>
               <div
-                v-for="(store, index) in rankedStoreProfits.slice(0, 4)"
-                :key="store.id"
-                class="store-profit-item"
+                class="store-profit-rate"
+                :class="store.profit >= 0 ? 'text-success' : 'text-danger'"
               >
-                <div class="table-number-badge">
-                  {{ index + 1 }}
-                </div>
-                <div class="store-profit-info">
-                  <div class="store-profit-name">
-                    {{ store.name }}
-                  </div>
-                  <div class="store-profit-value">
-                    ¥{{ formatAmount(store.profit) }}
-                  </div>
-                </div>
-                <div
-                  class="store-profit-rate"
-                  :class="store.profit >= 0 ? 'text-success' : 'text-danger'"
-                >
-                  {{ store.marginRate >= 0 ? '+' : '' }}{{ store.marginRate }}%
-                </div>
+                {{ store.marginRate >= 0 ? '+' : '' }}{{ store.marginRate }}%
               </div>
             </div>
-            <div
-              v-else
-              class="store-profit-empty"
-            >
-              <i class="fas fa-store-slash" />
-              <span>暂无门店数据</span>
-            </div>
-            <div
-              v-if="rankedStoreProfits.length > 0"
-              class="metric-trend-row"
-            >
-              <span>盈利门店 {{ profitableStoreCount }}/{{ rankedStoreProfits.length }}</span>
-              <span :class="averageStoreProfit >= 0 ? 'text-success' : 'text-danger'">
-                店均 ¥{{ formatAmount(averageStoreProfit) }}
-              </span>
-            </div>
           </div>
-        </el-card>
-      </el-col>
+          <div
+            v-else
+            class="store-profit-empty"
+          >
+            <i class="fas fa-store-slash" />
+            <span>暂无门店数据</span>
+          </div>
+          <div
+            v-if="rankedStoreProfits.length > 0"
+            class="metric-trend-row"
+          >
+            <span>盈利门店 {{ profitableStoreCount }}/{{ rankedStoreProfits.length }}</span>
+            <span :class="averageStoreProfit >= 0 ? 'text-success' : 'text-danger'">
+              店均 ¥{{ formatAmount(averageStoreProfit) }}
+            </span>
+          </div>
+        </div>
+      </el-card>
 
-      <el-col
+      <el-card
         v-if="canViewProfitField('metrics_cards')"
-        :xs="24"
-        :sm="24"
-        :md="8"
-        :lg="8"
+        class="stat-card stat-card--accent metric-card"
       >
-        <el-card class="metric-card metric-card--per-capita">
-          <div class="metric-header">
-            <span class="metric-title">人均产值</span>
-            <el-tag
-              type="success"
-              size="large"
-            >
-              ¥{{ formatAmount(profitData.perCapitaOutput || 0) }}
-            </el-tag>
+        <div class="metric-header">
+          <span class="metric-title">人均产值</span>
+        </div>
+        <div class="metric-body">
+          <div class="metric-value">
+            ¥{{ formatAmount(profitData.perCapitaOutput || 0) }}
           </div>
-          <div class="metric-body">
-            <div class="metric-value">
-              ¥{{ formatAmount(profitData.perCapitaOutput || 0) }}
-            </div>
-            <div class="metric-desc">
-              人均月度产值
-            </div>
-            <div class="metric-compare-row compact">
-              <div class="metric-compare-item">
-                <div class="metric-compare-label">
-                  统计员工
-                </div>
-                <div class="metric-compare-value">
-                  {{ employeeCount }}
-                </div>
+          <div class="metric-desc">
+            人均月度产值
+          </div>
+          <div class="metric-compare-row compact">
+            <div class="metric-compare-item">
+              <div class="metric-compare-label">
+                统计员工
               </div>
-              <div class="metric-compare-divider">
-                <i class="fas fa-users" />
-              </div>
-              <div class="metric-compare-item">
-                <div class="metric-compare-label">
-                  人均净利润
-                </div>
-                <div class="metric-compare-value">
-                  ¥{{ formatAmount(perCapitaNetProfit) }}
-                </div>
+              <div class="metric-compare-value">
+                {{ employeeCount }}
               </div>
             </div>
-            <div class="metric-trend-row">
-              <span>ROI</span>
-              <span :class="profitData.roiTrend === 'up' ? 'text-success' : 'text-danger'">
-                <i :class="profitData.roiTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
-                {{ profitData.roi || 0 }}%
-                <template v-if="profitData.roiChange"> ({{ profitData.roiChange > 0 ? '+' : '' }}{{ profitData.roiChange }}%)</template>
-              </span>
+            <div class="metric-compare-divider">
+              <i class="fas fa-users" />
+            </div>
+            <div class="metric-compare-item">
+              <div class="metric-compare-label">
+                人均净利润
+              </div>
+              <div class="metric-compare-value">
+                ¥{{ formatAmount(perCapitaNetProfit) }}
+              </div>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div class="metric-trend-row">
+            <span>ROI</span>
+            <span :class="profitData.roiTrend === 'up' ? 'text-success' : 'text-danger'">
+              <i :class="profitData.roiTrend === 'up' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" />
+              {{ profitData.roi || 0 }}%
+              <template v-if="profitData.roiChange"> ({{ profitData.roiChange > 0 ? '+' : '' }}{{ profitData.roiChange }}%)</template>
+            </span>
+          </div>
+        </div>
+      </el-card>
+    </div>
 
     <!-- 图表区域 -->
-    <el-row
+    <div
       v-if="showProfitTrendSection"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid analytics-panel-grid--wide analytics-panel-grid--2-1"
     >
       <!-- 收入成本利润趋势 -->
-      <el-col
+      <div
         v-if="canViewProfitField('profit_trend_chart')"
-        :xs="24"
-        :lg="16"
       >
         <el-card class="chart-card">
           <template #header>
@@ -890,29 +604,40 @@
               </div>
             </div>
           </template>
-          <div class="trend-summary">
-            <div class="trend-summary-card revenue">
-              <div class="trend-summary-label">
-                {{ profitTrendSummaryLabel }}收入
-              </div>
-              <div class="trend-summary-value">
-                ¥{{ formatAmount(profitTrendCurrentSummary.revenue) }}
+          <div
+            class="stats-cards"
+            role="region"
+            aria-label="利润趋势摘要"
+            tabindex="0"
+          >
+            <div class="stat-card stat-card--income">
+              <div class="stat-content">
+                <div class="stat-label">
+                  {{ profitTrendSummaryLabel }}收入
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(profitTrendCurrentSummary.revenue) }}
+                </div>
               </div>
             </div>
-            <div class="trend-summary-card cost">
-              <div class="trend-summary-label">
-                {{ profitTrendSummaryLabel }}成本
-              </div>
-              <div class="trend-summary-value">
-                ¥{{ formatAmount(profitTrendCurrentSummary.cost) }}
+            <div class="stat-card stat-card--expense">
+              <div class="stat-content">
+                <div class="stat-label">
+                  {{ profitTrendSummaryLabel }}成本
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(profitTrendCurrentSummary.cost) }}
+                </div>
               </div>
             </div>
-            <div class="trend-summary-card profit">
-              <div class="trend-summary-label">
-                {{ profitTrendSummaryLabel }}利润
-              </div>
-              <div class="trend-summary-value">
-                ¥{{ formatAmount(profitTrendCurrentSummary.profit) }}
+            <div class="stat-card stat-card--success">
+              <div class="stat-content">
+                <div class="stat-label">
+                  {{ profitTrendSummaryLabel }}利润
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(profitTrendCurrentSummary.profit) }}
+                </div>
               </div>
             </div>
           </div>
@@ -923,13 +648,11 @@
             />
           </div>
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 盈利预测 -->
-      <el-col
+      <div
         v-if="canViewProfitField('forecast_chart')"
-        :xs="24"
-        :lg="8"
       >
         <el-card class="chart-card forecast-inline-card">
           <template #header>
@@ -996,21 +719,16 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
-    <el-row
+    <div
       v-if="showProfitContributionSection"
-      :gutter="16"
-      class="charts-section"
+      class="analytics-panel-grid"
     >
       <!-- 产品利润贡献 -->
-      <el-col
+      <div
         v-if="canViewProfitField('product_profit_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card product-profit-card">
           <template #header>
@@ -1020,39 +738,48 @@
           </template>
           <div
             v-if="productProfitData.length > 0"
-            class="product-profit-summary"
+            class="stats-cards"
+            role="region"
+            aria-label="产品利润摘要"
+            tabindex="0"
           >
-            <div class="product-profit-summary-item">
-              <div class="summary-label">
-                利润最高型号
-              </div>
-              <div class="summary-name">
-                {{ topProductProfit?.name || '-' }}
-              </div>
-              <div class="summary-value">
-                ¥{{ formatAmount(topProductProfit?.profit || 0) }}
-              </div>
-            </div>
-            <div class="product-profit-summary-item">
-              <div class="summary-label">
-                销量最高型号
-              </div>
-              <div class="summary-name">
-                {{ topProductSales?.name || '-' }}
-              </div>
-              <div class="summary-value">
-                {{ formatNumber(topProductSales?.count || 0) }} 台
+            <div class="stat-card stat-card--income">
+              <div class="stat-content">
+                <div class="stat-label">
+                  利润最高型号
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(topProductProfit?.profit || 0) }}
+                </div>
+                <div class="stat-sub">
+                  {{ topProductProfit?.name || '-' }}
+                </div>
               </div>
             </div>
-            <div class="product-profit-summary-item">
-              <div class="summary-label">
-                平均单台利润
+            <div class="stat-card stat-card--info">
+              <div class="stat-content">
+                <div class="stat-label">
+                  销量最高型号
+                </div>
+                <div class="stat-value">
+                  {{ formatNumber(topProductSales?.count || 0) }} 台
+                </div>
+                <div class="stat-sub">
+                  {{ topProductSales?.name || '-' }}
+                </div>
               </div>
-              <div class="summary-name">
-                TOP10 型号均值
-              </div>
-              <div class="summary-value">
-                ¥{{ formatAmount(averageProductUnitProfit) }}
+            </div>
+            <div class="stat-card stat-card--success">
+              <div class="stat-content">
+                <div class="stat-label">
+                  平均单台利润
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(averageProductUnitProfit) }}
+                </div>
+                <div class="stat-sub">
+                  TOP10 型号均值
+                </div>
               </div>
             </div>
           </div>
@@ -1063,15 +790,11 @@
             />
           </div>
         </el-card>
-      </el-col>
+      </div>
 
       <!-- 店铺利润对比 -->
-      <el-col
+      <div
         v-if="canViewProfitField('store_comparison_chart')"
-        :xs="24"
-        :sm="24"
-        :md="12"
-        :lg="12"
       >
         <el-card class="chart-card store-comparison-card">
           <template #header>
@@ -1086,39 +809,48 @@
           </template>
           <div
             v-if="storeComparisonData.length > 0"
-            class="store-comparison-summary"
+            class="stats-cards"
+            role="region"
+            aria-label="门店利润比较摘要"
+            tabindex="0"
           >
-            <div class="store-comparison-summary-item">
-              <div class="summary-label">
-                利润最高
-              </div>
-              <div class="summary-name">
-                {{ topProfitStore?.name || '-' }}
-              </div>
-              <div class="summary-value">
-                ¥{{ formatAmount(topProfitStore?.profit || 0) }}
-              </div>
-            </div>
-            <div class="store-comparison-summary-item">
-              <div class="summary-label">
-                营收最高
-              </div>
-              <div class="summary-name">
-                {{ topRevenueStore?.name || '-' }}
-              </div>
-              <div class="summary-value">
-                ¥{{ formatAmount(topRevenueStore?.revenue || 0) }}
+            <div class="stat-card stat-card--success">
+              <div class="stat-content">
+                <div class="stat-label">
+                  利润最高
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(topProfitStore?.profit || 0) }}
+                </div>
+                <div class="stat-sub">
+                  {{ topProfitStore?.name || '-' }}
+                </div>
               </div>
             </div>
-            <div class="store-comparison-summary-item">
-              <div class="summary-label">
-                整体利润率
+            <div class="stat-card stat-card--income">
+              <div class="stat-content">
+                <div class="stat-label">
+                  营收最高
+                </div>
+                <div class="stat-value">
+                  ¥{{ formatAmount(topRevenueStore?.revenue || 0) }}
+                </div>
+                <div class="stat-sub">
+                  {{ topRevenueStore?.name || '-' }}
+                </div>
               </div>
-              <div class="summary-name">
-                {{ profitableStoreCount }}/{{ storeComparisonData.length }} 家盈利
-              </div>
-              <div class="summary-value">
-                {{ overallStoreMarginRate }}%
+            </div>
+            <div class="stat-card stat-card--info">
+              <div class="stat-content">
+                <div class="stat-label">
+                  整体利润率
+                </div>
+                <div class="stat-value">
+                  {{ overallStoreMarginRate }}%
+                </div>
+                <div class="stat-sub">
+                  {{ profitableStoreCount }}/{{ storeComparisonData.length }} 家盈利
+                </div>
               </div>
             </div>
           </div>
@@ -1129,17 +861,16 @@
             />
           </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- 成本分析表格 -->
-    <el-row
+    <div
       v-if="canViewProfitField('cost_analysis_table')"
-      :gutter="16"
-      class="table-section admin-panel admin-table-panel"
+      class="analytics-panel-grid"
     >
-      <el-col :span="24">
-        <el-card class="table-card admin-panel admin-table-panel">
+      <div>
+        <el-card class="table-card">
           <template #header>
             <div class="card-header">
               <h3>成本构成分析</h3>
@@ -1273,16 +1004,18 @@
             :has-actions="false"
           />
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import AnalyticsStatCard from './AnalyticsStatCard.vue'
+import { Cellphone, Coin, DataAnalysis, RefreshRight, ShoppingCart, Switch, TrendCharts } from '@element-plus/icons-vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'
 import type { RecordDetailField } from '@/types/component'
-import { formatAmount } from '@/utils/format'
+import { formatAmount, formatCurrency } from '@/utils/format'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useNotification } from '@/composables/useNotification'
 import { useLoadingState } from '@/composables'
@@ -1489,6 +1222,57 @@ const transferData = ref({
   allocationAmount: 0,
   allocationProfit: 0
 })
+
+const showBusinessSalesShare = computed(() =>
+  canViewProfitField('new_sales_stats') &&
+  canViewProfitField('used_sales_stats') &&
+  canViewProfitField('total_sales_count')
+)
+
+const formatBusinessSalesShare = (count: number) => {
+  const total = profitData.value.totalSalesCount
+  return total > 0 ? `${formatAmount(count / total * 100, 1)}%` : '0%'
+}
+
+const getRetailBusinessDetails = (data: typeof newData.value) => [
+  { label: '销售金额', value: formatCurrency(data.salesAmount) },
+  { label: '利润', value: formatCurrency(data.profit) },
+  { label: '利润率', value: `${data.marginRate}%` }
+]
+
+const profitBusinessCards = computed(() => [
+  {
+    visible: canViewProfitField('new_sales_stats'),
+    title: '全新销售',
+    tone: 'stat-card--new',
+    icon: Cellphone,
+    quantityLabel: '销售数量',
+    count: newData.value.salesCount,
+    details: getRetailBusinessDetails(newData.value)
+  },
+  {
+    visible: canViewProfitField('used_sales_stats'),
+    title: '二手销售',
+    tone: 'stat-card--used',
+    icon: RefreshRight,
+    quantityLabel: '销售数量',
+    count: usedData.value.salesCount,
+    details: getRetailBusinessDetails(usedData.value)
+  },
+  {
+    visible: true,
+    title: '调货-划拨',
+    tone: 'stat-card--primary',
+    icon: Switch,
+    quantityLabel: '调货数量',
+    count: transferData.value.wholesaleCount,
+    details: [
+      { label: '调货利润', value: formatCurrency(transferData.value.wholesaleProfit) },
+      { label: '划拨数量', value: `${formatNumber(transferData.value.allocationCount)}台` },
+      { label: '划拨利润', value: formatCurrency(transferData.value.allocationProfit) }
+    ]
+  }
+].filter(card => card.visible))
 
 const getTrendAnchorDate = () => {
   const anchor = endDate.value ? TimeUtil.parse(endDate.value) : null
@@ -3214,125 +2998,89 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
 
 <style lang="scss" scoped>
 .profit-analytics {
+  .profit-breakdown-card {
+    --admin-stat-card-display: grid;
+    --admin-stat-card-row-gap: var(--tf-space-3);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    align-content: start;
+  }
+
+  .profit-breakdown-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--tf-space-2);
+    margin: 0;
+    font-size: var(--tf-font-section);
+    line-height: var(--tf-line-height-compact);
+  }
+
+  .profit-breakdown {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--tf-space-2);
+    align-self: stretch;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+
+    dd {
+      margin: 0;
+      font-weight: 700;
+    }
+  }
+
+  .profit-breakdown__quantity {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--tf-space-2);
+    font-size: var(--tf-font-caption);
+
+    dt {
+      order: 1;
+    }
+
+    dd {
+      font-size: var(--tf-type-scale-32);
+      line-height: var(--tf-line-height-compact);
+    }
+
+    span {
+      font-size: var(--tf-font-label);
+    }
+  }
+
   @media (max-width: 767px) {
-    .overview-cards {
-      margin-bottom: 18px;
-
-      :deep(.el-col) {
-        display: flex;
-      }
+    .profit-breakdown-card {
+      --admin-stat-card-row-gap: var(--tf-space-2);
     }
 
-    .overview-card {
-      min-height: 152px;
-      height: auto;
-      position: relative;
-      background: var(--color-bg-white);
-      border-radius: 18px;
-      border: 1px solid rgba(15, 23, 42, 0.06);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-
-      &::before {
-        content: '';
-        position: absolute;
-        inset: 0 0 auto 0;
-        height: 3px;
-        background: linear-gradient(90deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-      }
-
-      :deep(.el-card__body) {
-        height: 100%;
-        padding: 0;
-        background:
-          radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 42%),
-          linear-gradient(180deg, rgba(249, 250, 252, 0.98), rgba(255, 255, 255, 1));
-      }
-
-      .card-content {
-        align-items: flex-start;
-        gap: 12px;
-        padding: 18px 14px 14px;
-      }
-
-      .card-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 14px;
-        font-size: var(--tf-type-scale-18);
-        box-shadow: 0 8px 18px rgba(102, 126, 234, 0.16);
-        flex-shrink: 0;
-      }
-
-      .card-info {
-        min-width: 0;
-
-        .card-title {
-          margin-bottom: 2px;
-          font-size: var(--tf-type-scale-10);
-          line-height: 1.35;
-          font-weight: 700;
-          letter-spacing: 0.45px;
-          text-transform: uppercase;
-          color: var(--tf-color-gray-ios);
-          white-space: normal;
-        }
-
-        .card-value {
-          margin-bottom: 0;
-          font-size: var(--tf-type-scale-21);
-          line-height: 1.18;
-          color: var(--tf-color-neutral-ios);
-          white-space: normal;
-          overflow-wrap: anywhere;
-        }
-      }
+    .profit-breakdown {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--tf-space-1);
     }
 
+    .profit-breakdown__quantity dd {
+      font-size: var(--tf-font-section);
+    }
+
+    .profit-breakdown .stat-card__tile {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0 var(--tf-space-1);
+      padding: var(--tf-space-1);
+    }
     .trend-card-header {
       flex-direction: column;
       align-items: flex-start;
     }
 
-    .trend-summary {
-      grid-template-columns: 1fr;
-    }
-
-    .product-profit-summary {
-      grid-template-columns: 1fr;
-    }
-
-    .store-comparison-summary {
-      grid-template-columns: 1fr;
-    }
-
     .forecast-summary-bar {
       flex-direction: column;
       align-items: flex-start;
-    }
-
-    .stats-card {
-      border-radius: 18px;
-
-      .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-      }
-
-      .stat-item {
-        padding: 14px 12px;
-
-        .stat-label {
-          line-height: 1.4;
-        }
-
-        .stat-value {
-          font-size: var(--tf-type-scale-18);
-          line-height: 1.25;
-          overflow-wrap: anywhere;
-        }
-      }
     }
 
     .ranking-card {
@@ -3365,100 +3113,8 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
 
 <style lang="scss" scoped>
 .profit-analytics {
-  // 业务统计区域
-  .business-stats {
-    margin-bottom: 20px;
-
-    .stats-card {
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-
-        h3 {
-          margin: 0;
-          font-size: var(--tf-type-scale-16);
-          font-weight: 600;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-
-          i {
-            color: var(--el-color-primary);
-          }
-        }
-      }
-
-      .stat-item {
-        padding: 16px;
-        background: var(--el-fill-color-light);
-        border-radius: 8px;
-        margin-bottom: 12px;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-
-        .stat-label {
-          font-size: var(--tf-type-scale-12);
-          color: var(--el-text-color-secondary);
-          margin-bottom: 8px;
-        }
-
-        .stat-value {
-          font-size: var(--tf-type-scale-20);
-          font-weight: 600;
-          color: var(--el-text-color-primary);
-          margin-bottom: 8px;
-        }
-
-        .stat-desc {
-          font-size: var(--tf-type-scale-12);
-          color: var(--el-text-color-placeholder);
-        }
-
-        .stat-change {
-          font-size: var(--tf-type-scale-12);
-          display: flex;
-          align-items: center;
-          gap: 4px;
-
-          &.positive {
-            color: var(--el-color-success);
-          }
-
-          &.negative {
-            color: var(--el-color-danger);
-          }
-
-          i {
-            font-size: var(--tf-type-scale-10);
-          }
-        }
-
-        .stat-progress {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-
-          .progress-text {
-            font-size: var(--tf-type-scale-12);
-            color: var(--el-text-color-regular);
-          }
-        }
-      }
-    }
-  }
-
-}
-</style>
-
-<style lang="scss" scoped>
-.profit-analytics {
   // 排行区域
   .ranking-section {
-    margin-bottom: 20px;
-
     .ranking-card {
       .card-header {
         display: flex;
@@ -3558,8 +3214,6 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
 .profit-analytics {
   // 业绩统计区域
   .performance-section {
-    margin-bottom: 20px;
-
     .performance-card {
       .card-header {
         display: flex;
@@ -3586,113 +3240,25 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
     }
   }
 
-  .overview-cards {
-    margin-bottom: 24px;
-  }
-
-  .overview-card {
-    height: 140px;
-
-    .card-content {
-      display: flex;
-      align-items: center;
-      height: 100%;
-      gap: 16px;
-    }
-
-    .card-icon {
-      width: 60px;
-      height: 60px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: var(--tf-type-scale-24);
-      color: white;
-
-      &.revenue {
-        background: linear-gradient(135deg, var(--tf-color-indigo-brand) 0%, var(--tf-color-purple-brand) 100%);
-      }
-
-      &.cost {
-        background: linear-gradient(135deg, var(--tf-color-pink-gradient) 0%, var(--tf-color-coral-gradient) 100%);
-      }
-
-      &.gross {
-        background: linear-gradient(135deg, var(--tf-color-sky-gradient) 0%, var(--tf-color-cyan-gradient) 100%);
-      }
-
-      &.margin {
-        background: linear-gradient(135deg, var(--tf-color-green-gradient) 0%, var(--tf-color-teal-gradient) 100%);
-      }
-    }
-
-    .card-info {
-      flex: 1;
-
-      .card-title {
-        font-size: var(--tf-type-scale-14);
-        color: var(--el-text-color-secondary);
-        margin-bottom: 4px;
-      }
-
-      .card-value {
-        font-size: var(--tf-type-scale-24);
-        font-weight: 600;
-        color: var(--el-text-color-primary);
-        margin-bottom: 4px;
-      }
-
-      .card-change {
-        display: flex;
-        align-items: center;
-        font-size: var(--tf-type-scale-12);
-        font-weight: 500;
-        gap: 4px;
-
-        &.positive { color: var(--el-color-success); }
-        &.negative { color: var(--el-color-danger); }
-        &.neutral { color: var(--el-color-info); }
-      }
-    }
-  }
-
-  .metrics-section {
-    margin-bottom: 24px;
-
-    :deep(.el-col) {
-      display: flex;
-    }
-  }
-
   .metric-card {
-    width: 100%;
-    height: 100%;
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
-    overflow: hidden;
-
     :deep(.el-card__body) {
+      align-self: stretch;
       display: flex;
       flex-direction: column;
-      height: 100%;
-      padding: 18px;
-      background:
-        radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), transparent 38%),
-        linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.98));
+      min-width: 0;
     }
 
     .metric-header {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
-      padding: 0 0 12px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      gap: var(--tf-space-1);
+      margin-bottom: var(--tf-space-2);
 
       .metric-title {
         font-size: var(--tf-type-scale-15);
-        color: var(--tf-color-slate-700);
+        color: var(--admin-stat-value-color);
         font-weight: 600;
         letter-spacing: 0.02em;
       }
@@ -3704,20 +3270,19 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
       flex-direction: column;
       justify-content: space-between;
       text-align: center;
-      min-height: 232px;
-      gap: 12px;
+      gap: var(--tf-space-2);
 
       .metric-value {
         font-size: var(--tf-type-scale-30);
         font-weight: 700;
-        color: var(--tf-color-slate-900);
+        color: var(--admin-stat-value-color);
         margin-bottom: 4px;
         line-height: 1.15;
       }
 
       .metric-desc {
         font-size: var(--tf-type-scale-12);
-        color: var(--tf-color-slate-500);
+        color: var(--admin-stat-label-color);
         margin-bottom: 12px;
       }
 
@@ -3748,11 +3313,7 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
         align-items: center;
         justify-content: space-around;
         margin-bottom: 8px;
-        padding: 12px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.78);
-        border: 1px solid rgba(148, 163, 184, 0.16);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        gap: var(--tf-space-1);
 
         &.compact {
           margin-bottom: 6px;
@@ -3761,18 +3322,18 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
         .metric-compare-item {
           text-align: center;
           flex: 1;
-          padding: 6px 8px;
+          min-width: 0;
 
           .metric-compare-label {
             font-size: var(--tf-type-scale-12);
-            color: var(--tf-color-slate-500);
+            color: var(--admin-stat-label-color);
             margin-bottom: 6px;
           }
 
           .metric-compare-value {
             font-size: var(--tf-type-scale-19);
             font-weight: 700;
-            color: var(--tf-color-slate-900);
+            color: var(--admin-stat-value-color);
             margin-bottom: 4px;
             line-height: 1.2;
           }
@@ -3787,22 +3348,19 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
         .metric-compare-divider {
           color: var(--tf-color-slate-400);
           font-size: var(--tf-type-scale-16);
-          padding: 0 8px;
         }
       }
 
       .metric-trend-row {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         justify-content: center;
         gap: 8px;
         font-size: var(--tf-type-scale-12);
         margin-top: auto;
-        padding: 10px 12px;
-        border-radius: 12px;
-        border-top: none;
-        background: rgba(15, 23, 42, 0.04);
-        color: var(--tf-color-slate-500);
+        padding: var(--tf-space-1);
+        color: var(--admin-stat-label-color);
 
         .text-success {
           color: var(--el-color-success);
@@ -3822,30 +3380,6 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
 
 <style lang="scss" scoped>
 .profit-analytics {
-  .metric-card--margin {
-    :deep(.el-card__body) {
-      background:
-        radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 35%),
-        linear-gradient(180deg, rgba(240, 253, 244, 0.96), rgba(255, 255, 255, 0.98));
-    }
-  }
-
-  .metric-card--store {
-    :deep(.el-card__body) {
-      background:
-        radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 35%),
-        linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98));
-    }
-  }
-
-  .metric-card--per-capita {
-    :deep(.el-card__body) {
-      background:
-        radial-gradient(circle at top right, rgba(245, 158, 11, 0.14), transparent 35%),
-        linear-gradient(180deg, rgba(255, 251, 235, 0.96), rgba(255, 255, 255, 0.98));
-    }
-  }
-
   // 门店利润卡片样式
   .store-profit-card {
     .metric-body {
@@ -3924,18 +3458,6 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
 
 <style lang="scss" scoped>
 .profit-analytics {
-  .charts-section {
-    margin-bottom: 24px;
-  }
-
-  .forecast-section {
-    margin-bottom: 24px;
-  }
-
-  .table-section {
-    margin-bottom: 24px;
-  }
-
   .chart-card,
   .table-card {
     .card-header {
@@ -3968,45 +3490,6 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
   .trend-card-subtitle {
     font-size: var(--tf-type-scale-12);
     color: var(--el-text-color-secondary);
-  }
-
-  .trend-summary {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .trend-summary-card {
-    border-radius: 10px;
-    padding: 12px 14px;
-    border: 1px solid var(--el-border-color-lighter);
-    background: var(--el-fill-color-extra-light);
-
-    &.revenue {
-      background: linear-gradient(135deg, rgba(84, 112, 198, 0.08), rgba(84, 112, 198, 0.16));
-    }
-
-    &.cost {
-      background: linear-gradient(135deg, rgba(145, 204, 117, 0.08), rgba(145, 204, 117, 0.16));
-    }
-
-    &.profit {
-      background: linear-gradient(135deg, rgba(238, 102, 102, 0.08), rgba(238, 102, 102, 0.16));
-    }
-  }
-
-  .trend-summary-label {
-    font-size: var(--tf-type-scale-12);
-    color: var(--el-text-color-secondary);
-    margin-bottom: 6px;
-  }
-
-  .trend-summary-value {
-    font-size: var(--tf-type-scale-20);
-    font-weight: 700;
-    color: var(--el-text-color-primary);
-    line-height: 1.2;
   }
 
   .forecast-inline-card {
@@ -4053,78 +3536,6 @@ const costDetailFields = computed<RecordDetailField[]>(() => {
       align-items: flex-start;
       gap: 12px;
       flex-wrap: wrap;
-    }
-  }
-
-  .product-profit-summary {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .product-profit-summary-item {
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--el-border-color-lighter);
-    background: var(--el-fill-color-extra-light);
-
-    .summary-label {
-      font-size: var(--tf-type-scale-12);
-      color: var(--el-text-color-secondary);
-      margin-bottom: 6px;
-    }
-
-    .summary-name {
-      font-size: var(--tf-type-scale-13);
-      color: var(--el-text-color-primary);
-      margin-bottom: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .summary-value {
-      font-size: var(--tf-type-scale-18);
-      font-weight: 700;
-      color: var(--el-text-color-primary);
-      line-height: 1.2;
-    }
-  }
-
-  .store-comparison-summary {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .store-comparison-summary-item {
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid var(--el-border-color-lighter);
-    background: var(--el-fill-color-extra-light);
-
-    .summary-label {
-      font-size: var(--tf-type-scale-12);
-      color: var(--el-text-color-secondary);
-      margin-bottom: 6px;
-    }
-
-    .summary-name {
-      font-size: var(--tf-type-scale-13);
-      color: var(--el-text-color-primary);
-      margin-bottom: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .summary-value {
-      font-size: var(--tf-type-scale-18);
-      font-weight: 700;
-      color: var(--el-text-color-primary);
-      line-height: 1.2;
     }
   }
 

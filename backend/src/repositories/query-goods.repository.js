@@ -32,6 +32,7 @@ const joins = `FROM accessory_sales s
   LEFT JOIN stores st ON st.id = s.store_id`
 const returnedQuantity = `(SELECT COALESCE(SUM(re.quantity_delta), 0) FROM accessory_inventory_events re
   WHERE re.sale_id = s.id AND re.event_type IN ('sale_return', 'gift_return'))`
+const saleTime = 'COALESCE(s.sale_time, s.created_at)'
 const fields = `s.id, s.sale_no, s.accessory_id, s.sale_type, s.store_id, st.name AS store_name,
   s.customer_name, s.customer_phone, s.quantity, s.unit_price, s.total_price, s.purchase_cost,
   s.profit, s.operator_name, COALESCE(s.sale_time, s.created_at) AS sale_time, s.remarks, o.order_no, ps.invoice_number AS linked_phone_invoice,
@@ -120,6 +121,66 @@ class QueryGoodsRepository {
     const [rows] = await connection.query(`SELECT ${fields}${query.customer_id !== undefined ? ', ps.store_id AS linked_phone_store_id' : ''} ${joins} ${where}
       ORDER BY COALESCE(s.sale_time, s.created_at) DESC, s.id DESC LIMIT ? OFFSET ?`, [...params, query.page_size, (query.page - 1) * query.page_size])
     return { data: rows, pagination: buildPagination(query.page, query.page_size, Number(counts[0].total)) }
+  }
+
+  async periodSummary(scope, query, searchFields, { month, yesterday, today, tomorrow }, connection) {
+    const { where, params } = this.filters(scope, query, searchFields)
+    const giftPrice = 'IF(a.template_id IS NULL, a.sale_price, t.sale_price)'
+    const periods = ['month', 'today', 'yesterday']
+    const columns = periods.map(period => `
+      COALESCE(SUM(CASE WHEN in_${period} THEN quantity END), 0) AS ${period}_quantity,
+      CASE WHEN COUNT(CASE WHEN in_${period} AND amount IS NULL THEN 1 END) = 0
+        THEN COALESCE(SUM(CASE WHEN in_${period} THEN amount END), 0) END AS ${period}_amount`)
+    const [rows] = await connection.query(`SELECT sale_type, ${columns.join(',')}
+      FROM (SELECT s.sale_type, s.quantity,
+        CASE WHEN s.sale_type = 'gift' THEN s.quantity * ${giftPrice} ELSE s.total_price END AS amount,
+        ${saleTime} >= ? AS in_month,
+        ${saleTime} >= ? AS in_today,
+        (${saleTime} >= ? AND ${saleTime} < ?) AS in_yesterday
+        ${joins} ${where ? `${where} AND` : 'WHERE'} s.sale_type IN ('sale', 'gift')
+          AND ${saleTime} >= ? AND ${saleTime} < ?
+      ) AS period_sales GROUP BY sale_type`, [month, today, yesterday, today, ...params, month < yesterday ? month : yesterday, tomorrow])
+    const byType = new Map(rows.map(row => [row.sale_type, row]))
+    return Object.fromEntries(['sale', 'gift'].map(type => {
+      const row = byType.get(type)
+      return [type, Object.fromEntries(periods.map(period => [period, {
+        period_quantity: row ? Number(row[`${period}_quantity`]) : 0,
+        period_amount: row ? row[`${period}_amount`] : 0
+      }]))]
+    }))
+  }
+
+  async customerVisits(scope, query, searchFields, { yesterday, today, tomorrow }, connection) {
+    const { where, params } = this.filters(scope, query, searchFields)
+    const [rows] = await connection.query(`SELECT IF(${saleTime} >= ?, 'today', 'yesterday') AS period,
+      COUNT(DISTINCT CASE WHEN customer.created_at >= DATE(${saleTime}) THEN customer.id END) AS new_count,
+      COUNT(DISTINCT CASE WHEN customer.created_at < DATE(${saleTime}) THEN customer.id END) AS existing_count
+      ${joins} JOIN customers customer ON customer.id = s.customer_id
+      ${where ? `${where} AND` : 'WHERE'} s.sale_type IN ('sale', 'gift')
+        AND ${saleTime} >= ? AND ${saleTime} < ?
+        AND customer.created_at < DATE(${saleTime}) + INTERVAL 1 DAY
+      GROUP BY period`, [today, ...params, yesterday, tomorrow])
+    return Object.fromEntries(['today', 'yesterday'].map(period => {
+      const row = rows.find(item => item.period === period)
+      return [period, {
+        new_count: Number(row?.new_count ?? 0),
+        existing_count: Number(row?.existing_count ?? 0)
+      }]
+    }))
+  }
+
+  async monthlyBestSellers(scope, query, searchFields, { month, tomorrow }, connection) {
+    const { where, params } = this.filters(scope, query, searchFields)
+    const [rows] = await connection.query(`SELECT sold.name, SUM(sold.quantity) AS quantity
+      FROM (SELECT NULLIF(TRIM(${product.name}), '') AS name, s.quantity
+        ${joins} ${where ? `${where} AND` : 'WHERE'} s.sale_type = 'sale'
+          AND ${saleTime} >= ? AND ${saleTime} < ?
+      ) AS sold
+      WHERE sold.name IS NOT NULL
+      GROUP BY sold.name
+      ORDER BY quantity DESC, sold.name ASC
+      LIMIT 3`, [...params, month, tomorrow])
+    return rows.map(row => ({ name: row.name, quantity: Number(row.quantity) }))
   }
 
   async filterOptions(connection) {

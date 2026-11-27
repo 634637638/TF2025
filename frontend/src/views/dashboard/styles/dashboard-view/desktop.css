@@ -46,16 +46,20 @@
   cursor: not-allowed;
 }
 
-/* 仪表盘网格 */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 30px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--admin-panel-gap);
 }
 
-/* 统计卡片可点击，具体尺寸和颜色由后台公共卡片规范统一管理。 */
-.dashboard-grid .stat-card {
+.dashboard-grid .stat-card--clickable {
   cursor: pointer;
+}
+
+.dashboard-stats .stat-content h3,
+.dashboard-stats .stat-content p {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .dashboard-announcements {
@@ -165,17 +169,20 @@
 
 /* 最近活动 */
 .recent-activity {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  min-width: 0;
+  background: var(--admin-stat-card-bg);
+  padding: var(--admin-panel-padding);
+  border: 1px solid var(--admin-stat-card-border);
+  border-radius: var(--admin-panel-radius);
+  box-shadow: var(--admin-stat-card-shadow);
 }
 
 .activity-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  min-height: var(--admin-stat-icon-size);
+  margin-bottom: var(--tf-space-2);
 }
 
 .activity-header h2 {
@@ -184,41 +191,22 @@
   margin: 0;
 }
 
-.view-all-btn {
-  background: none;
-  border: 1px solid var(--tf-button-neutral-border);
-  color: var(--tf-button-primary-soft-color);
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: var(--tf-type-scale-14);
-  transition: all 0.3s ease;
-}
-
-.view-all-btn:hover {
-  background: var(--tf-button-primary-hover-bg);
-  color: var(--tf-button-on-color);
-}
-
 .activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  position: relative;
+  max-block-size: min(20rem, 50vh);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .activity-item {
   display: flex;
   align-items: center;
-  padding: 15px 0;
-  border-bottom: 1px solid var(--tf-color-surface-google);
-  transition: background 0.3s ease;
-}
-
-.activity-item:hover {
-  background: var(--tf-color-surface-muted);
-  margin: 0 -15px;
-  padding: 15px;
-  border-radius: 6px;
+  gap: var(--tf-space-3);
+  padding: var(--tf-space-3) 0;
+  border-bottom: 1px solid var(--admin-stat-card-border);
 }
 
 .activity-item:last-child {
@@ -226,13 +214,12 @@
 }
 
 .activity-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: var(--admin-stat-icon-size);
+  height: var(--admin-stat-icon-size);
+  border-radius: var(--admin-stat-icon-radius);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 15px;
   font-size: var(--tf-type-scale-16);
   flex-shrink: 0;
 }
@@ -242,7 +229,7 @@
   color: var(--tf-color-blue-material-500);
 }
 
-.activity-icon.customer {
+.activity-icon.preorder {
   background: var(--tf-color-purple-50);
   color: var(--tf-color-purple-material);
 }
@@ -257,32 +244,24 @@
   color: var(--tf-color-orange-material-500);
 }
 
+.activity-icon.subsidy {
+  background: var(--tf-color-blue-100);
+  color: var(--tf-color-blue-material-500);
+}
+
 .activity-content {
   flex: 1;
+  min-width: 0;
 }
 
 .activity-content p {
-  margin-bottom: 4px;
+  margin: 0 0 var(--tf-space-1);
   color: var(--tf-color-heading);
   font-size: var(--tf-type-scale-14);
+  overflow-wrap: anywhere;
 }
 
 .activity-time {
   color: var(--tf-color-gray-cool-500);
   font-size: var(--tf-type-scale-12);
-}
-
-.activity-action {
-  background: none;
-  border: none;
-  color: var(--tf-color-gray-legacy-500);
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-.activity-action:hover {
-  background: var(--tf-color-gray-flat-200);
-  color: var(--tf-color-heading);
 }

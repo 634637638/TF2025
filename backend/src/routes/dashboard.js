@@ -10,6 +10,7 @@ router.get('/', unifiedAuth, requirePermission('dashboard:view'), dashboardContr
 
 // 获取最近活动
 router.get('/activities', unifiedAuth, requirePermission('dashboard:view'), dashboardController.getActivities.bind(dashboardController))
+router.get('/my-monthly-stats', unifiedAuth, requirePermission('dashboard:view'), dashboardController.getMyMonthlyStats.bind(dashboardController))
 
 /**
  * 获取综合预警信息

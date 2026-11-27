@@ -1,156 +1,143 @@
 <template>
-  <div class="error-dashboard admin-page">
+  <div class="error-dashboard admin-page admin-page-content">
     <!-- 错误统计卡片 -->
-    <el-row
-      :gutter="20"
-      class="stats-row"
+    <div
+      class="stats-cards"
+      role="region"
+      aria-label="错误监控统计"
+      tabindex="0"
     >
-      <el-col :span="6">
-        <el-card
-          class="stat-card stat-card--danger"
-          shadow="hover"
-        >
-          <div class="stat-content">
-            <div class="stat-value stat-value--danger error-total">
-              {{ statistics.total }}
-            </div>
-            <div class="stat-label">
-              总错误数
-            </div>
+      <el-card
+        class="stat-card stat-card--danger"
+        shadow="hover"
+      >
+        <div class="stat-content">
+          <div class="stat-value stat-value--danger error-total">
+            {{ statistics.total }}
           </div>
-          <el-icon
-            class="stat-icon"
-            :size="32"
-          >
-            <WarningFilled />
-          </el-icon>
-        </el-card>
-      </el-col>
+          <div class="stat-label">
+            总错误数
+          </div>
+        </div>
+        <el-icon
+          class="stat-icon"
+          :size="32"
+        >
+          <WarningFilled />
+        </el-icon>
+      </el-card>
 
-      <el-col :span="6">
-        <el-card
-          class="stat-card stat-card--warning"
-          shadow="hover"
-        >
-          <div class="stat-content">
-            <div class="stat-value stat-value--pending error-unresolved">
-              {{ statistics.unresolved }}
-            </div>
-            <div class="stat-label">
-              未解决
-            </div>
+      <el-card
+        class="stat-card stat-card--warning"
+        shadow="hover"
+      >
+        <div class="stat-content">
+          <div class="stat-value stat-value--pending error-unresolved">
+            {{ statistics.unresolved }}
           </div>
-          <el-icon
-            class="stat-icon"
-            :size="32"
-          >
-            <Clock />
-          </el-icon>
-        </el-card>
-      </el-col>
+          <div class="stat-label">
+            未解决
+          </div>
+        </div>
+        <el-icon
+          class="stat-icon"
+          :size="32"
+        >
+          <Clock />
+        </el-icon>
+      </el-card>
 
-      <el-col :span="6">
-        <el-card
-          class="stat-card stat-card--info"
-          shadow="hover"
-        >
-          <div class="stat-content">
-            <div class="stat-value stat-value--info error-rate">
-              {{ statistics.errorRate.toFixed(2) }}%
-            </div>
-            <div class="stat-label">
-              错误率
-            </div>
+      <el-card
+        class="stat-card stat-card--info"
+        shadow="hover"
+      >
+        <div class="stat-content">
+          <div class="stat-value stat-value--info error-rate">
+            {{ statistics.errorRate.toFixed(2) }}%
           </div>
-          <el-icon
-            class="stat-icon"
-            :size="32"
-          >
-            <TrendCharts />
-          </el-icon>
-        </el-card>
-      </el-col>
+          <div class="stat-label">
+            错误率
+          </div>
+        </div>
+        <el-icon
+          class="stat-icon"
+          :size="32"
+        >
+          <TrendCharts />
+        </el-icon>
+      </el-card>
 
-      <el-col :span="6">
-        <el-card
-          class="stat-card stat-card--success"
-          shadow="hover"
-        >
-          <div class="stat-content">
-            <div class="stat-value stat-value--success error-reported">
-              {{ statistics.reported }}
-            </div>
-            <div class="stat-label">
-              已上报
-            </div>
+      <el-card
+        class="stat-card stat-card--success"
+        shadow="hover"
+      >
+        <div class="stat-content">
+          <div class="stat-value stat-value--success error-reported">
+            {{ statistics.reported }}
           </div>
-          <el-icon
-            class="stat-icon"
-            :size="32"
-          >
-            <Upload />
-          </el-icon>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div class="stat-label">
+            已上报
+          </div>
+        </div>
+        <el-icon
+          class="stat-icon"
+          :size="32"
+        >
+          <Upload />
+        </el-icon>
+      </el-card>
+    </div>
 
     <!-- 错误分布统计 -->
-    <el-row
-      :gutter="20"
-      class="charts-row"
-    >
-      <el-col :span="12">
-        <el-card>
-          <template #header>
-            <span>错误级别分布</span>
-          </template>
-          <div class="error-distribution">
+    <div class="charts-row">
+      <el-card>
+        <template #header>
+          <span>错误级别分布</span>
+        </template>
+        <div class="error-distribution">
+          <div
+            v-for="(count, level) in statistics.byLevel"
+            :key="level"
+            class="dist-item"
+          >
+            <span class="dist-label">{{ getLevelText(level) }}</span>
+            <el-progress
+              :percentage="getPercentage(count, statistics.total)"
+              :color="getLevelColor(level)"
+              :show-text="true"
+            >
+              {{ count }}
+            </el-progress>
+          </div>
+        </div>
+      </el-card>
+
+      <el-card>
+        <template #header>
+          <span>错误类型分布</span>
+        </template>
+        <div class="error-distribution">
+          <template
+            v-for="(count, type) in statistics.byType"
+            :key="type"
+          >
             <div
-              v-for="(count, level) in statistics.byLevel"
-              :key="level"
+              v-if="count > 0"
               class="dist-item"
             >
-              <span class="dist-label">{{ getLevelText(level) }}</span>
+              <span class="dist-label">{{ getTypeText(type) }}</span>
               <el-progress
                 :percentage="getPercentage(count, statistics.total)"
-                :color="getLevelColor(level)"
+                :color="getTypeColor(type)"
                 :show-text="true"
               >
                 {{ count }}
               </el-progress>
             </div>
-          </div>
-        </el-card>
-      </el-col>
-
-      <el-col :span="12">
-        <el-card>
-          <template #header>
-            <span>错误类型分布</span>
           </template>
-          <div class="error-distribution">
-            <template
-              v-for="(count, type) in statistics.byType"
-              :key="type"
-            >
-              <div
-                v-if="count > 0"
-                class="dist-item"
-              >
-                <span class="dist-label">{{ getTypeText(type) }}</span>
-                <el-progress
-                  :percentage="getPercentage(count, statistics.total)"
-                  :color="getTypeColor(type)"
-                  :show-text="true"
-                >
-                  {{ count }}
-                </el-progress>
-              </div>
-            </template>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </el-card>
+    </div>
 
     <!-- 最常见错误 -->
     <el-card
@@ -901,46 +888,19 @@ const clearLogs = async () => {
 
 <style lang="scss" scoped>
 .error-dashboard {
-  padding: 20px;
   background: var(--tf-color-surface);
   min-height: 100vh;
 
-  .stats-row {
-    margin-bottom: 20px;
-  }
-
-  .stat-card {
-    height: 120px;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    &:hover {
-      transform: translateY(-5px);
-    }
-
-    :deep(.el-card__body) {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 100%;
-    }
-  }
-
-  .stat-content {
-    .stat-value {
-      font-size: var(--tf-type-scale-32);
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-
-    .stat-label {
-      font-size: var(--tf-type-scale-14);
-      color: var(--color-info);
-    }
-  }
-
   .charts-row {
-    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--admin-panel-gap);
+  }
+
+  @media (max-width: 767px) {
+    .charts-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   .error-distribution {
@@ -962,10 +922,6 @@ const clearLogs = async () => {
         margin-left: 10px;
       }
     }
-  }
-
-  .common-errors-card {
-    margin-bottom: 20px;
   }
 
   .error-list-card {

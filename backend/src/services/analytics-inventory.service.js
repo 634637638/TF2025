@@ -190,16 +190,14 @@ class AnalyticsInventoryService {
       const currentStock = parseInt(item.stock_count, 10) || 0
       const reorderPoint = parseInt(item.warning_threshold, 10) || 0
       const avgCost = parseFloat(item.avg_cost) || 0
-      const memoryName = item.memory_name || ''
-      const conditionLabel = item.condition_label && item.condition_label !== '全部'
-        ? ` · ${item.condition_label}`
-        : ''
 
       return {
         id: `${item.model_id}-${item.color_id || 0}-${item.memory_id || 0}-${item.warning_condition ?? 'all'}-${index}`,
         brand: item.brand_name || '',
-        model: `${item.model_name || ''}${memoryName ? ` ${memoryName}` : ''}${conditionLabel}`.trim(),
+        model: item.model_name?.trim() || '',
         color: item.color_name || '默认',
+        memory: item.memory_name || null,
+        condition_label: item.condition_label,
         current_stock: currentStock,
         reorder_point: reorderPoint,
         unit_cost: avgCost,

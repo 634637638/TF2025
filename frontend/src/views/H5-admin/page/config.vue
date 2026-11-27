@@ -21,7 +21,7 @@
       <!-- 配置表单 -->
       <div
         v-else
-        class="config-content"
+        class="admin-page-content"
       >
         <!-- 基本信息 -->
         <div class="config-section">
@@ -452,7 +452,7 @@
       >
         <el-tabs
           v-model="paymentInterfaceTab"
-          class="payment-interface-tabs tf-page-tabs"
+          class="tf-page-tabs"
         >
           <el-tab-pane
             label="二维码与转账"

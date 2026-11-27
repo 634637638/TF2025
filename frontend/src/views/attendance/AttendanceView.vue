@@ -39,6 +39,9 @@
           <div
             v-if="showAttendanceStatsCards"
             class="stats-cards"
+            role="region"
+            aria-label="考勤统计"
+            tabindex="0"
           >
             <!-- 上月统计 -->
             <div

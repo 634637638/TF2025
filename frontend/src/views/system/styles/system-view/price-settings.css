@@ -55,10 +55,6 @@
 
 /* 响应式设计 */
 @media (max-width: 767px) {
-  .system-management {
-    padding: 16px;
-  }
-
   /* 站点信息卡片响应式 */
   .site-logo-panel {
     grid-template-columns: 1fr;
@@ -78,11 +74,6 @@
   .logo-editor-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .settings-card-row {
-    grid-template-columns: 1fr;
-    gap: 16px;
   }
 
   .settings-card {
@@ -120,7 +111,7 @@
 .price-config-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--admin-panel-gap);
   align-items: start;
 }
 

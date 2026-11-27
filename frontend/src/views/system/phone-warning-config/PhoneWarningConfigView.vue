@@ -1600,7 +1600,6 @@ const childDetailFields = computed<RecordDetailField[]>(() => {
   --warning-surface: #f6f9fc;
   --warning-border: rgba(32, 87, 129, 0.1);
 
-  padding: 20px;
   background:
     radial-gradient(circle at top right, rgba(246, 177, 122, 0.12), transparent 28%),
     linear-gradient(180deg, var(--tf-color-surface-gray) 0%, var(--tf-color-surface-cool) 100%);
@@ -1816,7 +1815,6 @@ const childDetailFields = computed<RecordDetailField[]>(() => {
 
 @media (max-width: 767px) {
   .phone-warning-config {
-    padding: 12px;
     border-radius: 20px;
 
     .card-toolbar,

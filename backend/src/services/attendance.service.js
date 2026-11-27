@@ -5,7 +5,7 @@ const AttendanceRepository = require('../repositories/attendance.repository')
 const _ApiResponse = require('../utils/response')
 const SalaryRecordService = require('./salary-record.service')
 const SalaryCalculatorService = require('./salary-calculator.service')
-const { getMonthDateRange, getBeijingTimeString, parseLocalDate, formatLocalDate } = require('../utils/time')
+const { getMonthDateRange, getBeijingTimeString, formatBeijingDate, parseLocalDate, formatLocalDate } = require('../utils/time')
 const { buildMonthlyLeaveBalances, monthKey, shiftMonth } = require('../utils/leave-balance')
 const log = require('../utils/log')
 const ERROR_CODES = require('../constants/errorCodes')
@@ -377,7 +377,8 @@ class AttendanceService {
   async getDashboardStats(userId, isAdmin) {
     try {
       const db = this.repository.getConnection()
-      const now = new Date()
+      const today = formatBeijingDate()
+      const now = parseLocalDate(today)
       const currentYear = now.getFullYear()
       const currentMonth = now.getMonth() + 1
 
@@ -387,7 +388,6 @@ class AttendanceService {
 
       // 构建基础查询条件
       const employeeCondition = isAdmin ? '' : 'AND employee_id = ?'
-      const _params = isAdmin ? [] : [userId]
 
       // 上月休假天数（monthly_leave）
       const [lastMonthLeaveResult] = await db.execute(
@@ -407,132 +407,78 @@ class AttendanceService {
         isAdmin ? [lastMonthYear, lastMonth] : [lastMonthYear, lastMonth, userId]
       )
 
-      // 本月休假天数（monthly_leave）
-      const [currentMonthLeaveResult] = await db.execute(
-        `SELECT COALESCE(SUM(monthly_leave_days), 0) as total_days
-         FROM attendance_records
-         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
-         AND record_type = 'monthly_leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
-        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      )
-
-      // 本月请假天数（leave，无薪）
-      const [currentMonthUnpaidLeaveResult] = await db.execute(
-        `SELECT COALESCE(SUM(leave_days), 0) as total_days
-         FROM attendance_records
-         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
-         AND record_type = 'leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
-        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      )
-
-      // 本月加班小时数
-      const [currentMonthOvertimeResult] = await db.execute(
-        `SELECT COALESCE(SUM(overtime_hours), 0) as total_hours
-         FROM attendance_records
-         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
-         AND record_type = 'overtime' AND status IN ('pending', 'approved') ${employeeCondition}`,
-        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      )
-
-      // 本月费用统计（计算所有 pending + approved 状态的加班费和请假扣款）
-      // 获取员工工资模板信息（加班费率和基本工资）
-      const [employeeSalaries] = await db.execute(
-        `SELECT u.id as employee_id, u.hire_date, st.auto_raise_rule,
-                st.overtime_hourly_rate, st.base_salary
-         FROM users u
-         LEFT JOIN salary_templates st ON u.salary_template_id = st.id
-         WHERE u.status = 1 ${isAdmin ? '' : 'AND u.id = ?'}`,
-        isAdmin ? [] : [userId]
-      )
-
-      // 仅使用真实工资模板数据计算费用；缺少配置的员工不生成估算金额。
-      const rateMap = new Map()
-      const salaryMap = new Map()
-      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate() // 当月天数
-      const periodEnd = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
-
-      for (const row of employeeSalaries) {
-        const hasBaseSalary = row.base_salary !== null && row.base_salary !== undefined && row.base_salary !== ''
-        const templateBaseSalary = hasBaseSalary ? Number(row.base_salary) : null
-        if (templateBaseSalary === null || !Number.isFinite(templateBaseSalary)) {
-          continue
-        }
-        const dynamicSalary = SalaryCalculatorService.calculateDynamicBaseSalary(
-          templateBaseSalary,
-          row.auto_raise_rule,
-          row.hire_date,
-          periodEnd
-        )
-        const baseSalary = templateBaseSalary + dynamicSalary.adjustment
-        const hasOvertimeRate = row.overtime_hourly_rate !== null &&
-          row.overtime_hourly_rate !== undefined &&
-          row.overtime_hourly_rate !== ''
-        if (hasOvertimeRate) {
-          const overtimeRate = Number(row.overtime_hourly_rate)
-          if (Number.isFinite(overtimeRate)) {
-            rateMap.set(row.employee_id, overtimeRate)
-          }
-        }
-
-        // 日工资 = 月工资/当月天数
-        const dailySalary = baseSalary / daysInMonth
-        salaryMap.set(row.employee_id, dailySalary)
-      }
-
-      // 获取本月所有加班记录计算加班费（pending + approved）
-      const [overtimeRecords] = await db.execute(
-        `SELECT employee_id, overtime_hours, status
-         FROM attendance_records
-         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
-         AND record_type = 'overtime' AND status IN ('pending', 'approved') ${employeeCondition}`,
-        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      )
-
-      let overtimePay = 0
-      for (const record of overtimeRecords) {
-        const rate = rateMap.get(record.employee_id)
-        if (Number.isFinite(rate)) {
-          overtimePay += Number(record.overtime_hours || 0) * rate
-        }
-      }
-
-      // 获取本月所有请假（leave类型）扣款（pending + approved）
-      const [leaveRecords] = await db.execute(
-        `SELECT employee_id, leave_days, status
-         FROM attendance_records
-         WHERE YEAR(record_date) = ? AND MONTH(record_date) = ?
-         AND record_type = 'leave' AND status IN ('pending', 'approved') ${employeeCondition}`,
-        isAdmin ? [currentYear, currentMonth] : [currentYear, currentMonth, userId]
-      )
-
-      let leaveDeduction = 0
-      for (const record of leaveRecords) {
-        const dailySalary = salaryMap.get(record.employee_id)
-        if (Number.isFinite(dailySalary)) {
-          leaveDeduction += Number(record.leave_days || 0) * dailySalary
-        }
-      }
+      const { period_start, period_end } = getMonthDateRange(today)
+      const { activity, amounts } = await this.getMonthlyActivityWithAmounts(isAdmin ? null : userId, period_start, period_end)
 
       return {
         last_month: {
           leave_days: Number(lastMonthLeaveResult[0]?.total_days || 0),
           overtime_hours: Number(lastMonthOvertimeResult[0]?.total_hours || 0)
         },
-        current_month: {
-          leave_days: Number(currentMonthLeaveResult[0]?.total_days || 0),
-          unpaid_leave_days: Number(currentMonthUnpaidLeaveResult[0]?.total_days || 0),
-          overtime_hours: Number(currentMonthOvertimeResult[0]?.total_hours || 0)
-        },
+        current_month: activity,
         pending: {
-          overtime_pay: overtimePay,
-          leave_deduction: leaveDeduction,
-          count: overtimeRecords.length + leaveRecords.length
+          overtime_pay: amounts.overtime_pay ?? 0,
+          leave_deduction: amounts.leave_deduction ?? 0,
+          count: amounts.count
         }
       }
     } catch (error) {
       log.error('获取仪表盘统计失败:', error)
       throw error
     }
+  }
+
+  async getMonthlyActivity(employeeId, start, end) {
+    const rows = await this.repository.getMonthlyActivity(employeeId, start, end)
+    return this.sumMonthlyActivity(rows)
+  }
+
+  async getMonthlyActivityWithAmounts(employeeId, start, end) {
+    const [rows, templates] = await Promise.all([
+      this.repository.getMonthlyActivity(employeeId, start, end),
+      this.repository.getMonthlyCostTemplates(employeeId)
+    ])
+    const templatesByEmployee = new Map(templates.map(template => [template.employee_id, template]))
+    const daysInMonth = parseLocalDate(end).getDate()
+    const amounts = { leave_deduction: 0, overtime_pay: 0, count: 0 }
+
+    for (const row of rows) {
+      amounts.count += Number(row.cost_record_count)
+      const template = templatesByEmployee.get(row.employee_id)
+      const baseSalary = this.getConfiguredAmount(template?.base_salary)
+      const overtimeRate = baseSalary === null ? null : this.getConfiguredAmount(template.overtime_hourly_rate)
+      const unpaidDays = Number(row.unpaid_leave_days)
+      const overtimeHours = Number(row.overtime_hours)
+
+      if (unpaidDays && baseSalary !== null) {
+        const { adjustment } = SalaryCalculatorService.calculateDynamicBaseSalary(
+          baseSalary, template.auto_raise_rule, template.hire_date, end
+        )
+        amounts.leave_deduction += (baseSalary + adjustment) / daysInMonth * unpaidDays
+      } else if (unpaidDays && employeeId !== null) {
+        amounts.leave_deduction = null
+      }
+
+      if (overtimeHours && overtimeRate !== null) {
+        amounts.overtime_pay += overtimeHours * overtimeRate
+      } else if (overtimeHours && employeeId !== null) {
+        amounts.overtime_pay = null
+      }
+    }
+
+    return { activity: this.sumMonthlyActivity(rows), amounts }
+  }
+
+  getConfiguredAmount(value) {
+    return value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value)
+  }
+
+  sumMonthlyActivity(rows) {
+    return rows.reduce((total, row) => ({
+      leave_days: total.leave_days + Number(row.leave_days),
+      unpaid_leave_days: total.unpaid_leave_days + Number(row.unpaid_leave_days),
+      overtime_hours: total.overtime_hours + Number(row.overtime_hours)
+    }), { leave_days: 0, unpaid_leave_days: 0, overtime_hours: 0 })
   }
 }
 

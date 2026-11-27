@@ -224,7 +224,7 @@ it('型号首屏读取 20 条，统计响应未返回时列表仍可查看', asy
   expect(mocks.get).toHaveBeenCalledWith('/models', expect.objectContaining({
     params: expect.objectContaining({ page: 1, page_size: 20 })
   }))
-  expect(wrapper.find('.record-count').text()).toBe('共 300 条记录')
+  expect(wrapper.find('.record-count').text()).toBe('共 300 条')
   expect(wrapper.findAll('.table-number-badge').map(item => item.text())).toEqual(['1', '2', '3'])
 })
 

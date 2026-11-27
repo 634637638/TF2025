@@ -4,20 +4,25 @@
     class="comprehensive-warnings"
   >
     <!-- 预警概览卡片 -->
-    <div class="warnings-overview">
+    <div
+      class="stats-cards"
+      role="region"
+      aria-label="综合预警统计"
+      tabindex="0"
+    >
       <div
-        class="overview-card"
+        class="stat-card stat-card--primary"
         :class="{ active: activeTab === 'phones' }"
         @click="showWarningDetail('phones')"
       >
-        <div class="card-icon phone">
+        <div class="stat-icon">
           <i class="fas fa-mobile-alt" />
         </div>
-        <div class="card-content">
-          <div class="card-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ warningsData.phones?.count || 0 }}
           </div>
-          <div class="card-label">
+          <div class="stat-label">
             手机预警
           </div>
         </div>
@@ -25,54 +30,54 @@
 
       <div
         v-if="canViewAccessoryWarnings"
-        class="overview-card"
+        class="stat-card stat-card--warning"
         :class="{ active: activeTab === 'accessories' }"
         @click="showWarningDetail('accessories')"
       >
-        <div class="card-icon accessory">
+        <div class="stat-icon">
           <i class="fas fa-cube" />
         </div>
-        <div class="card-content">
-          <div class="card-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ warningsData.accessories?.count || 0 }}
           </div>
-          <div class="card-label">
+          <div class="stat-label">
             配件预警
           </div>
         </div>
       </div>
 
       <div
-        class="overview-card"
+        class="stat-card stat-card--success"
         :class="{ active: activeTab === 'sales' }"
         @click="showWarningDetail('sales')"
       >
-        <div class="card-icon sales">
+        <div class="stat-icon">
           <i class="fas fa-chart-line" />
         </div>
-        <div class="card-content">
-          <div class="card-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ salesStatus }}
           </div>
-          <div class="card-label">
+          <div class="stat-label">
             销售预警
           </div>
         </div>
       </div>
 
       <div
-        class="overview-card"
+        class="stat-card stat-card--accent"
         :class="{ active: activeTab === 'purchases' }"
         @click="showWarningDetail('purchases')"
       >
-        <div class="card-icon purchase">
+        <div class="stat-icon">
           <i class="fas fa-truck" />
         </div>
-        <div class="card-content">
-          <div class="card-value">
+        <div class="stat-content">
+          <div class="stat-value">
             {{ warningsData.purchases?.no_recent?.length || 0 }}
           </div>
-          <div class="card-label">
+          <div class="stat-label">
             待入库
           </div>
         </div>

@@ -29,6 +29,8 @@ brand_id, model_id, color_id, memory_id, is_new
 - 创建、编辑在仓储访问前复用公共 `parseInput`：品牌/型号与可选颜色/内存ID为完整正整数，阈值为0–100整数，状态为0/1，启停接受明确布尔/0/1。名称最多100字单行，备注最多500字可多行；非法类型、混输数字及数组条目返回400，不产生仓储副作用。
 - `backend/test/admin-input.check.js` 保留拒绝矩阵；静态审计及替身测试不替代数据库唯一约束验收。
 
+经营分析读取 `GET /api/analytics/inventory/low-stock` 时，响应以 `brand`、`model`、`color`、`memory` 和 `condition_label` 分别返回品牌、型号、颜色、内存和成色。内存缺失返回 `null`，成色按预警范围返回「全新」「二手」或「全部」。查询使用 `analytics:view`、`inventory:view` 和现有门店范围。
+
 相关实现：
 
 - `backend/src/utils/phone-stock-warning-schema.js`

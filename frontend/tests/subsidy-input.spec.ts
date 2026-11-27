@@ -43,6 +43,13 @@ describe('国补提交资料边界', () => {
   it('保留合法姓名和约定格式手机号，接受零金额', () => {
     expect(getSubsidyInputError({ customer_name: "Anne O'Neil·张", customer_phone: '+86 138-0000-0000', sale_price: 0, serial_number: '00AB/CD-1234', imei1: '012345678901234' })).toBeUndefined()
   })
+  it('设备无 IMEI 时允许两个 IMEI 字段留空，但序列号必填', () => {
+    expect(getSubsidyInputError({ imei1: null, imei2: '', serial_number: 'SN-0001', sale_price: 0 })).toBeUndefined()
+    expect(getSubsidyInputError({ imei1: 'SN-0001', serial_number: 'SN-0001', sale_price: 0 })).toBeUndefined()
+    expect(getSubsidyInputError({ imei1: 'SN-OTHER', serial_number: 'SN-0001', sale_price: 0 })).toBe('IMEI须为完整15位数字')
+    expect(getSubsidyInputError({ imei1: null, imei2: '', serial_number: '', sale_price: 0 })).toBe('请输入序列号')
+    expect(getSubsidyInputError({ serial_number: '   ' })).toBe('请输入序列号')
+  })
   it.each([{ customer_name: '123' }, { customer_phone: '138中00000000' }, { sale_price: 1.234 }, { imei1: '123456789012345中' }, { serial_number: 'AB中1234' }])('编辑实际提交的非法字段 %o 不发请求或关闭', async patch => {
     const wrapper = await render({ id: 9, sale_price: 10, ...patch })
     await save(wrapper)

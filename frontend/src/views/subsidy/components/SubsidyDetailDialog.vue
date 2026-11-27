@@ -202,7 +202,10 @@
         class="detail-section"
       >
         <h4>国补照片</h4>
-        <div class="detail-photos">
+        <div
+          class="detail-photos"
+          :class="`detail-photos--${photoGridColumns}col`"
+        >
           <div
             v-for="(photo, index) in currentDetail.subsidy_photos"
             :key="`${currentDetail.id}-photo-${index}`"
@@ -302,6 +305,10 @@ const showSalesSection = computed(() => [
   'sale_price', 'store_name', 'salesman_name', 'sale_time', 'subsidy_rate',
   'subsidy_amount', 'apply_time', 'arrival_time'
 ].some(field => fieldVisibility.value[field]))
+const photoGridColumns = computed(() => {
+  const photoCount = currentDetail.value?.subsidy_photos?.length ?? 0
+  return photoCount === 4 ? 2 : Math.min(photoCount, 3)
+})
 
 const pruneExpiredDetailCache = (now = Date.now()) => {
   for (const [key, entry] of detailCache.entries()) {
@@ -589,6 +596,29 @@ watch(
 @media (max-width: 767px) {
   .detail-section {
     padding: var(--tf-space-3);
+  }
+
+  .detail-photos {
+    display: grid;
+    gap: var(--tf-space-2);
+  }
+
+  .detail-photos--1col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-photos--2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-photos--3col {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .detail-photo-item {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
   }
 
   .detail-grid,

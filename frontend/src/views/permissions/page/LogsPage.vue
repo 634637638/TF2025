@@ -3,7 +3,7 @@
     <div class="section-title">
       <i class="fas fa-list" />
       操作日志
-      <span class="record-count">共 {{ ctx.logsPagination.total }} 条记录</span>
+      <span class="record-count">共 {{ ctx.logsPagination.total }} 条</span>
     </div>
 
     <div class="table-responsive">

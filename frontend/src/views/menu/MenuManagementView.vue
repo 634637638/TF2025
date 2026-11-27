@@ -10,7 +10,6 @@
       <!-- 主要内容 - 只有有权限时才显示 -->
       <div class="content admin-page-content">
         <PageHeader
-          class="menu-page-header"
           icon="fas fa-bars"
           title="菜单管理"
         >
@@ -72,6 +71,9 @@
         <div
           v-if="showStatsCards"
           class="stats-cards"
+          role="region"
+          aria-label="菜单统计"
+          tabindex="0"
         >
           <div
             v-if="canViewMenuField('stats_total_menus')"
@@ -401,15 +403,6 @@
               </el-button>
             </template>
           </RecordDetailDialog>
-
-
-          <!-- 空状态 -->
-          <DataEmptyState
-            v-if="menuTree.length === 0 && !loading"
-            :state="errorMessage ? 'permission' : 'empty'"
-            :title="errorMessage ? '权限不足' : '暂无菜单数据'"
-            :description="errorMessage || '系统中还没有菜单配置，点击上方按钮开始添加'"
-          />
         </div>
 
         <!-- 菜单编辑模态框 -->

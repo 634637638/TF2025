@@ -12,11 +12,13 @@
   }
 
   .batch-info {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--tf-space-2);
     color: white;
     font-size: var(--tf-type-scale-14);
+    white-space: nowrap;
   }
 
   .batch-info strong {
@@ -25,8 +27,50 @@
   }
 
   .batch-actions-buttons {
+    flex: 1 1 auto;
     display: flex;
+    justify-content: flex-end;
     gap: 8px;
+    min-width: 0;
+  }
+
+  .batch-actions-buttons :deep(.el-button) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 767px) {
+    .batch-actions-bar {
+      align-items: center;
+      justify-content: flex-start;
+      gap: var(--tf-space-2);
+      min-height: 48px;
+      padding: var(--tf-space-2) var(--tf-space-2);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .batch-actions-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .batch-info {
+      flex: 0 0 auto;
+      min-width: max-content;
+      white-space: nowrap;
+    }
+
+    .batch-actions-buttons {
+      flex: 0 0 auto;
+      flex-wrap: nowrap;
+      gap: calc(var(--tf-space-3) / 2);
+    }
+
+    .batch-actions-buttons :deep(.el-button) {
+      flex: 0 0 auto;
+      margin: 0;
+      white-space: nowrap;
+    }
   }
 
   .table-price {

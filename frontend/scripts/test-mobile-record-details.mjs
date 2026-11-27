@@ -163,7 +163,7 @@ try {
     for (const item of activeCases) {
       const label = `${item.file} ${item.tab || item.selector} ${width} ${theme}`
       try {
-        if (returngoodsOnly) {
+        if (item.file.endsWith('/Returngoods.vue')) {
           // 每种凭据用独立页面状态，避免上一用例尚未关闭的编辑弹层影响本组。
           await page.goto(`${origin}/__mobile.html`, { waitUntil: 'networkidle0' })
           await page.waitForFunction('window.fixtureReady === true')
@@ -178,7 +178,7 @@ try {
         if (item.tabButton) await page.evaluate(text => [...document.querySelectorAll('.tab-navigation button')].find(el => el.textContent.trim() === text).click(), item.tabButton)
         if (item.tab) {
           const index = ['phones', 'accessories', 'sales', 'purchases'].indexOf(item.tab)
-          await page.evaluate(index => document.querySelectorAll('.overview-card')[index].click(), index)
+          await page.evaluate(index => document.querySelectorAll('[aria-label="综合预警统计"] > .stat-card')[index].click(), index)
         }
         if (item.parentAction) {
           await page.waitForSelector('.sections-list [data-mobile-record]')

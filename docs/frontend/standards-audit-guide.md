@@ -115,13 +115,13 @@ npm start
 # 根目录手动审计
 npm run check:standards
 
-# 前端构建及发布前检查
-npm --prefix frontend run build
+# 前端发布构建及发布前检查
+npm --prefix frontend run build:release
 npm --prefix frontend run build:debug
 npm --prefix frontend run check:release
 ```
 
-`check:coverage` 同时运行隔离的 npm 生命周期回归，验证日常启动不触发审计、构建及发布遇到审计失败会被阻断、服务参数和失败退出码正常传递。测试使用服务和审计替身，不占用真实端口或连接业务数据库。不能因为日常启动成功就把构建、类型或生产验收描述为通过。
+`check:coverage` 同时运行隔离的 npm 生命周期回归，验证日常启动不触发审计、普通构建不重复运行全量审计、发布构建及发布检查遇到审计失败会被阻断、服务参数和失败退出码正常传递。测试使用服务和审计替身，不占用真实端口或连接业务数据库。不能因为日常启动或普通构建成功就把类型或生产验收描述为通过。
 
 ## 新增一项规范审计
 

@@ -218,6 +218,7 @@ export interface SearchProps {
  * 分析组件 Props（销售、库存、员工、客户、利润等分析页面通用）
  */
 export interface AnalyticsComponentProps {
+  overviewTarget?: HTMLElement | null
   loading?: boolean
   isActive?: boolean
   startDate?: string

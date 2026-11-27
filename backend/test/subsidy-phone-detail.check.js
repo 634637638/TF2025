@@ -47,8 +47,9 @@ test('phone detail controller validates IDs and preserves not-found and response
 test('phone detail service preserves sale absence and subsidy eligibility calculations', async () => {
   let sale = null
   let subsidy = null
+  let phone = { store_id: 1, phone_id: 4, sale_price: '6000', brand: 'B' }
   const service = new Service({ repository: {
-    async findSoldPhoneById() { return { store_id: 1, phone_id: 4, sale_price: '6000', brand: 'B' } },
+    async findSoldPhoneById() { return phone },
     async findSaleByPhoneId() { return sale },
     async findSubsidyByPhoneId() { return subsidy }
   } })
@@ -60,6 +61,9 @@ test('phone detail service preserves sale absence and subsidy eligibility calcul
   assert.equal(eligible.eligible, true)
   assert.equal(eligible.customer_name, '')
   assert.equal(eligible.existing_subsidy, null)
+
+  phone = { ...phone, imei: 'SN-0001', serial_number: 'SN-0001' }
+  assert.equal((await service.getByPhoneId('4', scopedActor)).imei1, null)
 
   subsidy = { id: 2, apply_status: 'pending', subsidy_amount: 500 }
   const overLimit = await service.getByPhoneId('4', scopedActor)

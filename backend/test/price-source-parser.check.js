@@ -7,7 +7,7 @@ const path = require('node:path')
 const cheerio = require('cheerio')
 const PriceSourceParser = require('../src/services/price-source-parser.service')
 
-const parser = new PriceSourceParser({ htmlParser: cheerio, baseUrl: 'https://quotes.example.test' })
+const parser = new PriceSourceParser({ htmlParser: cheerio })
 
 test('外部搜索按代码、历史名称、标准名称顺序去重，保留Duo补搜别名', () => {
   assert.deepEqual(parser.getExternalModelSearchTerms('iphone17pro', 'iPhone17pro', ' A3524 ', 'A3524'),
@@ -39,7 +39,7 @@ test('可采集结果必须有多列商品行和人民币金额，空表及表�
 })
 
 test('HTML解析能力缺失时保持无可用报价的回退，不抛错或访问其他资源', () => {
-  const unavailable = new PriceSourceParser({ htmlParser: null, baseUrl: 'https://quotes.example.test' })
+  const unavailable = new PriceSourceParser({ htmlParser: null })
   assert.equal(unavailable.hasExternalPriceRows('<tr><td>商品</td><td>￥100</td></tr>'), false)
   assert.deepEqual(unavailable.getExternalModelSearchTerms('iphone17', '', '', 'A3521'), ['A3521', 'iPhone 17'])
 })
@@ -71,17 +71,22 @@ test('价目解析分支加载失败时日志可用，其他依赖正常时保�
   assert.equal(child.status, 0, child.stderr || child.stdout)
 })
 
-test('型号检索按注入站点编码关键词，品牌筛选保持空值，实例配置互不串用', () => {
+test('型号检索沿用本次来源的地址及参数，并替换关键词和品牌', () => {
   const term = 'iPad Air8 13寸 + A&B #1'
-  const url = new URL(parser.buildExternalModelSearchUrl(term))
+  const source = 'https://quotes.example.test/catalog/quoteList.action?gsdm=1&pp=苹果&network=同城&arg_name=旧关键词#results'
+  const url = new URL(parser.buildExternalModelSearchUrl(term, source))
   assert.equal(url.origin, 'https://quotes.example.test')
-  assert.equal(url.pathname, '/quoteList.action')
+  assert.equal(url.pathname, '/catalog/quoteList.action')
+  assert.equal(url.searchParams.get('gsdm'), '1')
+  assert.equal(url.searchParams.get('network'), '同城')
   assert.equal(url.searchParams.get('arg_name'), term)
   assert.equal(url.searchParams.get('pp'), '')
   assert.equal(url.searchParams.get('isqh'), '0')
   assert.equal(url.hash, '')
-  assert.equal(url.searchParams.size, 9)
-  const other = new PriceSourceParser({ htmlParser: null, baseUrl: 'https://other.example.test' })
-  assert.equal(new URL(other.buildExternalModelSearchUrl('A3521')).origin, 'https://other.example.test')
-  assert.equal(new URL(parser.buildExternalModelSearchUrl('A3521')).origin, 'https://quotes.example.test')
+  const otherSource = 'https://other.example.test/quoteList.action?gsdm=2&isqh=1'
+  const ipadUrl = new URL(parser.buildExternalModelSearchUrl('iPad', otherSource, '苹果'))
+  assert.equal(ipadUrl.origin, 'https://other.example.test')
+  assert.equal(ipadUrl.searchParams.get('gsdm'), '2')
+  assert.equal(ipadUrl.searchParams.get('isqh'), '1')
+  assert.equal(ipadUrl.searchParams.get('pp'), '苹果')
 })

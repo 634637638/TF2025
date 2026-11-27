@@ -611,6 +611,8 @@ class QueryRepository extends BaseRepository {
 
     const normalizedStatus = this.normalizeStatus(status)
     const effectiveStatusSql = getEffectivePhoneStatusSql('p')
+    // 未选择状态时，销售卡片只统计已售设备；选择状态后，卡片随当前状态联动。
+    const cardStatusCondition = normalizedStatus ? '1 = 1' : `${effectiveStatusSql} = 'sold'`
     // Each status bucket uses its corresponding business timestamp for date filters.
     const statisticsTimeExpression = this.getBusinessTimeExpression(normalizedStatus)
 
@@ -677,10 +679,14 @@ class QueryRepository extends BaseRepository {
       SELECT
         COUNT(*) as total_phones,
         SUM(CASE WHEN ${effectiveStatusSql} = 'in_stock' THEN 1 ELSE 0 END) as in_stock_count,
-        SUM(CASE WHEN p.status = 'sold' THEN 1 ELSE 0 END) as sold_count,
+        COUNT(CASE WHEN ${effectiveStatusSql} = 'in_stock' AND p.is_new = 1 THEN 1 END) as in_stock_new_count,
+        COUNT(CASE WHEN ${effectiveStatusSql} = 'in_stock' AND p.is_new = 0 THEN 1 END) as in_stock_used_count,
+        SUM(CASE WHEN ${cardStatusCondition} AND p.is_new IN (0, 1) THEN 1 ELSE 0 END) as sold_count,
+        COUNT(CASE WHEN p.status = 'peer_transfer' THEN 1 END) as peer_transfer_count,
+        COUNT(CASE WHEN p.status = 'supplier_proxy' THEN 1 END) as supplier_proxy_count,
         SUM(CASE WHEN ${effectiveStatusSql} = 'reserved' THEN 1 ELSE 0 END) as reserved_count,
-        SUM(CASE WHEN p.is_new = 1 THEN 1 ELSE 0 END) as new_count,
-        SUM(CASE WHEN p.is_new = 0 THEN 1 ELSE 0 END) as used_count,
+        SUM(CASE WHEN ${cardStatusCondition} AND p.is_new = 1 THEN 1 ELSE 0 END) as new_count,
+        SUM(CASE WHEN ${cardStatusCondition} AND p.is_new = 0 THEN 1 ELSE 0 END) as used_count,
         SUM(p.purchase_cost) as total_purchase_cost,
         SUM(CASE WHEN ${effectiveStatusSql} = 'sold' THEN p.sale_price ELSE 0 END) as total_sales_revenue
       FROM phones p

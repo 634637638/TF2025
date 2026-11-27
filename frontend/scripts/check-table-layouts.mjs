@@ -7,6 +7,9 @@ const viewsRoot = join(root, 'src/views')
 const componentsRoot = join(root, 'src/components')
 const adminLayoutSource = readFileSync(join(root, 'src/styles/admin-layout.css'), 'utf8')
 const tableStyleSource = readFileSync(join(root, 'src/styles/components/_table.scss'), 'utf8')
+const responsiveStyleSource = readFileSync(join(root, 'src/styles/responsive.scss'), 'utf8')
+const legacyGlobalStyleSource = readFileSync(join(root, 'src/styles/global.css'), 'utf8')
+const comprehensiveWarningsStyleSource = readFileSync(join(root, 'src/components/styles/comprehensive-warnings/details.scss'), 'utf8')
 const mainSource = readFileSync(join(root, 'src/main.ts'), 'utf8')
 const tableDragSource = readFileSync(join(root, 'src/utils/admin-table-drag-scroll.ts'), 'utf8')
 const directivesSource = readFileSync(join(root, 'src/directives/index.ts'), 'utf8')
@@ -47,6 +50,17 @@ const auditedViewTableFiles = new Set()
 const auditedComponentTableFiles = new Set()
 let auditedTableCount = 0
 let auditedOperationColumnCount = 0
+let auditedStaticOrdinaryWidthCount = 0
+
+if (!/table:not\(\.el-table__header\):not\(\.el-table__body\)\s*\{\s*min-width:\s*600px;/.test(responsiveStyleSource)) {
+  findings.push('src/styles/responsive.scss 的 600px 移动端最小宽度只能作用于原生表格，Element Plus 内部表格由内容驱动列宽')
+}
+if (!/table:not\(\.el-table__header\):not\(\.el-table__body\)\s*\{\s*min-width:\s*600px;/.test(legacyGlobalStyleSource)) {
+  findings.push('src/styles/global.css 的 600px 移动端最小宽度只能作用于原生表格，Element Plus 内部表格由内容驱动列宽')
+}
+if (/\.el-table\s*\{[\s\S]*?min-width:\s*600px\s*;/.test(comprehensiveWarningsStyleSource)) {
+  findings.push('综合预警详情不得给 Element Plus 根表格设置 600px 固定最小宽度，横向滚动必须由内部表格容器处理')
+}
 
 for (const file of walkStyleFiles(viewsRoot)) {
   const source = readFileSync(file, 'utf8')
@@ -258,9 +272,16 @@ for (const file of [...walk(viewsRoot), ...walk(componentsRoot)]) {
       findings.push(`${relativeFile}:${line} Element 表格必须接入公共 data-table/admin-data-table 样式`)
     }
 
+    const tableEnd = source.indexOf('</el-table>', match.index)
+    const tableSource = tableEnd === -1 ? tag : source.slice(match.index, tableEnd)
+    for (const column of tableSource.matchAll(/<el-table-column\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi)) {
+      const columnTag = column[0]
+      const isSpecialColumn = /\b(?:type=["'](?:selection|expand|index)["']|label=["']操作["'])/i.test(columnTag)
+      const hasStaticWidth = /\b(?:min-)?width=["']\d+(?:\.\d+)?(?:px)?["']/i.test(columnTag)
+      if (!isSpecialColumn && hasStaticWidth) auditedStaticOrdinaryWidthCount += 1
+    }
+
     if (/\bclass=["'][^"']*\bcompact-fit-table\b/i.test(tag)) {
-      const tableEnd = source.indexOf('</el-table>', match.index)
-      const tableSource = tableEnd === -1 ? tag : source.slice(match.index, tableEnd)
       const columns = [...tableSource.matchAll(/<el-table-column\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi)].map(column => column[0])
 
       if (!/:fit=["']true["']/i.test(tag)) {
@@ -348,5 +369,5 @@ if (findings.length) {
 console.log(
   `表格布局统一审计通过：${auditedViewTableFiles.size} 个页面模板、${auditedComponentTableFiles.size} 个公共组件，` +
   `${auditedTableCount} 个 Element 表格和 ${auditedOperationColumnCount} 个操作列均已接入公共样式；` +
-  '内容完整展示，操作列使用公共自适应规则。'
+  `操作列使用公共自适应规则；另有 ${auditedStaticOrdinaryWidthCount} 个普通列仍声明静态宽度，尚未满足内容驱动宽度规范。`
 )

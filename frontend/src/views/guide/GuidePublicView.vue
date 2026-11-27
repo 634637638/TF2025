@@ -95,7 +95,7 @@
             >
               <el-tabs
                 v-model="activeCategoryTabs[category.id]"
-                class="tf-page-tabs tf-page-tabs--compact"
+                class="tf-page-tabs tf-page-tabs--transparent"
               >
                 <el-tab-pane
                   v-for="item in publicCategoryTabs(category)"

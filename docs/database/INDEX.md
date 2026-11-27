@@ -24,6 +24,8 @@
 
 客户销售积分字段迁移使用 `npm --prefix backend run migrate:customer-sale-points` 预览，确认目标和备份后才可追加 `-- --apply`；应用请求进程不执行该 DDL。
 
+国补无 IMEI 设备的 `national_subsidies.imei1` 允许为空。使用 `npm --prefix backend run migrate:subsidy-identifier-nullability` 预览，确认云端结构后追加 `-- --apply` 执行，迁移脚本会回读字段约束；只有没有空 IMEI1 记录时才允许使用 `-- --rollback` 回退。
+
 相关入口：
 
 - 字段/API 契约：`backend/scripts/config/field-contracts.json`

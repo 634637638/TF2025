@@ -15,10 +15,14 @@
 
 后台页面采用 `admin-page`、`admin-page-content` 等公共布局，复用 `PageHeader`。按 [组件采用规范](component-adoption-standard.md) 选择搜索、表格和弹窗；不得复制私有页头或通用控件。
 
+- 后台页面壳随浏览器可用视口高度布局。页面正文在 `.content-area` 内纵向滚动，抵达顶部和底部时取消边缘回弹。桌面在长短内容切换时保留纵向滚动条占位。
 - 标题与操作使用 `PageHeader` 的 `actions` 插槽；由公共组件维护垂直居中、触摸区域和操作区横向滑动。
+- `PageHeader` 的高度随内容变化。电脑和平板上下内边距各使用 `--tf-space-5`（20px），普通手机各使用 `--tf-space-2`（8px），375px 及以下各使用 `0.5rem`。
 - 手机端操作保持单行，空间不足时仅操作容器横向滑动。不得压缩按钮文字、截断末尾按钮或造成整个页面横向滚动。
 - 不覆盖公共 `.header-actions` 的溢出、触摸滑动或按钮收缩规则；验收初始和最右侧位置。
 - 颜色、间距、字号、圆角和断点按 [视觉令牌](design-token-standard.md)、[排版](typography-standards.md) 和 [响应式断点](responsive-breakpoint-standard.md) 使用，不复制硬编码几何值。
+- 同一层的检索、普通卡片和表格面板共用一个内容容器，左、右外沿对齐。纵向使用 `admin-page-content`，并排面板的行列间距读取 `--admin-panel-gap`，电脑和平板为 16px，手机（767px 及以下）为 10px。公共页头和按钮式标签栏作为内容容器的子项时由容器负责间距。
+- 统计卡片组与相邻区块使用上述区块间距，组内使用 `--admin-stats-grid-gap`，电脑和平板为 12px，手机为 8px。表格和卡片的内部控件间距遵循各自的专项规范。
 - 表单、对话框、按钮、空状态分别遵循 [表单控件](form-control-standards.md)、[对话框](dialog-standards.md)、[按钮](button-standards.md) 和 [空状态](empty-state-standard.md)。
 
 ## 权限与路由

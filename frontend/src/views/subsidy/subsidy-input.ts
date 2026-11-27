@@ -1,5 +1,5 @@
 import { isEmptyInput, isMoneyInput, isValidMobilePhone, isValidPersonName, isValidSingleLineText } from '@/utils/security'
-import { isDeviceIMEI, isDeviceSerial, normalizeDeviceSerial } from '@/utils/device-identifier'
+import { isDeviceIMEI, isDeviceSerial, isNoIMEIDeviceIdentifier, normalizeDeviceSerial } from '@/utils/device-identifier'
 
 /** 仅校验实际提交的字段；隐藏或只读字段不参与编辑请求。 */
 export function getSubsidyInputError(input: Record<string, unknown>): string | undefined {
@@ -24,8 +24,9 @@ export function getSubsidyInputError(input: Record<string, unknown>): string | u
     if (input[field] !== undefined && (!isMoneyInput(input[field]) || Number(input[field]) < 0)) return '金额须为大于等于0、最多两位小数的有效数字'
   }
   const serial = input.serial_number
-  if (!isEmptyInput(serial) && (typeof serial !== 'string' || !isDeviceSerial(normalizeDeviceSerial(serial)))) return '序列号须为4-50位字母、数字、斜杠或连字符'
+  if (Object.prototype.hasOwnProperty.call(input, 'serial_number') && (isEmptyInput(serial) || (typeof serial === 'string' && !serial.trim()))) return '请输入序列号'
+  if (!isEmptyInput(serial) && (typeof serial !== 'string' || !isDeviceSerial(normalizeDeviceSerial(serial.trim())))) return '序列号须为4-50位字母、数字、斜杠或连字符'
   for (const field of ['imei1', 'imei2']) {
-    if (!isEmptyInput(input[field]) && !isDeviceIMEI(input[field])) return 'IMEI须为完整15位数字'
+    if (!isEmptyInput(input[field]) && !isDeviceIMEI(input[field]) && !(field === 'imei1' && isNoIMEIDeviceIdentifier(input[field], serial))) return 'IMEI须为完整15位数字'
   }
 }

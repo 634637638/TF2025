@@ -523,7 +523,11 @@ export interface ReturnDeviceInfo {
 export interface QueryStatistics {
   total_phones: number
   in_stock_count: number
+  in_stock_new_count?: number | null
+  in_stock_used_count?: number | null
   sold_count: number
+  peer_transfer_count?: number | null
+  supplier_proxy_count?: number | null
   new_count: number
   used_count: number
   total_purchase_cost: number

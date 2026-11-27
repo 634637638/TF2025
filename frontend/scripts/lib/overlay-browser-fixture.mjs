@@ -47,6 +47,10 @@ const app=createApp({setup(){
   return ()=>h('main',[
     state.view==='table'?withDirectives(h(ElTable,{data:state.rows,class:'fixture-table'}, {default:()=>h(ElTableColumn,{prop:'name',label:'设备'}),empty:()=>state.tableLoading?h(TableLoadingRow,{mode:'block',text:'正在读取设备查询结果...'}):h('div','暂无数据')}),[[vTFLoading,{active:state.tableLoading,text:state.loadingText}]]):null,
     state.view==='loading-region'?withDirectives(h('div',{class:'fixture-loading-region',style:{height:'240px',width:state.narrowRegion?'min(100%, 200px)':'100%'}},'已有客户贴膜记录'),[[vTFLoading,{active:state.tableLoading,text:state.loadingText}]]):null,
+    state.view==='dialog-loading'?h(MobileDialog,{modelValue:state.base,title:'弹窗列表刷新',width:'680px'},()=>[
+      h('div',{style:{height:'240px'}},'列表之前的内容'),
+      withDirectives(h('div',{class:'fixture-dialog-loading',style:{height:'1600px'}},'已有售后记录'),[[vTFLoading,{active:state.tableLoading,text:state.loadingText}]])
+    ]):null,
     state.view==='section-loading'?h(ElForm,{class:'tf-dialog-form fixture-loading-form',labelPosition:'top',style:{width:state.narrowRegion?'min(100%, 200px)':'100%'}},()=>h(ElFormItem,{label:'选择商品'},()=>h(SectionLoading,{text:state.loadingText,size:state.sectionSize}))):null,
     state.view==='loading-overlay'?h(LoadingOverlay,{class:'fixture-loading-overlay',loading:true,text:state.loadingText,style:{height:'240px',width:state.narrowRegion?'min(100%, 200px)':'100%'}},()=>h('p','已有商品数据')):null,
     state.view==='dialog'?h(MobileDialog,{modelValue:state.base,'onUpdate:modelValue':value=>state.base=value,title:'公共明细测试',dialogClass:'fixture-base',width:'800px'},()=>[h(ElForm,{class:'tf-dialog-form'},()=>h(ElFormItem,{label:'表单标签'},()=>h(ElInput,{modelValue:'测试内容'}))),...Array.from({length:30},(_,i)=>h('p','长内容 '+i))]):null,
@@ -82,7 +86,11 @@ const checkLoadingLayout=(region,singleLine)=>{
   const host=boundary(region,'加载区域'),box=spinner.getBoundingClientRect(),label=text.getBoundingClientRect(),ring=icon.getBoundingClientRect();
   const availableWidth=region.clientWidth,availableLeft=host.left+region.clientLeft,availableHeight=region.clientHeight,availableTop=host.top+region.clientTop;
   check(Math.abs(box.width-availableWidth)<1&&Math.abs(box.left-availableLeft)<1&&Math.abs(box.height-availableHeight)<1&&Math.abs(box.top-availableTop)<1,'区域加载提示未铺满当前宽高 '+JSON.stringify({region:region.className,host:{width:availableWidth,height:availableHeight},box:{width:box.width,height:box.height}}));
-  check(Math.abs((label.top+label.bottom)/2-innerHeight/2)<1,'区域加载提示未在当前视口垂直居中');
+  const feedback=text.parentElement.getBoundingClientRect();
+  check(feedback.top>=box.top-1&&feedback.bottom<=box.bottom+1,'区域加载提示超出区域垂直边界');
+  if(box.top+feedback.height/2<=innerHeight/2&&box.bottom-feedback.height/2>=innerHeight/2){
+    check(Math.abs((label.top+label.bottom)/2-innerHeight/2)<1,'区域加载提示未在当前视口垂直居中');
+  }
   const overlay=region.querySelector('.tf2025-loading-overlay').getBoundingClientRect();
   check(Math.abs(overlay.width-box.width)<1&&Math.abs(overlay.height-box.height)<1,'背景遮罩与反馈区域边界不一致');
   check(label.left>=box.left&&label.right<=box.right+1,'加载文字撑破提示框');
@@ -111,6 +119,21 @@ const runLoadingLayoutCase=async()=>{
   }
   state.narrowRegion=false;state.loadingText='正在刷新设备查询结果...';
 };
+const runDialogLoadingCase=async()=>{
+  state.view='dialog-loading';state.base=true;state.tableLoading=false;await settle();
+  const region=one('.fixture-dialog-loading'),body=region.closest('.el-dialog__body');
+  state.tableLoading=true;await settle();
+  for(const offset of [0,500,body.scrollHeight-body.clientHeight]){
+    body.scrollTop=offset;await pause(40);
+    const feedback=region.querySelector('.tf2025-loading-spinner__content').getBoundingClientRect();
+    const bounds=region.getBoundingClientRect(),scrollport=body.getBoundingClientRect();
+    check(Math.abs((feedback.left+feedback.right-bounds.left-bounds.right)/2)<1,'弹窗列表的反馈出现横向偏移');
+    check(feedback.top>=Math.max(scrollport.top,bounds.top)-1&&feedback.bottom<=Math.min(scrollport.bottom,bounds.bottom)+1,'滚动时加载提示离开弹窗可见范围');
+    check(Math.abs((feedback.top+feedback.bottom)/2-innerHeight/2)<1,'弹窗长列表滚动时加载提示未保持在视口中央');
+  }
+  state.tableLoading=false;state.base=false;await settle();
+  check(!one('.tf2025-loading-spinner'),'弹窗关闭后仍存在加载提示');
+};
 const runTableLoadingCase=async(theme)=>{
   document.documentElement.dataset.theme=theme;state.view='table';state.rows=[];state.tableLoading=true;await settle();
   check(all('.tf2025-loading-spinner,.inline-loading').length===1,'首载等待重复');check(all('.tf2025-loading-spinner').length===0,'首载误显示刷新遮罩');
@@ -121,6 +144,7 @@ const runTableLoadingCase=async(theme)=>{
   state.tableLoading=true;await settle();check(one('.fixture-table').textContent.includes('已有设备数据'),'刷新清空旧数据');check(all('.tf2025-loading-spinner,.inline-loading').length===1,'有数据刷新等待重复');
   state.tableLoading=false;state.rows=[];await settle();check(all('.tf2025-loading-spinner,.inline-loading').length===0,'失败/空结果结束后等待残留');
   await runLoadingLayoutCase();
+  await runDialogLoadingCase();
   state.view='section-loading';
   for(const size of ['compact','normal','large']){
     state.sectionSize=size;
@@ -147,7 +171,7 @@ const runTableLoadingCase=async(theme)=>{
   }
   state.narrowRegion=false;state.loadingText='正在刷新设备查询结果...';
   state.view='dialog';await settle();
-  return {theme,case:'表格等待互斥、区域背景及反馈铺满宽高、区块全宽、手机单行省略及圆环边界'};
+  return {theme,case:'表格等待互斥、弹窗长列表滚动、区域背景及反馈铺满宽高、区块全宽、手机单行省略及圆环边界'};
 };
 window.runLoadingSmoke=async()=>({ok:true,results:[await runTableLoadingCase('light'),await runTableLoadingCase('dark')],width:innerWidth,height:innerHeight,standalone:matchMedia('(display-mode: standalone)').matches,userAgent:navigator.userAgent});
 window.runInputSmoke=async()=>{

@@ -150,8 +150,13 @@
         </template>
       </el-table-column>
       <template #empty>
+        <TableLoadingRow
+          v-if="loading"
+          mode="block"
+          text="正在查询SN明细..."
+        />
         <DataEmptyState
-          v-if="!loading"
+          v-else
           description="暂无SN记录"
           size="compact"
         />
@@ -177,6 +182,7 @@
 </template>
 
 <script setup lang="ts">
+import TableLoadingRow from '@/components/TableLoadingRow.vue'
 import { computed, ref, watch } from 'vue'
 import { useMobile } from '@/composables/mobile'
 import { useMobileTableDetail } from '@/composables/useMobileTableDetail'

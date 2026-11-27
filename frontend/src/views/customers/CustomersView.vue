@@ -59,6 +59,9 @@
           <div
             v-if="showStatsCards"
             class="stats-cards"
+            role="region"
+            aria-label="客户统计"
+            tabindex="0"
           >
             <div
               v-if="canViewField('stats_total_customers')"
@@ -247,7 +250,7 @@
               <div class="section-title">
                 <i class="fas fa-list" />
                 客户列表
-                <span class="record-count">共 {{ pagination.total }} 条记录</span>
+                <span class="record-count">共 {{ pagination.total }} 条</span>
               </div>
               <div class="table-actions">
                 <div
@@ -3096,9 +3099,6 @@ usePageShortcuts('/customers', {
 
 .page-body {
   flex: 1;
-  padding: 0 24px 24px 24px;
-  overflow: auto;
-  margin-top: 24px;
 }
 
 .table-section {
@@ -3341,12 +3341,6 @@ usePageShortcuts('/customers', {
 
 // 响应式设计
 @media (max-width: 767px) {
-  .page-body {
-    padding: 0;
-    margin-top: 0;
-    overflow: visible;
-  }
-
   .page-title {
     font-size: var(--tf-type-scale-24);
     margin-bottom: 6px;
@@ -3357,25 +3351,7 @@ usePageShortcuts('/customers', {
   }
 }
 
-// 小屏幕手机适配（小于480px）
-@media (max-width: 479px) {
-  .page-body {
-    padding: 0;
-  }
 
-}
-
-.page-body {
-  padding: 16px;
-}
-
-@media (max-width: 767px) {
-  .page-body.admin-page-content {
-    padding: 0;
-    margin-top: 0;
-    overflow: visible;
-  }
-}
 
 // 对话框表单样式
 .form-section {

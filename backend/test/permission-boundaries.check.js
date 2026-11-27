@@ -473,3 +473,30 @@ test('综合查询统计隐藏成本和收入派生汇总；字段读取故障�
   assert.equal(denied.body.data, undefined)
   assert.equal(reads, 1)
 })
+
+test('综合查询按字段权限分别遮蔽手机概览，调货和划拨由同一个开关控制', async () => {
+  const Controller = require('../src/controllers/query.controller')
+  const source = require('../src/services/data-masking.service')
+  const stats = {
+    total_phones: 10, in_stock_count: 3, in_stock_new_count: 1, in_stock_used_count: 2,
+    sold_count: 4, peer_transfer_count: 2, supplier_proxy_count: 1, new_count: 7, used_count: 3
+  }
+  for (const [field, keys] of [
+    ['stats.total_phones', ['total_phones']],
+    ['stats.in_stock_count', ['in_stock_count', 'in_stock_new_count', 'in_stock_used_count']],
+    ['stats.sold_count', ['sold_count']],
+    ['stats.transfer_counts', ['peer_transfer_count', 'supplier_proxy_count']],
+    ['stats.new_count', ['new_count']],
+    ['stats.used_count', ['used_count']]
+  ]) {
+    const controller = new Controller({ masking: {
+      async getUserFieldPermissions() { return { hiddenFields: [field] } },
+      filterSensitiveFields: source.filterSensitiveFields.bind(source)
+    }, service: { async getStatistics() { return { message: '查询成功', data: stats } } } })
+    const res = response()
+    await controller.getStatistics({ user: actor('query:view'), query: {} }, res)
+    for (const [key, value] of Object.entries(stats)) {
+      assert.equal(res.body.data[key], keys.includes(key) ? null : value, `${field} 对 ${key} 的可见性`)
+    }
+  }
+})

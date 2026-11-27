@@ -52,7 +52,7 @@
     <div class="table-section admin-panel admin-table-panel">
       <div class="section-header">
         <div class="section-title">
-          <i class="fas fa-list" />工资模板<span class="record-count">共 {{ filteredTemplates.length }} 条记录</span>
+          <i class="fas fa-list" />工资模板<span class="record-count">共 {{ filteredTemplates.length }} 条</span>
         </div>
       </div>
       <div class="table-responsive">

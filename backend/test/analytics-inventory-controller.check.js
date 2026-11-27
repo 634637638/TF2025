@@ -127,14 +127,21 @@ test('low stock service checks connectivity and maps warning rows to dashboard i
           model_id: 2, color_id: 3, memory_id: 4, warning_condition: 'used', brand_name: '品牌',
           model_name: '型号', color_name: null, memory_name: '256G', condition_label: '二手',
           stock_count: '2', warning_threshold: '3', avg_cost: '10.5'
+        }, {
+          model_id: 2, warning_condition: null, brand_name: '品牌',
+          model_name: '型号', color_name: null, memory_name: null, condition_label: '全部',
+          stock_count: 0, warning_threshold: 3, avg_cost: null
         }]
       }
     }
   })
 
   assert.deepEqual(await service.getLowStock({ actor: scopedActor, limit: 25, storeId: 4, supplierId: 9 }), [{
-    id: '2-3-4-used-0', brand: '品牌', model: '型号 256G · 二手', color: '默认', current_stock: 2,
+    id: '2-3-4-used-0', brand: '品牌', model: '型号', color: '默认', memory: '256G', condition_label: '二手', current_stock: 2,
     reorder_point: 3, unit_cost: 10.5, total_value: 21, last_sale_time: null, stock_status: 'low_stock'
+  }, {
+    id: '2-0-0-all-1', brand: '品牌', model: '型号', color: '默认', memory: null, condition_label: '全部', current_stock: 0,
+    reorder_point: 3, unit_cost: 0, total_value: 0, last_sale_time: null, stock_status: 'out_of_stock'
   }])
 })
 

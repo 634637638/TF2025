@@ -3,7 +3,7 @@
     <div class="section-title">
       <i class="fas fa-list" />
       员工门店绑定列表
-      <span class="record-count">共 {{ ctx.filteredStoreBindings.length }} 条记录</span>
+      <span class="record-count">共 {{ ctx.filteredStoreBindings.length }} 条</span>
     </div>
 
     <div class="table-responsive">

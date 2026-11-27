@@ -594,6 +594,7 @@ const stats = reactive<Stats>({
   totalValue: 0
 })
 const statsAvailable = ref(false)
+const statsFailed = ref(false)
 
 const showStatsCards = computed(() => (
   canViewField('stats_total_phones') ||
@@ -609,7 +610,7 @@ const statCards = computed(() => ([
     accentClass: 'stat-card--primary',
     permission: 'stats_total_phones',
     label: '手机总数',
-    value: statsAvailable.value ? stats.total : '暂无数据',
+    value: statsFailed.value ? '加载失败' : statsAvailable.value ? stats.total : 0,
     icon: 'fas fa-mobile-alt'
   },
   {
@@ -617,7 +618,7 @@ const statCards = computed(() => ([
     accentClass: 'stat-card--new',
     permission: 'stats_new_phones',
     label: '全新机数量',
-    value: statsAvailable.value ? stats.inStock : '暂无数据',
+    value: statsFailed.value ? '加载失败' : statsAvailable.value ? stats.inStock : 0,
     icon: 'fas fa-box'
   },
   {
@@ -625,7 +626,7 @@ const statCards = computed(() => ([
     accentClass: 'stat-card--used',
     permission: 'stats_used_phones',
     label: '二手机数量',
-    value: statsAvailable.value ? stats.sold : '暂无数据',
+    value: statsFailed.value ? '加载失败' : statsAvailable.value ? stats.sold : 0,
     icon: 'fas fa-check-circle'
   },
   {
@@ -633,7 +634,7 @@ const statCards = computed(() => ([
     accentClass: 'stat-card--money',
     permission: 'stats_inventory_value',
     label: '库存总值',
-    value: statsAvailable.value ? `¥${formatAmount(stats.totalValue)}` : '暂无数据',
+    value: statsFailed.value ? '加载失败' : statsAvailable.value ? `¥${formatAmount(stats.totalValue)}` : '¥0',
     icon: 'fas fa-dollar-sign'
   }
 ]).filter(stat => canViewField(stat.permission)))
@@ -825,6 +826,7 @@ const {
   pagination,
   stats,
   statsAvailable,
+  statsFailed,
   onError: message => error(message),
   onWarning: message => globalNotifications.warning(message)
 })

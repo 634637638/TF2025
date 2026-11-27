@@ -1,6 +1,7 @@
 'use strict'
 
 const { resolveStoreScope, assertStoreInScope } = require('../utils/store-scope')
+const { isNoImeiDevice } = require('../utils/imei')
 
 const SubsidyPhoneDetailRepository = require('../repositories/subsidy-phone-detail.repository')
 
@@ -24,7 +25,7 @@ class SubsidyPhoneDetailService {
         phone_color: phone.color,
         phone_memory: phone.memory,
         serial_number: phone.serial_number,
-        imei1: phone.imei,
+        imei1: isNoImeiDevice(phone.imei, phone.serial_number) ? null : phone.imei,
         imei2: null,
         sale_price: salePrice,
         eligible: false,
@@ -57,7 +58,7 @@ class SubsidyPhoneDetailService {
       serial_number: phone.serial_number,
       is_new: phone.is_new,
       inventory_time: phone.inventory_time,
-      imei1: phone.imei,
+      imei1: isNoImeiDevice(phone.imei, phone.serial_number) ? null : phone.imei,
       imei2: null,
       sale_price: salePrice,
       sale_time: phone.sale_time,

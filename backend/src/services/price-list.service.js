@@ -20,7 +20,7 @@ const CaptchaRecognizer = require('./captcha-recognizer.service')
 const PuppeteerLoginService = require('./puppeteer-login.service')
 const HttpLoginService = require('./http-login.service')
 const { matchProductName } = require('../config/product-name-mapping')
-const { DEFAULT_BROWSER_USER_AGENT, EXTERNAL_PRICE, TIMEOUTS } = require('../config/constants')
+const { DEFAULT_BROWSER_USER_AGENT, TIMEOUTS } = require('../config/constants')
 const { ensurePriceSourceSchema } = require('../utils/price-source-schema')
 const { normalizedModelSql } = require('../utils/search')
 const pricingService = require('./pricing.service')
@@ -32,7 +32,7 @@ const {
 class PriceListService {
   constructor() {
     this.db = null
-    this.sourceParser = new PriceSourceParser({ htmlParser: cheerio, baseUrl: EXTERNAL_PRICE.BASE_URL })
+    this.sourceParser = new PriceSourceParser({ htmlParser: cheerio })
     this.productMatcher = new PriceProductMatcher(() => ({ standardColors: this.standardColors, colorMapping: this.colorMapping }))
     // Cookie存储，用于保持登录状态
     this.cookies = new Map()
@@ -1171,7 +1171,8 @@ class PriceListService {
 
           // 分步构建 SQL 和参数，避免模板字符串变量求值问题
           // 自动同步传入来源时必须保存绑定关系，否则下一次列表计算会回退到默认加价。
-          const shouldUpdateSourceConfig = hasSyncSourceConfig || (isManualEdit && hasSourceConfigId)
+          // 采集历史记录实际来源，商品本身继续保留已设置的来源绑定。
+          const shouldUpdateSourceConfig = isManualEdit && hasSourceConfigId
           const updateQuery = `UPDATE price_list
             SET retail_price = ${onlyUpdatingShowPrice ? 'retail_price' : (isManualEdit ? '?' : 'COALESCE(?, retail_price)')},
                 wholesale_price = ${onlyUpdatingShowPrice ? 'wholesale_price' : (isManualEdit ? '?' : 'COALESCE(?, wholesale_price)')},
@@ -1213,7 +1214,7 @@ class PriceListService {
           updateParams.push(remark)
           updateParams.push(external_model)
           if (shouldUpdateSourceConfig) {
-            updateParams.push(hasSyncSourceConfig ? Number(sourceConfigId) : inputSourceConfigId)
+            updateParams.push(inputSourceConfigId)
           }
 
           // 只有在手动编辑且传入了 show_price 时才更新该字段
@@ -1250,12 +1251,6 @@ class PriceListService {
             await this.db.query(
               'UPDATE price_list SET last_sync_time = ?, updated_at = ? WHERE id = ?',
               [finalSyncTime, updatedAt, priceItemId]
-            )
-          } else if (hasSyncSourceConfig) {
-            // 即使本次原价没有变化，也要保存自动同步来源绑定。
-            await this.db.query(
-              'UPDATE price_list SET source_config_id = ?, last_sync_time = ?, updated_at = ? WHERE id = ?',
-              [Number(sourceConfigId), finalSyncTime || updatedAt, updatedAt, priceItemId]
             )
           } else {
             // 其他情况保持原有逻辑：自动同步或未传同步时间时更新为当前同步时间
@@ -2011,8 +2006,8 @@ class PriceListService {
     return this.sourceParser.hasExternalPriceRows(tableHtml)
   }
 
-  buildExternalModelSearchUrl(searchTerm) {
-    return this.sourceParser.buildExternalModelSearchUrl(searchTerm)
+  buildExternalModelSearchUrl(searchTerm, sourceUrl, brand) {
+    return this.sourceParser.buildExternalModelSearchUrl(searchTerm, sourceUrl, brand)
   }
 
   async createPublicSourceSession(sourceUrl, headers) {
@@ -2127,7 +2122,6 @@ class PriceListService {
         headers['Cookie'] = this.cookies.get(config.id)
         log.debug('📝 使用登录后的cookies获取数据 (账户:', config.login_username, ')')
         log.debug('📝 Cookies长度:', headers['Cookie'].length)
-        log.debug('📝 Cookies内容:', headers['Cookie'].substring(0, 100) + '...')
       } else {
         log.debug('⚠️ 未找到cookies，可能未登录')
         log.debug('⚠️ 当前存储的cookie键:', Array.from(this.cookies.keys()))
@@ -2142,7 +2136,6 @@ class PriceListService {
           maxRedirects: 5
         })
         log.debug('   测试响应状态:', testResponse.status)
-        log.debug('   测试响应头:', JSON.stringify(testResponse.headers).substring(0, 200))
       } catch (testError) {
         log.debug('   ⚠️ 测试请求失败:', testError.message)
         if (testError.response) {
@@ -2169,15 +2162,20 @@ class PriceListService {
       }
 
       // price_list 中启用采集的苹果型号也必须参与搜索，不能只依赖 phones 库存
+      const sourceFilter = this.getPriceSourceFilter({
+        id: config.id,
+        isDefault: Number(config.is_default) === 1
+      })
       const [collectedPriceListModels] = await this.db.query(`
         SELECT mo.name AS model_number, MAX(NULLIF(p.external_model, '')) AS external_model
         FROM price_list p
         JOIN models mo ON p.model_id = mo.id
         JOIN brands b ON p.brand_id = b.id
         WHERE b.name = '苹果' AND COALESCE(p.is_collect, 1) = 1
+        ${sourceFilter.sql}
         GROUP BY mo.id, mo.name
         ORDER BY mo.name
-      `)
+      `, sourceFilter.params)
       log.debug('📦 price_list 中开启采集的苹果型号:', collectedPriceListModels.map(m => m.model_number))
 
       const combinedModelMap = new Map();
@@ -2255,7 +2253,6 @@ class PriceListService {
         })
 
         log.debug('   响应状态:', response.status)
-        log.debug('   响应头:', JSON.stringify(response.headers).substring(0, 200))
         log.debug('   响应数据长度:', response.data?.length || 0)
         log.debug('   响应数据前500字符:', response.data?.substring(0, 500) || '')
 
@@ -2391,7 +2388,7 @@ class PriceListService {
           // 先搜索iPad（如果有）
           if (hasIPad) {
             log.debug('  正在搜索所有iPad产品 (搜索词: "iPad")...')
-            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=%E8%8B%B9%E6%9E%9C&network=&arg_name=iPad&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`
+            const searchUrl = this.buildExternalModelSearchUrl('iPad', config.source_url, '苹果')
 
             try {
               const response = await axios.get(searchUrl, {
@@ -2414,7 +2411,7 @@ class PriceListService {
           // 搜索AirPods（如果有）
           if (hasAirPods) {
             log.debug('  正在搜索所有AirPods产品 (搜索词: "pods")...')
-            const searchUrl = `${EXTERNAL_PRICE.BASE_URL}/quoteList.action?km=&pp=&network=&arg_name=pods&s_jg=&e_jg=&policyid=&tykhgsdm=&isqh=0`
+            const searchUrl = this.buildExternalModelSearchUrl('pods', config.source_url)
 
             try {
               const response = await axios.get(searchUrl, {
@@ -2450,12 +2447,11 @@ class PriceListService {
             let appendedModelRows = false
 
             for (const searchTerm of searchTerms) {
-              const searchUrl = this.buildExternalModelSearchUrl(searchTerm)
+              const searchUrl = this.buildExternalModelSearchUrl(searchTerm, config.source_url)
 
               try {
                 log.debug(`  正在搜索 ${modelKey} (使用搜索词: "${searchTerm}")...`)
                 log.debug(`  请求URL: ${searchUrl}`)
-                log.debug(`  请求头Cookie: ${headers.Cookie?.substring(0, 100)}...`)
                 const response = await axios.get(searchUrl, {
                   headers,
                   timeout: TIMEOUTS.EXTERNAL_API,
@@ -2609,11 +2605,7 @@ class PriceListService {
     // 步骤1: 从 price_list 表中获取需要采集的记录（is_collect = 1）
     log.debug('🔍 查询 price_list 表中需要采集的记录...')
     const sourceContext = await this.getPriceSourceContext(sourceOptions.sourceConfigId)
-    const sourceFilter = sourceContext
-      ? (sourceContext.isDefault
-        ? { sql: 'AND (p.source_config_id = ? OR p.source_config_id IS NULL)', params: [sourceContext.id] }
-        : { sql: 'AND p.source_config_id = ?', params: [sourceContext.id] })
-      : { sql: '', params: [] }
+    const sourceFilter = this.getPriceSourceFilter(sourceContext)
     const [inventoryItems] = await this.db.query(`
       SELECT DISTINCT
         b.name as brand_name,
@@ -2783,11 +2775,7 @@ class PriceListService {
       // 🔥 只查询 price_list 表中 is_collect = 1 的记录（需要采集）
       log.debug('🔍 查询 price_list 表中需要采集的记录...')
       const sourceContext = await this.getPriceSourceContext(sourceOptions.sourceConfigId)
-      const sourceFilter = sourceContext
-        ? (sourceContext.isDefault
-          ? { sql: 'AND (p.source_config_id = ? OR p.source_config_id IS NULL)', params: [sourceContext.id] }
-          : { sql: 'AND p.source_config_id = ?', params: [sourceContext.id] })
-        : { sql: '', params: [] }
+      const sourceFilter = this.getPriceSourceFilter(sourceContext)
       const [priceListItems] = await this.db.query(`
         SELECT DISTINCT
           b.name as brand_name,
