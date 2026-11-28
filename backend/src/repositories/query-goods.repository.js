@@ -10,6 +10,7 @@ const { buildPagination } = require('../utils/reference-options')
 
 // 共同单读取成交快照；旧出库没有快照时才显示当前档案，不伪造历史资料。
 const archive = (field, current) => `CASE WHEN i.id IS NOT NULL THEN NULLIF(JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.${field}')), 'null') ELSE ${current} END`
+const currentSalePrice = 'IF(a.template_id IS NULL, a.sale_price, t.sale_price)'
 const product = {
   name: archive('name', 'COALESCE(t.name, a.name)'),
   barcode: archive('barcode', 'COALESCE(t.barcode, a.barcode)'),
@@ -40,6 +41,12 @@ const fields = `s.id, s.sale_no, s.accessory_id, s.sale_type, s.store_id, st.nam
   ${returnedQuantity} AS returned_quantity, s.quantity - ${returnedQuantity} AS remaining_quantity,
   CASE WHEN i.id IS NULL THEN NULL ELSE COALESCE(JSON_EXTRACT(i.snapshot, '$.points_used'), 0) END AS points_used,
   CASE WHEN i.id IS NULL THEN NULL ELSE COALESCE(JSON_EXTRACT(i.snapshot, '$.deduction_cents'), 0) / 100 END AS deduction_amount,
+  CASE WHEN i.id IS NULL OR COALESCE(JSON_CONTAINS_PATH(i.snapshot, 'one', '$.reference_unit_price_cents'), 0) = 0
+    THEN ${currentSalePrice} ELSE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.reference_unit_price_cents')), 'null') / 100 END AS reference_unit_price,
+  CASE WHEN i.id IS NULL OR COALESCE(JSON_CONTAINS_PATH(i.snapshot, 'one', '$.reference_total_cents'), 0) = 0
+    THEN COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.reference_unit_price_cents')), 'null') / 100, ${currentSalePrice}) * s.quantity
+    ELSE NULLIF(JSON_UNQUOTE(JSON_EXTRACT(i.snapshot, '$.reference_total_cents')), 'null') / 100 END AS reference_total_price,
+  CASE WHEN i.id IS NULL THEN NULL ELSE JSON_EXTRACT(i.snapshot, '$.discount_cents') / 100 END AS discount_amount,
   (i.id IS NOT NULL) AS has_snapshot,
   ${Object.entries(product).map(([key, sql]) => `${sql} AS ${key}`).join(', ')}`
 const searchable = {

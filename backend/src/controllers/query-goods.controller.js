@@ -4,7 +4,7 @@ const QueryGoodsService = require('../services/query-goods.service')
 const FieldAccessService = require('../services/field-access.service')
 const log = require('../utils/log')
 
-const financialKeys = ['total_price', 'period_amount', 'profit', 'points_awarded', 'points_used', 'deduction_amount',
+const financialKeys = ['total_price', 'discount_amount', 'period_amount', 'profit', 'points_awarded', 'points_used', 'deduction_amount',
   'base_refund_amount', 'points_recovery_amount', 'points_compensation_amount', 'gift_charge_amount', 'refund_amount', 'collection_amount', 'settlement_offset_amount',
   'replacement_amount', 'additional_amount', 'exchange_credit_amount', 'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state',
   'points_delta', 'points_award_returned', 'points_redemption_returned', 'settlement_method', 'settlement_channel']
@@ -23,6 +23,7 @@ const responseKeys = {
   'stock_info.distribution': ['store_id', 'store_name'],
   'stock_info.total_quantity': ['quantity', 'period_quantity', 'returned_quantity', 'remaining_quantity', 'gift_charge_quantity', 'purchase_cost', ...financialKeys],
   'price_info.unit_price': ['unit_price', ...financialKeys],
+  'price_info.sale_price': ['reference_unit_price', 'reference_total_price'],
   'price_info.total_price': financialKeys,
   'price_info.purchase_cost': ['purchase_cost', 'profit'], 'price_info.profit': ['profit'],
   'customer_info.customer_name': ['customer_name'], 'customer_info.customer_phone': ['customer_phone'],
@@ -37,7 +38,7 @@ const queryFields = {
   start_date: 'time_info.created_at', end_date: 'time_info.created_at'
 }
 
-const orderMoney = ['unit_price', 'total_amount', 'gross_amount', 'points_used', 'deduction_amount', 'points_awarded',
+const orderMoney = ['unit_price', 'reference_unit_price', 'reference_total_amount', 'gross_amount', 'discount_amount', 'total_amount', 'points_used', 'deduction_amount', 'points_awarded',
   'gift_return_unit_price', 'gift_return_total', 'gift_agreement_state']
 const orderTotals = ['total_amount', 'final_amount', 'paid_amount', 'deduction_amount', 'points_used', 'points_awarded']
 const orderGoodsKeys = {

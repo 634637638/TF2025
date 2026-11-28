@@ -274,8 +274,26 @@
               >
                 {{ saleTypeLabel(row.sale_type) }}
               </span>
+              <span
+                v-else-if="column.key === 'discount_amount'"
+                :class="['status-badge', 'sale-difference-badge', discountBadgeClass(row.reference_total_price, row.total_price, row.sale_type)]"
+              >
+                {{ discountDisplay(row.reference_total_price, row.total_price, row.sale_type) }}
+              </span>
+              <span
+                v-else-if="column.key === 'quantity'"
+                class="status-badge status-info goods-quantity-badge"
+              >
+                {{ tableCellDisplay(row, column) }}
+              </span>
+              <span
+                v-else-if="column.key === 'total_price'"
+                class="status-badge status-success"
+              >
+                {{ tableCellDisplay(row, column) }}
+              </span>
               <template v-else>
-                {{ display(row[column.key], column.format) }}
+                {{ tableCellDisplay(row, column) }}
               </template>
             </template>
           </el-table-column>
@@ -424,13 +442,13 @@
             <div class="goods-detail__compact-panel goods-detail__compact-panel--sale-customer">
               <div class="goods-detail__compact-grid">
                 <div
-                  v-for="column in columns.filter(item => ['store_name', 'returned_quantity', 'remaining_quantity', 'unit_price', 'purchase_cost', 'points_used', 'deduction_amount', 'operator_name'].includes(item.key))"
+                  v-for="column in columns.filter(item => ['store_name', 'returned_quantity', 'remaining_quantity', 'reference_unit_price', 'unit_price', 'reference_total_price', 'discount_amount', 'total_price', 'purchase_cost', 'points_used', 'deduction_amount', 'operator_name'].includes(item.key))"
                   :key="column.key"
                   class="goods-detail__compact-field"
                 >
                   <span>{{ column.label }}</span>
                   <strong :class="{ 'goods-detail__long-value': ['store_name', 'operator_name'].includes(column.key) }">
-                    {{ display(detail[column.key], column.format) }}
+                    {{ column.key === 'discount_amount' ? display(totalDiscountAmount(detail.discount_amount, detail.deduction_amount), column.format) : display(detail[column.key], column.format) }}
                   </strong>
                 </div>
               </div>
@@ -687,6 +705,7 @@ import { useMobile } from '@/composables/mobile'
 import { canViewQueryGoodsField as visible, canViewQueryGoodsStat, ACCESSORY_FIELD_IDS, QUERY_GOODS_STAT_FIELD_IDS, type AccessoryFieldName, type QueryGoodsStatField } from '@/components/accessory-field-permissions'
 import { getAdaptiveActionColumnWidth } from '@/utils/table-layout'
 import { formatAmount, formatCurrency, formatDateTime, formatNumber } from '@/utils/format'
+import { signedSaleDifference, totalDiscountAmount } from '@/utils/query-goods'
 import { TIME_FORMATS } from '@/utils/time'
 import UnifiedSearchPanel from '@/components/search/UnifiedSearchPanel.vue'
 import CheckoutOrderDialog from '@/components/query/CheckoutOrderDialog.vue'
@@ -830,7 +849,10 @@ const allColumns: Column[] = [
   { key: 'quantity', label: '数量', field: 'total_quantity', width: 90 },
   { key: 'returned_quantity', label: '已退数量', field: 'total_quantity', width: 100 },
   { key: 'remaining_quantity', label: '未退数量', field: 'total_quantity', width: 100 },
-  { key: 'unit_price', label: '销售价', field: 'unit_price', width: 110, format: 'money' },
+  { key: 'reference_unit_price', label: '销售价', field: 'sale_price', width: 110, format: 'money' },
+  { key: 'unit_price', label: '成交单价', field: 'unit_price', width: 110, format: 'money' },
+  { key: 'reference_total_price', label: '合计金额', field: 'sale_price', width: 110, format: 'money' },
+  { key: 'discount_amount', label: '总优惠', field: 'total_price', width: 110, format: 'money' },
   { key: 'total_price', label: '实收', field: 'total_price', width: 110, format: 'money' },
   { key: 'purchase_cost', label: '成本', field: 'purchase_cost', width: 120, format: 'money' },
   { key: 'profit', label: '利润', field: 'profit', width: 110, format: 'money' },
@@ -841,7 +863,7 @@ const allColumns: Column[] = [
 ]
 const columns = computed(() => allColumns.filter(column => visible(column.field)))
 const tableColumnOrder: Column['key'][] = ['store_name', 'sale_time', 'brand_name', 'name', 'category', 'sale_type', 'customer_name', 'customer_phone']
-const hiddenTableColumnKeys: Column['key'][] = ['sale_no', 'remaining_quantity', 'product_model', 'profit', 'points_used']
+const hiddenTableColumnKeys: Column['key'][] = ['sale_no', 'remaining_quantity', 'returned_quantity', 'unit_price', 'product_model', 'profit', 'points_used']
 const tableColumns = computed(() => {
   const visibleColumns = columns.value.filter(column => !hiddenTableColumnKeys.includes(column.key))
   const prioritizedColumns = tableColumnOrder
@@ -860,6 +882,28 @@ const display = (value: unknown, format?: CellFormat) => {
   if (format === 'type') return value === 'gift' ? '赠送' : value === 'sale' ? '销售' : '-'
   return String(value)
 }
+const tableCellDisplay = (row: AccessorySaleRecord, column: Column) => {
+  if (row.sale_type === 'gift' && ['reference_total_price', 'total_price'].includes(column.key)) {
+    return display(0, column.format)
+  }
+  return display(row[column.key], column.format)
+}
+const signedDifferenceDisplay = (referenceTotal: unknown, receivedTotal: unknown, saleType: unknown) => {
+  const difference = signedSaleDifference(referenceTotal, receivedTotal, saleType)
+  if (difference === null) return '-'
+  if (difference === 0) return '¥0'
+  return `${difference < 0 ? '-' : '+'}¥${formatAmount(Math.abs(difference))}`
+}
+const signedDifferenceBadgeClass = (referenceTotal: unknown, receivedTotal: unknown, saleType: unknown) => {
+  const difference = signedSaleDifference(referenceTotal, receivedTotal, saleType)
+  return difference === null ? 'status-disabled' : difference < 0 ? 'status-danger' : difference > 0 ? 'status-success' : 'status-disabled'
+}
+const discountDisplay = (referenceTotal: unknown, receivedTotal: unknown, saleType: unknown) => saleType === 'gift'
+  ? '免费'
+  : signedDifferenceDisplay(referenceTotal, receivedTotal, saleType)
+const discountBadgeClass = (referenceTotal: unknown, receivedTotal: unknown, saleType: unknown) => saleType === 'gift'
+  ? 'status-info'
+  : signedDifferenceBadgeClass(referenceTotal, receivedTotal, saleType)
 const saleTypeLabel = (value: unknown) => value === 'gift' ? '赠送' : value === 'sale' ? '销售' : '-'
 const saleTypeBadgeClass = (value: unknown) => value === 'gift' ? 'status-warning' : value === 'sale' ? 'status-success' : 'status-disabled'
 const load = async () => {

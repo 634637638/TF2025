@@ -49,7 +49,7 @@
     },
     {
       "id": "goods-stock-in",
-      "label": "商品入库",
+      "label": "入库",
       "path": "/accessories",
       "query": {
         "openStockIn": "true"

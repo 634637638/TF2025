@@ -140,7 +140,7 @@ try {
     })
     assert.deepEqual(failures, [])
   }
-  const assertEditorAppearance = async (expectedSections, expectedTitle = '商品入库') => {
+  const assertEditorAppearance = async (expectedSections, expectedTitle = '入库') => {
     const layout = await page.evaluate(selector => {
       const dialog = [...document.querySelectorAll(selector)].find(el => el.checkVisibility())
       const body = dialog.querySelector('.el-dialog__body'), form = body.querySelector('.accessory-form')
@@ -410,7 +410,7 @@ try {
       window.fixtureScenario = 'template-search'; window.fixtureWrites = []; window.fixtureTemplateReads = []
       await window.renderMobileCase('views/accessories/AccessoriesView.vue')
     }, theme)
-    await clickButton('button', '商品入库')
+    await clickButton('button', '入库')
     await page.waitForSelector(`${dialogSelector} .accessory-form`, { visible: true })
     await settleLayout()
     await assertEditorAppearance(2)
@@ -653,7 +653,7 @@ try {
     assert.equal(await page.evaluate(() => window.fixtureWrites[0].payload.free_film), 1)
     assert.equal(await page.evaluate(() => 'film_enabled' in window.fixtureWrites[0].payload), false)
     await page.waitForFunction(selector => ![...document.querySelectorAll(selector)].some(el => el.checkVisibility()), {}, dialogSelector)
-    await clickButton('button', '商品入库')
+    await clickButton('button', '入库')
     await page.waitForSelector(`${dialogSelector} .accessory-form`, { visible: true })
     await chooseColorTemplate()
     await page.waitForSelector(`${dialogSelector} [aria-label="按颜色填写入库数量"]`, { visible: true })
@@ -686,7 +686,7 @@ try {
     assert.deepEqual(await page.evaluate(() => window.fixtureUnknown), [])
     recordResult(`${width}px ${theme} 多颜色条码创建及逐色数量共价入库`)
 
-    await clickButton('button', '商品入库')
+    await clickButton('button', '入库')
     await page.waitForSelector(`${dialogSelector} .accessory-form`, { visible: true })
     await chooseColorTemplate()
     await page.waitForSelector(`${dialogSelector} [aria-label="按颜色填写入库数量"]`, { visible: true })
@@ -706,7 +706,7 @@ try {
     await page.waitForFunction(selector=>[...document.querySelectorAll(`${selector} button`)].some(button=>button.textContent.trim()==='重试原入库'&&!button.disabled),{},dialogSelector)
     await clickButton(`${dialogSelector} button`, '取消')
     await page.waitForFunction(selector => ![...document.querySelectorAll(selector)].some(el => el.checkVisibility()), {}, dialogSelector)
-    await clickButton('button', '商品入库')
+    await clickButton('button', '入库')
     await page.waitForFunction(selector=>[...document.querySelectorAll(`${selector} button`)].some(button=>button.textContent.trim()==='重试原入库'&&!button.disabled),{},dialogSelector)
     await clickButton(`${dialogSelector} button`, '重试原入库')
     await page.waitForFunction('window.fixtureWrites.length === 4')
@@ -774,7 +774,7 @@ try {
       window.fixtureColorTemplate.color_variants = window.fixtureColorTemplate.color_variants.slice(0, 1)
       await window.renderMobileCase('views/accessories/AccessoriesView.vue')
     })
-    await clickButton('button', '商品入库')
+    await clickButton('button', '入库')
     await page.waitForSelector(`${dialogSelector} .accessory-form`, { visible: true })
     await chooseColorTemplate()
     await page.waitForSelector(`${dialogSelector} input[aria-label="商品条形码"]`, { visible: true })
@@ -841,7 +841,7 @@ try {
       await settleLayout()
       await assertPublicButtons()
       await clickButton('.accessory-details-dialog button', '划拨')
-      await page.waitForFunction(() => [...document.querySelectorAll('.el-dialog__title')].some(el => el.checkVisibility() && el.textContent.trim() === '库存划拨'))
+      await page.waitForFunction(() => [...document.querySelectorAll('.el-dialog__title')].some(el => el.checkVisibility() && el.textContent.trim() === '划拨'))
       await settleLayout(); await assertPublicButtons()
       if (screenshotDirectory) await page.screenshot({ path: join(screenshotDirectory, `transfer-${width}-${theme}.png`), fullPage: true })
       await clickButton('.tf-dialog-actions button', '取消')

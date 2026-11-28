@@ -115,6 +115,9 @@ class SalesPhoneService {
           compatible_model_names: issued.accessory.compatible_model_names, color_id: issued.accessory.color_id,
           color_name: issued.accessory.color_name, unit: issued.accessory.unit, unit_id: issued.accessory.unit_id,
           sale_type: 'gift', sale_no: issued.sale_no, serial_numbers: issued.serial_numbers,
+          reference_unit_price_cents: issued.reference_unit_price === null ? null : Math.round(issued.reference_unit_price * 100),
+          reference_total_cents: issued.reference_total_price === null ? null : Math.round(issued.reference_total_price * 100),
+          discount_cents: issued.discount_amount === null ? null : Math.round(issued.discount_amount * 100),
           points_used: 0, deduction_cents: 0, gross_cents: 0, gift_return_unit_price: null, remarks }, time: saleTime
       })
       if (typeof this.films?.appendAutomatic !== 'function') throw abort(409, '自动赠膜历史服务不可用')

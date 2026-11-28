@@ -151,7 +151,7 @@
     <!-- 销售模态框 -->
     <MobileDialog
       v-model="showSaleModal"
-      :title="batchMode ? `批量销售出库 (${selectedPhones.length}台)` : '销售出库'"
+      :title="batchMode ? `批量出库 (${selectedPhones.length}台)` : '出库'"
       dialog-class="sales-sale-dialog tf-dialog-body-flush"
       :before-close="beforeSaleClose"
       :show-default-footer="false"
@@ -256,7 +256,7 @@
     <!-- 批量销售弹窗 -->
     <MobileDialog
       v-model="showBatchSaleModal"
-      :title="`批量销售出库 (${selectedPhones.length}台)`"
+      :title="`批量出库 (${selectedPhones.length}台)`"
       dialog-class="sales-batch-sale-dialog tf-dialog-body-flush"
       :before-close="beforeSaleClose"
       :show-default-footer="false"
@@ -1251,7 +1251,7 @@ const handleRouteAutoOpenSale = async (records: Phone[] = []) => {
     return false
   }
 
-  logger.info('开始自动打开销售出库弹窗:', {
+  logger.info('开始自动打开出库弹窗:', {
     phoneId: routePhoneId,
     currentRecords: records.length
   })
@@ -1295,13 +1295,13 @@ const handleRouteAutoOpenSale = async (records: Phone[] = []) => {
     await nextTick()
     const opened = openSaleModal(matchedPhone)
     if (opened) {
-      logger.info('自动打开销售出库弹窗成功:', { phoneId: routePhoneId })
+      logger.info('自动打开出库弹窗成功:', { phoneId: routePhoneId })
       handledRouteSalePhoneId.value = routePhoneId
       await clearRouteAutoOpenSaleQuery()
       return true
     }
 
-    logger.warn('自动打开销售出库弹窗被权限或状态拦截:', { phoneId: routePhoneId })
+    logger.warn('自动打开出库弹窗被权限或状态拦截:', { phoneId: routePhoneId })
     return false
   }
 

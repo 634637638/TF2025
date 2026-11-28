@@ -97,6 +97,9 @@ export interface AccessorySaleRecord {
   returned_quantity?: number | string | null
   remaining_quantity?: number | string | null
   unit_price: number | string | null
+  reference_unit_price?: number | string | null
+  reference_total_price?: number | string | null
+  discount_amount?: number | string | null
   total_price: number | string | null
   purchase_cost: number | string | null
   profit: number | string | null

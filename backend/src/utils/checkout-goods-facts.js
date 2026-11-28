@@ -62,6 +62,19 @@ function readCheckoutGoods(row) {
       units.reduce((sum, unit) => sum + unit.quantity * unit.deduction_cents, 0) !== deduction ||
       units.reduce((sum, unit) => sum + unit.quantity * unit.points_awarded, 0) !== Number(row.points_awarded)) reject('关联商品原单分摊凭据异常')
   } else if (used) reject('关联商品原单缺少抵扣分摊凭据')
+  const referenceUnit = snapshot.reference_unit_price_cents === undefined || snapshot.reference_unit_price_cents === null
+    ? null : snapshot.reference_unit_price_cents
+  const referenceTotal = snapshot.reference_total_cents === undefined || snapshot.reference_total_cents === null
+    ? null : snapshot.reference_total_cents
+  const discount = snapshot.discount_cents === undefined || snapshot.discount_cents === null ? null : snapshot.discount_cents
+  if (referenceUnit !== null && (!Number.isSafeInteger(referenceUnit) || referenceUnit < 0 || referenceUnit >= 10000000000) ||
+    referenceTotal !== null && (!Number.isSafeInteger(referenceTotal) || referenceTotal < 0 || referenceTotal >= 10000000000) ||
+    discount !== null && (!Number.isSafeInteger(discount) || discount < 0 || discount >= 10000000000) ||
+    (referenceUnit === null) !== (referenceTotal === null) ||
+    referenceUnit !== null && (referenceUnit * quantity !== referenceTotal ||
+      (snapshot.sale_type === 'gift' ? discount !== null : discount === null || discount !== Math.max(0, referenceTotal - gross)))) {
+    reject('关联商品原单价格快照异常')
+  }
   const serials = snapshot.serial_numbers
   if (!Array.isArray(serials) || serials.some(serial => typeof serial !== 'string' || !serial.trim()) ||
     new Set(serials).size !== serials.length || (serials.length && serials.length !== quantity)) reject('关联商品原单SN凭据异常')
@@ -69,7 +82,10 @@ function readCheckoutGoods(row) {
   const item = { item_id: identity(row.item_id), accessory_id: identity(row.accessory_id), accessory_sale_id: identity(row.accessory_sale_id),
     sale_type: snapshot.sale_type, name: typeof snapshot.name === 'string' ? snapshot.name : null,
     unit: typeof snapshot.unit === 'string' ? snapshot.unit : null,
-    quantity, unit_price: price / 100, points_used: used, deduction_amount: deduction / 100, gross_amount: gross / 100, total_amount: total / 100, points_awarded: Number(row.points_awarded), serial_numbers: serials,
+    quantity, unit_price: price / 100, reference_unit_price: referenceUnit === null ? null : referenceUnit / 100,
+    reference_total_amount: referenceTotal === null ? null : referenceTotal / 100,
+    discount_amount: discount === null ? null : discount / 100,
+    points_used: used, deduction_amount: deduction / 100, gross_amount: gross / 100, total_amount: total / 100, points_awarded: Number(row.points_awarded), serial_numbers: serials,
     ...agreement }
   const commission = readGoodsCommission(snapshot.commission, { employeeId: row.sale_operator_id, quantity, saleType: snapshot.sale_type, paidCents: total,
     purchaseCostCents: row.purchase_cost === null ? null : moneyCents(row.purchase_cost) ?? undefined, pointsUsed: used })

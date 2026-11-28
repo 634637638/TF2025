@@ -18,7 +18,7 @@
             @click="openStockInModal"
           >
             <i class="fas fa-box" />
-            商品入库
+            入库
           </el-button>
           <el-button
             v-if="canCreate"
@@ -267,7 +267,7 @@
                         :class="isTemplateMode ? 'tf-button--save' : 'tf-button--transfer'"
                         @click="isTemplateMode ? openArchiveModal() : openStockInModal()"
                       >
-                        {{ isTemplateMode ? '商品模版' : '商品入库' }}
+                        {{ isTemplateMode ? '商品模版' : '入库' }}
                       </el-button>
                     </DataEmptyState>
                   </template>

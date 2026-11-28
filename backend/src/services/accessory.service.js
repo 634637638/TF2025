@@ -144,7 +144,8 @@ class AccessoryService extends BaseService {
     if (['page', 'page_size'].some(key => query[key] !== undefined && !validId(query[key]))) throw this.createError('商品分页参数无效', 400, 'VALIDATION_ERROR')
     if (query.search !== undefined && (typeof query.search !== 'string' || query.search.trim().length > 100)) throw this.createError('商品检索最多100字', 400, 'VALIDATION_ERROR')
     if (query.match_mode !== undefined && (query.match_mode !== 'exact' || !query.search?.trim() || !['regular', 'serial'].includes(query.search_mode))) throw this.createError('商品精确检索参数无效', 400, 'VALIDATION_ERROR')
-    return this.accessoryRepository.getSaleOptions({ storeId, search: query.search?.trim() || '', searchFields,
+    const search = query.search?.trim() || ''
+    return this.accessoryRepository.getSaleOptions({ storeId, search: query.search_mode === 'serial' ? search.toUpperCase() : search, searchFields,
       ...(includePurchaseCost ? { includePurchaseCost: true } : {}),
       ...(filmFreeOnly !== undefined ? { filmFreeOnly } : {}),
       ...(query.search_mode ? { searchMode: query.search_mode } : {}),
@@ -227,7 +228,7 @@ class AccessoryService extends BaseService {
           return { id, replayed: false }
         } catch (error) { await connection.rollback(); throw error }
       })
-      return this.success('库存划拨成功', result)
+      return this.success('划拨成功', result)
     } catch (error) {
       if (error.statusCode) return { ...this.error(error.message, error.code), statusCode: error.statusCode }
       if (error.code === 'ER_DUP_ENTRY') return { ...this.error('请求已处理，请刷新后核对原划拨单', 'TRANSFER_REQUEST_CONFLICT'), statusCode: 409 }
@@ -1135,6 +1136,12 @@ class AccessoryService extends BaseService {
     const { allocations, costCents } = this.inventoryService.allocate({ balances, quantity, serials, operation: type,
       remarks })
     const grossCents = Math.round(price * 100) * quantity
+    const referencePrice = Number(existing.sale_price)
+    const referenceUnitCents = Number.isFinite(referencePrice) && referencePrice >= 0 &&
+      Math.abs(referencePrice * 100 - Math.round(referencePrice * 100)) < 0.000001
+      ? Math.round(referencePrice * 100) : null
+    const referenceTotalCents = referenceUnitCents === null ? null : referenceUnitCents * quantity
+    const discountCents = type === 'gift' || referenceTotalCents === null ? null : Math.max(0, referenceTotalCents - grossCents)
     const totalCents = contextOptions.resolveTotalCents ? await contextOptions.resolveTotalCents(existing) : grossCents
     if (!Number.isSafeInteger(totalCents) || totalCents < 0 || totalCents > grossCents) throw this.createError('商品实收金额异常', 409, 'VALIDATION_ERROR')
     const saleNo = await this.generateSaleNo(connection, time)
@@ -1151,7 +1158,10 @@ class AccessoryService extends BaseService {
     if (!await this.accessoryRepository.deductStock(accessoryId, storeId, quantity, connection)) throw this.createError('当前门店库存不足', 400, 'INSUFFICIENT_STOCK')
     await this.inventoryService.issue({ ...context, sale_id: saleId, sale_type: type }, allocations, connection)
     return { sale_id: saleId, sale_no: saleNo, sale_type: type, serial_numbers: serialNumbers,
-      accessory: existing, quantity, unit_price: price, purchase_cost: costCents === null ? null : costCents / 100,
+      accessory: existing, quantity, unit_price: price, reference_unit_price: referenceUnitCents === null ? null : referenceUnitCents / 100,
+      reference_total_price: referenceTotalCents === null ? null : referenceTotalCents / 100,
+      discount_amount: discountCents === null ? null : discountCents / 100,
+      purchase_cost: costCents === null ? null : costCents / 100,
       total_price: totalCents / 100, profit: costCents === null ? null : (totalCents - costCents) / 100 }
   }
 

@@ -66,7 +66,7 @@
                 @click="goToSales"
               >
                 <i class="fas fa-shopping-cart" />
-                <span class="btn-text-desktop">销售出库</span>
+                <span class="btn-text-desktop">出库</span>
                 <span class="btn-text-mobile">销售</span>
               </el-button>
               <el-button
@@ -1856,7 +1856,7 @@ const goToStockIn = () => {
   }
 }
 
-// 快捷跳转到销售出库页面
+// 快捷跳转到出库页面
 const goToSales = () => {
   try {
     // 在当前标签页跳转

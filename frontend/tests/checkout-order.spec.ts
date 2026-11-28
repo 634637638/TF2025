@@ -24,13 +24,16 @@ const Dialog = { props: ['modelValue', 'title', 'width', 'dialogClass'], emits: 
 const Empty = { props: ['description', 'title', 'actionText'], emits: ['action'], template: '<div>{{title}}{{description}}<button @click="$emit(\'action\')">{{actionText}}</button></div>' }
 const line = (extra: Partial<CheckoutOrderItem> = {}): CheckoutOrderItem => ({ id: 201, item_type: 'accessory', sale_no: 'GOODS-A', linked_phone_sale_no: 'PHONE-A', sale_type: 'sale',
   name: '原充电器', brand_name: '配件品牌', product_model: 'MWVW3CH', color_name: '白', memory: null, imei: null, serial_numbers: ['000SN1', '000SN2'], unit: '个', quantity: 2,
-  unit_price: 10, gross_amount: 20, total_amount: 15, points_used: 500, deduction_amount: 5, points_awarded: 0,
+  unit_price: 10, gross_amount: 20, total_amount: 15, reference_unit_price: 11.25, reference_total_amount: 22.5, discount_amount: 2.5,
+  points_used: 500, deduction_amount: 5, points_awarded: 0,
   gift_return_unit_price: null, gift_return_total: null, gift_agreement_state: extra.sale_type === 'gift' ? 'not_recorded' : null, ...extra })
 const order = (): CheckoutOrderDetail => ({ id: 10, order_no: 'SO-ORIGINAL', customer_name: '原客户', customer_phone: '13900000001', store_name: '一店', operator_name: '原销售员', sale_time: '2026-11-14 10:00:00', remarks: '整批公共备注',
   total_amount: 120, final_amount: 115, paid_amount: 115, deduction_amount: 5, points_used: 500, points_awarded: 10,
   items: [line({ id: 101, item_type: 'phone', sale_no: 'PHONE-A', linked_phone_sale_no: null, name: '原手机型号', product_model: null, serial_numbers: ['000PHONE'], quantity: 1,
-    unit_price: 100, gross_amount: 100, total_amount: 100, points_used: 0, deduction_amount: 0, points_awarded: 10 }), line(),
-  line({ id: 202, name: '原赠膜', sale_type: 'gift', serial_numbers: [], quantity: 1, unit_price: 0, gross_amount: 0, total_amount: 0, points_used: 0, deduction_amount: 0 })] })
+    unit_price: 100, gross_amount: 100, total_amount: 100, reference_unit_price: null, reference_total_amount: null, discount_amount: null,
+    points_used: 0, deduction_amount: 0, points_awarded: 10 }), line(),
+  line({ id: 202, name: '原赠膜', sale_type: 'gift', serial_numbers: [], quantity: 1, unit_price: 0, gross_amount: 0, total_amount: 0,
+    reference_unit_price: null, reference_total_amount: null, discount_amount: null, points_used: 0, deduction_amount: 0 })] })
 const wrappers: ReturnType<typeof mount>[] = []
 const render = async () => {
   const wrapper = mount(OrderDialog, { props: { modelValue: true, saleId: 51, source: 'goods' }, global: { plugins: [ElementPlus], stubs: { MobileDialog: Dialog, SectionLoading: true, DataEmptyState: Empty }, directives: { permission: {} } } })
@@ -42,7 +45,7 @@ afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.r
 it('整单显示原手机、购买及赠品、SN和积分；请求复用统一接口且关闭缓存及全局Loading', async () => {
   const wrapper = await render()
   expect(wrapper.text()).not.toContain('以下为本次结算的原成交记录')
-  for (const value of ['原手机型号', '原充电器', '原赠膜', '赠送', '000SN1、000SN2', '整批公共备注', '本单现金入账', '¥115', '500']) expect(wrapper.text()).toContain(value)
+  for (const value of ['原手机型号', '原充电器', '原赠膜', '赠送', '000SN1、000SN2', '整批公共备注', '本单现金入账', '¥115', '总优惠', '¥7.5', '500']) expect(wrapper.text()).toContain(value)
   expect(mocks.get).toHaveBeenCalledWith('/query/goods/51/order', expect.objectContaining({ signal: expect.any(AbortSignal), useCache: false, showLoading: false, showError: false }))
   expect(wrapper.findAll('.el-descriptions').every(item => item.classes().includes('tf-record-descriptions'))).toBe(true)
 })
@@ -110,6 +113,11 @@ it('隐藏商品SN/数量/金额保留null，不制造零值或完整合计', as
 it('校验原单资金守恒及脱敏、重复行和赠品；换货现金可小于原成交净额', () => {
   const data = order()
   expect(isCheckoutOrderDetail(data)).toBe(true)
+  Object.assign(data.items[2], { reference_unit_price: 30, reference_total_amount: 30, discount_amount: null })
+  expect(isCheckoutOrderDetail(data)).toBe(true)
+  data.items[2].discount_amount = 1
+  expect(isCheckoutOrderDetail(data)).toBe(false)
+  data.items[2].discount_amount = null
   data.paid_amount = 5; expect(isCheckoutOrderDetail(data)).toBe(true)
   data.items[2].unit_price = 2; expect(isCheckoutOrderDetail(data)).toBe(false)
   const duplicated = order(); duplicated.items.push(duplicated.items[0]); expect(isCheckoutOrderDetail(duplicated)).toBe(false)
@@ -192,6 +200,8 @@ it('共同订单标记失效时关闭已打开的明细，同一销售不会残�
 it('收银凭证仅打印已核对且有权查看的原成交内容，失败或撤权后禁止打印', async () => {
   const wrapper = await render()
   await wrapper.setProps({ receipt: true }); await flushPromises()
+  for (const value of ['销售价格', '销售价格合计', '成交单价', '成交金额', '总优惠', '实收小计']) expect(wrapper.text()).toContain(value)
+  expect(wrapper.text()).not.toContain('原出库SN')
   mocks.print.mockReturnValue(true)
   await wrapper.findAll('button').find(row => row.text() === '打印凭证')!.trigger('click')
   const printed = mocks.print.mock.calls[0][0] as HTMLElement

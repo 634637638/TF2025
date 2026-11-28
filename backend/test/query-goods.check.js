@@ -10,7 +10,7 @@ const { withReadConnection } = require('./helpers/query-goods-read')
 const actor = { id: 7, store_ids: [1, 2] }
 const record = { id: 51, sale_no: 'AS-ORIGINAL', name: '原单充电器', customer_name: '测试顾客', customer_phone: '13900000001',
   quantity: 2, returned_quantity: 1, remaining_quantity: 1, unit_price: '20.50', total_price: '41.00', purchase_cost: null, profit: null, points_awarded: 0, points_used: 0, deduction_amount: '0.00',
-  sale_type: 'sale', store_id: 1, store_name: '一店', has_snapshot: 1 }
+  reference_unit_price: 60, reference_total_price: 120, sale_type: 'sale', store_id: 1, store_name: '一店', has_snapshot: 1 }
 const totals = { period_amount: '385.50', period_quantity: 24 }
 const summary = {
   sale: { month: totals, today: totals, yesterday: totals },
@@ -102,6 +102,15 @@ test('隐藏客户、商品、SN仍参与关键词匹配；隐藏字段在列表
   assert.equal(detail.body.data.batches[0].purchase_cost, null)
   assert.equal(detail.body.data.batches[0].supplier_name, null)
   assert.equal(detail.body.data.profit, null)
+})
+
+test('隐藏商品售价字段时同步隐藏商品价格及其合计基准', async () => {
+  const f = fixture(['price_info.sale_price']), res = response()
+  await f.controller.list({ user: actor, query: {} }, res)
+  const row = res.body.data.data[0]
+  assert.equal(row.reference_unit_price, null)
+  assert.equal(row.reference_total_price, null)
+  assert.equal(row.total_price, '41.00')
 })
 
 test('隐藏数量或成交金额时同时遮蔽相关成本/利润/积分，不能从派生字段反推', async () => {
@@ -303,6 +312,20 @@ test('共同原单标题按业务销售时间显示，兼容历史空时间回�
     return [statements.length === 1 ? [{ id: 9 }] : []]
   } })
   assert.match(statements[0], /COALESCE\(sale\.sale_time, sale\.created_at\) AS sale_time/)
+})
+
+test('旧商品销售没有快照时用当前商品价格补齐销售价基准', async () => {
+  const statements = [], repo = new Repository()
+  repo.withConnection = async fn => fn({ async query(sql) {
+    statements.push(sql)
+    return [sql.startsWith('SELECT COUNT') ? [{ total: 1 }] : [record]]
+  } })
+  await repo.list({ storeIds: [1] }, { page: 1, page_size: 20 }, [])
+  assert.match(statements[1], /COALESCE\(JSON_CONTAINS_PATH\(i\.snapshot, 'one', '\$\.reference_unit_price_cents'\), 0\) = 0/)
+  assert.match(statements[1], /THEN IF\(a\.template_id IS NULL, a\.sale_price, t\.sale_price\) ELSE NULLIF\(JSON_UNQUOTE\(JSON_EXTRACT\(i\.snapshot, '\$\.reference_unit_price_cents'\)\), 'null'\) \/ 100 END AS reference_unit_price/)
+  assert.match(statements[1], /COALESCE\(JSON_CONTAINS_PATH\(i\.snapshot, 'one', '\$\.reference_total_cents'\), 0\) = 0/)
+  assert.match(statements[1], /THEN COALESCE\(NULLIF\(JSON_UNQUOTE\(JSON_EXTRACT\(i\.snapshot, '\$\.reference_unit_price_cents'\)\), 'null'\) \/ 100, IF\(a\.template_id IS NULL, a\.sale_price, t\.sale_price\)\) \* s\.quantity/)
+  assert.match(statements[1], /ELSE NULLIF\(JSON_UNQUOTE\(JSON_EXTRACT\(i\.snapshot, '\$\.reference_total_cents'\)\), 'null'\) \/ 100 END AS reference_total_price/)
 })
 
 test('手机凭证只返回未退配件，按剩余数量和逐件分摊重算金额并过滤已退SN', async () => {

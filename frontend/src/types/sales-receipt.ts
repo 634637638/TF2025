@@ -37,5 +37,5 @@ export interface SearchPhoneResult {
 
 /** 原手机凭证的配件只读投影，不返回采购成本或供应商。 */
 export type PhoneReceiptAccessory = Pick<AccessorySaleDetail, 'id' | 'name' | 'brand_name' | 'product_model' |
-  'color_name' | 'unit' | 'quantity' | 'unit_price' | 'total_price' | 'sale_type' |
+  'color_name' | 'unit' | 'quantity' | 'unit_price' | 'reference_unit_price' | 'reference_total_price' | 'discount_amount' | 'total_price' | 'sale_type' |
   'points_used' | 'deduction_amount' | 'serial_numbers'> & GiftReturnAgreement

@@ -270,7 +270,7 @@
                     <span
                       v-if="canViewAccessoryField('serial_number') && row.accessory.goods.serial_numbers?.length"
                       class="accessory-linked-sn"
-                    >配件SN：{{ row.accessory.goods.serial_numbers.join('、') }}</span>
+                    >{{ row.accessory.goods.serial_numbers.join('、') }}</span>
                   </div>
                 </template>
               </el-table-column>
@@ -450,7 +450,7 @@ const buildReceiptTitle = (suffix: string) => {
 const receiptConfig = computed(() => {
   switch (props.status) {
   case 'peer_transfer':
-    return { title: buildReceiptTitle('批发凭证'), class: 'transfer-receipt receipt-theme--transfer' }
+    return { title: buildReceiptTitle('调货凭证'), class: 'transfer-receipt receipt-theme--transfer' }
   case 'supplier_proxy':
     return { title: buildReceiptTitle('划拨凭证'), class: 'supplier-receipt receipt-theme--supplier' }
   default:
@@ -470,9 +470,9 @@ const receiptNotes = computed(() => {
   }
   if (props.status === 'peer_transfer') {
     return [
-      '同行调货请遵守非跨域激活，提供本市区内有效激活水印照片。',
+      '调货请遵守非跨域激活，提供本市区内有效激活水印照片。',
       '收到商品第一时间检查外观，现在拆封后发现机器异常提供开箱视频。',
-      '同行调货自行开票售后，在规定时间（拿货当天）回款。'
+      '调货自行开票售后，在规定时间（拿货当天）回款。'
     ]
   }
   return [

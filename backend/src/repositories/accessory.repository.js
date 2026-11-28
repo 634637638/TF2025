@@ -119,8 +119,11 @@ class AccessoryRepository extends BaseRepository {
       else conditions.push('1 = 0')
       if ((searchMode === 'serial' && searchFields.includes('serial_number')) || (searchMode === 'regular' && searchFields.includes('barcode'))) params.push(search)
     } else if (searchMode === 'serial' && search) {
-      conditions.push('picked_sn.serial_number LIKE ?')
-      params.push(`%${search}%`)
+      // 商品模式也要能按名称、型号、条码找到纯 SN 库存，SN 本身仍保留为检索条件。
+      const serialMatches = searchFields.filter(field => columns[field]).map(field => `${columns[field]} LIKE ?`)
+      serialMatches.push('picked_sn.serial_number LIKE ?')
+      params.push(...serialMatches.map(() => `%${search}%`))
+      conditions.push(`(${serialMatches.join(' OR ')})`)
     } else if (search) {
       const matches = searchFields.filter(field => columns[field]).map(field => `${columns[field]} LIKE ?`)
       params.push(...matches.map(() => `%${search}%`))

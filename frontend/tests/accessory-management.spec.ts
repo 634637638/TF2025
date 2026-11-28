@@ -235,7 +235,7 @@ describe('配件库存与商品模板管理', () => {
       await button(wrapper, '商品模板').trigger('click')
       await flushPromises()
     }
-    await button(wrapper, '商品入库').trigger('click')
+    await button(wrapper, '入库').trigger('click')
     await flushPromises()
     const before = wrapper.get('.test-table').text()
     const reads = mocks.get.mock.calls.length
@@ -380,7 +380,7 @@ describe('配件库存与商品模板管理', () => {
     await flushPromises()
     expect(wrapper.findComponent(TemplateEditor).props('archiveOnly')).toBe(true)
     mocks.get.mockResolvedValueOnce({ success: true, data: { ...rows[0], category_id: 12, unit_id: 2 } })
-    await button(wrapper, '入库').trigger('click')
+    await wrapper.findAll('[data-column="操作"] button').find(item => item.text() === '入库')!.trigger('click')
     await flushPromises()
     expect(wrapper.findComponent(TemplateEditor).props('stockInOnly')).toBe(true)
     expect(wrapper.findComponent(TemplateEditor).props('accessory')).toMatchObject({ id: 1 })
@@ -437,7 +437,7 @@ describe('配件库存与商品模板管理', () => {
     mocks.get.mockImplementation(async (url: string) => url.startsWith('/accessories/stock-in/templates/')
       ? { success: true, data: variant } : response([variant]))
     const wrapper = await render()
-    await button(wrapper, '入库').trigger('click')
+    await wrapper.findAll('[data-column="操作"] button').find(item => item.text() === '入库')!.trigger('click')
     await flushPromises()
     expect(wrapper.findComponent(TemplateEditor).props('accessory')).toMatchObject({ id: 56, template_id: 55, brand_id: 3 })
     const calls = mocks.get.mock.calls.length

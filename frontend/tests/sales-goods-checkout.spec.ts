@@ -44,6 +44,12 @@ const render = async (phones = [] as Array<{ phone_id: number; sale_price: numbe
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
 const button = (wrapper: ReturnType<typeof mount>, label: string) => wrapper.findAll('button').find(item => item.text() === label)!
+const setStandaloneSaleType = async (editor: ReturnType<typeof mount>, type: 'sale' | 'gift', scope = '.cashier-cart-line__sale-type') => {
+  const control = editor.findAll(`${scope} .el-radio-button`).find(item => item.text() === (type === 'gift' ? '赠送' : '购买'))
+  if (!control) throw new Error(`未找到${type === 'gift' ? '赠送' : '购买'}切换按钮`)
+  await control.trigger('click')
+  await flushPromises()
+}
 const searchCatalog = async (wrapper: ReturnType<typeof mount>, keyword: string) => {
   const input = wrapper.find('input[aria-label="收银商品检索"]')
   await input.setValue(keyword); await input.trigger('keydown', { key: 'Enter' }); await flushPromises()
@@ -86,6 +92,7 @@ afterEach(() => {
     if (host?.parentElement === document.body) host.remove()
   })
   vi.resetAllMocks()
+  vi.useRealTimers()
 })
 
 it('商品销售数量清空保持空白并阻止提交，重输后按实际数量结算', async () => {
@@ -606,7 +613,6 @@ describe('商品单卖与搭售结算弹窗', () => {
     mocks.options.mockResolvedValue({ success: true, data: { data: [serialOption], pagination: { total: 1 } } })
     await searchCatalog(wrapper, '00AA')
     await button(editor, '充电宝').trigger('click'); await flushPromises()
-    await button(editor, '加入清单').trigger('click'); await flushPromises()
     expect(editor.props('modelValue')[0]).toMatchObject({ serial_mode: true, serial_numbers: ['00AA'], quantity: 1 })
     const phone = wrapper.find('input[inputmode="tel"]')
     expect(phone.exists()).toBe(true)
@@ -747,11 +753,8 @@ describe('商品明细积分抵扣', () => {
     const wrapper = await render()
     const editor = wrapper.findComponent(SalesAdditionalGoods)
     await searchCatalog(wrapper, '充电宝')
-    await button(editor, '充电宝').trigger('click')
-    const saleTypeSelect = editor.findAllComponents(ElSelect).find(select => select.props('modelValue') === 'sale')
-    if (!saleTypeSelect) throw new Error('未找到出库方式下拉框')
-    saleTypeSelect.vm.$emit('update:modelValue', 'gift'); await flushPromises()
-    await button(editor, '加入清单').trigger('click'); await flushPromises()
+    await editor.find('button[aria-label="加入充电宝"]').trigger('click'); await flushPromises()
+    await setStandaloneSaleType(editor, 'gift')
     expect(editor.props('modelValue')[0]).toMatchObject({ sale_type: 'gift', unit_price: 0 })
     expect(editor.props('modelValue')[0]).not.toHaveProperty('redeem_points')
     await enterPayment(wrapper)
@@ -843,8 +846,14 @@ describe('附加商品清单与一键抵扣', () => {
   it('独立商品赠送时销售价与现金收取均只读', async () => {
     const wrapper = await render()
     const editor = wrapper.findComponent(SalesAdditionalGoods)
-    editor.find('.cashier-order').findComponent(ElSelect).vm.$emit('update:modelValue', 'gift')
+    expect(editor.find('.cashier-selection').exists()).toBe(false)
+    expect(editor.text()).not.toContain('加入清单')
     await wrapper.find('button[aria-label="加入充电宝"]').trigger('click'); await flushPromises()
+    await setStandaloneSaleType(editor, 'gift')
+    expect(editor.props('modelValue')[0]).toMatchObject({ sale_type: 'gift', unit_price: 0, gift_return_unit_price: 30 })
+    await setStandaloneSaleType(editor, 'sale')
+    expect(editor.props('modelValue')[0]).toMatchObject({ sale_type: 'sale', unit_price: 30, gift_return_unit_price: null })
+    await setStandaloneSaleType(editor, 'gift')
     expect(editor.find('input[aria-label="充电宝价格"]').attributes('disabled')).toBeDefined()
     await enterPayment(wrapper)
     expect(wrapper.find('input[aria-label="现金收取"]').exists()).toBe(false)
@@ -927,6 +936,29 @@ describe('附加商品清单与一键抵扣', () => {
 })
 
 describe('商品收银台检索与连续扫码', () => {
+  it('商品目录停止输入后自动检索，回车立即检索并取消待执行请求', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const wrapper = await render(), editor = wrapper.findComponent(SalesAdditionalGoods)
+    mocks.options.mockClear()
+    const input = editor.find('input[aria-label="收银商品检索"]')
+    await input.setValue('充电宝')
+    await vi.advanceTimersByTimeAsync(349)
+    expect(mocks.options).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    await flushPromises()
+    expect(mocks.options).toHaveBeenCalledWith(expect.objectContaining({ search: '充电宝', search_mode: 'regular' }), expect.any(AbortSignal))
+
+    mocks.options.mockClear()
+    await input.setValue('新商品')
+    await vi.advanceTimersByTimeAsync(100)
+    await input.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect(mocks.options).toHaveBeenCalledWith(expect.objectContaining({ search: '新商品', search_mode: 'regular' }), expect.any(AbortSignal))
+    const callsAfterEnter = mocks.options.mock.calls.length
+    await vi.advanceTimersByTimeAsync(350)
+    expect(mocks.options).toHaveBeenCalledTimes(callsAfterEnter)
+  })
+
   it('可售随购买、赠送、数量修改实时扣减，售罄禁用加购，删除及清空恢复且不提前写库', async () => {
     const stocked = { ...option, quantity: 3 }
     mocks.options.mockResolvedValue({ success: true, data: { data: [stocked], pagination: { total: 1 } } })
@@ -934,18 +966,16 @@ describe('商品收银台检索与连续扫码', () => {
     const card = () => editor.find('.cashier-product')
     const add = () => card().find('button[aria-label="加入充电宝"]')
     expect(card().text()).toContain('可售 3')
-    await add().trigger('click'); await flushPromises()
+    await button(card(), '充电宝').trigger('click'); await flushPromises()
     expect(card().text()).toContain('可售 2')
-    editor.find('.cashier-order').findComponent(ElSelect).vm.$emit('update:modelValue', 'gift'); await flushPromises()
+    await setStandaloneSaleType(editor, 'gift')
     await add().trigger('click'); await flushPromises()
     expect(card().text()).toContain('可售 1')
     const quantity = editor.find('input[aria-label="充电宝数量"]')
     await quantity.setValue('2'); await quantity.trigger('change'); await flushPromises()
     expect(card().text()).toContain('可售 0')
     expect(add().attributes('disabled')).toBeDefined()
-    await button(card(), '充电宝').trigger('click'); await flushPromises()
-    expect(button(editor, '加入清单').attributes('disabled')).toBeDefined()
-    expect(editor.find('.cashier-selection .el-tag--info').text()).toBe('0')
+    expect(editor.find('.cashier-selection').exists()).toBe(false)
     await editor.findAll('.cashier-cart-line')[1].find('button[aria-label="删除充电宝"]').trigger('click'); await flushPromises()
     expect(card().text()).toContain('可售 1')
     expect(add().attributes('disabled')).toBeUndefined()
@@ -954,6 +984,17 @@ describe('商品收银台检索与连续扫码', () => {
     expect(mocks.checkout).not.toHaveBeenCalled()
     expect(mocks.put).not.toHaveBeenCalled()
     expect(stocked.quantity).toBe(3)
+  })
+  it('清空按钮使用紧凑规格，新加入的商品始终排在清单顶部', async () => {
+    const newest = { ...option, id: 57, name: '数据线', barcode: '0456' }
+    mocks.options.mockResolvedValue({ success: true, data: { data: [option, newest], pagination: { total: 2 } } })
+    const wrapper = await render(), editor = wrapper.findComponent(SalesAdditionalGoods)
+    await searchCatalog(wrapper, '商品')
+    await button(editor, '充电宝').trigger('click'); await flushPromises()
+    await button(editor, '数据线').trigger('click'); await flushPromises()
+    const names = editor.findAll('.cashier-cart-line__identity > strong').map(item => item.text())
+    expect(names).toEqual(['数据线', '充电宝'])
+    expect(button(editor, '清空').classes()).toContain('tf-button--compact')
   })
   it('SN加入后仅该件不可再售，普通库存和其他SN不混扣，删除后恢复', async () => {
     mocks.options.mockImplementation(async params => ({ success: true, data: {
@@ -973,7 +1014,7 @@ describe('商品收银台检索与连续扫码', () => {
     expect(cards[1].find('button[aria-label="加入充电宝"]').attributes('disabled')).toBeDefined()
     expect(cards[2].text()).toContain('可售 1')
     expect(cards[2].find('button[aria-label="加入充电宝"]').attributes('disabled')).toBeUndefined()
-    await editor.findAll('.cashier-cart-line')[1].find('button[aria-label="删除充电宝"]').trigger('click'); await flushPromises()
+    await editor.findAll('.cashier-cart-line')[0].find('button[aria-label="删除充电宝"]').trigger('click'); await flushPromises()
     expect(cards[1].text()).toContain('可售 1')
     expect(mocks.checkout).not.toHaveBeenCalled()
   })
@@ -987,24 +1028,13 @@ describe('商品收银台检索与连续扫码', () => {
     data: params.match_mode === 'exact' && params.search_mode === 'serial' ? [] : [option],
     pagination: { total: params.match_mode === 'exact' && params.search_mode === 'serial' ? 0 : 1 }
   } }))
-  it('按类型检索，点击候选后右侧呈现规格和价格，再加入清单', async () => {
+  it('按类型检索，点击商品直接加入清单且不展开额外资料面板', async () => {
     mocks.options.mockResolvedValue({ success: true, data: { data: [{ ...option, category: '充电设备' }], pagination: { total: 1 } } })
     const wrapper = await render(), editor = wrapper.findComponent(SalesAdditionalGoods)
     await searchCatalog(wrapper, '充电设备')
     expect(mocks.options).toHaveBeenCalledWith(expect.objectContaining({ search: '充电设备', search_mode: 'regular', store_id: 1 }), expect.any(AbortSignal))
     await button(editor, '充电宝').trigger('click'); await flushPromises()
-    expect(editor.find('.cashier-order').text()).toContain('配件型号P10')
-    expect(editor.find('.cashier-order').text()).toContain('充电设备')
-    expect(editor.find('.cashier-selection').text()).toContain('白色')
-    expect(editor.find('.cashier-selection').text()).not.toContain('颜色')
-    expect(editor.find('.cashier-selection').text()).not.toContain('商品类型')
-    const detailLabels = editor.findAll('.cashier-selection .el-descriptions__label').map(label => label.text())
-    expect(detailLabels).not.toContain('品牌')
-    expect(detailLabels).not.toContain('单位')
-    expect(editor.findAll('.cashier-selection .el-descriptions__content').map(content => content.text())).toContain('个')
-    expect(editor.find('.cashier-order').text()).toContain('¥30')
-    expect(editor.props('modelValue')).toHaveLength(0)
-    await button(editor, '加入清单').trigger('click'); await flushPromises()
+    expect(editor.find('.cashier-selection').exists()).toBe(false)
     expect(editor.props('modelValue')).toEqual([expect.objectContaining({ option: expect.objectContaining({ id: 56 }), quantity: 1, linked_phone_id: null })])
   })
   it('清单按数量及销售价展示合计，积分试算后保留原合计并单独展示实收', async () => {

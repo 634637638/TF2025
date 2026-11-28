@@ -187,7 +187,7 @@
                 v-if="canSell"
                 type="success"
                 :disabled="!isPhoneSaleActionAvailable(row)"
-                :title="isPhoneSaleActionAvailable(row) ? '销售出库' : '当前状态不可销售出库'"
+                :title="isPhoneSaleActionAvailable(row) ? '出库' : '当前状态不可出库'"
                 @click.stop="isPhoneSaleActionAvailable(row) && emit('sale', row)"
               >
                 <i class="fas fa-shopping-cart" />
@@ -249,7 +249,7 @@
             v-if="canSell"
             type="success"
             :disabled="!isPhoneSaleActionAvailable(row)"
-            :title="isPhoneSaleActionAvailable(row) ? '销售出库' : '当前状态不可销售出库'"
+            :title="isPhoneSaleActionAvailable(row) ? '出库' : '当前状态不可出库'"
             @click.stop="mobileDetailRunAction(() => isPhoneSaleActionAvailable(row) && emit('sale', row))"
           >
             <i class="fas fa-shopping-cart" />

@@ -171,7 +171,7 @@
 import { computed, ref, watch } from 'vue'
 import { printElement } from '@/utils/print'
 import { useNotification } from '@/composables/useNotification'
-import { isCheckoutOrderDetail, giftReturnAgreementText } from '@/utils/query-goods'
+import { isCheckoutOrderDetail, giftReturnAgreementText, totalDiscountAmount } from '@/utils/query-goods'
 import { getCheckoutOrder } from '@/api/query-goods'
 import { useLatestRequest } from '@/composables/useLatestRequest'
 import { usePagePermissions } from '@/composables/usePagePermissions'
@@ -208,7 +208,7 @@ const text = (value: unknown) => value === null || value === undefined || value 
 const money = (value: number | null | undefined) => value === null || value === undefined ? '-' : `¥${formatAmount(value)}`
 const fieldValueClass = (key: string, value: RecordDetailField['value']) => {
   if (key === 'sale_type') return value === '赠送' ? 'status-badge status-warning' : value === '购买' ? 'status-badge status-success' : ''
-  if (['total_amount', 'final_amount', 'paid_amount', 'unit_price', 'gross_amount', 'deduction_amount'].includes(key)) return 'checkout-order-value--amount'
+  if (['total_amount', 'final_amount', 'paid_amount', 'unit_price', 'reference_unit_price', 'reference_total_amount', 'gross_amount', 'discount_amount', 'deduction_amount'].includes(key)) return 'checkout-order-value--amount'
   if (key === 'points_awarded') return 'checkout-order-value--success'
   if (key === 'points_used') return 'checkout-order-value--accent'
   return ''
@@ -248,13 +248,16 @@ const itemFields = (row: CheckoutOrderItem): RecordDetailField[] => {
     { key: 'color_name', label: '颜色', value: text(row.color_name), visible: visible('color_name', 'basic_info.color') },
     { key: 'memory', label: '内存', value: text(row.memory), visible: phone && phoneVisible('basic_info.memory') },
     { key: 'imei', label: 'IMEI', value: text(row.imei), wide: true, visible: phone && phoneVisible('basic_info.imei') },
-    { key: 'serial_numbers', label: '原出库SN', value: row.serial_numbers?.join('、') || '-', wide: true, visible: visible('serial_number', 'basic_info.serial_number') },
+    { key: 'serial_numbers', label: 'SN', value: row.serial_numbers?.join('、') || '-', wide: true, visible: visible('serial_number', 'basic_info.serial_number') },
     { key: 'linked_phone_sale_no', label: '关联手机单号', value: text(row.linked_phone_sale_no), wide: true, visible: !phone && goodsVisible('sequence') },
     { key: 'sale_type', label: '购买 / 赠送', value: row.sale_type === null ? '-' : row.sale_type === 'gift' ? '赠送' : '购买', visible: phone || goodsVisible('usage_type') },
     { key: 'quantity', label: '数量', value: text(row.quantity), visible: phone || goodsVisible('total_quantity') && goodsVisible('usage_type') },
     { key: 'unit', label: '单位', value: text(row.unit), visible: phone || goodsVisible('unit') },
-    { key: 'unit_price', label: props.receipt ? '销售价' : '原单价', value: money(row.unit_price), visible: amounts },
-    { key: 'gross_amount', label: '原单金额', value: money(row.gross_amount), visible: amounts },
+    { key: 'reference_unit_price', label: '销售价格', value: money(row.reference_unit_price), visible: amounts && row.reference_unit_price !== undefined },
+    { key: 'unit_price', label: '成交单价', value: money(row.unit_price), visible: amounts },
+    { key: 'reference_total_amount', label: '销售价格合计', value: money(row.reference_total_amount), visible: amounts && row.reference_total_amount !== undefined },
+    { key: 'gross_amount', label: '成交金额', value: money(row.gross_amount), visible: amounts },
+    { key: 'discount_amount', label: '总优惠', value: money(totalDiscountAmount(row.discount_amount, row.deduction_amount)), visible: amounts && row.discount_amount !== undefined },
     { key: 'deduction_amount', label: '积分抵扣', value: money(row.deduction_amount), visible: amounts },
     { key: 'total_amount', label: props.receipt ? '实收小计' : '原成交净额', value: money(row.total_amount), visible: amounts },
     { key: 'points_used', label: '消耗积分', value: text(row.points_used), visible: amounts },
@@ -272,7 +275,7 @@ const receiptFigureFields = (row: CheckoutOrderItem) => {
   const fields = itemFields(row)
   const quantity = fields.find(field => field.key === 'quantity' && field.visible)
   const unit = fields.find(field => field.key === 'unit' && field.visible && field.value !== '-')
-  return ['sale_no', 'quantity', 'unit_price', 'total_amount']
+  return ['sale_no', 'quantity', 'reference_unit_price', 'reference_total_amount', 'unit_price', 'gross_amount', 'discount_amount', 'total_amount']
     .map(key => {
       const field = fields.find(item => item.key === key && item.visible)
       if (!field) return null

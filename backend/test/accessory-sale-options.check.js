@@ -12,8 +12,9 @@ test('附加商品候选区分普通实物与同店在库SN，SN仅按可见SN�
   await repository.getSaleOptions({ storeId: 1, search: 'SN001', searchFields: ['name', 'serial_number'], page: 1, pageSize: 20, searchMode: 'serial' })
   for (const call of calls) {
     assert.match(call.sql, /picked_sn.store_id = st.store_id AND picked_sn.status = 'in_stock'/)
+    assert.match(call.sql, /IF\(a\.template_id IS NULL, a\.name, t\.name\) LIKE \?/)
     assert.match(call.sql, /picked_sn.serial_number LIKE \?/)
-    assert.deepEqual(call.params, [1, '%SN001%'])
+    assert.deepEqual(call.params, [1, '%SN001%', '%SN001%'])
   }
   assert.match(calls[1].sql, /picked_sn.serial_number/)
   calls.length = 0

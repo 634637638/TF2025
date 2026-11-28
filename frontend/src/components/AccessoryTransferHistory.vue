@@ -5,7 +5,7 @@
   >
     <div class="flex items-center justify-between gap-2 mb-3">
       <h3 class="m-0">
-        库存划拨记录
+        划拨记录
       </h3>
       <div class="tf-dialog-toolbar">
         <el-button
@@ -102,7 +102,7 @@
         />
         <DataEmptyState
           v-else
-          description="暂无库存划拨记录"
+          description="暂无划拨记录"
           size="compact"
         />
       </template>
@@ -117,7 +117,7 @@
     />
     <RecordDetailDialog
       v-model="detailVisible"
-      title="库存划拨详情"
+      title="划拨详情"
       :fields="detailFields"
       :record="detailRow"
       :has-actions="false"

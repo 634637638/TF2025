@@ -1293,7 +1293,7 @@ const quickSaleItem = (item: InventoryItem) => {
 
   const effectiveStatus = getEffectivePhoneStatus(item)
   if (!['in_stock', 'reserved'].includes(effectiveStatus)) {
-    warning('当前状态不能销售出库')
+    warning('当前状态不能出库')
     return
   }
 

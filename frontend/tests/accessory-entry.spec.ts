@@ -508,11 +508,11 @@ describe('配件公共资料与独立类型入库', () => {
     expect(mocks.post).not.toHaveBeenCalled()
   })
 
-  it.each(['顶部', '行内'])('%s商品入库使用公共贴边正文与分区标题，保留基本信息和备注', async entry => {
+  it.each(['顶部', '行内'])('%s入库使用公共贴边正文与分区标题，保留基本信息和备注', async entry => {
     const wrapper = entry === '顶部' ? render() : await purchaseForm()
     await flushPromises()
     const dialog = wrapper.findComponent(DialogStub)
-    expect(dialog.attributes('title')).toBe('商品入库')
+    expect(dialog.attributes('title')).toBe('入库')
     expect(dialog.attributes('dialog-class').split(' ')).toContain('tf-dialog-body-flush')
     expect(wrapper.findAll('.tf-query-modal-section-title').map(heading => heading.text())).toEqual(['基本信息', '备注信息'])
     expect(wrapper.findAll('.tf-query-modal-section')).toHaveLength(2)

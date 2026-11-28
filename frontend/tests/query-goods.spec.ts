@@ -57,6 +57,7 @@ beforeEach(() => {
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.useRealTimers(); vi.resetAllMocks(); vi.unstubAllGlobals() })
 
 it('展示商品销售类型、数量、原单和客户，未知成本保持空值，严格门店选项及实际分页总数', async () => {
+  mocks.get.mockResolvedValueOnce(result([row({ reference_unit_price: '30.00', reference_total_price: '60.00' })]))
   const wrapper = await render()
   expect(wrapper.text()).toContain('原单充电器')
   expect(wrapper.text()).toContain('赠送')
@@ -65,10 +66,16 @@ it('展示商品销售类型、数量、原单和客户，未知成本保持空�
   expect(wrapper.text()).toContain('获得积分')
   expect(wrapper.text()).not.toContain('累计积分')
   expect(wrapper.find('.status-badge.status-warning').text()).toBe('赠送')
+  expect(wrapper.find('.sale-difference-badge.status-info').text()).toBe('免费')
+  expect(wrapper.find('tbody tr .goods-quantity-badge').text()).toBe('2')
+  expect(wrapper.find('tbody tr .status-badge.status-success').text()).toBe('¥0')
+  expect(wrapper.find('tbody tr').text()).toContain('¥30')
+  expect((wrapper.find('tbody tr').text().match(/¥0/g) || []).length).toBeGreaterThanOrEqual(2)
   const columnLabels = wrapper.findAll('th .cell').map(cell => cell.text())
   expect(columnLabels.slice(1, 9)).toEqual(['销售店铺', '销售时间', '品牌', '商品名称', '商品类型', '销售', '客户姓名', '手机号'])
-  expect(columnLabels.slice(9, -1)).toEqual(['数量', '已退数量', '销售价', '实收', '成本', '抵扣金额', '获得积分', '销售员'])
+  expect(columnLabels.slice(9, -1)).toEqual(['数量', '销售价', '合计金额', '总优惠', '实收', '成本', '抵扣金额', '获得积分', '销售员'])
   expect(columnLabels).not.toContain('商品单号')
+  expect(columnLabels).not.toContain('已退数量')
   expect(columnLabels).not.toContain('未退数量')
   expect(columnLabels).not.toContain('配件型号')
   expect(columnLabels).not.toContain('利润')
@@ -82,6 +89,23 @@ it('展示商品销售类型、数量、原单和客户，未知成本保持空�
   expect(mocks.get).toHaveBeenCalledWith('/query/goods', expect.objectContaining({ params: expect.objectContaining({ page: 1, page_size: 20 }), useCache: false, showLoading: false }))
   await button(wrapper, '第二页').trigger('click'); await flushPromises()
   expect(mocks.get).toHaveBeenLastCalledWith('/query/goods', expect.objectContaining({ params: expect.objectContaining({ page: 2 }) }))
+})
+
+it('商品列表按销售价合计与实收显示带符号优惠，优惠红色、溢价绿色', async () => {
+  mocks.get.mockResolvedValue(result([row({ sale_type: 'sale', unit_price: '60.00', total_price: '50.00', reference_total_price: '80.00',
+    reference_unit_price: '40.00', discount_amount: '20.00', deduction_amount: '10.00' })], 1))
+  const wrapper = await render()
+  expect(wrapper.text()).toContain('总优惠')
+  expect(wrapper.text()).toContain('¥40')
+  expect(wrapper.text()).toContain('¥80')
+  expect(wrapper.text()).toContain('-¥30')
+  expect(wrapper.find('.sale-difference-badge.status-danger').text()).toBe('-¥30')
+
+  mocks.get.mockResolvedValueOnce(result([row({ sale_type: 'sale', quantity: 2, unit_price: '55.00', total_price: '110.00',
+    reference_unit_price: '40.00', reference_total_price: '80.00', discount_amount: '0.00', deduction_amount: '0.00' })], 1))
+  await button(wrapper, '搜索').trigger('click'); await flushPromises()
+  expect(wrapper.text()).toContain('+¥30')
+  expect(wrapper.find('.sale-difference-badge.status-success').text()).toBe('+¥30')
 })
 
 it('切换商品模式每页条数后回到第一页并提交新的页大小', async () => {
@@ -153,7 +177,11 @@ it('商品退货只针对有权限的共同原单，成功后立即重读数量�
   mocks.returnPermission = true
   mocks.get.mockResolvedValueOnce(result([row({ order_id: 10, order_item_id: 50, returned_quantity: 1, remaining_quantity: 1 })]))
   const wrapper = await render()
-  expect(wrapper.text()).toContain('已退数量'); expect(wrapper.text()).toContain('实收')
+  expect(wrapper.findAll('th .cell').map(cell => cell.text())).not.toContain('已退数量')
+  expect(wrapper.text()).toContain('实收')
+  await button(wrapper, '详情').trigger('click'); await flushPromises()
+  expect(wrapper.find('.dialog').text()).toContain('已退数量')
+  await wrapper.find('.dialog button').trigger('click')
   await button(wrapper, '退货').trigger('click'); await flushPromises()
   expect(wrapper.findComponent(ReturnDialog).props('sale').order_item_id).toBe(50)
   const calls = mocks.get.mock.calls.length
@@ -263,6 +291,7 @@ it('查看成交资料、SN和原采购批次，关闭详情后不保留旧内�
   expect(mocks.get).toHaveBeenLastCalledWith('/query/goods/51', expect.objectContaining({ useCache: false }))
   expect(wrapper.find('.dialog').text()).not.toContain('销售时资料')
   expect(wrapper.find('.dialog .goods-detail__overview').exists()).toBe(true)
+  expect(wrapper.find('.dialog .goods-detail__overview .status-badge.status-warning').text()).toBe('赠送')
   expect(wrapper.find('.dialog .goods-detail__metrics').exists()).toBe(true)
   expect(wrapper.find('.dialog').text()).toContain('销售与客户')
   expect(wrapper.find('.dialog').text()).toContain('商品与规格')
@@ -291,6 +320,14 @@ it('查看成交资料、SN和原采购批次，关闭详情后不保留旧内�
   expect(wrapper.find('.dialog').text()).toContain('整批公共备注')
   await button(wrapper, '关闭').trigger('click'); await flushPromises()
   expect(wrapper.find('.dialog').exists()).toBe(false)
+})
+
+it('商品销售详情使用与列表相同的销售类型徽章颜色', async () => {
+  const wrapper = await render()
+  mocks.get.mockResolvedValueOnce({ data: { ...row({ sale_type: 'sale' }), serial_numbers: [], batches: [] } })
+  await button(wrapper, '详情').trigger('click'); await flushPromises()
+  expect(wrapper.find('.dialog .goods-detail__overview .status-badge.status-success').text()).toBe('销售')
+  expect(wrapper.find('.dialog .goods-detail__overview .status-badge.status-warning').exists()).toBe(false)
 })
 
 it('旧单明确显示当前档案，不把现行名称冒充销售快照', async () => {

@@ -135,6 +135,16 @@ html:has(.admin-container, .tf-page-tabs),
   box-shadow: none;
 }
 
+.tf-state-selector--compact {
+  --tf-tabs-height: var(--tf-button-compact-height);
+  --tf-tab-padding-x: var(--tf-button-compact-padding-x);
+  --tf-tab-font-size: var(--tf-button-small-base-font-size);
+}
+
+.tf-state-selector.el-radio-group.tf-state-selector--pill .el-radio-button__inner {
+  border-radius: var(--tf-radius-full);
+}
+
 .tf-state-selector:not(:has(.el-radio-button)) .el-radio {
   height: var(--tf-tabs-height);
   margin-right: var(--tf-space-3);

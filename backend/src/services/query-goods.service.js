@@ -120,6 +120,10 @@ const receiptGoods = row => {
   const totalCents = selectedCount === remaining
     ? totalCentsFromUnits
     : Math.round(Number(row.total_price || 0) * 100 * remaining / quantity)
+  const referenceUnitCents = row.reference_unit_price === null || row.reference_unit_price === undefined ? null : Math.round(Number(row.reference_unit_price) * 100)
+  const referenceTotalCents = referenceUnitCents === null ? null : referenceUnitCents * remaining
+  const discountCents = row.discount_amount === null || row.discount_amount === undefined ? null
+    : Math.round(Number(row.discount_amount) * 100 * remaining / quantity)
   const deductionCents = row.deduction_amount === null || row.deduction_amount === undefined ? null
     : selectedCount === remaining ? deductionCentsFromUnits
       : Math.round(Number(row.deduction_amount) * 100 * remaining / quantity)
@@ -130,6 +134,8 @@ const receiptGoods = row => {
     ? indexes.map(index => originalSerials[index])
     : serials
   return { ...row, quantity: remaining, total_price: totalCents / 100,
+    reference_total_price: referenceTotalCents === null ? null : referenceTotalCents / 100,
+    discount_amount: discountCents === null ? null : discountCents / 100,
     deduction_amount: deductionCents === null ? null : deductionCents / 100, points_used: pointsUsed,
     serial_numbers: remainingSerials }
 }
@@ -233,7 +239,7 @@ class QueryGoodsService {
     // 定向列表不输出客户主档、采购成本/利润或内部订单明细ID；原单仍独立鉴权。
     const keys = ['id', 'sale_no', 'order_no', 'linked_phone_invoice', 'sale_type', 'store_name', 'name', 'category',
       'brand_name', 'product_model', 'color_name', 'unit', 'quantity', 'returned_quantity', 'remaining_quantity',
-      'unit_price', 'total_price', 'points_awarded', 'points_used', 'deduction_amount', 'operator_name', 'sale_time', 'remarks', 'has_snapshot']
+      'unit_price', 'total_price', 'reference_unit_price', 'reference_total_price', 'discount_amount', 'points_awarded', 'points_used', 'deduction_amount', 'operator_name', 'sale_time', 'remarks', 'has_snapshot']
     return { ...result, data: result.data.map(row => ({ ...Object.fromEntries(keys.map(key => [key, row[key]])),
       linked_phone_invoice: scope.allStores || scope.storeIds.includes(Number(row.linked_phone_store_id)) ? row.linked_phone_invoice : null,
       has_snapshot: row.has_snapshot === true || row.has_snapshot === 1 || row.has_snapshot === '1',
@@ -245,9 +251,9 @@ class QueryGoodsService {
     const scope = resolveStoreScope(actor, null)
     const rows = await this.readSnapshot(connection => this.repository.phoneReceipt(scope, Number(saleId), connection))
     return rows.map(receiptGoods).filter(Boolean).map(({ id, name, brand_name, product_model, color_name, unit, quantity, unit_price,
-      total_price, sale_type, points_used, deduction_amount, serial_numbers, receipt_snapshot }) => ({
+      total_price, reference_unit_price, reference_total_price, discount_amount, sale_type, points_used, deduction_amount, serial_numbers, receipt_snapshot }) => ({
       id, name, brand_name, product_model, color_name, unit, quantity, unit_price,
-      total_price, sale_type, points_used, deduction_amount, serial_numbers,
+      total_price, reference_unit_price, reference_total_price, discount_amount, sale_type, points_used, deduction_amount, serial_numbers,
       ...readGiftReturnAgreement(receipt_snapshot, sale_type, Number(quantity))
     }))
   }

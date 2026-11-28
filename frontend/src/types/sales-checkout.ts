@@ -294,7 +294,10 @@ export interface CheckoutOrderItem extends GiftReturnAgreement {
   unit: string | null
   quantity: number | null
   unit_price: number | null
+  reference_unit_price?: number | null
+  reference_total_amount?: number | null
   gross_amount: number | null
+  discount_amount?: number | null
   total_amount: number | null
   points_used: number | null
   deduction_amount: number | null

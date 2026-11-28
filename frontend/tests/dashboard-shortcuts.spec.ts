@@ -79,9 +79,9 @@ describe('快捷方式目标及权限', () => {
     expect(canUseShortcut(entry({ enabled: false }), router, { hasPermission: () => true })).toBe(false)
     expect(canUseShortcut(entry({ target: 'phone-stock-in' }), router, { hasPermission: permission => permission === 'inventory:view' })).toBe(false)
   })
-  it('商品入库快捷方式使用独立的配件入库权限，不要求商品档案创建权限', async () => {
+  it('入库快捷方式使用独立的配件入库权限，不要求商品档案创建权限', async () => {
     const router = await makeRouter()
-    const stockIn = entry({ label: '商品入库', target: 'goods-stock-in', icon: 'fas fa-box-open' })
+    const stockIn = entry({ label: '入库', target: 'goods-stock-in', icon: 'fas fa-box-open' })
     const hasStockIn = (permissions: string[]) => canUseShortcut(stockIn, router, {
       hasPermission: permission => permissions.includes(permission)
     })

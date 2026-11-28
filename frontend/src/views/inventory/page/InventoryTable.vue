@@ -84,7 +84,7 @@
                 v-if="canSell"
                 type="warning"
                 :disabled="!isPhoneSaleActionAvailable(item)"
-                :title="isPhoneSaleActionAvailable(item) ? '商品出库' : '当前状态不可销售出库'"
+                :title="isPhoneSaleActionAvailable(item) ? '出库' : '当前状态不可出库'"
                 @click.stop="isPhoneSaleActionAvailable(item) && emit('quick-sale', item)"
               >
                 <i class="fas fa-shopping-cart" />

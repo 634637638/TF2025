@@ -2089,7 +2089,7 @@ const register_date_range = ref<[string, string] | null>(null)
 const CUSTOMER_TYPES = [
   { value: 'individual', label: '个人客户', icon: 'fas fa-user' },
   { value: 'enterprise', label: '企业客户', icon: 'fas fa-building' },
-  { value: 'wholesale', label: '同行调货', icon: 'fas fa-exchange-alt' },
+  { value: 'wholesale', label: '调货', icon: 'fas fa-exchange-alt' },
   { value: 'allocate', label: '同行划拨', icon: 'fas fa-dolly' }
 ] as const
 
@@ -2930,7 +2930,7 @@ const getCustomerTypeTagType = (type?: string): 'success' | 'warning' | 'info' |
   const typeMap: Record<string, 'success' | 'warning' | 'info' | 'primary' | 'danger'> = {
     individual: 'info',       // 个人客户 - 蓝色
     enterprise: 'success',    // 企业客户 - 绿色
-    wholesale: 'warning',     // 同行调货 - 橙色
+    wholesale: 'warning',     // 调货 - 橙色
     allocate: 'primary'       // 同行划拨 - 蓝色
   }
   return typeMap[type || ''] || 'info'

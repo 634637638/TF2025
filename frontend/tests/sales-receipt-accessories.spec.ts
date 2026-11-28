@@ -17,6 +17,7 @@ const phone = (extra: Partial<ReceiptItem> = {}): ReceiptItem => ({ phone_id: 11
   color: '黑色', memory: '128G', imei: 'PHONE-A', serialNumber: '', salePrice: 100.01, isNew: 1, ...extra })
 const goods = (extra: Partial<PhoneReceiptAccessory> = {}): PhoneReceiptAccessory => ({ id: 51, name: '充电器', brand_name: '配件品牌',
   product_model: 'MWVW3CH', color_name: '白色', unit: '个', quantity: 2, unit_price: 20, total_price: 35.02,
+  reference_unit_price: 25, reference_total_price: 50, discount_amount: 10,
   sale_type: 'sale', points_used: 498, deduction_amount: 4.98, serial_numbers: ['000SN1', '000SN2'],
   gift_return_unit_price: null, gift_return_total: null, gift_agreement_state: extra.sale_type === 'gift' ? 'not_recorded' : null, ...extra })
 const Dialog = { props: ['modelValue', 'visible'], template: '<section v-if="modelValue"><slot /><slot name="footer" /></section>' }
@@ -27,12 +28,17 @@ const render = async (items = [phone()], status = 'sold') => {
   wrappers.push(wrapper); await flushPromises(); return wrapper
 }
 const button = (wrapper: ReturnType<typeof mount>, text: string) => wrapper.findAll('button').find(item => item.text() === text)!
-beforeEach(() => { canView.value = true; mocks.hidden.clear(); mocks.get.mockResolvedValue({ success: true, data: [goods(), goods({ id: 52, name: '钢化膜', sale_type: 'gift', quantity: 1, unit_price: 0, total_price: 0, points_used: 0, deduction_amount: 0, serial_numbers: [] })] }) })
+beforeEach(() => { canView.value = true; mocks.hidden.clear(); mocks.get.mockResolvedValue({ success: true, data: [goods(), goods({ id: 52, name: '钢化膜', sale_type: 'gift', quantity: 1, unit_price: 0, total_price: 0,
+  reference_unit_price: null, reference_total_price: null, discount_amount: null, points_used: 0, deduction_amount: 0, serial_numbers: [] })] }) })
 afterEach(() => { wrappers.splice(0).forEach(wrapper => wrapper.unmount()); vi.restoreAllMocks(); vi.clearAllMocks() })
 
 it('手机凭证单表展示购买与赠品、数量、SN和实收', async () => {
   const wrapper = await render()
   for (const text of ['充电器', '钢化膜', '购买', '赠品', '配件 / 赠品明细', '000SN1、000SN2', '实收 ¥35.02', '实收 ¥0', '1台', '3件配件', '¥ 135.03']) expect(wrapper.text()).toContain(text)
+  expect(wrapper.text()).not.toContain('原价 ¥50')
+  expect(wrapper.text()).not.toContain('总优惠 ¥14.98')
+  expect(wrapper.text()).not.toContain('积分抵扣 ¥4.98')
+  expect(wrapper.text()).not.toContain('配件SN：')
   expect(wrapper.text()).not.toContain('原价 ¥40')
   expect(wrapper.text()).toContain('关联： PHONE-A')
   expect(wrapper.text()).not.toContain('关联：苹果 手机甲')

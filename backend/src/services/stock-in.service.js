@@ -350,8 +350,8 @@ class StockInService extends BaseService {
 
         // 返回成功结果
         const successMessage = autoMatchedPreorders.length > 0
-          ? `商品入库成功，已自动匹配 ${autoMatchedPreorders.length} 个预定单`
-          : '商品入库成功'
+          ? `入库成功，已自动匹配 ${autoMatchedPreorders.length} 个预定单`
+          : '入库成功'
 
         return { data: responseData, message: successMessage }
 

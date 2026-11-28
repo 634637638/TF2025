@@ -3,6 +3,22 @@ import type { CheckoutOrderDetail, GiftReturnAgreement } from '@/types/sales-che
 import { formatAmount } from '@/utils/format'
 import type { CustomerGoodsRecord, GoodsAftersaleRecord } from '@/types/accessory'
 
+/** 将价格优惠与积分抵扣按整数分相加，缺少任一分项时不猜测总优惠。 */
+export const totalDiscountAmount = (discountAmount: unknown, deductionAmount: unknown): number | null => {
+  const values = [discountAmount, deductionAmount].map(value => typeof value === 'number' || typeof value === 'string' && value.trim() ? Number(value) : NaN)
+  if (values.some(value => !Number.isFinite(value) || value < 0 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) return null
+  return values.reduce((sum, value) => sum + Math.round(value * 100), 0) / 100
+}
+
+/** 以模板销售价格和实收计算差额，负数表示优惠，正数表示溢价；赠品不计优惠。 */
+export const signedSaleDifference = (referenceTotal: unknown, receivedTotal: unknown, saleType: unknown): number | null => {
+  if (saleType === 'gift') return 0
+  if (saleType !== 'sale') return null
+  const values = [referenceTotal, receivedTotal].map(value => typeof value === 'number' || typeof value === 'string' && value.trim() ? Number(value) : NaN)
+  if (values.some(value => !Number.isFinite(value) || value < 0 || Math.abs(value * 100 - Math.round(value * 100)) > 0.000001)) return null
+  return (Math.round(values[1] * 100) - Math.round(values[0] * 100)) / 100
+}
+
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value))
 const integer = (value: unknown, min = 0): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= min
 const money = (value: unknown): value is number => typeof value === 'number' && value >= 0 &&
@@ -80,7 +96,7 @@ const customerGoodsRow = (value: unknown): value is CustomerGoodsRecord => {
   if (value.quantity !== null && !integer(value.quantity, 1) ||
     value.points_awarded !== null && !integer(value.points_awarded) ||
     ['returned_quantity', 'remaining_quantity', 'points_used'].some(key => !numeric(value[key])) ||
-    ['unit_price', 'total_price', 'deduction_amount'].some(key => !numeric(value[key], true))) return false
+    ['unit_price', 'reference_unit_price', 'reference_total_price', 'discount_amount', 'total_price', 'deduction_amount'].some(key => value[key] !== undefined && !numeric(value[key], true))) return false
   const quantity = value.quantity, returned = value.returned_quantity, remaining = value.remaining_quantity
   return quantity === null || returned === null || remaining === null ||
     Number(quantity) > 0 && Number(returned) + Number(remaining) === Number(quantity)
@@ -124,6 +140,8 @@ export const isCheckoutOrderDetail = (value: unknown): value is CheckoutOrderDet
       row.serial_numbers && row.serial_numbers.length > 0 && row.quantity !== null && row.serial_numbers.length !== row.quantity) return false
     ids.add(row.id)
     const keys = ['unit_price', 'gross_amount', 'total_amount', 'deduction_amount', 'points_used', 'points_awarded']
+    const priceSnapshotKeys = ['reference_unit_price', 'reference_total_amount', 'discount_amount']
+    if (priceSnapshotKeys.some(key => row[key] !== null && row[key] !== undefined && !money(row[key]))) return false
     if (keys.some(key => row[key] !== null && !(key.startsWith('points_') ? integer(row[key]) : money(row[key])))) return false
     if (keys.every(key => row[key] === null)) complete = false
     else {
@@ -131,6 +149,14 @@ export const isCheckoutOrderDetail = (value: unknown): value is CheckoutOrderDet
         Math.round(Number(row.unit_price) * 100) * row.quantity !== Math.round(Number(row.gross_amount) * 100) ||
         Math.round(Number(row.gross_amount) * 100) - Math.round(Number(row.deduction_amount) * 100) !== Math.round(Number(row.total_amount) * 100) ||
         row.sale_type === 'gift' && keys.some(key => row[key] !== 0)) return false
+      const hasReferenceUnit = row.reference_unit_price !== null && row.reference_unit_price !== undefined
+      const hasReferenceTotal = row.reference_total_amount !== null && row.reference_total_amount !== undefined
+      if (hasReferenceUnit !== hasReferenceTotal ||
+        row.sale_type === 'gift' && row.discount_amount !== null && row.discount_amount !== undefined ||
+        hasReferenceUnit && (
+          Math.round(Number(row.reference_unit_price) * 100) * row.quantity !== Math.round(Number(row.reference_total_amount) * 100) ||
+          row.sale_type === 'sale' && (row.discount_amount === null || row.discount_amount === undefined ||
+            Math.max(0, Math.round(Number(row.reference_total_amount) * 100) - Math.round(Number(row.gross_amount) * 100)) !== Math.round(Number(row.discount_amount) * 100)))) return false
       gross += Math.round(Number(row.gross_amount) * 100); net += Math.round(Number(row.total_amount) * 100)
       deduction += Math.round(Number(row.deduction_amount) * 100); used += Number(row.points_used); awarded += Number(row.points_awarded)
     }

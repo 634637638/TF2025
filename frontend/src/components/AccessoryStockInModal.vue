@@ -1,8 +1,8 @@
 <!--
-  AccessoryStockInModal - 商品入库/编辑模态框
+  AccessoryStockInModal - 入库/编辑模态框
 
   功能描述：
-  - 商品入库：按商品名称搜索模板或列表行内补货
+  - 入库：按商品名称搜索模板或列表行内补货
   - 商品模版编辑：修改模板共享资料
   - 商品库存编辑：选择原入库批次，复用入库字段更正数量、成本、供应商等资料
   - 支持图片上传
@@ -21,7 +21,7 @@
 <template>
   <MobileDialog
     v-model="visible"
-    :title="isCorrectionMode ? '编辑商品库存' : props.profileEditOnly ? '编辑商品档案' : isEditMode ? '编辑商品模板' : props.archiveOnly ? '商品模板' : '商品入库'"
+    :title="isCorrectionMode ? '编辑商品库存' : props.profileEditOnly ? '编辑商品档案' : isEditMode ? '编辑商品模板' : props.archiveOnly ? '商品模板' : '入库'"
     :close-on-click-modal="false"
     :close-on-press-escape="!submitting"
     :show-close="!submitting"

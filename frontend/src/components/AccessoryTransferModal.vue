@@ -1,7 +1,7 @@
 <template>
   <MobileDialog
     :model-value="modelValue"
-    title="库存划拨"
+    title="划拨"
     width="680px"
     :close-on-click-modal="false"
     :show-default-footer="false"

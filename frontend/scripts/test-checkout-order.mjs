@@ -276,7 +276,7 @@ const verifyReceipt = async (page, temporary, errors) => {
     await page.waitForFunction(() => !document.body.textContent.includes('原赠膜'))
     assert.equal(await page.evaluate(() => window.requests.length), requests, '批发/划拨不读取零售配件')
     const printed = await readPrintedReceipt(page)
-    assert.ok(printed.text.includes(status === 'peer_transfer' ? '批发凭证' : '划拨凭证'))
+    assert.ok(printed.text.includes(status === 'peer_transfer' ? '调货凭证' : '划拨凭证'))
     assert.equal(printed.tables, 1); assert.equal(printed.clipped, false); assert.equal(printed.totalsClipped, false)
   }
   await page.evaluate(() => {

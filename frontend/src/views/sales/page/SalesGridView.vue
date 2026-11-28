@@ -149,7 +149,7 @@
               v-if="canSell"
               type="success"
               :disabled="!isPhoneSaleActionAvailable(phone)"
-              :title="isPhoneSaleActionAvailable(phone) ? '销售出库' : '当前状态不可销售出库'"
+              :title="isPhoneSaleActionAvailable(phone) ? '出库' : '当前状态不可出库'"
               @click.stop="isPhoneSaleActionAvailable(phone) && emit('sale', phone)"
             >
               <i class="fas fa-shopping-cart" />

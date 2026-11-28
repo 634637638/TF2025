@@ -551,7 +551,7 @@ export const useSalesCheckout = ({
         const pointsMessage = pointsEarned > 0 ? `，本单获得 ${pointsEarned} 积分` : ''
         showSuccess(batchMode.value
           ? `批量销售成功！共销售 ${batchCount} 台设备${pointsMessage}`
-          : `销售出库成功！${pointsMessage}`)
+          : `出库成功！${pointsMessage}`)
         saleCompleted.value = true
         closeSaleModal()
         if (batchMode.value) {
@@ -562,11 +562,11 @@ export const useSalesCheckout = ({
         await loadAvailablePhones()
         todaySold.value += batchMode.value ? batchCount : 1
       } else {
-        showError(response.message || '销售出库失败')
+        showError(response.message || '出库失败')
       }
     } catch (error) {
-      logger.error('销售出库失败:', error)
-      showError('销售出库失败，请稍后重试')
+      logger.error('出库失败:', error)
+      showError('出库失败，请稍后重试')
     } finally {
       submitting.value = false
     }

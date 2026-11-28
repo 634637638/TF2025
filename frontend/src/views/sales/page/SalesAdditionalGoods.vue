@@ -16,13 +16,14 @@
             :disabled="disabled || !storeId"
             placeholder="输入商品名称、条形码或SN检索"
             aria-label="收银商品检索"
+            @input="handleCatalogInput"
             @keydown.enter.prevent="catalogSearchEnter"
-            @clear="search('')"
+            @clear="clearCatalogSearch"
           />
           <SearchActionButton
             :loading="loading"
             :disabled="disabled || !storeId"
-            @click="search(catalogKeyword)"
+            @click="searchCatalogNow"
           >
             检索
           </SearchActionButton>
@@ -53,9 +54,6 @@
         class="cashier-catalog"
         aria-label="商品检索"
       >
-        <p class="text-secondary">
-          {{ storeId ? `本店可售商品 · ${total} 项` : '请先选择销售门店' }}
-        </p>
         <div
           v-tf-loading="{ active: loading, text: '正在检索本店商品...' }"
           class="cashier-products tf-scrollbar-hidden"
@@ -78,8 +76,8 @@
             <el-button
               type="primary"
               link
-              :disabled="disabled"
-              @click="selectedKey = keyOf(option)"
+              :disabled="disabled || availableQuantity(option) <= 0"
+              @click="addOption(option, saleType, null)"
             >
               {{ option.name }}
             </el-button>
@@ -183,101 +181,13 @@
           <div class="cashier-order__heading">
             <strong>当前订单 <span class="text-secondary">· {{ itemCount }} 件</span></strong>
             <el-button
+              class="tf-button--compact"
               :disabled="disabled || !modelValue.length"
               @click="clearCart"
             >
               清空
             </el-button>
           </div>
-          <details
-            v-if="selectedOption"
-            class="cashier-selection"
-            open
-          >
-            <summary>商品资料 · {{ selectedOption.name }}</summary>
-            <div class="cashier-selection__layout">
-              <div class="cashier-selection__identity">
-                <strong>{{ selectedOption.name }}</strong>
-                <RecordDescriptions
-                  :column="2"
-                  compact
-                >
-                  <el-descriptions-item
-                    v-if="visible('product_model')"
-                    label="配件型号"
-                    :span="2"
-                  >
-                    {{ selectedOption.product_model || '-' }}
-                  </el-descriptions-item>
-                </RecordDescriptions>
-              </div>
-              <RecordDescriptions
-                :column="2"
-                compact
-              >
-                <el-descriptions-item v-if="visible('category')">
-                  {{ selectedOption.category || '-' }}
-                </el-descriptions-item>
-                <el-descriptions-item v-if="visible('brand_name')">
-                  {{ selectedOption.brand_name || '-' }}
-                </el-descriptions-item>
-                <el-descriptions-item v-if="visible('color_name')">
-                  {{ selectedOption.color_name || '-' }}
-                </el-descriptions-item>
-                <el-descriptions-item v-if="visible('unit')">
-                  {{ selectedOption.unit || '-' }}
-                </el-descriptions-item>
-              </RecordDescriptions>
-            </div>
-            <div class="cashier-selection__layout">
-              <RecordDescriptions
-                v-if="visible('barcode') || visible('serial_number') && selectedOption.serial_number"
-                :column="2"
-                compact
-              >
-                <el-descriptions-item
-                  v-if="visible('barcode')"
-                  label="条形码"
-                  :span="2"
-                >
-                  {{ selectedOption.barcode || '-' }}
-                </el-descriptions-item>
-                <el-descriptions-item
-                  v-if="visible('serial_number') && selectedOption.serial_number"
-                  label="SN"
-                  :span="2"
-                >
-                  {{ selectedOption.serial_number }}
-                </el-descriptions-item>
-              </RecordDescriptions>
-              <RecordDescriptions
-                :column="2"
-                compact
-              >
-                <el-descriptions-item
-                  v-if="visible('sale_price')"
-                  label="零售价"
-                >
-                  <el-tag
-                    type="warning"
-                    effect="light"
-                    class="tf-tag--wrap"
-                  >
-                    {{ selectedOption.sale_price === null ? '-' : `¥${formatAmount(selectedOption.sale_price)}` }}
-                  </el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="可售数量">
-                  <el-tag
-                    :type="availableQuantity(selectedOption) > 0 ? 'success' : 'info'"
-                    effect="light"
-                    class="tf-tag--wrap"
-                  >
-                    {{ availableQuantity(selectedOption) }}
-                  </el-tag>
-                </el-descriptions-item>
-              </RecordDescriptions>
-            </div>
-          </details>
         </template>
         <el-row
           :gutter="16"
@@ -327,7 +237,7 @@
             </el-form-item>
           </el-col>
           <el-col
-            v-if="!exchangeMode"
+            v-if="!exchangeMode && !standalone"
             :xs="standalone ? 16 : 12"
             :sm="standalone ? 16 : 5"
           >
@@ -353,7 +263,7 @@
             </el-form-item>
           </el-col>
           <el-col
-            v-else
+            v-else-if="exchangeMode"
             :xs="16"
             :sm="5"
           >
@@ -380,13 +290,12 @@
             </el-form-item>
           </el-col>
           <el-col
-            v-if="!standalone || selectedOption"
-            :xs="standalone ? 8 : 12"
-            :sm="standalone ? 8 : 4"
+            v-if="!standalone"
+            :xs="12"
+            :sm="4"
           >
             <el-form-item
-              :label="standalone ? undefined : '操作'"
-              :class="{ 'tf-form-field--inline': standalone }"
+              label="操作"
             >
               <el-button
                 v-permission="{ permission: ['accessories:sell', 'accessories:gift', 'query:goods-sell', 'query:goods-gift'] }"
@@ -395,7 +304,7 @@
                 :disabled="disabled || !selectedOption || availableQuantity(selectedOption) <= 0 || loading"
                 @click="confirm"
               >
-                {{ standalone ? '加入清单' : '确认' }}
+                确认
               </el-button>
             </el-form-item>
           </el-col>
@@ -447,9 +356,6 @@
             <div class="cashier-cart-line__heading">
               <div class="cashier-cart-line__identity">
                 <strong>{{ row.option?.name }}</strong>
-                <el-tag :type="row.sale_type === 'gift' ? 'warning' : 'success'">
-                  {{ row.sale_type === 'gift' ? '赠送' : '销售' }}
-                </el-tag>
                 <div class="cashier-product__tags">
                   <el-tag
                     v-for="tag in productTags(row.option, row.serial_numbers.join('、'))"
@@ -463,15 +369,37 @@
                   </el-tag>
                 </div>
               </div>
-              <el-button
-                class="tf-button--delete"
-                type="danger"
-                :disabled="disabled"
-                :aria-label="`删除${row.option?.name || '商品'}`"
-                @click="remove(row.key)"
-              >
-                删除
-              </el-button>
+              <div class="cashier-cart-line__actions">
+                <el-radio-group
+                  v-if="!disabled"
+                  :model-value="row.sale_type"
+                  class="cashier-cart-line__sale-type tf-state-selector tf-state-selector--compact tf-state-selector--pill"
+                  :disabled="disabled"
+                  @update:model-value="updateSaleType(row.key, $event)"
+                >
+                  <el-radio-button
+                    value="sale"
+                    :disabled="!canCreate"
+                  >
+                    购买
+                  </el-radio-button>
+                  <el-radio-button
+                    v-if="canGift && !props.saleOnly"
+                    value="gift"
+                  >
+                    赠送
+                  </el-radio-button>
+                </el-radio-group>
+                <el-button
+                  class="tf-button--delete tf-button--compact"
+                  type="danger"
+                  :disabled="disabled"
+                  :aria-label="`删除${row.option?.name || '商品'}`"
+                  @click="remove(row.key)"
+                >
+                  删除
+                </el-button>
+              </div>
             </div>
             <div class="cashier-cart-line__fields">
               <el-form-item
@@ -568,7 +496,7 @@
             </template>
           </el-table-column>
           <el-table-column
-            v-if="!exchangeMode"
+            v-if="!exchangeMode && !standalone"
             label="方式"
             :width="typeWidth"
           >
@@ -674,6 +602,7 @@ import type { InputInstance, TagProps } from 'element-plus'
 import { Minus } from '@element-plus/icons-vue'
 import { getCheckoutGoods } from '@/api/sales-checkout'
 import { useLatestRequest } from '@/composables/useLatestRequest'
+import { useDebounce } from '@/composables/useDebounce'
 import { useSelectLoadMore } from '@/composables/useSelectLoadMore'
 import { useGoodsPermissions } from '@/composables/useGoodsPermissions'
 import { useNotification } from '@/composables/useNotification'
@@ -745,7 +674,11 @@ const productTags = (option: CheckoutGoodsOption | null | undefined, serial = op
   return tags.filter(tag => visible(tag.field) && tag.value)
 }
 const catalogKeyword = ref(''), catalogInputRef = ref<InputInstance>()
-const catalogSearchEnter = (event: Event | KeyboardEvent) => { if (!('isComposing' in event && event.isComposing)) void search(catalogKeyword.value) }
+const catalogSearchEnter = (event: Event | KeyboardEvent) => {
+  if ('isComposing' in event && event.isComposing) return
+  cancelCatalogSearch()
+  void search(catalogKeyword.value)
+}
 const keyOf = (option: CheckoutGoodsOption) => option.serial_number ? `sn:${option.serial_number}` : `goods:${option.id}`
 const labelOf = (option: CheckoutGoodsOption) => [option.serial_number || (visible('product_model') ? option.product_model : ''), option.name,
   visible('brand_name') ? option.brand_name : '', visible('sale_price') && option.sale_price !== null ? `零售价 ¥${formatAmount(option.sale_price)}` : ''].filter(Boolean).join(' · ')
@@ -772,6 +705,13 @@ const load = async (append = false) => {
   finally { if (request.isLatest()) loading.value = false }
 }
 const search = async (value: string) => { reset(); keyword = value.trim(); catalogKeyword.value = keyword; await load() }
+const { debouncedFn: debounceCatalogSearch, cancel: cancelCatalogSearch } = useDebounce(search, 350)
+const handleCatalogInput = (value: string | number) => {
+  if (!standalone.value || props.disabled || !props.storeId) return
+  debounceCatalogSearch(String(value))
+}
+const clearCatalogSearch = () => { cancelCatalogSearch(); void search('') }
+const searchCatalogNow = () => { cancelCatalogSearch(); void search(catalogKeyword.value) }
 const openOptions = (open: boolean) => { if (open && !loading.value && (!page || failed.value)) void load() }
 const loadMore = () => { if (!loading.value && !failed.value && options.value.length < total.value) void load(true) }
 const handleCatalogScroll = (event: Event) => {
@@ -823,11 +763,29 @@ const addOption = (option: CheckoutGoodsOption, type: 'sale' | 'gift', phoneId: 
     sale_type: type, linked_phone_id: phoneId ?? null, serial_mode: serialMode, serial_numbers: serial ? [serial] : [],
     gift_return_unit_price: type === 'gift' ? option.sale_price === null ? null : Number(option.sale_price) : null }
   const remaining = isReplacement ? props.modelValue.filter(item => item.key !== 'replacement') : props.modelValue
-  emit('update:modelValue', isReplacement ? [row, ...remaining] : [...remaining, row])
+  emit('update:modelValue', isReplacement || standalone.value ? [row, ...remaining] : [...remaining, row])
   return true
 }
 const remove = (key: string) => { if (!props.disabled) emit('update:modelValue', props.modelValue.filter(row => row.key !== key)) }
 const updatePrice = (key: string, value: number | null | undefined) => { if (!props.disabled) emit('update:modelValue', props.modelValue.map(row => row.key === key && row.sale_type !== 'gift' ? { ...row, unit_price: value } : row)) }
+const updateSaleType = (key: string, type: unknown) => {
+  if (type !== 'sale' && type !== 'gift') return
+  const row = props.modelValue.find(item => item.key === key)
+  if (props.disabled || !row || row.sale_type === type || (type === 'gift' && !canGift.value) || (type === 'sale' && !canCreate.value)) return
+  const salePrice = row.option?.sale_price === null || row.option?.sale_price === undefined || !Number.isFinite(Number(row.option.sale_price))
+    ? null
+    : Number(row.option.sale_price)
+  if (type === 'gift' && salePrice === null) {
+    notices.error('无法读取赠品零售价，请联系管理员')
+    return
+  }
+  emit('update:modelValue', props.modelValue.map(item => {
+    if (item.key !== key) return item
+    const next: CheckoutGoodsDraft = { ...item, sale_type: type, unit_price: type === 'gift' ? 0 : salePrice, gift_return_unit_price: type === 'gift' ? salePrice : null }
+    if (type === 'gift') delete next.redeem_points
+    return next
+  }))
+}
 const updatePoints = (key: string, value: number | null | undefined) => {
   const points = value ?? 0
   if (props.disabled || !Number.isSafeInteger(points) || points < 0 || points > 2147483647) return
@@ -908,13 +866,14 @@ const queueScan = (value: string) => {
   })
 }
 watch(() => props.storeId, (storeId, previousStoreId) => {
+  cancelCatalogSearch()
   reset(); cancelScans()
   keyword = ''
   catalogKeyword.value = ''
   if (storeId !== previousStoreId && props.modelValue.length) emit('update:modelValue', [])
   if (standalone.value && storeId) void load()
 })
-watch(() => props.disabled, value => { if (value) { reset(); cancelScans() } else if (standalone.value && props.storeId) void load() })
+watch(() => props.disabled, value => { if (value) { cancelCatalogSearch(); reset(); cancelScans() } else if (standalone.value && props.storeId) void load() })
 watch(() => [visible('barcode'), visible('serial_number')], cancelScans)
 watch(() => hasPermission('view'), value => { if (!value) { reset(); cancelScans() } })
 if (standalone.value && props.storeId) void load()
@@ -927,12 +886,7 @@ onBeforeUnmount(cancelScans)
 .cashier-order { padding: var(--tf-space-4); border: 1px solid var(--tf-color-border-cool); border-radius: var(--tf-radius-card); background: var(--tf-color-surface-cool-alt); }
 .cashier-order__heading, .cashier-cart-line__heading { display: flex; justify-content: space-between; align-items: center; gap: var(--tf-space-2); }
 .cashier-order__heading { margin-bottom: var(--tf-space-3); }
-.cashier-selection { margin-bottom: var(--tf-space-3); overflow-wrap: anywhere; }
-.cashier-selection__layout { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--tf-space-3); align-items: start; }
-.cashier-selection__layout > * { min-width: 0; }
-.cashier-selection__layout > :only-child { grid-column: 1 / -1; }
-.cashier-selection__identity { display: grid; gap: var(--tf-space-1); }
-.cashier-selection summary { cursor: pointer; color: var(--el-color-primary); margin-bottom: var(--tf-space-2); }
+.cashier-cart-line__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--tf-space-2); }
 .cashier-cart { display: grid; gap: var(--tf-space-3); max-height: 48vh; overflow-y: auto; }
 .cashier-cart-line { min-width: 0; padding: var(--tf-space-3); border: 1px solid var(--tf-color-border-cool); border-radius: var(--tf-radius-card); background: var(--tf-color-surface-blue); }
 .cashier-cart-line__identity { flex: 1; min-width: 0; overflow-wrap: anywhere; }
